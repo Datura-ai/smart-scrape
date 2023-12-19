@@ -1,9 +1,13 @@
 import json
 import re
-import random
+import os
 
-# Path to your JSON file
-file_name = './template/db/dataset_twitter/dataset_twitter.json'
+# Get the directory of the current script
+current_script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Construct the file path relative to the current script directory
+file_name = os.path.join(current_script_dir, 'dataset_twitter.json')
+
 
 async def mock_filter_tweets(query_string):
     """
