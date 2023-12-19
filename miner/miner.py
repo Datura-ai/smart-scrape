@@ -27,9 +27,8 @@ from typing import List, Dict, Tuple, Union, Callable, Awaitable
 
 from template.utils import get_version, analyze_twitter_query
 from template.protocol import StreamPrompting, IsAlive, TwitterScraper, TwitterQueryResult
-from template.apify import run_actor_and_fetch_results
-
-from dataset_twitter.mock import mock_filter_tweets
+from template.apify import ActorInput, run_actor
+from template.db import DBClient, get_random_tweets
 
 OpenAI.api_key = os.environ.get('OPENAI_API_KEY')
 if not OpenAI.api_key:
@@ -46,6 +45,7 @@ if not wandb_api_key and not netrc_path.exists():
 
 client = AsyncOpenAI(timeout=60.0)
 valid_hotkeys = []
+
 
 
 class StreamMiner(ABC):
@@ -304,22 +304,33 @@ class StreamingTemplateMiner(StreamMiner):
 
     def twitter_scraper(self, synapse: TwitterScraper) -> TwitterScraper:
         bt.logging.info(f"started processing for synapse {synapse}")
+
+        async def scrape_and_store_tweets(twitter_query: TwitterQueryResult):
+            search_queries = [*twitter_query.hashtags, *twitter_query.user_mentions, *twitter_query.keywords]
+            actor_input = ActorInput(search_queries=search_queries)
+            run = await run_actor()
+                # Fetch and print Actor results from the run's dataset (if there are any)
+            items = []
+            async for item in client.dataset(run['defaultDatasetId']).iterate_items():
+                items.append(item)
         
         async def _twitter_scraper(synapse, send: Send):
             try:
                 model = synapse.model
                 prompt = synapse.messages
-                seed=synapse.seed
+                seed= synapse.seed
                 bt.logging.info(synapse)
                 bt.logging.info(f"question is {prompt} with model {model}, seed: {seed}")
 
-                twitter_query: TwitterQueryResult = await analyze_twitter_query(prompt)
-
-                # temp fetch data from twitter.json
-                filtered_tweets = await mock_filter_tweets(twitter_query.query_string)
-
-                # #API fetch with query, keywords
-                # filtered_tweets = run_actor_and_fetch_results('2s3kSMq7tpuC3bI6M', twitter_query.keywords)
+                filtered_tweets = []
+                if self.config.miner.mock_dataset:
+                    #todo we can find tweets based on twitter_query
+                    filtered_tweets = get_random_tweets(15)
+                else:
+                    db = DBClient()
+                    twitter_query: TwitterQueryResult = await analyze_twitter_query(prompt)
+                    filtered_tweets = await db.search_in_db(twitter_query)
+                    # temp fetch data from twitter.json
                 
                 content =F"""
                 That was the user question: '{prompt}',
