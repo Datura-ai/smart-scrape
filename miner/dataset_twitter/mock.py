@@ -1,5 +1,6 @@
 import json
 import re
+import random
 
 # Path to your JSON file
 file_name = '/Volumes/My Shared Files/taotensor/cortex.t/dataset_twitter/dataset_twitter.json'
@@ -57,6 +58,18 @@ def check_match(tweet_query, filter_query):
     return False
 
 
+def get_random_tweets(count=10):
+    """
+    Retrieves a specified number of random tweets from a JSON file.
+
+    :param file_name: Name of the JSON file containing tweet data.
+    :param count: Number of random tweets to retrieve.
+    :return: List of random tweets.
+    """
+    with open(file_name, 'r') as file:
+        tweets = json.load(file)
+
+    return random.sample(tweets, min(count, len(tweets)))
 
 # # Define your query strings
 # query_strings = [
