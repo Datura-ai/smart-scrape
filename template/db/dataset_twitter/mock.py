@@ -1,6 +1,7 @@
 import json
 import re
 import os
+import random
 
 # Get the directory of the current script
 current_script_dir = os.path.dirname(os.path.abspath(__file__))
