@@ -2,7 +2,7 @@ import json
 import re
 
 # Path to your JSON file
-file_name = '/Volumes/My Shared Files/taotensor/cortex.t/dataset_twitter/dataset_twitter.json'
+file_name = './miner/dataset_twitter/dataset_twitter.json'
 
 async def mock_filter_tweets(query_string):
     """
