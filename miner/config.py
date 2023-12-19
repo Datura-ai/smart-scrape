@@ -1,6 +1,10 @@
 import bittensor as bt
 import argparse
 import os
+from distutils.util import strtobool
+
+def str2bool(v):
+    return bool(strtobool(v))
 
 
 def check_config(cls, config: "bt.Config"):
@@ -86,6 +90,13 @@ def get_config() -> "bt.Config":
         action="store_true",
         help="If True, the miner will allow non-registered hotkeys to mine.",
         default=False,
+    )
+
+    parser.add_argument(
+        "--miner.mock_dataset",
+        type=str2bool,
+        help="If True, the miner will retrieve data from mock dataset",
+        default=True
     )
 
     # Adds subtensor specific arguments i.e. --subtensor.chain_endpoint ... --subtensor.network ...
