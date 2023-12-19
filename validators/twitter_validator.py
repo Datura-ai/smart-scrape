@@ -193,8 +193,9 @@ class TwitterScraperValidator(BaseValidator):
             str(comp.dendrite.status_code) for comp in responses
         ]
 
-        best: str = completions[rewards.argmax(dim=0)].strip()
-
+        best: str = ''
+        if len(responses) != 0:
+            best: str = completions[rewards.argmax(dim=0)].strip()
         # Get completion times
         completion_times: List[float] = [
             comp.dendrite.process_time if comp.dendrite.process_time != None else 0
