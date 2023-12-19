@@ -19,7 +19,7 @@ from base_validator import BaseValidator
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, HTTPException, Request
 from twitter_validator import TwitterScraperValidator
-from validators.reward import DefaultRewardFrameworkConfig
+from reward import DefaultRewardFrameworkConfig
 
 moving_average_scores = None
 twitter_vali = None

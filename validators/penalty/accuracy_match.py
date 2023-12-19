@@ -2,7 +2,7 @@ import torch
 import re
 from typing import List
 from template.protocol import TwitterQueryResult
-from validators.utils.tasks import Task
+from utils.tasks import Task
 from penalty import PenaltyModelType, BasePenaltyModel
 from template.utils import analyze_twitter_query
 

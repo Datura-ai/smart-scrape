@@ -22,7 +22,7 @@ import bittensor as bt
 from typing import List, Union
 from .config import RewardModelType
 from .reward import BaseRewardModel, BaseRewardEvent
-from validators.utils.prompts import AugmentPrompt, FollowupPrompt, AnswerPrompt
+from utils.prompts import AugmentPrompt, FollowupPrompt, AnswerPrompt
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 class PromptRewardModel(BaseRewardModel):

@@ -20,7 +20,7 @@ import bittensor as bt
 from enum import Enum
 from typing import List
 from abc import ABC, abstractmethod
-from validators.utils.tasks import Task
+from utils.tasks import Task
 
 
 class BasePenaltyModel(ABC):

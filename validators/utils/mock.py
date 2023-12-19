@@ -19,7 +19,7 @@
 import torch
 import asyncio
 import bittensor as bt
-from validators.reward import BaseRewardModel
+from reward import BaseRewardModel
 from typing import List
 
 

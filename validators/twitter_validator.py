@@ -6,21 +6,21 @@ import random
 import bittensor as bt
 from base_validator import BaseValidator
 from template.protocol import TwitterScraper, TwitterQueryResult
-from validators.reward import (
+from reward import (
     RewardModelType,
 )
 from typing import List
-from validators.utils.mock import MockRewardModel
+from utils.mock import MockRewardModel
 import time
-from validators.penalty import (
+from penalty import (
     TaskValidationPenaltyModel,
     AccuracyPenaltyModel
 )
 from reward.open_assistant import OpenAssistantRewardModel
 from reward.prompt import PromptRewardModel
 from reward.dpo import DirectPreferenceRewardModel
-from validators.utils.tasks import Task, TwitterTask
-from validators.utils import check_uid_availability, get_random_uids
+from utils.tasks import Task, TwitterTask
+from utils import check_uid_availability, get_random_uids
 from template.utils import analyze_twitter_query
 
 example_prompts = [
