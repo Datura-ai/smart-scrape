@@ -1,7 +1,11 @@
 import os
 from apify_client import ApifyClient
 from typing import List, Optional
+from .db import DBClient
 
+
+APIFY_API_TOKEN = os.environ.get('APIFY_API_KEY')
+APIFY_ACTOR_ID =  os.environ.get('APIFY_ACTOR_ID')
 
 class ProxyConfig:
     def __init__(self, use_apify_proxy: bool = True, apify_proxy_groups: List[str] = ["RESIDENTIAL"]):
@@ -84,25 +88,22 @@ class ActorInput:
         self.proxy_config = proxy_config.__dict__
 
 
-api_token = "apify_api_JobOoivcvL98e4KCLffi6uR4NJDyxt0FD9w8" #os.environ.get('APIFY_API_KEY')
-# actor_id = '2s3kSMq7tpuC3bI6M' #todo temp replace later
-actor_id = 'VsTreSuczsXhhRIqa' #todo temp replace later
 async def run_actor(actor_input: ActorInput):
-    client = ApifyClient(api_token)
-    run = await client.actor(actor_id).call(run_input=actor_input.__dict__)
+    client = ApifyClient(APIFY_API_TOKEN)
+    run = await client.actor(APIFY_ACTOR_ID).call(run_input=actor_input.__dict__)
     return run
 
-async def run_actor_and_fetch_results(dataset_id: str, actor_input: ActorInput):
-    client = ApifyClient(api_token)
+async def run_actor_and_store_data(actor_input: ActorInput):
+    client = ApifyClient(APIFY_API_TOKEN)
     # Start the actor and wait for it to finish
-    run = await client.actor(actor_id).call(run_input=actor_input.__dict__)
+    run = await client.actor(APIFY_ACTOR_ID).call(run_input=actor_input.__dict__)
     
     # Fetch and print Actor results from the run's dataset (if there are any)
-    items = []
-    async for item in client.dataset(run[dataset_id]).iterate_items():
-        items.append(item)
-    
-    return items
+    db = DBClient()
+    async for item in client.dataset(run['defaultDatasetId']).iterate_items():
+        db.create_or_update_document(item['id'], item)
+
+    return True
 
 
 
@@ -118,3 +119,5 @@ async def run_actor_and_fetch_results(dataset_id: str, actor_input: ActorInput):
 #         print(item)
 
 # asyncio.run(main())
+
+
