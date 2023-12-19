@@ -33,13 +33,19 @@ Join us at Cortex.t, your bridge to AI excellence, and democratise access to top
 
 
 ### ENV variables
-export APIFY_API_KEY = ""
-export APIFY_ACTOR_ID = ""
-export OPENAI_API_KEY= ""
-export ELASTIC_HOST = 'localhost'
-export ELASTIC_USER = 'elastic'
-export ELASTIC_PORT = 9200
-export ELASTIC_PASSWORD = 'ORHO=WmV7TfdAKVb+VEY' 
+export APIFY_API_KEY=""
+
+export APIFY_ACTOR_ID=""
+
+export OPENAI_API_KEY=""
+
+export ELASTIC_HOST="localhost"
+
+export ELASTIC_USER="elastic"
+
+export ELASTIC_PORT="9200"
+
+export ELASTIC_PASSWORD=""
 
 
 ### Before you proceed
