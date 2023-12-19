@@ -330,7 +330,6 @@ class StreamingTemplateMiner(StreamMiner):
                     db = DBClient()
                     twitter_query: TwitterQueryResult = await analyze_twitter_query(prompt)
                     filtered_tweets = await db.search_in_db(twitter_query)
-                    # temp fetch data from twitter.json
                 
                 content =F"""
                 That was the user question: '{prompt}',
