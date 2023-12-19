@@ -20,17 +20,10 @@ from reward.open_assistant import OpenAssistantRewardModel
 from reward.prompt import PromptRewardModel
 from reward.dpo import DirectPreferenceRewardModel
 from utils.tasks import Task, TwitterTask
-from utils import check_uid_availability, get_random_uids
+# from utils import check_uid_availability, get_random_uids
 from template.utils import analyze_twitter_query
+from template.utils import get_random_tweet_prompts
 
-example_prompts = [
-    'Gather opinions on the new iPhone model from tech experts on Twitter.',
-    'Find tweets about climate change from the last month.',
-    'Show me the latest tweets about the SpaceX launch.',
-    'Collect tweets reacting to the latest UN summit.',
-    "Last month's trends  about #openai",
-    "Tell me last news about elonmusk"
-]
 
 class TwitterScraperValidator(BaseValidator):
     def __init__(self, dendrite, config, subtensor, wallet):
@@ -98,8 +91,8 @@ class TwitterScraperValidator(BaseValidator):
         bt.logging.debug(str(self.moving_averaged_scores))
 
         task_name = "augment"
-        random_index = random.randint(0, len(example_prompts) - 1)
-        prompt = example_prompts[random_index]
+        prompt = get_random_tweet_prompts(1)[0]
+
         query_result: TwitterQueryResult = await analyze_twitter_query(prompt)
         twitter_task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
         twitter_task.query_result = query_result
@@ -110,7 +103,6 @@ class TwitterScraperValidator(BaseValidator):
             available_uids=available_uids,
             metagraph=metagraph
         )
-        
         return scores, uid_scores_dict, self.wandb_data,
 
     async def process_async_responses(self, async_responses):
@@ -193,7 +185,9 @@ class TwitterScraperValidator(BaseValidator):
             str(comp.dendrite.status_code) for comp in responses
         ]
 
-        best: str = completions[rewards.argmax(dim=0)].strip()
+        best: str = ''
+        if len(responses) != 0:
+            best: str = completions[rewards.argmax(dim=0)].strip()
 
         # Get completion times
         completion_times: List[float] = [
