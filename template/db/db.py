@@ -56,18 +56,18 @@ class DBClient:
             print("Prompt ==================================")
             print(prompt)
             print("Query-Start ==================================")
-            print(query_result.query_string)
+            print(query_result.api_params)
             print("Query-End  ==================================")
 
             # Check if the query string is not empty and is a valid JSON string
-            if isinstance(query_result.query_string, str) and query_result.query_string.strip():
+            if isinstance(query_result.api_params, str) and query_result.api_params.strip():
                 try:
-                    query_dict = json.loads(query_result.query_string)
+                    query_dict = json.loads(query_result.api_params)
                 except json.JSONDecodeError as e:
                     print(f"JSON Decode Error: {e}")
                     return None
             else:
-                query_dict = query_result.query_string
+                query_dict = query_result.api_params
 
             # Assuming analyze_twitter_query returns a query suitable for search_documents
             search_results = self.search_documents(query_dict)
@@ -81,14 +81,14 @@ class DBClient:
     async def search_in_db(self, query_result: TwitterQueryResult):
         try:
             # Check if the query string is not empty and is a valid JSON string
-            if isinstance(query_result.query_string, str) and query_result.query_string.strip():
+            if isinstance(query_result.api_params, str) and query_result.api_params.strip():
                 try:
-                    query_dict = json.loads(query_result.query_string)
+                    query_dict = json.loads(query_result.api_params)
                 except json.JSONDecodeError as e:
                     print(f"JSON Decode Error: {e}")
                     return None
             else:
-                query_dict = query_result.query_string
+                query_dict = query_result.api_params
 
             # Assuming analyze_twitter_query returns a query suitable for search_documents
             search_results = self.search_documents(query_dict)
