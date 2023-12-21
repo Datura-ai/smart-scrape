@@ -5,7 +5,7 @@ import wandb
 import random
 import bittensor as bt
 from base_validator import BaseValidator
-from template.protocol import TwitterScraper, TwitterQueryResult
+from template.protocol import TwitterScraper, TwitterQueryResult, StreamPrompting
 from reward import (
     RewardModelType,
 )
@@ -23,7 +23,6 @@ from utils.tasks import Task, TwitterTask
 # from utils import check_uid_availability, get_random_uids
 from template.utils import analyze_twitter_query
 from template.utils import get_random_tweet_prompts
-
 
 class TwitterScraperValidator(BaseValidator):
     def __init__(self, dendrite, config, subtensor, wallet):
@@ -248,4 +247,22 @@ class TwitterScraperValidator(BaseValidator):
     
     async def score_responses(self, responses):
         ...
+
+    async def return_tokens(self, uid, responses):
+        async for resp in responses:
+            if isinstance(resp, str):
+                bt.logging.trace(resp)
+                yield uid, resp
+
+    async def organic(self, metagraph, query):
+        for uid, messages in query.items():
+            prompt = messages[0]['content']
+            # messages.append()
+            syn = TwitterScraper(messages=prompt, model=self.model, seed=self.seed)
+            bt.logging.info(f"Sending {syn.model} {self.query_type} request to uid: {uid}, timeout {self.timeout}: {syn.messages}")
+            self.wandb_data["prompts"][uid] = messages
+            responses = await self.dendrite(metagraph.axons[uid], syn, deserialize=False, timeout=self.timeout, streaming=self.streaming)
+            
+            async for response in self.return_tokens(uid, responses):
+                yield response
 
