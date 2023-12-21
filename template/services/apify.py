@@ -1,8 +1,8 @@
 import os
 from apify_client import ApifyClient
 from typing import List, Optional
-from .db import DBClient
 from template.protocol import StreamPrompting, IsAlive, TwitterScraper, TwitterQueryResult
+import asyncio
 
 APIFY_API_TOKEN = 'apify_api_tjXL9pd5iVJ84UvYnDAR98JJPTExRx3GcY61' #os.environ.get('APIFY_API_KEY')
 APIFY_ACTOR_ID =  '2s3kSMq7tpuC3bI6M' #os.environ.get('APIFY_ACTOR_ID')
@@ -98,44 +98,92 @@ async def run_actor_and_store_data(actor_input: ActorInput):
     # Start the actor and wait for it to finish
     run = client.actor(APIFY_ACTOR_ID).call(run_input=actor_input.__dict__)
     
-    # Fetch and print Actor results from the run's dataset (if there are any)
-    db = DBClient()
     async for item in client.dataset(run['defaultDatasetId']).iterate_items():
         db.create_or_update_document(item['id'], item)
 
     return True
 
-async def run_actor_based_query_result(query_result: TwitterQueryResult):
+
+def run_actor_based_query_result(query_result: TwitterQueryResult):
     search_queries = [
-        *query_result.hashtags, *query_result.keywords, *query_result.user_mentions
+        # *query_result.hashtags #, *query_result.keywords, *query_result.user_mentions
+        "elon mask", "#elon", "spacex"
     ]
-    actor_input: ActorInput = ActorInput(search_queries=search_queries)
+    # actor_input: ActorInput = ActorInput(search_queries=search_queries)
+
+    run_input = {
+        "exclude_images": False,
+        "exclude_links": False,
+        "exclude_media": False,
+        "exclude_native_retweets": False,
+        "exclude_native_video": False,
+        "exclude_news": False,
+        "exclude_pro_video": False,
+        "exclude_quote": False,
+        "exclude_replies": False,
+        "exclude_safe": False,
+        "exclude_verified": False,
+        "exclude_videos": False,
+        "images": False,
+        "include_user_info": True,
+        "language": "any",
+        "links": False,
+        "media": False,
+        "native_retweets": False,
+        "native_video": False,
+        "news": False,
+        "pro_video": False,
+        "proxy_config": {
+            "use_apify_proxy": True,
+            "apify_proxy_groups": [
+                "RESIDENTIAL"
+            ]
+        },
+        "quote": False,
+        "replies": False,
+        "safe": False,
+        "search_queries": [
+            "elon mask",
+            "#elon"
+        ],
+        "tweets_desired": 20,
+        "verified": False,
+        "videos": False,
+        "min_replies": 0,
+        "min_retweets": 0,
+        "min_likes": 0,
+        "from_these_accounts": [],
+        "to_these_accounts": [],
+        "mentioning_these_accounts": []
+    }
     client = ApifyClient(APIFY_API_TOKEN)
-    # Start the actor and wait for it to finish
-    run =  client.actor(APIFY_ACTOR_ID).call(run_input=actor_input.__dict__)
     
-    # Fetch and print Actor results from the run's dataset (if there are any)
-    db = DBClient()
+    # Start the actor and wait for it to finish
+    run = client.actor(APIFY_ACTOR_ID).call(run_input=run_input)
     
     items = []
-    async for item in client.dataset(run['defaultDatasetId']).iterate_items():
-        items.append(item)
+   # Fetch and print Actor results from the run's dataset (if there are any)
+    for item in client.dataset(run["defaultDatasetId"]).iterate_items():
+        print(item)
 
+    print(len(items), "Parsed Items lentght")
     return items
 
 
 
-# # Example usage:
-# import asyncio
+# Example usage:
+import asyncio
 
-# search_queries = ["#openai"]
-# actor_input = ActorInput(search_queries=search_queries)
+search_queries = ["elon mask", "#elon", "spacex"]
+actor_input = ActorInput(search_queries=search_queries)
 
-# async def main():
-#     items = await run_actor_and_fetch_results(actor_id, actor_input)
-#     for item in items:
-#         print(item)
+async def main():
+    items = run_actor_based_query_result(None)
+    for item in items:
+        print(item)
 
-# asyncio.run(main())
+asyncio.run(main())
+
+
 
 

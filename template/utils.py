@@ -279,14 +279,14 @@ async def analyze_twitter_query(query):
         1. Identify and list the key keywords central to this query.
         2. Determine and list relevant hashtags commonly used with this topic.
         3. Identify and list any significant user mentions frequently associated with this topic.
-        4. Construct a query_string for elastic search to fetch relevant data related to this topic, Result must be JSON Query of elastic search!
+        4. Construct a api_params for elastic search to fetch relevant data related to this topic, Result must be JSON Query of elastic search!
         
         current data is "{current_data}"
         Elestic data examples: "{examples}"
 
         Rules:
-         - The expected JSON object should have separate fields for the query_string, keywords, hashtags, and user_mentions
-         - query_string must be JSON Elestic search query!
+         - The expected JSON object should have separate fields for the api_params, keywords, hashtags, and user_mentions
+         - api_params must be JSON Elestic search query!
          - There is no need for a detailed query, we need to extract the information from the elastic search database
         
         Elastic Query rule:
@@ -342,3 +342,4 @@ def get_random_tweet_prompts(num_questions_needed):
 
     random.shuffle(tweet_prompts)
     return tweet_prompts[:num_questions_needed]
+

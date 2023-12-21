@@ -29,7 +29,7 @@
 
     ```python
     twitter_query: TwitterQueryResult = await analyze_twitter_query(prompt)
-    filtered_tweets = await mock_filter_tweets(twitter_query.query_string)
+    filtered_tweets = await mock_filter_tweets(twitter_query.api_params)
     content = f"""
     User question: '{prompt}',
     Tweet data: '{filtered_tweets}'
