@@ -322,6 +322,7 @@ class StreamingTemplateMiner(StreamMiner):
         
 
         async def intro_text(model, prompt, send):
+            # return True
             content = f"""
             Generate introduction for that prompt: "{prompt}",
 
@@ -332,6 +333,8 @@ class StreamingTemplateMiner(StreamMiner):
             Twitter Data Search: Next, I delve into Twitter, seeking out information, discussions, and insights that directly relate to your prompt.
 
             Synthesis and Response: After gathering and analyzing this data, I compile my findings and craft a detailed response, which will be presented below"
+
+            Output: Just return only introduction text without your comment
             """
             messages = [{'role': 'user', 'content': content}]
             response = await client.chat.completions.create(
@@ -406,9 +409,10 @@ class StreamingTemplateMiner(StreamMiner):
 
                     Operational Rules:
                     1. No Twitter Data Scenario: If no Twitter data is provided, inform the user that current Twitter insights related to their topic are unavailable.
-                    2. Inclusion of Tweet Links: Incorporate 1-4 links of the most relevant tweets in your response to provide direct access and context.
+                    2. Inclusion of Tweet Links: Incorporate 1-4 links of the most relevant tweets in your response to provide direct access and context. Provide as Bullet list
                     3. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
                     4. Seamless Integration: Avoid explicitly stating "Based on the provided Twitter data" in responses. Assume user awareness of the data integration process.
+                    5. Please separate your responses into sections for easy reading.
                 """
                 # content =F"""
                 # That was the user's prompt: '{prompt}',
@@ -472,7 +476,8 @@ class StreamingTemplateMiner(StreamMiner):
 
                 response = await finalaze_data(prompt=prompt, model=model, filtered_tweets=tweets)
 
-                buffer.append('\n')
+                buffer.append('\n\n')
+                buffer.append('\n\n\n')
 
                 # Reset buffer for finalaze_data responses
                 buffer = []
