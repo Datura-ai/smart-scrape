@@ -391,7 +391,7 @@ class StreamingTemplateMiner(StreamMiner):
                 print(filtered_tweets)
             return filtered_tweets
     
-        async def finalaze_data(prompt, model, filtered_tweets):
+        async def finalize_data(prompt, model, filtered_tweets):
                 content =F"""
                     User Prompt Analysis and Twitter Data Integration
 
@@ -474,7 +474,7 @@ class StreamingTemplateMiner(StreamMiner):
                     fetch_tweets(prompt)
                 )
 
-                response = await finalaze_data(prompt=prompt, model=model, filtered_tweets=tweets)
+                response = await finalize_data(prompt=prompt, model=model, filtered_tweets=tweets)
 
              
                 # buffer.append('\n\n\n')
