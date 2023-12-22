@@ -308,6 +308,7 @@ def main():
     fastapi_thread = threading.Thread(target=run_fastapi)
     fastapi_thread.start()
 
+    #todo temp block
     return
 
     loop = asyncio.get_event_loop()

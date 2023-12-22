@@ -23,6 +23,7 @@ from utils.tasks import Task, TwitterTask
 # from utils import check_uid_availability, get_random_uids
 from template.utils import analyze_twitter_query
 from template.utils import get_random_tweet_prompts
+from template.services.twilio import TwitterAPIClient
 
 class TwitterScraperValidator(BaseValidator):
     def __init__(self, dendrite, config, subtensor, wallet):
@@ -82,6 +83,8 @@ class TwitterScraperValidator(BaseValidator):
             "scores": {},
             "timestamps": {},
         }
+
+        self.twillio_api = TwitterAPIClient()
     
     async def start_query(self, available_uids, metagraph):
         # Init Weights.
@@ -92,10 +95,10 @@ class TwitterScraperValidator(BaseValidator):
         task_name = "augment"
         prompt = get_random_tweet_prompts(1)[0]
 
-        query_result: TwitterQueryResult = await analyze_twitter_query(prompt)
+        # query_result: TwitterQueryResult = await analyze_twitter_query(prompt)
+        query_result: TwitterQueryResult = await self.twillio_api.analyze_twitter_query(prompt=prompt)
         twitter_task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
         twitter_task.query_result = query_result
-
 
         scores, uid_scores_dict, self.wandb_data, event = await self.run_task_and_score(
             task=twitter_task,
