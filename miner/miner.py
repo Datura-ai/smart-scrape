@@ -328,7 +328,7 @@ class StreamingTemplateMiner(StreamMiner):
 
             Something like it: "To effectively address your query, my approach involves a comprehensive analysis and integration of relevant Twitter data. Here's how it works:
 
-            Prompt Analysis: I start by thoroughly examining your prompt to understand the core of your inquiry or the topic you're interested in.
+            Question or Topic Analysis: I start by thoroughly examining your question or topic to understand the core of your inquiry or the specific area you're interested in.
 
             Twitter Data Search: Next, I delve into Twitter, seeking out information, discussions, and insights that directly relate to your prompt.
 
@@ -476,13 +476,14 @@ class StreamingTemplateMiner(StreamMiner):
 
                 response = await finalaze_data(prompt=prompt, model=model, filtered_tweets=tweets)
 
-                buffer.append('\n\n')
-                buffer.append('\n\n\n')
+             
+                # buffer.append('\n\n\n')
 
                 # Reset buffer for finalaze_data responses
                 buffer = []
+                buffer.append('\n\n')
 
-                N = 1
+                N = 2
                 async for chunk in response:
                     token = chunk.choices[0].delta.content or ""
                     buffer.append(token)
