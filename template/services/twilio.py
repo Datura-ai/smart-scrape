@@ -125,9 +125,6 @@ class TwitterAPIClient:
                     "max_results": "appropriate number based on user's prompt"
                 }}
             }}"
-
-
-
         """
         messages = [{'role': 'user', 'content': content }]
         print(content)
@@ -152,10 +149,15 @@ class TwitterAPIClient:
         except Exception as e:
             print(e)
             return []
-
-
-
-
+        
+    async def analyze_twitter_query(self, prompt):
+        try:
+            query = await self.generat_query_params_from_prompt(prompt)
+            twitter_result = TwitterQueryResult(query)
+            return twitter_result
+        except Exception as e:
+            print(e)
+            return {}
 
 if __name__ == "__main__":
     client = TwitterAPIClient()

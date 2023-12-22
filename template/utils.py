@@ -225,52 +225,6 @@ async def analyze_twitter_query(query):
         """
         Analyze the user query using OpenAI's API to extract relevant criteria.
         """
-        examples = [{
-            "id": "12",
-            "url": "https://x.com/c/status/12",
-            "verified": True,
-            "timestamp": "2023-11-13T18:47:00.000Z",
-            "text": "Tweet description",
-            "links": [
-                "https://x.com/x",
-                "https://x.com/x"
-            ],
-            "isQuote": True,
-            "isRetweet": False,
-            "likes": 5,
-            "replies": 1,
-            "retweets": 1,
-            "quotes": 0,
-            "quotedTweet": {
-                "url": "https://x.com/json/status/1",
-                "avatar": "",
-                "username": "@username",
-                "fullname": "Full Name",
-                "timestamp": "2023-11-13T14:55:00.000Z",
-                "text": "Quoted Tweet Description",
-                "links": [
-                "https://x.com/search?q=%text",
-                "https://x.com/search?q=%text"
-                ]
-            },
-            "searchQuery": "#sience",
-            "user": {
-                "avatar": "https://x.com/x.jpg",
-                "username": "@user",
-                "userFullName": "Evil B",
-                "description": "User description",
-                "location": None,
-                "website": True,
-                "joinDate": "2020-09-06T19:56:00.000Z",
-                "verified": False,
-                "totalLikes": 474228,
-                "totalTweets": 221076,
-                "totalFollowing": 7836,
-                "totalFollowers": 8837,
-                "url": "https://x.com//Joe"
-            }
-            }
-        ]
 
         current_data = datetime.now()
         content = f"""
@@ -279,26 +233,95 @@ async def analyze_twitter_query(query):
         1. Identify and list the key keywords central to this query.
         2. Determine and list relevant hashtags commonly used with this topic.
         3. Identify and list any significant user mentions frequently associated with this topic.
-        4. Construct a api_params for elastic search to fetch relevant data related to this topic, Result must be JSON Query of elastic search!
         
-        current data is "{current_data}"
-        Elestic data examples: "{examples}"
-
         Rules:
          - The expected JSON object should have separate fields for the api_params, keywords, hashtags, and user_mentions
          - api_params must be JSON Elestic search query!
          - There is no need for a detailed query, we need to extract the information from the elastic search database
-        
-        Elastic Query rule:
-        - Only use fields, which is provided in example above, Don't create new fields
-        - don't use range query
-        - sort timestamp order desc
-        - Use topic related keywords, hashtags, user_mentions in search, but use "OR" condition
         """
         messages = [{'role': 'user', 'content': content }]
         res = await call_openai(messages, 0.1, "gpt-4-1106-preview", None,  {"type": "json_object"})
         response_dict = json.loads(res)
         return TwitterQueryResult(response_dict)
+
+# async def analyze_twitter_query(query):
+#         """
+#         Analyze the user query using OpenAI's API to extract relevant criteria.
+#         """
+#         examples = [{
+#             "id": "12",
+#             "url": "https://x.com/c/status/12",
+#             "verified": True,
+#             "timestamp": "2023-11-13T18:47:00.000Z",
+#             "text": "Tweet description",
+#             "links": [
+#                 "https://x.com/x",
+#                 "https://x.com/x"
+#             ],
+#             "isQuote": True,
+#             "isRetweet": False,
+#             "likes": 5,
+#             "replies": 1,
+#             "retweets": 1,
+#             "quotes": 0,
+#             "quotedTweet": {
+#                 "url": "https://x.com/json/status/1",
+#                 "avatar": "",
+#                 "username": "@username",
+#                 "fullname": "Full Name",
+#                 "timestamp": "2023-11-13T14:55:00.000Z",
+#                 "text": "Quoted Tweet Description",
+#                 "links": [
+#                 "https://x.com/search?q=%text",
+#                 "https://x.com/search?q=%text"
+#                 ]
+#             },
+#             "searchQuery": "#sience",
+#             "user": {
+#                 "avatar": "https://x.com/x.jpg",
+#                 "username": "@user",
+#                 "userFullName": "Evil B",
+#                 "description": "User description",
+#                 "location": None,
+#                 "website": True,
+#                 "joinDate": "2020-09-06T19:56:00.000Z",
+#                 "verified": False,
+#                 "totalLikes": 474228,
+#                 "totalTweets": 221076,
+#                 "totalFollowing": 7836,
+#                 "totalFollowers": 8837,
+#                 "url": "https://x.com//Joe"
+#             }
+#             }
+#         ]
+
+#         current_data = datetime.now()
+#         content = f"""
+#         Given the specific topic '{query}', please perform the following tasks and provide the results in a JSON object format:
+
+#         1. Identify and list the key keywords central to this query.
+#         2. Determine and list relevant hashtags commonly used with this topic.
+#         3. Identify and list any significant user mentions frequently associated with this topic.
+#         4. Construct a api_params for elastic search to fetch relevant data related to this topic, Result must be JSON Query of elastic search!
+        
+#         current data is "{current_data}"
+#         Elestic data examples: "{examples}"
+
+#         Rules:
+#          - The expected JSON object should have separate fields for the api_params, keywords, hashtags, and user_mentions
+#          - api_params must be JSON Elestic search query!
+#          - There is no need for a detailed query, we need to extract the information from the elastic search database
+        
+#         Elastic Query rule:
+#         - Only use fields, which is provided in example above, Don't create new fields
+#         - don't use range query
+#         - sort timestamp order desc
+#         - Use topic related keywords, hashtags, user_mentions in search, but use "OR" condition
+#         """
+#         messages = [{'role': 'user', 'content': content }]
+#         res = await call_openai(messages, 0.1, "gpt-4-1106-preview", None,  {"type": "json_object"})
+#         response_dict = json.loads(res)
+#         return TwitterQueryResult(response_dict)
 
 tweet_prompts = [
     'Gather opinions on the new iPhone model from tech experts on Twitter.',
