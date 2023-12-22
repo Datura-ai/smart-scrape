@@ -255,14 +255,24 @@ class TwitterScraperValidator(BaseValidator):
                 yield uid, resp
 
     async def organic(self, metagraph, query):
-        for uid, messages in query.items():
-            prompt = messages[0]['content']
-            # messages.append()
-            syn = TwitterScraper(messages=prompt, model=self.model, seed=self.seed)
-            bt.logging.info(f"Sending {syn.model} {self.query_type} request to uid: {uid}, timeout {self.timeout}: {syn.messages}")
-            self.wandb_data["prompts"][uid] = messages
-            responses = await self.dendrite(metagraph.axons[uid], syn, deserialize=False, timeout=self.timeout, streaming=self.streaming)
+        prompt = query['content']
+        uid = 1
+        # messages.append()
+        syn = TwitterScraper(messages=prompt, model=self.model, seed=self.seed)
+        bt.logging.info(f"Sending {syn.model} {self.query_type} request to uid: {uid}, timeout {self.timeout}: {syn.messages}")
+        self.wandb_data["prompts"][uid] = prompt
+        responses = await self.dendrite(metagraph.axons[uid], syn, deserialize=False, timeout=self.timeout, streaming=self.streaming)
+        
+        async for response in self.return_tokens(uid, responses):
+            yield response
+        # for uid, messages in query.items():
+        #     prompt = messages['content']
+        #     # messages.append()
+        #     syn = TwitterScraper(messages=prompt, model=self.model, seed=self.seed)
+        #     bt.logging.info(f"Sending {syn.model} {self.query_type} request to uid: {uid}, timeout {self.timeout}: {syn.messages}")
+        #     self.wandb_data["prompts"][uid] = messages
+        #     responses = await self.dendrite(metagraph.axons[uid], syn, deserialize=False, timeout=self.timeout, streaming=self.streaming)
             
-            async for response in self.return_tokens(uid, responses):
-                yield response
+        #     async for response in self.return_tokens(uid, responses):
+        #         yield response
 
