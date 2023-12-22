@@ -22,8 +22,9 @@ from twitter_validator import TwitterScraperValidator
 from reward import DefaultRewardFrameworkConfig
 
 moving_average_scores = None
-twitter_vali = None
+twitter_vali: TwitterScraperValidator = None
 metagraph = None
+
 wandb_runs = {}
 app = FastAPI()
 EXPECTED_ACCESS_KEY = "hello" 
@@ -248,17 +249,35 @@ async def query_synapse(dendrite, subtensor, config, wallet, shutdown_event):
             await asyncio.sleep(100)
 
 
-@app.post("/text-validator/")
-async def process_text_validator(request: Request, data: dict):
+# @app.post("/generate-text")
+# async def process_twitter_validator(request: Request, data: dict):
+#     # Check access key
+#     # access_key = request.headers.get("access-key")
+#     # if access_key != EXPECTED_ACCESS_KEY:
+#     #     raise HTTPException(status_code=401, detail="Invalid access key")
+
+#     async def response_stream():
+#         try:
+#             messages_dict = {int(k): [{'role': 'user', 'content': v}] for k, v in data.items()}
+#             async for response in twitter_vali.organic(metagraph, messages_dict):
+#                 uid, content = response
+#                 yield f"{content}"
+#         except Exception as e:
+#             bt.logging.error(f"error in response_stream {traceback.format_exc()}")
+
+#     return StreamingResponse(response_stream())
+
+@app.post("/analyse-tweets")
+async def process_twitter_validator(request: Request, data: dict):
     # Check access key
-    access_key = request.headers.get("access-key")
-    if access_key != EXPECTED_ACCESS_KEY:
-        raise HTTPException(status_code=401, detail="Invalid access key")
+    # access_key = request.headers.get("access-key")
+    # if access_key != EXPECTED_ACCESS_KEY:
+    #     raise HTTPException(status_code=401, detail="Invalid access key")
 
     async def response_stream():
         try:
-            messages_dict = {int(k): [{'role': 'user', 'content': v}] for k, v in data.items()}
-            async for response in text_vali.organic(metagraph, messages_dict):
+            last_message = data['messages'][-1]
+            async for response in twitter_vali.organic(metagraph, last_message):
                 uid, content = response
                 yield f"{content}"
         except Exception as e:
@@ -267,7 +286,7 @@ async def process_text_validator(request: Request, data: dict):
     return StreamingResponse(response_stream())
 
 def run_fastapi():
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8005)
 
 shutdown_event = asyncio.Event()
 def handle_shutdown(*args):
@@ -288,6 +307,8 @@ def main():
     # Start the FastAPI server in a separate thread
     fastapi_thread = threading.Thread(target=run_fastapi)
     fastapi_thread.start()
+
+    return
 
     loop = asyncio.get_event_loop()
     

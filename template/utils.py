@@ -302,11 +302,11 @@ async def analyze_twitter_query(query):
 
 tweet_prompts = [
     'Gather opinions on the new iPhone model from tech experts on Twitter.',
-    'Find tweets about climate change from the last year.',
-    'Show me the latest tweets about the SpaceX launch.',
+    'Find tweets about climate change from the last month.', #+
+    'Show me the latest tweets about the SpaceX launch.', #+
     'Collect tweets reacting to the latest UN summit.',
-    "Last year's trends  about #openai",
-    "Tell me last news about elonmusk",
+    "Last year's trends  about #openai", #+
+    "Tell me last news about elonmusk", #+
     'Tech enthusiasts, share your reviews on the latest iPhone model. How does it compare to previous versions? #iPhoneReview #Technology',
     'Looking for insights from tech experts on the new iPhone model. What are your thoughts on its features and performance? #iPhone #TechReview',
     "Reflecting on the past year, what are the significant developments in climate change we've seen? Share your thoughts. #ClimateChange #YearInReview",
@@ -331,7 +331,7 @@ tweet_prompts = [
     "Exploring urban development: What are the most innovative and sustainable cities right now? Share your thoughts. #UrbanPlanning #SustainableCities",
     "What are the latest developments in space research and exploration? Share news and opinions. #SpaceResearch #Astronomy",
     "Discuss the impact of social media on modern communication. Has it changed the way we interact? #SocialMedia #DigitalCommunication",
-    "What are the newest trends in the world of food and cuisine? Share your favorite recipes and discoveries. #Foodie #CulinaryTrends",
+    "What are the newest trends in the world of food and cuisine? Share your favorite recipes and discoveries. #Foodie #CulinaryTrends", #+
     "How are emerging technologies shaping the future of entertainment? Share your thoughts on the latest trends. #TechEntertainment #FutureOfFun"
 ]
 
