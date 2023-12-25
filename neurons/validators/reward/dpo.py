@@ -27,7 +27,6 @@ from transformers import (
     NoRepeatNGramLogitsProcessor,
 )
 
-
 class DirectPreferenceRewardModel(BaseRewardModel):
     reward_model_name: str = "cerebras/btlm-3b-8k-base"
 

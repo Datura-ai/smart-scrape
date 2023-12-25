@@ -160,9 +160,6 @@ class TwitterScraper(bt.StreamingSynapse):
             "completion": self.completion,
         }
     
-    
-    
-
 class TwitterQueryResult:
     def __init__(self, response):
         self.api_params = response.get('api_params', '')

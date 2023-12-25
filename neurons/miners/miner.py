@@ -305,22 +305,6 @@ class StreamingTemplateMiner(StreamMiner):
     def twitter_scraper(self, synapse: TwitterScraper) -> TwitterScraper:
         bt.logging.info(f"started processing for synapse {synapse}")
 
-        # async def scrape_and_store_tweets(twitter_query: TwitterQueryResult):
-        #     search_queries = [*twitter_query.hashtags, *twitter_query.user_mentions, *twitter_query.keywords]
-        #     actor_input = ActorInput(search_queries=search_queries)
-        #     run = await run_actor()
-        #         # Fetch and print Actor results from the run's dataset (if there are any)
-        #     items = []
-        #     async for item in client.dataset(run['defaultDatasetId']).iterate_items():
-        #         items.append(item)
-
-        async def get_analyze_query_text():
-            return "We run analyze your query to retrieve relevan information from twitter \n"
-        
-        async def get_retrieve_twitter_data_text():
-            return "test 2, test 2,test 2, test 2test 2, test 2, test 2, test 2test 2, test 2test 2, test 2test 2, test 2 \n"
-        
-
         async def intro_text(model, prompt, send):
             # return True
             content = f"""
@@ -414,26 +398,6 @@ class StreamingTemplateMiner(StreamMiner):
                     4. Seamless Integration: Avoid explicitly stating "Based on the provided Twitter data" in responses. Assume user awareness of the data integration process.
                     5. Please separate your responses into sections for easy reading.
                 """
-                # content =F"""
-                # That was the user's prompt: '{prompt}',
-
-                # That is tweeter data: "{filtered_tweets}"
-
-                # Tasks:
-                #  1. Generate an appropriate user response based on this data.
-                #  2. Return to users several provided tweets links, which help to open and see details
-                #  3. Add a line to important information that will be useful to the user
-
-
-                # Output:
-                #   1. Analyse provided twetter data and user's prompt and based on return perfect answer
-                
-                # Rules:
-                #   1. If I don't provide any tweets data, just tell user like we can not fetch any data from tweeter relater your topic at this moment
-                #   2. In output provide 1-4 links of most relavent data in your answer
-                #   3. Emphesize the important issue and explain it well to the user if it is important here 
-                #   3. Don't tell user like "Based on the provided Twitter data", user just know you do everything
-                # """
                 messages = [{'role': 'user', 'content': content}]
                 return await client.chat.completions.create(
                     model= model,
@@ -442,20 +406,6 @@ class StreamingTemplateMiner(StreamMiner):
                     stream= True,
                     # seed=seed,
                 )
-
-
-        # # Send the content of the buffer so far
-        # pre_response_content = "".join(buffer)
-        # await send(
-        #     {
-        #         "type": "http.response.body",
-        #         "body": pre_response_content.encode("utf-8"),
-        #         "more_body": True,
-        #     }
-        # )
-        # bt.logging.info(f"Pre-finalize data content: {pre_response_content}")
-
-        # Now call finalaze_data and stream its responses
 
         async def _twitter_scraper(synapse, send: Send):
             try:
@@ -475,9 +425,6 @@ class StreamingTemplateMiner(StreamMiner):
                 )
 
                 response = await finalize_data(prompt=prompt, model=model, filtered_tweets=tweets)
-
-             
-                # buffer.append('\n\n\n')
 
                 # Reset buffer for finalaze_data responses
                 buffer = []

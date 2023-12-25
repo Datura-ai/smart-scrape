@@ -15,6 +15,7 @@ from . import client
 from collections import deque
 from template.protocol import TwitterQueryResult
 from datetime import datetime
+from .db import tweet_prompts
 
 list_update_lock = asyncio.Lock()
 _text_questions_buffer = deque()
@@ -187,7 +188,7 @@ async def call_openai(messages, temperature, model, seed=1234, response_format=N
 
 # Github unauthorized rate limit of requests per hour is 60. Authorized is 5000.
 def get_version(line_number = 22):
-    url = f"https://api.github.com/repos/corcel-api/cortex.t/contents/template/__init__.py"
+    url = f"https://api.github.com/repos/surcyf123/smart-scrape/contents/template/__init__.py"
     response = requests.get(url)
     if response.status_code == 200:
         content = response.json()['content']
@@ -243,120 +244,6 @@ async def analyze_twitter_query(query):
         res = await call_openai(messages, 0.1, "gpt-4-1106-preview", None,  {"type": "json_object"})
         response_dict = json.loads(res)
         return TwitterQueryResult(response_dict)
-
-# async def analyze_twitter_query(query):
-#         """
-#         Analyze the user query using OpenAI's API to extract relevant criteria.
-#         """
-#         examples = [{
-#             "id": "12",
-#             "url": "https://x.com/c/status/12",
-#             "verified": True,
-#             "timestamp": "2023-11-13T18:47:00.000Z",
-#             "text": "Tweet description",
-#             "links": [
-#                 "https://x.com/x",
-#                 "https://x.com/x"
-#             ],
-#             "isQuote": True,
-#             "isRetweet": False,
-#             "likes": 5,
-#             "replies": 1,
-#             "retweets": 1,
-#             "quotes": 0,
-#             "quotedTweet": {
-#                 "url": "https://x.com/json/status/1",
-#                 "avatar": "",
-#                 "username": "@username",
-#                 "fullname": "Full Name",
-#                 "timestamp": "2023-11-13T14:55:00.000Z",
-#                 "text": "Quoted Tweet Description",
-#                 "links": [
-#                 "https://x.com/search?q=%text",
-#                 "https://x.com/search?q=%text"
-#                 ]
-#             },
-#             "searchQuery": "#sience",
-#             "user": {
-#                 "avatar": "https://x.com/x.jpg",
-#                 "username": "@user",
-#                 "userFullName": "Evil B",
-#                 "description": "User description",
-#                 "location": None,
-#                 "website": True,
-#                 "joinDate": "2020-09-06T19:56:00.000Z",
-#                 "verified": False,
-#                 "totalLikes": 474228,
-#                 "totalTweets": 221076,
-#                 "totalFollowing": 7836,
-#                 "totalFollowers": 8837,
-#                 "url": "https://x.com//Joe"
-#             }
-#             }
-#         ]
-
-#         current_data = datetime.now()
-#         content = f"""
-#         Given the specific topic '{query}', please perform the following tasks and provide the results in a JSON object format:
-
-#         1. Identify and list the key keywords central to this query.
-#         2. Determine and list relevant hashtags commonly used with this topic.
-#         3. Identify and list any significant user mentions frequently associated with this topic.
-#         4. Construct a api_params for elastic search to fetch relevant data related to this topic, Result must be JSON Query of elastic search!
-        
-#         current data is "{current_data}"
-#         Elestic data examples: "{examples}"
-
-#         Rules:
-#          - The expected JSON object should have separate fields for the api_params, keywords, hashtags, and user_mentions
-#          - api_params must be JSON Elestic search query!
-#          - There is no need for a detailed query, we need to extract the information from the elastic search database
-        
-#         Elastic Query rule:
-#         - Only use fields, which is provided in example above, Don't create new fields
-#         - don't use range query
-#         - sort timestamp order desc
-#         - Use topic related keywords, hashtags, user_mentions in search, but use "OR" condition
-#         """
-#         messages = [{'role': 'user', 'content': content }]
-#         res = await call_openai(messages, 0.1, "gpt-4-1106-preview", None,  {"type": "json_object"})
-#         response_dict = json.loads(res)
-#         return TwitterQueryResult(response_dict)
-
-tweet_prompts = [
-    'Gather opinions on the new iPhone model from tech experts on Twitter.',
-    'Find tweets about climate change from the last month.', #+
-    'Show me the latest tweets about the SpaceX launch.', #+
-    'Collect tweets reacting to the latest UN summit.',
-    "Last year's trends  about #openai", #+
-    "Tell me last news about elonmusk", #+
-    'Tech enthusiasts, share your reviews on the latest iPhone model. How does it compare to previous versions? #iPhoneReview #Technology',
-    'Looking for insights from tech experts on the new iPhone model. What are your thoughts on its features and performance? #iPhone #TechReview',
-    "Reflecting on the past year, what are the significant developments in climate change we've seen? Share your thoughts. #ClimateChange #YearInReview",
-    "Exciting times in space exploration! What are your thoughts on the recent SpaceX launch? #SpaceX #SpaceExploration",
-    "The SpaceX launch was a landmark event. How do you think it will impact future space missions? Share your views. #SpaceXLaunch #SpaceNews",
-    "What are your key takeaways from the latest UN summit? Discuss the outcomes and their global impact. #UNSummit #GlobalAffairs",
-    "Reacting to the recent UN summit: what were the standout moments and decisions? Share your opinions. #UnitedNations #WorldPolitics",
-    "Reflecting on the past year, what were the major trends and breakthroughs in #openai? Share your highlights. #AI #TechTrends",
-    "Looking back, what were the significant developments in #openai last year that caught your attention? #ArtificialIntelligence #YearInReview",
-    "What's the latest buzz around Elon Musk? Share the newest updates and news. #ElonMusk #TechNews",
-    "Catch up on the latest happenings with Elon Musk. What’s new and noteworthy? #ElonMuskNews #TechnologyLeaders",
-    "What are your thoughts on the latest advancements in renewable energy? Share your insights and opinions. #RenewableEnergy #GreenTech",
-    "Calling all gamers! What do you think of the new gaming console releases this year? Share your reviews and experiences. #GamingCommunity #ConsoleReview",
-    "As remote work becomes more common, what are the best tools and practices you've discovered? Share your remote work hacks. #RemoteWork #WorkFromHome",
-    "With electric cars becoming more popular, what are your experiences with them? Pros, cons, favorite models? Discuss. #ElectricVehicles #EcoFriendly",
-    "Exploring the latest in AI: What breakthroughs have impressed you the most recently? Share your thoughts and findings. #ArtificialIntelligence #TechInnovation",
-    "Discuss the impact of the latest medical technology advancements on healthcare. How has it changed patient care? #MedTech #HealthcareInnovation",
-    "What are the standout fashion trends this season? Share your favorite styles and designers. #FashionTrends #StyleWatch",
-    "How has the recent policy changes in education affected learning and teaching? Share your experiences and views. #EducationReform #TeachingAndLearning",
-    "What are your predictions for the stock market in the coming months? Share your analysis and insights. #StockMarket #InvestmentTips",
-    "Share your favorite travel destinations for 2023. What makes them special? #TravelTips #Wanderlust",
-    "Exploring urban development: What are the most innovative and sustainable cities right now? Share your thoughts. #UrbanPlanning #SustainableCities",
-    "What are the latest developments in space research and exploration? Share news and opinions. #SpaceResearch #Astronomy",
-    "Discuss the impact of social media on modern communication. Has it changed the way we interact? #SocialMedia #DigitalCommunication",
-    "What are the newest trends in the world of food and cuisine? Share your favorite recipes and discoveries. #Foodie #CulinaryTrends", #+
-    "How are emerging technologies shaping the future of entertainment? Share your thoughts on the latest trends. #TechEntertainment #FutureOfFun"
-]
 
 
 def get_random_tweet_prompts(num_questions_needed):
