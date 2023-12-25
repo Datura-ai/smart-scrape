@@ -1,13 +1,12 @@
 
-from .dataset_twitter.mock import get_random_tweets
+from .dataset.mock import get_random_tweets
 from elasticsearch import Elasticsearch, NotFoundError, RequestError
 from datetime import datetime, timedelta
 import asyncio
 import random
 import json
-from template.utils import get_random_tweet_prompts
-from template.utils import get_version, analyze_twitter_query
-from template.protocol import StreamPrompting, IsAlive, TwitterScraper, TwitterQueryResult
+from template.utils import analyze_twitter_query, get_random_tweet_prompts
+from template.protocol import TwitterQueryResult
 
 ELASTIC_HOST = 'localhost'
 ELASTIC_USER = 'elastic'
@@ -104,8 +103,6 @@ if __name__ == "__main__":
     # Replace with your OpenSearch details
 
     client = DBClient()
-
-
 
     # tweets = get_random_tweets(2000)
     # for tweet in tweets:

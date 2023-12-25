@@ -471,7 +471,7 @@ def get_valid_hotkeys(config):
     while True:
         metagraph = subtensor.metagraph(18)
         try:
-            runs = api.runs(f"cortex-t/{template.PROJECT_NAME}")
+            runs = api.runs(f"giga-chkhikvadze/{template.PROJECT_NAME}")
             latest_version = get_version()
             for run in runs:
                 if run.state == "running":
