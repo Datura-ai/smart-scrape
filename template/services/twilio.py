@@ -6,13 +6,13 @@ from datetime import datetime
 from template.utils import call_openai, tweet_prompts
 from template.protocol import TwitterQueryResult
 
-BEARER_TOKEN = "AAAAAAAAAAAAAAAAAAAAALtLrgEAAAAAP2y%2BMIckGm%2FX0%2BlM4kOxH2rV1RA%3D7BZMWODpPxUQ81Sz18b2GDqR921eHhjivXETrx3kcmjnYU9pjS"
+BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TKEN')
 
 twitter_api_query_example = {
     'query': '(from:twitterdev -is:retweet) OR #twitterdev',
     'tweet.fields': "",
     'user.fields': "id,name,username",
-    # 'start_time' : 'YYYY-MM-DDTHH:mm:ssZ',
+    # 'start_time' : 'YYYY-MM-DDTHH:mm:ssZ', #todo need filter start and end time if need from prompt
     # 'end_time': 'YYYY-MM-DDTHH:mm:ssZ',
     'max_results': '2',
     'media.fields': "",
