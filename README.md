@@ -1,20 +1,20 @@
-<div align="left">
 
-# **Cortex.t Subnet** <!-- omit in toc -->
+<div align="center">
+
+# **Bittensor Smart-Scrape** <!-- omit in toc -->
+<!-- [![Discord Chat](https://img.shields.io/discord/308323056592486420.svg)](https://discord.gg/bittensor) -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
----
 
 ---
-- [Introduction](#introduction)
-- [Setup](#setup)
-- [Mining](#mining)
-- [Validating](#validating)
-- [License](#license)
+
+### The Incentivized Internet <!-- omit in toc -->
+
+<!-- [Discord](https://discord.gg/bittensor) • [Network](https://taostats.io/) • [Research](https://bittensor.com/whitepaper) -->
+
+</div>
 
 
-## Introduction
-
-**IMPORTANT**: If you are new to Bittensor, please checkout the [Bittensor Website](https://bittensor.com/) before proceeding to the [Setup](#setup) section. 
+# Introduction
 
 Introducing Bittensor Subnet 18 (Smart-Scrape):: Revolutionizing Data Analysis with Advanced Twitter Integration.
 
@@ -36,109 +36,84 @@ The platform's ability to utilize synthetic data effectively overcomes the chall
 
 Join the journey with Smart-Scrape on Bittensor subnet 41, your portal to unparalleled Twitter data analysis, and be part of the transformative wave in AI-driven data intelligence. Embrace the future with Smart-Scrape – Where Data Meets Intelligence!"
 
+</div>
+
 ---
 
-This text aligns with the style and content of the original while incorporating the unique aspects of your project, Smart-Scrape.
-
-
-## Setup
-
-
-
-### Before you proceed
-Before you proceed with the installation of the subnet, note the following: 
-
-**IMPORTANT**: We **strongly recommend** before proceeding that you test both subtensor and OpenAI API keys. Ensure you are running Subtensor locally to minimize chances of outages and improve the latency/connection. 
-
-After exporting your OpenAI API key to your bash profile, test the streaming service for both the gpt-3.5-turbo and gpt-4 engines using ```./neurons/test_openai.py```. Neither the miner or the validator will function without a valid and working [OpenAI API key](https://platform.openai.com/). 
-
-**IMPORTANT:** Make sure you are aware of the minimum compute requirements for cortex.t. See the [Minimum compute YAML configuration](./min_compute.yml).
-Note that this subnet requires very little compute. The main functionality is api calls, so we outsource the compute to openai. The cost for mining and validating on this subnet comes from api calls, not from compute. Please be aware of your API costs and monitor accordingly.
-
-A high tier key is required for both mining and validations so it is important if you do not have one to work your way up slowly by running a single miner or small numbers of miners whilst payiing attention to your usage and limits.
-
-
-### Improved Installation Instructions
-
-#### Cloning and Setting Up the Repository
-
-To begin, clone the `smart-scrape` repository and install its dependencies. Open your terminal and execute the following command:
-
+# Installation
+This repository requires python3.8 or higher. To install, simply clone this repository and install the requirements.
 ```bash
-git clone git@github.com:surcyf123/smart-scrape.git
+git clone https://github.com/surcyf123/smart-scrape.git
 cd smart-scrape
-pip install -e .
+python -m pip install -r requirements.txt
+python -m pip install -e .
 ```
 
-This command performs three actions sequentially:
-1. Clones the repository.
-2. Changes the directory to the cloned repository.
-3. Installs the necessary requirements.
-
-#### Registering a Hotkey on Subnet 18 Mainnet
-
-Before proceeding, ensure you have a registered hotkey on subnet 18 mainnet. If you haven't done this yet, use the following command to register:
-
-```bash
-btcli s register --netuid 18 --wallet.name [wallet_name] --wallet.hotkey [wallet_hotkey]
-```
-
-Replace `[wallet_name]` and `[wallet_hotkey]` with your wallet's name and hotkey respectively.
-
-#### Setting Up API Keys
-
-For running a miner or validator, it's essential to add your OpenAI and other API keys to your profile. Use the commands below to set them in your environment variables.
-
-**For users of Bash or Zsh:**
-
-- Set OpenAI API Key:
-  ```bash
-  echo "export OPENAI_API_KEY=your_api_key_here" >> ~/.bashrc
-  source ~/.bashrc
-  ```
-
-- Set Twitter Bearer Token:
-  ```bash
-  echo "export TWITTER_BEARER_TOKEN=your_api_key_here" >> ~/.bashrc
-  source ~/.bashrc
-  ```
-
-- Set Validator Access Key:
-  ```bash
-  echo "export VALIDATOR_ACCESS_KEY=your_api_key_here" >> ~/.bashrc
-  source ~/.bashrc
-  ```
-
-Replace `your_api_key_here` with the respective API keys. Note: If you are using Zsh, replace `.bashrc` with `.zshrc` in the above commands.
-
-
-*Note: The installation process assumes basic familiarity with terminal commands and environment variable settings.*
-## Mining
-
-You can run miner: 
-
-`python3 miner/miner.py --wallet.name miner --wallet.hotkey <WALLET NAME>  --subtensor.network test --netuid 41 --axon.port 14000`
-
-Or you can launch your miners via pm2 using the following command. 
-
-`pm2 start ./neurons/miner.py --interpreter python3 -- --netuid 18 --subtensor.network <LOCAL/FINNEY> --wallet.name <WALLET NAME> --wallet.hotkey <HOTKEY NAME> --axon.port <PORT>`
-
-
-## Validating
-
-You can run twitter validator:
-`python3 validators/validator.py --wallet.name validator --wandb.off --netuid 41 --wallet.hotkey <WALLET NAME> --subtensor.network test`
-
-Or you can launch your validator via pm2 using the following command.
-
-`pm2 start ./validators/validator.py --interpreter python3 -- --netuid 18 --subtensor.network <LOCAL/FINNEY> --wallet.name <WALLET NAME> --wallet.hotkey <HOTKEY NAME>`
-
-
-## Logging
-
-As cortex.t supports streaming natively, you do not (and should not) enable `logging.trace` or `logging.debug` as all of the important information is already output to `logging.info` which is set as default.
+</div>
 
 ---
+
+Prior to running a miner or validator, you must [create a wallet](https://github.com/opentensor/docs/blob/main/reference/btcli.md) and [register the wallet to a netuid](https://github.com/opentensor/docs/blob/main/subnetworks/registration.md). Once you have done so, you can run the miner and validator with the following commands.
+```bash
+# To run the miner
+python -m neurons/miners/miner.py 
+    --netuid 41  
+    --subtensor.network test 
+    --wallet.name <your miner wallet> # Must be created using the bittensor-cli
+    --wallet.hotkey <your validator hotkey> # Must be created using the bittensor-cli
+    --logging.debug # Run in debug mode, alternatively --logging.trace for trace mode
+    --axon.port 14000
+
+# To run the validator
+python -m neurons/validators/validator.py
+    --netuid 41
+    --subtensor.network test 
+    --wallet.name <your validator wallet>  # Must be created using the bittensor-cli
+    --wallet.hotkey <your validator hotkey> # Must be created using the bittensor-cli
+    --logging.debug # Run in debug mode, alternatively --logging.trace for trace mode
+```
+
+</div>
+
+---
+
+
+# Running
+
+These validators are designed to run and update themselves automatically. To run a validator, follow these steps:
+
+1. Install this repository, you can do so by following the steps outlined in [the installation section](#installation).
+2. Install [Weights and Biases](https://docs.wandb.ai/quickstart) and run `wandb login` within this repository. This will initialize Weights and Biases, enabling you to view KPIs and Metrics on your validator. (Strongly recommended to help the network improve from data sharing)
+3. Install [PM2](https://pm2.io/docs/runtime/guide/installation/) and the [`jq` package](https://jqlang.github.io/jq/) on your system.
+   **On Linux**:
+   ```bash
+   sudo apt update && sudo apt install jq && sudo apt install npm && sudo npm install pm2 -g && pm2 update
+   ``` 
+   **On Mac OS**
+   ```bash
+   brew update && brew install jq && brew install npm && sudo npm install pm2 -g && pm2 update
+   ```
+4. Run the `run.sh` script which will handle running your validator and pulling the latest updates as they are issued. 
+   ```bash
+   pm2 start run.sh --name text_prompt_validators_autoupdate -- --wallet.name <your-wallet-name> --wallet.hotkey <your-wallet-hot-key>
+   ```
+
+This will run **two** PM2 process: one for the validator which is called `smart_scrape_validators_main_process` by default (you can change this in `run.sh`), and one for the run.sh script (in step 4, we named it `text_prompt_validators_autoupdate`). The script will check for updates every 30 minutes, if there is an update then it will pull it, install it, restart `smart_scrape_validators_main_process` and then restart itself.
+
+
+# Real-time monitoring with wandb integration
+By default, the text prompting validator sends data to wandb, allowing users to monitor running validators and access key metrics in real time, such as:
+- Gating model loss
+- Hardware usage
+- Forward pass time
+- Block duration
+
+All the data sent to wandb is publicly available to the community at the following [link](https://wandb.ai/opentensor-dev/openvalidators).
+
+You don't need to have a wandb account to access the data or to generate a new run,
+but bear in mind that
+[data generated by anonymous users will be deleted after 7 days](https://docs.wandb.ai/guides/app/features/anon#:~:text=If%20there's%20no%20account%2C%20we,be%20available%20for%207%20days)
+as default wandb policy.
 
 ## License
 This repository is licensed under the MIT License.
