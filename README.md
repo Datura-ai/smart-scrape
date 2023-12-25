@@ -58,21 +58,61 @@ Note that this subnet requires very little compute. The main functionality is ap
 A high tier key is required for both mining and validations so it is important if you do not have one to work your way up slowly by running a single miner or small numbers of miners whilst payiing attention to your usage and limits.
 
 
-### Installation
+### Improved Installation Instructions
 
-Download the repository, navigate to the folder and then install the necessary requirements with the following chained command.
+#### Cloning and Setting Up the Repository
 
-```git clone git@github.com:surcyf123/smart-scrape.git && cd smart-scrape && pip install -e .```
+To begin, clone the `smart-scrape` repository and install its dependencies. Open your terminal and execute the following command:
 
-Prior to proceeding, ensure you have a registered hotkey on subnet 18 mainnet. If not, run the command `btcli s register --netuid 18 --wallet.name [wallet_name] --wallet.hotkey [wallet.hotkey]`.
+```bash
+git clone git@github.com:surcyf123/smart-scrape.git
+cd smart-scrape
+pip install -e .
+```
 
-In order to run a miner or validator you must first set your OpenAI key to your profile with the following command.
+This command performs three actions sequentially:
+1. Clones the repository.
+2. Changes the directory to the cloned repository.
+3. Installs the necessary requirements.
 
-```echo "export OPENAI_API_KEY=your_api_key_here">>~/.bashrc && source ~/.bashrc```
+#### Registering a Hotkey on Subnet 18 Mainnet
 
-```echo "export TWITTER_BEARER_TKEN=your_api_key_here">>~/.bashrc && source ~/.bashrc```
+Before proceeding, ensure you have a registered hotkey on subnet 18 mainnet. If you haven't done this yet, use the following command to register:
+
+```bash
+btcli s register --netuid 18 --wallet.name [wallet_name] --wallet.hotkey [wallet_hotkey]
+```
+
+Replace `[wallet_name]` and `[wallet_hotkey]` with your wallet's name and hotkey respectively.
+
+#### Setting Up API Keys
+
+For running a miner or validator, it's essential to add your OpenAI and other API keys to your profile. Use the commands below to set them in your environment variables.
+
+**For users of Bash or Zsh:**
+
+- Set OpenAI API Key:
+  ```bash
+  echo "export OPENAI_API_KEY=your_api_key_here" >> ~/.bashrc
+  source ~/.bashrc
+  ```
+
+- Set Twitter Bearer Token:
+  ```bash
+  echo "export TWITTER_BEARER_TOKEN=your_api_key_here" >> ~/.bashrc
+  source ~/.bashrc
+  ```
+
+- Set Validator Access Key:
+  ```bash
+  echo "export VALIDATOR_ACCESS_KEY=your_api_key_here" >> ~/.bashrc
+  source ~/.bashrc
+  ```
+
+Replace `your_api_key_here` with the respective API keys. Note: If you are using Zsh, replace `.bashrc` with `.zshrc` in the above commands.
 
 
+*Note: The installation process assumes basic familiarity with terminal commands and environment variable settings.*
 ## Mining
 
 You can run miner: 
