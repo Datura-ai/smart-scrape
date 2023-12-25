@@ -27,9 +27,8 @@ from typing import List, Dict, Tuple, Union, Callable, Awaitable
 
 from template.utils import get_version, analyze_twitter_query
 from template.protocol import StreamPrompting, IsAlive, TwitterScraper, TwitterQueryResult
-from template.apify import run_actor_and_fetch_results
-
-from dataset_twitter.mock import mock_filter_tweets
+from template.services.twilio import TwitterAPIClient
+from template.db import DBClient, get_random_tweets
 
 OpenAI.api_key = os.environ.get('OPENAI_API_KEY')
 if not OpenAI.api_key:
@@ -46,6 +45,7 @@ if not wandb_api_key and not netrc_path.exists():
 
 client = AsyncOpenAI(timeout=60.0)
 valid_hotkeys = []
+
 
 
 class StreamMiner(ABC):
@@ -304,43 +304,133 @@ class StreamingTemplateMiner(StreamMiner):
 
     def twitter_scraper(self, synapse: TwitterScraper) -> TwitterScraper:
         bt.logging.info(f"started processing for synapse {synapse}")
-        
+
+        async def intro_text(model, prompt, send):
+            # return True
+            content = f"""
+            Generate introduction for that prompt: "{prompt}",
+
+            Something like it: "To effectively address your query, my approach involves a comprehensive analysis and integration of relevant Twitter data. Here's how it works:
+
+            Question or Topic Analysis: I start by thoroughly examining your question or topic to understand the core of your inquiry or the specific area you're interested in.
+
+            Twitter Data Search: Next, I delve into Twitter, seeking out information, discussions, and insights that directly relate to your prompt.
+
+            Synthesis and Response: After gathering and analyzing this data, I compile my findings and craft a detailed response, which will be presented below"
+
+            Output: Just return only introduction text without your comment
+            """
+            messages = [{'role': 'user', 'content': content}]
+            response = await client.chat.completions.create(
+                model= model,
+                messages= messages,
+                temperature= 0.4,
+                stream= True,
+                # seed=seed,
+            )
+
+            N = 1
+            buffer = []
+            async for chunk in response:
+                token = chunk.choices[0].delta.content or ""
+                buffer.append(token)
+                if len(buffer) == N:
+                    joined_buffer = "".join(buffer)
+                    await send(
+                        {
+                            "type": "http.response.body",
+                            "body": joined_buffer.encode("utf-8"),
+                            "more_body": True,
+                        }
+                    )
+                    bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                    buffer = []
+
+            # Send any re˘»maining data in the buffer
+            if buffer:
+                joined_buffer = "".join(buffer)
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": joined_buffer.encode("utf-8"),
+                        "more_body": False,
+                    }
+                )
+                bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                print(f"response is {response}")
+            return buffer
+
+        async def fetch_tweets(prompt):
+            filtered_tweets = []
+            # twitter_query: TwitterQueryResult = await analyze_twitter_query(prompt)
+            if self.config.miner.mock_dataset:
+                #todo we can find tweets based on twitter_query
+                filtered_tweets = get_random_tweets(15)
+            else:
+                tw_client  = TwitterAPIClient()
+                # tw_client.analyse_prompt_and_fetch_tweets(prompt)
+                # db = DBClient()
+                # filtered_tweets = await db.search_in_db(twitter_query)
+                filtered_tweets= await tw_client.analyse_prompt_and_fetch_tweets(prompt)
+                print(filtered_tweets)
+            return filtered_tweets
+    
+        async def finalize_data(prompt, model, filtered_tweets):
+                content =F"""
+                    User Prompt Analysis and Twitter Data Integration
+
+                    User Prompt: "{prompt}"
+
+                    Twitter Data: "{filtered_tweets}"
+
+                    Tasks:
+                    1. Create a Tailored Response: Analyze the user's prompt and the provided Twitter data to generate a meaningful and relevant response.
+                    2. Share Relevant Twitter Links: Include links to several pertinent tweets. These links will enable users to view tweet details directly.
+                    3. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
+
+                    Output Guidelines:
+                    1. Comprehensive Analysis: Synthesize insights from both the user's prompt and the Twitter data to formulate a well-rounded response.
+
+                    Operational Rules:
+                    1. No Twitter Data Scenario: If no Twitter data is provided, inform the user that current Twitter insights related to their topic are unavailable.
+                    2. Inclusion of Tweet Links: Incorporate 1-4 links of the most relevant tweets in your response to provide direct access and context. Provide as Bullet list
+                    3. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
+                    4. Seamless Integration: Avoid explicitly stating "Based on the provided Twitter data" in responses. Assume user awareness of the data integration process.
+                    5. Please separate your responses into sections for easy reading.
+                """
+                messages = [{'role': 'user', 'content': content}]
+                return await client.chat.completions.create(
+                    model= model,
+                    messages= messages,
+                    temperature= 0.1,
+                    stream= True,
+                    # seed=seed,
+                )
+
         async def _twitter_scraper(synapse, send: Send):
             try:
+                buffer = []
+                # buffer.append('Tests 1')
+                
                 model = synapse.model
                 prompt = synapse.messages
-                seed=synapse.seed
+                seed = synapse.seed
                 bt.logging.info(synapse)
                 bt.logging.info(f"question is {prompt} with model {model}, seed: {seed}")
 
-                twitter_query: TwitterQueryResult = await analyze_twitter_query(prompt)
-
-                # temp fetch data from twitter.json
-                filtered_tweets = await mock_filter_tweets(twitter_query.query_string)
-
-                # #API fetch with query, keywords
-                # filtered_tweets = run_actor_and_fetch_results('2s3kSMq7tpuC3bI6M', twitter_query.keywords)
-                
-                content =F"""
-                That was the user question: '{prompt}',
-
-                That is tweet data: '{filtered_tweets}'
-
-                Generate an appropriate user response based on this data
-                """
-
-                messages = [{'role': 'user', 'content': content}]
-                
-                response = await client.chat.completions.create(
-                    model= model,
-                    messages= messages,
-                    temperature= 0.0001,
-                    stream= True,
-                    seed=seed,
+                # buffer.append('Test 2')
+                intro_response, tweets = await asyncio.gather(
+                    intro_text(model=model, prompt=prompt, send=send),
+                    fetch_tweets(prompt)
                 )
 
+                response = await finalize_data(prompt=prompt, model=model, filtered_tweets=tweets)
+
+                # Reset buffer for finalaze_data responses
                 buffer = []
-                N=1
+                buffer.append('\n\n')
+
+                N = 2
                 async for chunk in response:
                     token = chunk.choices[0].delta.content or ""
                     buffer.append(token)
@@ -356,6 +446,7 @@ class StreamingTemplateMiner(StreamMiner):
                         bt.logging.info(f"Streamed tokens: {joined_buffer}")
                         buffer = []
 
+                # Send any remaining data in the buffer
                 if buffer:
                     joined_buffer = "".join(buffer)
                     await send(
@@ -380,7 +471,7 @@ def get_valid_hotkeys(config):
     while True:
         metagraph = subtensor.metagraph(18)
         try:
-            runs = api.runs(f"cortex-t/{template.PROJECT_NAME}")
+            runs = api.runs(f"giga-chkhikvadze/{template.PROJECT_NAME}")
             latest_version = get_version()
             for run in runs:
                 if run.state == "running":

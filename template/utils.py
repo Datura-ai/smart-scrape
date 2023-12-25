@@ -14,6 +14,8 @@ import bittensor as bt
 from . import client
 from collections import deque
 from template.protocol import TwitterQueryResult
+from datetime import datetime
+from .dataset import tweet_prompts
 
 list_update_lock = asyncio.Lock()
 _text_questions_buffer = deque()
@@ -186,7 +188,7 @@ async def call_openai(messages, temperature, model, seed=1234, response_format=N
 
 # Github unauthorized rate limit of requests per hour is 60. Authorized is 5000.
 def get_version(line_number = 22):
-    url = f"https://api.github.com/repos/corcel-api/cortex.t/contents/template/__init__.py"
+    url = f"https://api.github.com/repos/surcyf123/smart-scrape/contents/template/__init__.py"
     response = requests.get(url)
     if response.status_code == 200:
         content = response.json()['content']
@@ -224,16 +226,30 @@ async def analyze_twitter_query(query):
         """
         Analyze the user query using OpenAI's API to extract relevant criteria.
         """
+
+        current_data = datetime.now()
         content = f"""
         Given the specific topic '{query}', please perform the following tasks and provide the results in a JSON object format:
 
-        Construct a Twitter query string to fetch relevant data related to this topic.
-        Identify and list the key keywords central to this query.
-        Determine and list relevant hashtags commonly used with this topic.
-        Identify and list any significant user mentions frequently associated with this topic.
-        The expected JSON object should have separate fields for the query string, keywords, hashtags, and user mentions
+        1. Identify and list the key keywords central to this query.
+        2. Determine and list relevant hashtags commonly used with this topic.
+        3. Identify and list any significant user mentions frequently associated with this topic.
+        
+        Rules:
+         - The expected JSON object should have separate fields for the api_params, keywords, hashtags, and user_mentions
+         - api_params must be JSON Elestic search query!
+         - There is no need for a detailed query, we need to extract the information from the elastic search database
         """
         messages = [{'role': 'user', 'content': content }]
-        res = await call_openai(messages, 0.85, "gpt-4-1106-preview", 12,  {"type": "json_object"})
+        res = await call_openai(messages, 0.1, "gpt-4-1106-preview", None,  {"type": "json_object"})
         response_dict = json.loads(res)
         return TwitterQueryResult(response_dict)
+
+
+def get_random_tweet_prompts(num_questions_needed):
+    if num_questions_needed > len(tweet_prompts):
+        raise ValueError("Requested more prompts than available")
+
+    random.shuffle(tweet_prompts)
+    return tweet_prompts[:num_questions_needed]
+

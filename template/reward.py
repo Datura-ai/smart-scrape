@@ -40,9 +40,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 from transformers import CLIPProcessor, CLIPModel
 
-
 # ==== TEXT ====
-
 def calculate_text_similarity(text1, text2):
     # Initialize the TF-IDF Vectorizer
     vectorizer = TfidfVectorizer()

@@ -22,17 +22,18 @@ from twitter_validator import TwitterScraperValidator
 from reward import DefaultRewardFrameworkConfig
 
 moving_average_scores = None
-twitter_vali = None
+twitter_vali: TwitterScraperValidator = None
 metagraph = None
+
 wandb_runs = {}
 app = FastAPI()
-EXPECTED_ACCESS_KEY = "hello" 
+EXPECTED_ACCESS_KEY = os.environ.get('VALIDATOR_ACCESS_KEY')
 
 
 def get_config():
     parser = argparse.ArgumentParser()
     parser.add_argument("--netuid", type=int, default=18)
-    parser.add_argument('--wandb_off', action='store_false', dest='wandb_on')
+    parser.add_argument('--wandb.off', action='store_false', dest='wandb_on')
     parser.add_argument(
         "--neuron.device",
         type=str,
@@ -75,19 +76,6 @@ def get_config():
         help="Weight for the prompt-based reward model",
         default=DefaultRewardFrameworkConfig.prompt_model_weight,
     )
-    parser.add_argument(
-        "--neuron.vpermit_tao_limit",
-        type=int,
-        help="The maximum number of TAO allowed to query a validator with a vpermit.",
-        default=4096,
-    )
-    parser.add_argument(
-        "--neuron.followup_sample_size",
-        type=int,
-        help="How many miners to query for the follow up prompt.",
-        default=50,
-    )
-
 
     parser.set_defaults(wandb_on=True)
     bt.subtensor.add_args(parser)
@@ -248,8 +236,9 @@ async def query_synapse(dendrite, subtensor, config, wallet, shutdown_event):
             await asyncio.sleep(100)
 
 
-@app.post("/text-validator/")
-async def process_text_validator(request: Request, data: dict):
+
+@app.post("/analyse-tweets")
+async def process_twitter_validator(request: Request, data: dict):
     # Check access key
     access_key = request.headers.get("access-key")
     if access_key != EXPECTED_ACCESS_KEY:
@@ -257,8 +246,8 @@ async def process_text_validator(request: Request, data: dict):
 
     async def response_stream():
         try:
-            messages_dict = {int(k): [{'role': 'user', 'content': v}] for k, v in data.items()}
-            async for response in text_vali.organic(metagraph, messages_dict):
+            last_message = data['messages'][-1]
+            async for response in twitter_vali.organic(metagraph, last_message):
                 uid, content = response
                 yield f"{content}"
         except Exception as e:
@@ -267,7 +256,7 @@ async def process_text_validator(request: Request, data: dict):
     return StreamingResponse(response_stream())
 
 def run_fastapi():
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8005)
 
 shutdown_event = asyncio.Event()
 def handle_shutdown(*args):
@@ -288,6 +277,9 @@ def main():
     # Start the FastAPI server in a separate thread
     fastapi_thread = threading.Thread(target=run_fastapi)
     fastapi_thread.start()
+
+    #todo temp block
+    return
 
     loop = asyncio.get_event_loop()
     
