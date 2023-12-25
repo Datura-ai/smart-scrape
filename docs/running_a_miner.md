@@ -24,7 +24,7 @@ Once you have installed the necessary packages, you can load and run the miner u
 
 ```sh
 CUDA_VISIBLE_DEVICES=0 pm2 start ~/smart-scrape/neurons/miners/miner.py \
---name Smart-Scrape \
+--miner.name Smart-Scrape \
 --interpreter <path-to-python-binary> -- \
 --wallet.name <wallet-name> \
 --wallet.hotkey <wallet-hotkey> \
@@ -41,6 +41,7 @@ CUDA_VISIBLE_DEVICES=0 pm2 start ~/smart-scrape/neurons/miners/miner.py \
 - `--subtensor.network`: Specify the network you want to use (`finney`, `test`, `local`, etc).
 - `--logging.debug`: Adjust the logging level according to your preference.
 - `--axon.port`: Specify the port number you want to use.
+- `--miner.mock_dataset`: If True, the miner will retrieve data from mock dataset
 
 ## Conclusion
 By following this guide, you should be able to setup and run a Smart-scrape miner using the smart-scrape repository with PM2. Ensure that you monitor your processes and check the logs regularly for any issues or important information. For more details or if you encounter any problems, refer to the official documentation or seek help from the community.

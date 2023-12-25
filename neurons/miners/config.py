@@ -83,7 +83,6 @@ def get_config() -> "bt.Config":
         help="If True, the miner doesnt start the axon.",
         default=False,
     )
-
     # Mocks.
     parser.add_argument(
         "--miner.mock_subtensor",

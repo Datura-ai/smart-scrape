@@ -33,7 +33,7 @@ EXPECTED_ACCESS_KEY = os.environ.get('VALIDATOR_ACCESS_KEY')
 def get_config():
     parser = argparse.ArgumentParser()
     parser.add_argument("--netuid", type=int, default=18)
-    parser.add_argument('--wandb_off', action='store_false', dest='wandb_on')
+    parser.add_argument('--wandb.off', action='store_false', dest='wandb_on')
     parser.add_argument(
         "--neuron.device",
         type=str,
@@ -76,19 +76,6 @@ def get_config():
         help="Weight for the prompt-based reward model",
         default=DefaultRewardFrameworkConfig.prompt_model_weight,
     )
-    parser.add_argument(
-        "--neuron.vpermit_tao_limit",
-        type=int,
-        help="The maximum number of TAO allowed to query a validator with a vpermit.",
-        default=4096,
-    )
-    parser.add_argument(
-        "--neuron.followup_sample_size",
-        type=int,
-        help="How many miners to query for the follow up prompt.",
-        default=50,
-    )
-
 
     parser.set_defaults(wandb_on=True)
     bt.subtensor.add_args(parser)
