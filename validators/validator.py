@@ -27,7 +27,7 @@ metagraph = None
 
 wandb_runs = {}
 app = FastAPI()
-EXPECTED_ACCESS_KEY = "hello" 
+EXPECTED_ACCESS_KEY = os.environ.get('VALIDATOR_ACCESS_KEY')
 
 
 def get_config():
@@ -249,30 +249,13 @@ async def query_synapse(dendrite, subtensor, config, wallet, shutdown_event):
             await asyncio.sleep(100)
 
 
-# @app.post("/generate-text")
-# async def process_twitter_validator(request: Request, data: dict):
-#     # Check access key
-#     # access_key = request.headers.get("access-key")
-#     # if access_key != EXPECTED_ACCESS_KEY:
-#     #     raise HTTPException(status_code=401, detail="Invalid access key")
-
-#     async def response_stream():
-#         try:
-#             messages_dict = {int(k): [{'role': 'user', 'content': v}] for k, v in data.items()}
-#             async for response in twitter_vali.organic(metagraph, messages_dict):
-#                 uid, content = response
-#                 yield f"{content}"
-#         except Exception as e:
-#             bt.logging.error(f"error in response_stream {traceback.format_exc()}")
-
-#     return StreamingResponse(response_stream())
 
 @app.post("/analyse-tweets")
 async def process_twitter_validator(request: Request, data: dict):
     # Check access key
-    # access_key = request.headers.get("access-key")
-    # if access_key != EXPECTED_ACCESS_KEY:
-    #     raise HTTPException(status_code=401, detail="Invalid access key")
+    access_key = request.headers.get("access-key")
+    if access_key != EXPECTED_ACCESS_KEY:
+        raise HTTPException(status_code=401, detail="Invalid access key")
 
     async def response_stream():
         try:
