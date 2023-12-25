@@ -15,7 +15,7 @@ from . import client
 from collections import deque
 from template.protocol import TwitterQueryResult
 from datetime import datetime
-from .db import tweet_prompts
+from .dataset import tweet_prompts
 
 list_update_lock = asyncio.Lock()
 _text_questions_buffer = deque()

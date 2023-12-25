@@ -1,5 +1,4 @@
-from .db import DBClient
-from .dataset_twitter.mock import *
+from .mock import *
 
         
 tweet_prompts = [
