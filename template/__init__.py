@@ -61,3 +61,4 @@ PROJECT_NAME = 'smart-scrape'
 from . import protocol
 from . import reward
 from . import utils
+from . import db
