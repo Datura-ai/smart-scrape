@@ -160,15 +160,12 @@ class TwitterScraper(bt.StreamingSynapse):
             "completion": self.completion,
         }
     
-    
-    
-
 class TwitterQueryResult:
     def __init__(self, response):
-        self.query_string = response.get('query_string', '')
+        self.api_params = response.get('api_params', '')
         self.keywords = response.get('keywords', [])
         self.hashtags = response.get('hashtags', [])
         self.user_mentions = response.get('user_mentions', [])
 
     def __str__(self):
-        return f"Query String: {self.query_string}, Keywords: {self.keywords}, Hashtags: {self.hashtags}, User Mentions: {self.user_mentions}"
+        return f"Query String: {self.api_params}, Keywords: {self.keywords}, Hashtags: {self.hashtags}, User Mentions: {self.user_mentions}"

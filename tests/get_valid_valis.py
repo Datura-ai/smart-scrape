@@ -13,7 +13,7 @@ valid_hotkeys = []
 def get_config():
     parser = argparse.ArgumentParser()
     parser.add_argument("--netuid", type=int, default=18)
-    parser.add_argument('--wandb_off', action='store_false', dest='wandb_on')
+    parser.add_argument('--wandb.off', action='store_false', dest='wandb_on')
     parser.set_defaults(wandb_on=True)
     bt.subtensor.add_args(parser)
     bt.logging.add_args(parser)

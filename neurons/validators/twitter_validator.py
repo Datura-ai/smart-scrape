@@ -20,17 +20,8 @@ from reward.open_assistant import OpenAssistantRewardModel
 from reward.prompt import PromptRewardModel
 from reward.dpo import DirectPreferenceRewardModel
 from utils.tasks import Task, TwitterTask
-from utils import check_uid_availability, get_random_uids
-from template.utils import analyze_twitter_query
-
-example_prompts = [
-    'Gather opinions on the new iPhone model from tech experts on Twitter.',
-    'Find tweets about climate change from the last month.',
-    'Show me the latest tweets about the SpaceX launch.',
-    'Collect tweets reacting to the latest UN summit.',
-    "Last month's trends  about #openai",
-    "Tell me last news about elonmusk"
-]
+from template.utils import get_random_tweet_prompts
+from template.services.twilio import TwitterAPIClient
 
 class TwitterScraperValidator(BaseValidator):
     def __init__(self, dendrite, config, subtensor, wallet):
@@ -90,6 +81,8 @@ class TwitterScraperValidator(BaseValidator):
             "scores": {},
             "timestamps": {},
         }
+
+        self.twillio_api = TwitterAPIClient()
     
     async def start_query(self, available_uids, metagraph):
         # Init Weights.
@@ -98,19 +91,18 @@ class TwitterScraperValidator(BaseValidator):
         bt.logging.debug(str(self.moving_averaged_scores))
 
         task_name = "augment"
-        random_index = random.randint(0, len(example_prompts) - 1)
-        prompt = example_prompts[random_index]
-        query_result: TwitterQueryResult = await analyze_twitter_query(prompt)
+        prompt = get_random_tweet_prompts(1)[0]
+
+        # query_result: TwitterQueryResult = await analyze_twitter_query(prompt)
+        query_result: TwitterQueryResult = await self.twillio_api.analyze_twitter_query(prompt=prompt)
         twitter_task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
         twitter_task.query_result = query_result
-
 
         scores, uid_scores_dict, self.wandb_data, event = await self.run_task_and_score(
             task=twitter_task,
             available_uids=available_uids,
             metagraph=metagraph
         )
-        
         return scores, uid_scores_dict, self.wandb_data,
 
     async def process_async_responses(self, async_responses):
@@ -196,6 +188,7 @@ class TwitterScraperValidator(BaseValidator):
         best: str = ''
         if len(responses) != 0:
             best: str = completions[rewards.argmax(dim=0)].strip()
+
         # Get completion times
         completion_times: List[float] = [
             comp.dendrite.process_time if comp.dendrite.process_time != None else 0
@@ -256,3 +249,20 @@ class TwitterScraperValidator(BaseValidator):
     async def score_responses(self, responses):
         ...
 
+    async def return_tokens(self, uid, responses):
+        async for resp in responses:
+            if isinstance(resp, str):
+                bt.logging.trace(resp)
+                yield uid, resp
+
+    async def organic(self, metagraph, query):
+        prompt = query['content']
+        uid = 1
+        # messages.append()
+        syn = TwitterScraper(messages=prompt, model=self.model, seed=self.seed)
+        bt.logging.info(f"Sending {syn.model} {self.query_type} request to uid: {uid}, timeout {self.timeout}: {syn.messages}")
+        self.wandb_data["prompts"][uid] = prompt
+        responses = await self.dendrite(metagraph.axons[uid], syn, deserialize=False, timeout=self.timeout, streaming=self.streaming)
+        
+        async for response in self.return_tokens(uid, responses):
+            yield response

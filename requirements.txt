@@ -11,3 +11,4 @@ transformers
 scikit-learn
 datasets
 apify-client==1.6.1
+elasticsearch==8.11.1

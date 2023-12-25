@@ -1,81 +1,119 @@
-<div align="left">
 
-# **Cortex.t Subnet** <!-- omit in toc -->
+<div align="center">
+
+# **Bittensor Smart-Scrape** <!-- omit in toc -->
+<!-- [![Discord Chat](https://img.shields.io/discord/308323056592486420.svg)](https://discord.gg/bittensor) -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
----
 
 ---
-- [Introduction](#introduction)
-- [Setup](#setup)
-- [Mining](#mining)
-- [Validating](#validating)
-- [License](#license)
+
+### The Incentivized Internet <!-- omit in toc -->
+
+<!-- [Discord](https://discord.gg/bittensor) • [Network](https://taostats.io/) • [Research](https://bittensor.com/whitepaper) -->
+
+</div>
 
 
-## Introduction
+# Introduction
 
-**IMPORTANT**: If you are new to Bittensor, please checkout the [Bittensor Website](https://bittensor.com/) before proceeding to the [Setup](#setup) section. 
+Introducing Bittensor Subnet 18 (Smart-Scrape):: Revolutionizing Data Analysis with Advanced Twitter Integration.
 
-Introducing Bittensor Subnet 18 (Cortex.t): A Pioneering Platform for AI Development and Synthetic Data Generation.
+Smart-Scrape is a cutting-edge platform positioned at the vanguard of data extraction and analysis, specifically harnessing the vast and dynamic landscape of Twitter. This solution is expertly crafted to meet the demands of researchers, marketers, and data analysts seeking in-depth insights from social media interactions. Operating on the decentralized Bittensor network, Smart-Scrape ensures a seamless, reliable, and high-quality extraction of text data via API, fostering an ecosystem of transparent and unbiased intelligence mining and response generation.
 
-Cortex.t stands at the forefront of artificial intelligence, offering a dual-purpose solution that caters to the needs of app developers and innovators in the AI space. This platform is meticulously designed to deliver reliable, high-quality text and image responses through API usage, utilising the decentralised Bittensor network. It serves as a cornerstone for creating a fair, transparent, and manipulation-free environment for the incentivised production of intelligence (mining) and generation and fulfilment of diverse user prompts.
+Our platform marks a significant advancement in how we approach Twitter data analysis. By honing in on the essence of user queries and topics, Smart-Scrape meticulously sifts through Twitter's extensive database. This process involves:
 
-Our initiative is a leap forward in redefining the reward system for text and image prompting with a commitment to providing stability and reassurance to developers. By focusing on the value delivered to clients, we alleviate the concerns of data inconsistencies that often plague app development. The quality of Cortex.t is seamlessly integrated within the Bittensor network, allowing developers to harness the power of multiple subnets and modalities by building directly onto an existing validator, or through an API key from [Corcel](https://corcel.io).
+- **Question or Topic Analysis:** Initially, we dissect your inquiry or area of interest to grasp its core elements fully.
 
-Cortex.t is also a transformative platform leveraging advanced AI models to generate synthetic prompt-response pairs. This novel method yields a comprehensive dataset of interactions, archived in wandb [wandb.ai/cortex-t/synthetic-QA](https://wandb.ai/cortex-t/synthetic-QA). The process involves recycling model outputs back into the system, using a prompt evolution and data augmentation strategy similar to Microsoft's approach in developing WizardLM. This enables the distillation of sophisticated AI models into smaller, yet efficient counterparts, mirroring the performance of their larger predecessors. Ultimately, Cortex.t democratizes access to high-end AI technology, encouraging innovation and customization.
+- **Twitter Data Search:** We then probe into Twitter, seeking relevant conversations, trends, and perspectives that align with your prompt.
 
-By leveraging synthetic data, Cortex.t circumvents the traditional challenges of data collection and curation, accelerating the development of AI models that are both robust and adaptable. This platform is your gateway to AI mastery, offering the unique opportunity to train your models with data that reflects the depth and versatility of the parent model. With SynthPairPro, you're not just collecting data; you're capturing intelligence, providing a path to creating AI models that mirror the advanced understanding and response capabilities of their predecessors.
+- **Synthesis and Response:** Our advanced algorithms analyze this data, synthesizing the findings into a comprehensive response.
 
-Join us at Cortex.t, your bridge to AI excellence, and democratise access to top-level AI capabilities. Be part of the AI revolution and stay at the forefront of innovation with SynthPairPro – Synthesizing Intelligence, Empowering the Future!
+- **Output:** You receive a concise, insightful introduction derived from our analysis, without any additional commentary.
 
+Smart-Scrape stands out by integrating state-of-the-art AI models, similar to those used in creating Microsoft's WizardLM, to refine and enhance the data analysis process. This involves a unique method of generating synthetic prompt-response pairs, archived in wandb [wandb.ai/smart-scrape/twitter-data](https://wandb.ai/smart-scrape/twitter-data). We recycle model outputs back into our system, employing a strategy of prompt evolution and data augmentation. This not only enables the distillation of advanced AI models into more efficient forms but also mirrors the high performance of their larger counterparts.
 
-## Setup
+The platform's ability to utilize synthetic data effectively overcomes the challenges typically associated with data collection and curation, expediting the development of robust and flexible AI models. With Smart-Scrape, you're not just accessing data; you're tapping into a rich reservoir of intelligence, paving the way for AI models that reflect the intricate understanding and response capabilities of their forebears.
 
-### Before you proceed
-Before you proceed with the installation of the subnet, note the following: 
+Join the journey with Smart-Scrape on Bittensor subnet 41, your portal to unparalleled Twitter data analysis, and be part of the transformative wave in AI-driven data intelligence. Embrace the future with Smart-Scrape – Where Data Meets Intelligence!"
 
-**IMPORTANT**: We **strongly recommend** before proceeding that you test both subtensor and OpenAI API keys. Ensure you are running Subtensor locally to minimize chances of outages and improve the latency/connection. 
-
-After exporting your OpenAI API key to your bash profile, test the streaming service for both the gpt-3.5-turbo and gpt-4 engines using ```./neurons/test_openai.py```. Neither the miner or the validator will function without a valid and working [OpenAI API key](https://platform.openai.com/). 
-
-**IMPORTANT:** Make sure you are aware of the minimum compute requirements for cortex.t. See the [Minimum compute YAML configuration](./min_compute.yml).
-Note that this subnet requires very little compute. The main functionality is api calls, so we outsource the compute to openai. The cost for mining and validating on this subnet comes from api calls, not from compute. Please be aware of your API costs and monitor accordingly.
-
-A high tier key is required for both mining and validations so it is important if you do not have one to work your way up slowly by running a single miner or small numbers of miners whilst payiing attention to your usage and limits.
-
-
-### Installation
-
-Download the repository, navigate to the folder and then install the necessary requirements with the following chained command.
-
-```git clone https://github.com/BitAPAI/cortex.t.git && cd cortex.t && pip install -e .```
-
-Prior to proceeding, ensure you have a registered hotkey on subnet 18 mainnet. If not, run the command `btcli s register --netuid 18 --wallet.name [wallet_name] --wallet.hotkey [wallet.hotkey]`.
-
-In order to run a miner or validator you must first set your OpenAI key to your profile with the following command.
-
-```echo "export OPENAI_API_KEY=your_api_key_here">>~/.bashrc && source ~/.bashrc```
-
-
-## Mining
-
-You can launch your miners via pm2 using the following command. 
-
-`pm2 start ./neurons/miner.py --interpreter python3 -- --netuid 18 --subtensor.network <LOCAL/FINNEY> --wallet.name <WALLET NAME> --wallet.hotkey <HOTKEY NAME> --axon.port <PORT>`
-
-
-## Validating
-
-You can launch your validator via pm2 using the following command.
-
-`pm2 start ./neurons/validator.py --interpreter python3 -- --netuid 18 --subtensor.network <LOCAL/FINNEY> --wallet.name <WALLET NAME> --wallet.hotkey <HOTKEY NAME>`
-
-
-## Logging
-
-As cortex.t supports streaming natively, you do not (and should not) enable `logging.trace` or `logging.debug` as all of the important information is already output to `logging.info` which is set as default.
+</div>
 
 ---
+
+# Installation
+This repository requires python3.8 or higher. To install, simply clone this repository and install the requirements.
+```bash
+git clone https://github.com/surcyf123/smart-scrape.git
+cd smart-scrape
+python -m pip install -r requirements.txt
+python -m pip install -e .
+```
+
+</div>
+
+---
+
+Prior to running a miner or validator, you must [create a wallet](https://github.com/opentensor/docs/blob/main/reference/btcli.md) and [register the wallet to a netuid](https://github.com/opentensor/docs/blob/main/subnetworks/registration.md). Once you have done so, you can run the miner and validator with the following commands.
+```bash
+# To run the miner
+python -m neurons/miners/miner.py 
+    --netuid 41  
+    --subtensor.network test 
+    --wallet.name <your miner wallet> # Must be created using the bittensor-cli
+    --wallet.hotkey <your validator hotkey> # Must be created using the bittensor-cli
+    --logging.debug # Run in debug mode, alternatively --logging.trace for trace mode
+    --axon.port 14000
+
+# To run the validator
+python -m neurons/validators/validator.py
+    --netuid 41
+    --subtensor.network test 
+    --wallet.name <your validator wallet>  # Must be created using the bittensor-cli
+    --wallet.hotkey <your validator hotkey> # Must be created using the bittensor-cli
+    --logging.debug # Run in debug mode, alternatively --logging.trace for trace mode
+```
+
+</div>
+
+---
+
+
+# Running
+
+These validators are designed to run and update themselves automatically. To run a validator, follow these steps:
+
+1. Install this repository, you can do so by following the steps outlined in [the installation section](#installation).
+2. Install [Weights and Biases](https://docs.wandb.ai/quickstart) and run `wandb login` within this repository. This will initialize Weights and Biases, enabling you to view KPIs and Metrics on your validator. (Strongly recommended to help the network improve from data sharing)
+3. Install [PM2](https://pm2.io/docs/runtime/guide/installation/) and the [`jq` package](https://jqlang.github.io/jq/) on your system.
+   **On Linux**:
+   ```bash
+   sudo apt update && sudo apt install jq && sudo apt install npm && sudo npm install pm2 -g && pm2 update
+   ``` 
+   **On Mac OS**
+   ```bash
+   brew update && brew install jq && brew install npm && sudo npm install pm2 -g && pm2 update
+   ```
+4. Run the `run.sh` script which will handle running your validator and pulling the latest updates as they are issued. 
+   ```bash
+   pm2 start run.sh --name text_prompt_validators_autoupdate -- --wallet.name <your-wallet-name> --wallet.hotkey <your-wallet-hot-key>
+   ```
+
+This will run **two** PM2 process: one for the validator which is called `smart_scrape_validators_main_process` by default (you can change this in `run.sh`), and one for the run.sh script (in step 4, we named it `text_prompt_validators_autoupdate`). The script will check for updates every 30 minutes, if there is an update then it will pull it, install it, restart `smart_scrape_validators_main_process` and then restart itself.
+
+
+# Real-time monitoring with wandb integration
+By default, the text prompting validator sends data to wandb, allowing users to monitor running validators and access key metrics in real time, such as:
+- Gating model loss
+- Hardware usage
+- Forward pass time
+- Block duration
+
+All the data sent to wandb is publicly available to the community at the following [link](https://wandb.ai/opentensor-dev/openvalidators).
+
+You don't need to have a wandb account to access the data or to generate a new run,
+but bear in mind that
+[data generated by anonymous users will be deleted after 7 days](https://docs.wandb.ai/guides/app/features/anon#:~:text=If%20there's%20no%20account%2C%20we,be%20available%20for%207%20days)
+as default wandb policy.
 
 ## License
 This repository is licensed under the MIT License.
