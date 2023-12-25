@@ -55,8 +55,7 @@ valid_validators = ['5FFApaS75bv5pJHfAp2FVLBj9ZaXuFDjEypsaBNc1wCfe52v', '5EhvL1F
 WHITELISTED_KEYS = testnet_key + test_key + valid_validators
 BLACKLISTED_KEYS = ["5G1NjW9YhXLadMWajvTkfcJy6up3yH2q1YzMXDTi6ijanChe"]
 
-PROJECT_NAMES = ['embeddings-data', 'synthetic-QA-v2', 'synthetic-images']
-PROJECT_NAME = 'multi-modality'
+PROJECT_NAME = 'smart-scrape'
 
 # Import all submodules.
 from . import protocol
