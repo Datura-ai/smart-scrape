@@ -33,7 +33,7 @@ python -m pip install git+https://github.com/opentensor/bittensor.git@revolution
 Clone the smart-scrape repository and install the package in editable mode.
 
 ```sh
-git clone https://github.com/opentensor/smart-scrape.git
+git clone https://github.com/surcyf123/smart-scrape.git
 cd smart-scrape
 python -m pip install -e .
 ```
@@ -74,7 +74,7 @@ CUDA_VISIBLE_DEVICES=1 pm2 start ~/tutorial/smart-scrape/neurons/validators/vali
     --name validator1 --interpreter ~/miniconda3/envs/val/bin/python -- \
     --wallet.name validator --netuid 8 --wallet.hotkey vali --subtensor.network test \
     --logging.debug --neuron.reward_path ~/.bittensor/test-subnet1-validators \
-    --axon.port 8899 --neuron.followup_sample_size 2 --neuron.answer_sample_size 2
+    --axon.port 8899
 ```
 
 ## 6. Monitor Your Process
