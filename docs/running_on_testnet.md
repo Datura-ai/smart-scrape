@@ -7,9 +7,9 @@ This tutorial shows how to use the bittensor testnetwork to create a subnetwork 
 This clones and installs the template if you dont already have it (if you do, skip this step)
 ```bash
 cd .. # back out of the subtensor repo
-git clone https://github.com/opentensor/bittensor-subnet-template.git # Clone the bittensor-subnet-template repo
-cd bittensor-subnet-template # Enter the bittensor-subnet-template repo
-python -m pip install -e . # Install the bittensor-subnet-template package
+git clone https://github.com/surcyf123/smart-scrape.git # Clone the smart-scrape repo
+cd smart-scrape # Enter the  smart-scrape  repo
+python -m pip install -e . # Install the  smart-scrape  package
 ```
 
 2. Create wallets for your subnet owner, for your validator and for your miner.
