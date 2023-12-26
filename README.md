@@ -16,7 +16,7 @@
 
 # Introduction
 
-Introducing Bittensor Subnet 18 (Smart-Scrape):: Revolutionizing Data Analysis with Advanced Twitter Integration.
+Introducing Bittensor Subnet 22 (Smart-Scrape):: Revolutionizing Data Analysis with Advanced Twitter Integration.
 
 Smart-Scrape is a cutting-edge platform positioned at the vanguard of data extraction and analysis, specifically harnessing the vast and dynamic landscape of Twitter. This solution is expertly crafted to meet the demands of researchers, marketers, and data analysts seeking in-depth insights from social media interactions. Operating on the decentralized Bittensor network, Smart-Scrape ensures a seamless, reliable, and high-quality extraction of text data via API, fostering an ecosystem of transparent and unbiased intelligence mining and response generation.
 
