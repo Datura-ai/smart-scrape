@@ -1,10 +1,9 @@
 import torch
 import re
 from typing import List
-from template.protocol import TwitterQueryResult
+from template.protocol import TwitterPromptAnalysisResult
 from utils.tasks import Task
 from penalty import PenaltyModelType, BasePenaltyModel
-from template.utils import analyze_twitter_query
 
 class AccuracyPenaltyModel(BasePenaltyModel):
     """
@@ -33,21 +32,21 @@ class AccuracyPenaltyModel(BasePenaltyModel):
         """
         return PenaltyModelType.accuracy_match_penalty.value
 
-    def _compile_patterns(self, query_result: TwitterQueryResult):
+    def _compile_patterns(self, prompt_analysis: TwitterPromptAnalysisResult):
         """
         Compiles regular expression patterns for keywords, hashtags, and user mentions
-        based on the provided TwitterQueryResult.
+        based on the provided TwitterPromptAnalysisResult.
 
         Args:
-            query_result: The TwitterQueryResult containing the query criteria.
+            prompt_analysis: The TwitterPromptAnalysisResult containing the query criteria.
         """
-        keyword_pattern = '|'.join(re.escape(keyword) for keyword in query_result.keywords)
-        hashtag_pattern = '|'.join(re.escape('#' + hashtag) for hashtag in query_result.hashtags)
-        user_pattern = '|'.join(re.escape('@' + user) for user in query_result.user_mentions)
+        keyword_pattern = '|'.join(re.escape(keyword) for keyword in prompt_analysis.keywords)
+        hashtag_pattern = '|'.join(re.escape('#' + hashtag) for hashtag in prompt_analysis.hashtags)
+        user_pattern = '|'.join(re.escape('@' + user) for user in prompt_analysis.user_mentions)
 
-        self.keyword_regex = re.compile(keyword_pattern, re.IGNORECASE) if query_result.keywords else None
-        self.hashtag_regex = re.compile(hashtag_pattern, re.IGNORECASE) if query_result.hashtags else None
-        self.user_regex = re.compile(user_pattern, re.IGNORECASE) if query_result.user_mentions else None
+        self.keyword_regex = re.compile(keyword_pattern, re.IGNORECASE) if prompt_analysis.keywords else None
+        self.hashtag_regex = re.compile(hashtag_pattern, re.IGNORECASE) if prompt_analysis.hashtags else None
+        self.user_regex = re.compile(user_pattern, re.IGNORECASE) if prompt_analysis.user_mentions else None
 
     def calculate_penalties(self, task: Task, completions: List[str]) -> torch.FloatTensor:
         """
@@ -62,7 +61,7 @@ class AccuracyPenaltyModel(BasePenaltyModel):
             A tensor of penalties for each completion.
         """
         prompt = task.base_text
-        self._compile_patterns(task.query_result)
+        self._compile_patterns(task.prompt_analysis)
         penalties = []
         for completion in completions:
             penalty = 0.0
@@ -75,19 +74,19 @@ class AccuracyPenaltyModel(BasePenaltyModel):
             penalties.append(penalty)
         return torch.tensor(penalties, dtype=torch.float32)
 
-    def calculate_penalties_from_query(self, query_result: TwitterQueryResult, completions: List[str]) -> torch.FloatTensor:
+    def calculate_penalties_from_query(self, prompt_analysis: TwitterPromptAnalysisResult, completions: List[str]) -> torch.FloatTensor:
         """
         Calculates the penalties for each completion based on the absence of
         keywords, hashtags, or user mentions as defined in the provided query result.
 
         Args:
-            query_result: The TwitterQueryResult containing the query criteria.
+            prompt_analysis: The TwitterPromptAnalysisResult containing the query criteria.
             completions: A list of strings representing the completed texts.
 
         Returns:
             A tensor of penalties for each completion.
         """
-        self._compile_patterns(query_result)
+        self._compile_patterns(prompt_analysis)
         penalties = []
         for completion in completions:
             penalty = 0.0
