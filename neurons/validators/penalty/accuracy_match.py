@@ -2,7 +2,7 @@ import torch
 import re
 from typing import List
 from template.protocol import TwitterPromptAnalysisResult
-from utils.tasks import Task
+from utils.tasks import TwitterTask
 from penalty import PenaltyModelType, BasePenaltyModel
 
 class AccuracyPenaltyModel(BasePenaltyModel):
@@ -40,15 +40,18 @@ class AccuracyPenaltyModel(BasePenaltyModel):
         Args:
             prompt_analysis: The TwitterPromptAnalysisResult containing the query criteria.
         """
-        keyword_pattern = '|'.join(re.escape(keyword) for keyword in prompt_analysis.keywords)
-        hashtag_pattern = '|'.join(re.escape('#' + hashtag) for hashtag in prompt_analysis.hashtags)
-        user_pattern = '|'.join(re.escape('@' + user) for user in prompt_analysis.user_mentions)
+        if prompt_analysis is not None:
+            keyword_pattern = '|'.join(re.escape(keyword) for keyword in prompt_analysis.keywords) if prompt_analysis.keywords else ''
+            hashtag_pattern = '|'.join(re.escape('#' + hashtag) for hashtag in prompt_analysis.hashtags) if prompt_analysis.hashtags else ''
+            user_pattern = '|'.join(re.escape('@' + user) for user in prompt_analysis.user_mentions) if prompt_analysis.user_mentions else ''
+        else:
+            keyword_pattern = hashtag_pattern = user_pattern = ''
 
-        self.keyword_regex = re.compile(keyword_pattern, re.IGNORECASE) if prompt_analysis.keywords else None
-        self.hashtag_regex = re.compile(hashtag_pattern, re.IGNORECASE) if prompt_analysis.hashtags else None
-        self.user_regex = re.compile(user_pattern, re.IGNORECASE) if prompt_analysis.user_mentions else None
+        self.keyword_regex = re.compile(keyword_pattern, re.IGNORECASE) if keyword_pattern else None
+        self.hashtag_regex = re.compile(hashtag_pattern, re.IGNORECASE) if hashtag_pattern else None
+        self.user_regex = re.compile(user_pattern, re.IGNORECASE) if user_pattern else None
 
-    def calculate_penalties(self, task: Task, completions: List[str]) -> torch.FloatTensor:
+    def calculate_penalties(self, task: TwitterTask, completions: List[str]) -> torch.FloatTensor:
         """
         Calculates the penalties for each completion based on the absence of
         keywords, hashtags, or user mentions as defined in the task's query result.
