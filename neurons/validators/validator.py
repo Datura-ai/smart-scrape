@@ -18,11 +18,11 @@ from template.protocol import IsAlive
 from base_validator import BaseValidator
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, HTTPException, Request
-from twitter_validator import TwitterScraperValidator
+from twitter_validator import TwitterScraperStreamingValidator
 from reward import DefaultRewardFrameworkConfig
 
 moving_average_scores = None
-twitter_vali: TwitterScraperValidator = None
+twitter_vali: TwitterScraperStreamingValidator = None
 metagraph = None
 
 wandb_runs = {}
@@ -134,7 +134,7 @@ def initialize_components(config):
 def initialize_validators(vali_config):
     global twitter_vali
 
-    twitter_vali = TwitterScraperValidator(**vali_config)
+    twitter_vali = TwitterScraperStreamingValidator(**vali_config)
     bt.logging.info("initialized_validators")
     return twitter_vali
 
