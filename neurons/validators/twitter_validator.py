@@ -262,8 +262,13 @@ class TwitterScraperStreamingValidator(BaseValidator):
     async def return_tokens(self, uid, responses):
         async for resp in responses:
             if isinstance(resp, str):
-                bt.logging.trace(resp)
-                yield uid, resp
+                try:
+                    chunk_data = json.loads(resp)
+                    tokens = chunk_data.get("tokens", "")
+                    bt.logging.trace(tokens)
+                    yield uid, tokens
+                except json.JSONDecodeError:
+                    bt.logging.trace(f"Failed to decode JSON chunk: {resp}")
 
     async def organic(self, metagraph, query):
         prompt = query['content']
