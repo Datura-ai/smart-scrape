@@ -21,7 +21,7 @@ import random
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 from typing import List
-from template.protocol import TwitterQueryResult
+from template.protocol import TwitterPromptAnalysisResult
 from .criteria import (
     TaskCriterion,
 )
@@ -34,15 +34,12 @@ class Task(ABC):
     task_type: str
     criteria: List[TaskCriterion] = field(default_factory=list)
 
-
-
     @abstractmethod
     def compose_prompt(self) -> str:
         ...
 
 
 class TwitterTask(Task):
-    query_result: TwitterQueryResult = None
+    prompt_analysis: TwitterPromptAnalysisResult = None
     def compose_prompt(self) -> str:
-
         return self.base_text

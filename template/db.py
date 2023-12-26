@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 import asyncio
 import random
 import json
-from template.utils import analyze_twitter_query, get_random_tweet_prompts
-from template.protocol import TwitterQueryResult
+from template.utils import get_random_tweet_prompts
+from template.protocol import TwitterPromptAnalysisResult
 
 ELASTIC_HOST = 'localhost'
 ELASTIC_USER = 'elastic'
@@ -49,45 +49,45 @@ class DBClient:
             print(f"Search Error: {e}")
             return None
         
-    async def perform_twitter_query_and_search(self, prompt):
-        try:
-            query_result: TwitterQueryResult = await analyze_twitter_query(prompt)
-            print("Prompt ==================================")
-            print(prompt)
-            print("Query-Start ==================================")
-            print(query_result.api_params)
-            print("Query-End  ==================================")
+    # async def perform_twitter_query_and_search(self, prompt):
+    #     try:
+    #         result = await analyze_twitter_query(prompt)
+    #         prompt_analysis: TwitterPromptAnalysisResult().fill(result)
+    #         print("Prompt ==================================")
+    #         print(prompt)
+    #         print("Query-Start ==================================")
+    #         print(prompt_analysis.api_params)
+    #         print("Query-End  ==================================")
 
-            # Check if the query string is not empty and is a valid JSON string
-            if isinstance(query_result.api_params, str) and query_result.api_params.strip():
-                try:
-                    query_dict = json.loads(query_result.api_params)
-                except json.JSONDecodeError as e:
-                    print(f"JSON Decode Error: {e}")
-                    return None
-            else:
-                query_dict = query_result.api_params
+    #         # Check if the query string is not empty and is a valid JSON string
+    #         if isinstance(prompt_analysis.api_params, str) and prompt_analysis.api_params.strip():
+    #             try:
+    #                 query_dict = json.loads(prompt_analysis.api_params)
+    #             except json.JSONDecodeError as e:
+    #                 print(f"JSON Decode Error: {e}")
+    #                 return None
+    #         else:
+    #             query_dict = prompt_analysis.api_params
 
-            # Assuming analyze_twitter_query returns a query suitable for search_documents
-            search_results = self.search_documents(query_dict)
-            print("Start-Search-Result ===================================")
-            print(search_results)
-            print("End-Search-Result ===================================")
-        except RequestError as e:
-            print(f"Search Error: {e}")
-            return None
+    #         search_results = self.search_documents(query_dict)
+    #         print("Start-Search-Result ===================================")
+    #         print(search_results)
+    #         print("End-Search-Result ===================================")
+    #     except RequestError as e:
+    #         print(f"Search Error: {e}")
+    #         return None
         
-    async def search_in_db(self, query_result: TwitterQueryResult):
+    async def search_in_db(self, prompt_analysis: TwitterPromptAnalysisResult):
         try:
             # Check if the query string is not empty and is a valid JSON string
-            if isinstance(query_result.api_params, str) and query_result.api_params.strip():
+            if isinstance(prompt_analysis.api_params, str) and prompt_analysis.api_params.strip():
                 try:
-                    query_dict = json.loads(query_result.api_params)
+                    query_dict = json.loads(prompt_analysis.api_params)
                 except json.JSONDecodeError as e:
                     print(f"JSON Decode Error: {e}")
                     return None
             else:
-                query_dict = query_result.api_params
+                query_dict = prompt_analysis.api_params
 
             # Assuming analyze_twitter_query returns a query suitable for search_documents
             search_results = self.search_documents(query_dict)
@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
 
     # random_index = random.randint(0, len(example_prompts) - 1)  # Make sure to import random
-    example_prompts = get_random_tweet_prompts(4)
-    for pr in example_prompts:
-        # Call the new method
-        asyncio.run(client.perform_twitter_query_and_search(pr))
+    # example_prompts = get_random_tweet_prompts(4)
+    # for pr in example_prompts:
+    #     # Call the new method
+    #     asyncio.run(client.perform_twitter_query_and_search(pr))

@@ -13,7 +13,7 @@ import traceback
 import bittensor as bt
 from . import client
 from collections import deque
-from template.protocol import TwitterQueryResult
+from template.protocol import TwitterPromptAnalysisResult
 from datetime import datetime
 from .dataset import tweet_prompts
 
@@ -221,29 +221,6 @@ def send_discord_alert(message, webhook_url):
             print(f"Failed to send Discord alert. Status code: {response.status_code}")
     except Exception as e:
         print(f"Failed to send Discord alert: {e}", exc_info=True)
-
-async def analyze_twitter_query(query):
-        """
-        Analyze the user query using OpenAI's API to extract relevant criteria.
-        """
-
-        current_data = datetime.now()
-        content = f"""
-        Given the specific topic '{query}', please perform the following tasks and provide the results in a JSON object format:
-
-        1. Identify and list the key keywords central to this query.
-        2. Determine and list relevant hashtags commonly used with this topic.
-        3. Identify and list any significant user mentions frequently associated with this topic.
-        
-        Rules:
-         - The expected JSON object should have separate fields for the api_params, keywords, hashtags, and user_mentions
-         - api_params must be JSON Elestic search query!
-         - There is no need for a detailed query, we need to extract the information from the elastic search database
-        """
-        messages = [{'role': 'user', 'content': content }]
-        res = await call_openai(messages, 0.1, "gpt-4-1106-preview", None,  {"type": "json_object"})
-        response_dict = json.loads(res)
-        return TwitterQueryResult(response_dict)
 
 
 def get_random_tweet_prompts(num_questions_needed):
