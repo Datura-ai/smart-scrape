@@ -337,7 +337,7 @@ class StreamingTemplateMiner(StreamMiner):
                     joined_buffer = "".join(buffer)
                     response_body = {
                         "tokens": joined_buffer,
-                        "prompt_analysis": {}
+                        "prompt_analysis": '{}'
                     }
                     await send(
                         {
@@ -354,7 +354,7 @@ class StreamingTemplateMiner(StreamMiner):
                 joined_buffer = "".join(buffer)
                 response_body = {
                     "tokens": joined_buffer,
-                    "prompt_analysis": {}
+                    "prompt_analysis": '{}'
                 }
                 await send(
                     {
@@ -427,7 +427,10 @@ class StreamingTemplateMiner(StreamMiner):
                     _intro_text(model=model, prompt=prompt, send=send),
                     _fetch_tweets(prompt)
                 )
-                synapse.set_prompt_analysis(prompt_analysis)
+                
+                if prompt_analysis:
+                    synapse.set_prompt_analysis(prompt_analysis)
+
                 response = await _finalize_data(prompt=prompt, model=model, filtered_tweets=tweets)
 
                 # Reset buffer for finalaze_data responses
