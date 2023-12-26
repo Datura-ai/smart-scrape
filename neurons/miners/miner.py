@@ -305,8 +305,7 @@ class StreamingTemplateMiner(StreamMiner):
     def twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
         bt.logging.info(f"started processing for synapse {synapse}")
 
-        async def intro_text(model, prompt, send):
-            # return True
+        async def _intro_text(model, prompt, send):
             content = f"""
             Generate introduction for that prompt: "{prompt}",
 
@@ -322,10 +321,10 @@ class StreamingTemplateMiner(StreamMiner):
             """
             messages = [{'role': 'user', 'content': content}]
             response = await client.chat.completions.create(
-                model= model,
-                messages= messages,
-                temperature= 0.4,
-                stream= True,
+                model=model,
+                messages=messages,
+                temperature=0.4,
+                stream=True,
                 # seed=seed,
             )
 
@@ -336,31 +335,39 @@ class StreamingTemplateMiner(StreamMiner):
                 buffer.append(token)
                 if len(buffer) == N:
                     joined_buffer = "".join(buffer)
+                    response_body = {
+                        "tokens": joined_buffer,
+                        "prompt_analysis": {}
+                    }
                     await send(
                         {
                             "type": "http.response.body",
-                            "body": joined_buffer.encode("utf-8"),
+                            "body": json.dumps(response_body).encode("utf-8"),
                             "more_body": True,
                         }
                     )
                     bt.logging.info(f"Streamed tokens: {joined_buffer}")
                     buffer = []
 
-            # Send any re˘»maining data in the buffer
+            # Send any remaining data in the buffer
             if buffer:
                 joined_buffer = "".join(buffer)
+                response_body = {
+                    "tokens": joined_buffer,
+                    "prompt_analysis": {}
+                }
                 await send(
                     {
                         "type": "http.response.body",
-                        "body": joined_buffer.encode("utf-8"),
+                        "body": json.dumps(response_body).encode("utf-8"),
                         "more_body": False,
                     }
                 )
                 bt.logging.info(f"Streamed tokens: {joined_buffer}")
                 print(f"response is {response}")
             return buffer
-
-        async def fetch_tweets(prompt):
+    
+        async def _fetch_tweets(prompt):
             filtered_tweets = []
             prompt_analysis = None
             if self.config.miner.mock_dataset:
@@ -372,7 +379,7 @@ class StreamingTemplateMiner(StreamMiner):
                 print(filtered_tweets)
             return filtered_tweets, prompt_analysis
     
-        async def finalize_data(prompt, model, filtered_tweets):
+        async def _finalize_data(prompt, model, filtered_tweets):
                 content =F"""
                     User Prompt Analysis and Twitter Data Integration
 
@@ -417,11 +424,11 @@ class StreamingTemplateMiner(StreamMiner):
 
                 # buffer.append('Test 2')
                 intro_response, (tweets, prompt_analysis) = await asyncio.gather(
-                    intro_text(model=model, prompt=prompt, send=send),
-                    fetch_tweets(prompt)
+                    _intro_text(model=model, prompt=prompt, send=send),
+                    _fetch_tweets(prompt)
                 )
                 synapse.set_prompt_analysis(prompt_analysis)
-                response = await finalize_data(prompt=prompt, model=model, filtered_tweets=tweets)
+                response = await _finalize_data(prompt=prompt, model=model, filtered_tweets=tweets)
 
                 # Reset buffer for finalaze_data responses
                 buffer = []
