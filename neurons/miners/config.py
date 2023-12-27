@@ -95,7 +95,7 @@ def get_config() -> "bt.Config":
         "--miner.mock_dataset",
         type=str2bool,
         help="If True, the miner will retrieve data from mock dataset",
-        default=True
+        default=False
     )
 
     # Adds subtensor specific arguments i.e. --subtensor.chain_endpoint ... --subtensor.network ...

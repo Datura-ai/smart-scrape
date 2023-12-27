@@ -10,10 +10,10 @@ from twitter_validator import TwitterScraperValidator
 from config import add_args, check_config, config
 from weights import init_wandb, update_weights
 from traceback import print_exception
+from base_validator import AbstractNeuron
 
-wandb_runs = {}
 
-class neuron:
+class neuron(AbstractNeuron):
     @classmethod
     def check_config(cls, config: "bt.Config"):
         check_config(cls, config)
@@ -29,6 +29,7 @@ class neuron:
     subtensor: "bt.subtensor"
     wallet: "bt.wallet"
     metagraph: "bt.metagraph"
+    dendrite: "bt.dendrite"
 
     twitter_validator: "TwitterScraperValidator"
     moving_average_scores: torch.Tensor = None
@@ -47,17 +48,13 @@ class neuron:
 
         init_wandb(self)
 
-        self.twitter_validator = TwitterScraperValidator(
-            dendrite=self.dendrite,
-            config=self.config,
-            subtensor=self.subtensor,
-            wallet=self.wallet
-        )
+        self.twitter_validator = TwitterScraperValidator(neuron=self)
         bt.logging.info("initialized_validators")
 
         # Init the event loop.
         self.loop = asyncio.get_event_loop()
         self.step = 0
+        self.steps_passed = 0
 
     def initialize_components(self):
         bt.logging(config=self.config, logging_dir=self.config.full_path)
@@ -95,50 +92,33 @@ class neuron:
         
         return available_uids
 
-    async def process_modality(self, selected_validator):
-        available_uids = await self.get_available_uids()
-        uid_list = list(available_uids.keys())
-        bt.logging.info(f"starting {selected_validator.__class__.__name__} get_and_score for {uid_list}")
-        scores, uid_scores_dict, wandb_data = await selected_validator.get_and_score(uid_list, self.metagraph)
+    async def update_scores(self, scores, wandb_data):
         if self.config.wandb_on:
             wandb.log(wandb_data)
             bt.logging.success("wandb_log successful")
-        return scores, uid_scores_dict
+        total_scores = torch.zeros(len(self.metagraph.hotkeys))
+        total_scores += scores
+            
+        iterations_per_set_weights = 10
+        iterations_until_update = iterations_per_set_weights - ((self.steps_passed + 1) % iterations_per_set_weights)
+        bt.logging.info(f"Updating weights in {iterations_until_update} iterations.")
+
+        if iterations_until_update == 1:
+            update_weights(self, total_scores, self.steps_passed)
+
+        self.steps_passed += 1
 
     async def query_synapse(self):
         try:
-            steps_passed = 0
-            total_scores = torch.zeros(len(self.metagraph.hotkeys))
-
-            scores, uid_scores_dict = await self.process_modality(self.twitter_validator)
-            total_scores += scores
-            
-            iterations_per_set_weights = 10
-            iterations_until_update = iterations_per_set_weights - ((steps_passed + 1) % iterations_per_set_weights)
-            bt.logging.info(f"Updating weights in {iterations_until_update} iterations.")
-
-            if iterations_until_update == 1:
-                update_weights(self, total_scores, steps_passed)
-
-            steps_passed += 1
+            await self.twitter_validator.query_and_score()
         except Exception as e:
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(100)
     
-
     def run(self):
         bt.logging.info("run()")
-        # load_state(self)
-        # checkpoint(self)
         try:
             while True:
-                if not self.wallet.hotkey.ss58_address in self.metagraph.hotkeys:
-                    raise Exception(
-                        f"Validator is not registered - hotkey {self.wallet.hotkey.ss58_address} not in metagraph"
-                    )
-
-                # bt.logging.info(f"step({self.step}) block({ttl_get_block( self )})")
-
                 # Run multiple forwards.
                 async def run_forward():
                     coroutines = [
@@ -150,25 +130,10 @@ class neuron:
 
                 self.loop.run_until_complete(run_forward())
 
-                # # Resync the network state
-                # if should_checkpoint(self):
-                #     checkpoint(self)
-
-                # # Set the weights on chain.
-                # if should_set_weights(self):
-                #     set_weights(self)
-                #     save_state(self)
-
-                # # Rollover wandb to a new run.
-                # if should_reinit_wandb(self):
-                #     reinit_wandb(self)
-
-                # self.prev_block = ttl_get_block(self)
                 self.step += 1
         except Exception as err:
             bt.logging.error("Error in training loop", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
-
 
 
 

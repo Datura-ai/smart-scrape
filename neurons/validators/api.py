@@ -14,12 +14,11 @@ EXPECTED_ACCESS_KEY = os.environ.get('VALIDATOR_ACCESS_KEY')
 
 neu = neuron()
 
-async def response_stream(data, available_uids):
+async def response_stream(data):
     try:
         last_message = data['messages'][-1]
-        async for response in neu.twitter_validator.organic(last_message, available_uids, neu.metagraph):
-            uid, content = response
-            yield f"{content}"
+        async for response in neu.twitter_validator.organic(last_message):
+            yield f"{response}"
 
     except Exception as e:
         bt.logging.error(f"error in response_stream {traceback.format_exc()}")
@@ -35,9 +34,9 @@ async def process_twitter_validatordator(request: Request, data: dict):
     available_uids = await neu.get_available_uids()
 
     if not available_uids:
-        raise HTTPException(status_code=503, detail="Validators are not available")
+        raise HTTPException(status_code=503, detail="Miners are not available")
   
-    return StreamingResponse(response_stream(data, available_uids))
+    return StreamingResponse(response_stream(data))
 
 def run_fastapi():
     uvicorn.run(app, host="0.0.0.0", port=8005)

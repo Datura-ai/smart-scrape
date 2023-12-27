@@ -33,7 +33,7 @@ def check_config(cls, config: "bt.Config"):
     if config.mock:
         config.neuron.mock_reward_models = True
         config.neuron.mock_gating_model = True
-        config.neuron.mock_dataset = True
+        config.neuron.mock_dataset = False
         config.wallet._mock = True
 
     full_path = os.path.expanduser(
