@@ -10,10 +10,10 @@ from twitter_validator import TwitterScraperValidator
 from config import add_args, check_config, config
 from weights import init_wandb, update_weights
 from traceback import print_exception
+from base_validator import AbstractNeuron
 
-wandb_runs = {}
 
-class neuron:
+class neuron(AbstractNeuron):
     @classmethod
     def check_config(cls, config: "bt.Config"):
         check_config(cls, config)
@@ -29,6 +29,7 @@ class neuron:
     subtensor: "bt.subtensor"
     wallet: "bt.wallet"
     metagraph: "bt.metagraph"
+    dendrite: "bt.dendrite"
 
     twitter_validator: "TwitterScraperValidator"
     moving_average_scores: torch.Tensor = None
@@ -47,13 +48,7 @@ class neuron:
 
         init_wandb(self)
 
-        self.twitter_validator = TwitterScraperValidator(
-            dendrite=self.dendrite,
-            config=self.config,
-            subtensor=self.subtensor,
-            wallet=self.wallet,
-            neuron=self
-        )
+        self.twitter_validator = TwitterScraperValidator(neuron=self)
         bt.logging.info("initialized_validators")
 
         # Init the event loop.
@@ -165,7 +160,6 @@ class neuron:
         except Exception as err:
             bt.logging.error("Error in training loop", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
-
 
 
 
