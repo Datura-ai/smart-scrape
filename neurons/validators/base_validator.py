@@ -1,38 +1,53 @@
-import asyncio
-import bittensor as bt
-
 from abc import ABC, abstractmethod
+import asyncio
+import torch
 
+class AbstractNeuron(ABC):
+    @abstractmethod
+    def check_config(cls, config):
+        """Check the configuration."""
+        pass
 
-class BaseValidator(ABC):
-    def __init__(self, dendrite, config, subtensor, wallet, timeout):
-        self.dendrite: bt.dendrite = dendrite
-        self.config = config
-        self.subtensor = subtensor
-        self.wallet = wallet
-        self.timeout = timeout
-        self.streaming = False
+    @abstractmethod
+    def add_args(cls, parser):
+        """Add arguments to the parser."""
+        pass
 
-    # async def query_miner(self, axon, uid, syn):
-    #     try:
-    #         responses = await self.dendrite([axon], syn, deserialize=False, timeout=self.timeout, streaming=self.streaming)
-    #         return await self.handle_response(uid, responses)
+    @abstractmethod
+    def config(cls):
+        """Return configuration."""
+        pass
 
-    #     except Exception as e:
-    #         bt.logging.error(f"Exception during query for uid {uid}: {e}")
-    #         return uid, None
+    @property
+    @abstractmethod
+    def subtensor(self):
+        """Return subtensor instance."""
+        pass
 
-    # async def handle_response(self, uid, responses):
-    #     return uid, responses
+    @property
+    @abstractmethod
+    def wallet(self):
+        """Return wallet instance."""
+        pass
 
-    # @abstractmethod
-    # async def start_query(self, available_uids):
-    #     pass
+    @property
+    @abstractmethod
+    def metagraph(self):
+        """Return metagraph instance."""
+        pass
 
-    # @abstractmethod
-    # async def score_responses(self, responses):
-    #     pass
+    @property
+    @abstractmethod
+    def dentrite(self):
+        """Return dentrite instance."""
+        pass
 
-    # async def get_and_score(self, available_uids, metagraph):
-    #     responses = await self.start_query(available_uids, metagraph)
-    #     return await self.score_responses(query_responses, uid_to_question, metagraph)
+    @abstractmethod
+    async def get_available_uids(self):
+        """Get a dictionary of available UIDs and their axons asynchronously."""
+        pass
+
+    @abstractmethod
+    async def update_scores(self, scores, wandb_data):
+        """Update scores."""
+        pass
