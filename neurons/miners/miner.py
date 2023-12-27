@@ -428,6 +428,9 @@ class StreamingTemplateMiner(StreamMiner):
                     _fetch_tweets(prompt)
                 )
                 
+                print("Prompt analysis ===============================================")
+                print(prompt_analysis)
+                print("Prompt analysis ===============================================")
                 if prompt_analysis:
                     synapse.set_prompt_analysis(prompt_analysis)
 
