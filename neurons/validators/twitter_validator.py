@@ -86,6 +86,10 @@ class TwitterScraperValidator:
         }
 
         self.twillio_api = TwitterAPIClient()
+        # Init Weights.
+        bt.logging.debug("loading", "moving_averaged_scores")
+        self.moving_averaged_scores = torch.zeros((self.neuron.metagraph.n)).to(self.device)
+        bt.logging.debug(str(self.moving_averaged_scores))
     
     async def get_uids(self):
         available_uids = await self.neuron.get_available_uids()
@@ -159,6 +163,7 @@ class TwitterScraperValidator:
         return async_responses, uids, event, start_time
     
     async def compute_rewards_and_penalties(self, event, prompt, task, responses, uids, start_time):
+        bt.logging.info("Computing rewards and penalties")
         if responses:
             task.prompt_analysis = responses[0].prompt_analysis
 
@@ -169,6 +174,7 @@ class TwitterScraperValidator:
             if not self.neuron.config.neuron.disable_log_rewards:
                 event = {**event, **reward_event}
             bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
+            bt.logging.info(f"Applied reward function: {reward_fn_i.name}")
 
         for penalty_fn_i in self.penalty_functions:
             raw_penalty_i, adjusted_penalty_i, applied_penalty_i = penalty_fn_i.apply_penalties(responses, task)
@@ -178,6 +184,7 @@ class TwitterScraperValidator:
                 event[penalty_fn_i.name + "_adjusted"] = adjusted_penalty_i.tolist()
                 event[penalty_fn_i.name + "_applied"] = applied_penalty_i.tolist()
             bt.logging.trace(str(penalty_fn_i.name), applied_penalty_i.tolist())
+            bt.logging.info(f"Applied penalty function: {penalty_fn_i.name}")
 
         scattered_rewards = self.update_moving_averaged_scores(uids, rewards)
         self.log_event(task, event, start_time, uids, rewards, prompt=task.compose_prompt())
@@ -190,8 +197,9 @@ class TwitterScraperValidator:
             self.wandb_data["scores"][uid] = reward
             self.wandb_data["responses"][uid] = response.completion
             self.wandb_data["prompts"][uid] = prompt
+            bt.logging.info(f"Updated scores and wandb_data for uid: {uid}")
         
-        self.neuron.update_scores(scores, self.wandb_data)
+        await self.neuron.update_scores(scores, self.wandb_data)
 
         return rewards, scattered_rewards
 
@@ -216,10 +224,7 @@ class TwitterScraperValidator:
         bt.logging.debug("Run Task event:", str(event))
     
     async def query_and_score(self):
-        # Init Weights.
-        bt.logging.debug("loading", "moving_averaged_scores")
-        self.moving_averaged_scores = torch.zeros((self.neuron.metagraph.n)).to(self.device)
-        bt.logging.debug(str(self.moving_averaged_scores))
+
 
         prompt = get_random_tweet_prompts(1)[0]
 
@@ -233,7 +238,12 @@ class TwitterScraperValidator:
         responses = await self.process_async_responses(async_responses)
         if responses:
             task.prompt_analysis = responses[0].prompt_analysis
-        await self.compute_rewards_and_penalties(event, task, responses, uids, start_time)    
+        await self.compute_rewards_and_penalties(event=event, 
+                                                 prompt=prompt,
+                                                 task=task, 
+                                                 responses=responses, 
+                                                 uids=uids, 
+                                                 start_time=start_time)    
     
     
     async def organic(self, query):
@@ -277,7 +287,12 @@ class TwitterScraperValidator:
         async def process_and_score_responses():
             if responses:
                 task.prompt_analysis = responses[0].prompt_analysis
-            await self.compute_rewards_and_penalties(event, task, responses, uids, start_time)     
+            await self.compute_rewards_and_penalties(event=event,
+                                                     prompt=prompt, 
+                                                     task=task, 
+                                                     responses=responses, 
+                                                     uids=uids, 
+                                                     start_time=start_time)
             return responses  
         
         asyncio.create_task(process_and_score_responses())
