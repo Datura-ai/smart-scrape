@@ -4,7 +4,7 @@ import json
 import asyncio
 from datetime import datetime
 from template.utils import call_openai, tweet_prompts
-from template.protocol import TwitterQueryResult
+from template.protocol import TwitterPromptAnalysisResult
 
 BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TKEN')
 
@@ -136,16 +136,17 @@ class TwitterAPIClient:
     async def analyse_prompt_and_fetch_tweets(self, prompt):
         try:
             query = await self.generat_query_params_from_prompt(prompt)
-            twitter_result = TwitterQueryResult(query)
+            prompt_analysis = TwitterPromptAnalysisResult()
+            prompt_analysis.fill(query)
             print(" ============================================= ")
-            print(twitter_result.api_params['query'])
-            twitter_result.api_params['max_results'] = 10
+            print(prompt_analysis.api_params['query'])
+            prompt_analysis.api_params['max_results'] = 10
             print(" ============================================= ")
-            result = self.get_recent_tweets(twitter_result.api_params)
+            result = self.get_recent_tweets(prompt_analysis.api_params)
             print("Tweeter fetched ===================================================")
             print(result)
             print("Tweeter fetched ===================================================")
-            return result
+            return result, prompt_analysis
         except Exception as e:
             print(e)
             return []
@@ -153,8 +154,9 @@ class TwitterAPIClient:
     async def analyze_twitter_query(self, prompt):
         try:
             query = await self.generat_query_params_from_prompt(prompt)
-            twitter_result = TwitterQueryResult(query)
-            return twitter_result
+            prompt_analysis = TwitterPromptAnalysisResult()
+            prompt_analysis.fill(query)
+            return prompt_analysis
         except Exception as e:
             print(e)
             return {}

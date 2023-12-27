@@ -25,8 +25,8 @@ from transformers import GPT2Tokenizer
 from config import get_config, check_config
 from typing import List, Dict, Tuple, Union, Callable, Awaitable
 
-from template.utils import get_version, analyze_twitter_query
-from template.protocol import StreamPrompting, IsAlive, TwitterScraper, TwitterQueryResult
+from template.utils import get_version
+from template.protocol import StreamPrompting, IsAlive, TwitterScraperStreaming, TwitterPromptAnalysisResult
 from template.services.twilio import TwitterAPIClient
 from template.db import DBClient, get_random_tweets
 
@@ -117,7 +117,7 @@ class StreamMiner(ABC):
     def config(self) -> "bt.Config":
         ...
     
-    def _twitter_scraper(self, synapse: TwitterScraper) -> TwitterScraper:
+    def _twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
         return self.twitter_scraper(synapse)
 
     def base_blacklist(self, synapse, blacklist_amt = 20000) -> Tuple[bool, str]:
@@ -177,7 +177,7 @@ class StreamMiner(ABC):
         bt.logging.debug(blacklist[1])
         return blacklist
         
-    def blacklist_twitter_scraper( self, synapse: TwitterScraper ) -> Tuple[bool, str]:
+    def blacklist_twitter_scraper( self, synapse: TwitterScraperStreaming ) -> Tuple[bool, str]:
         blacklist = self.base_blacklist(synapse, template.TWITTER_SCRAPPER_BLACKLIST_STAKE)
         bt.logging.info(blacklist[1])
         return blacklist
@@ -187,7 +187,7 @@ class StreamMiner(ABC):
     def add_args(cls, parser: argparse.ArgumentParser):
         ...
     
-    async def _twitter_scraper(self, synapse: TwitterScraper) -> TwitterScraper:
+    async def _twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
         return self.twitter_scraper(synapse)
 
     def _is_alive(self, synapse: IsAlive) -> IsAlive:
@@ -196,7 +196,7 @@ class StreamMiner(ABC):
         return synapse
 
     @abstractmethod
-    def twitter_scraper(self, synapse: TwitterScraper) -> TwitterScraper:
+    def twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
         ...
 
     def run(self):
@@ -302,11 +302,10 @@ class StreamingTemplateMiner(StreamMiner):
     def add_args(cls, parser: argparse.ArgumentParser):
         pass
 
-    def twitter_scraper(self, synapse: TwitterScraper) -> TwitterScraper:
+    def twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
         bt.logging.info(f"started processing for synapse {synapse}")
 
-        async def intro_text(model, prompt, send):
-            # return True
+        async def _intro_text(model, prompt, send):
             content = f"""
             Generate introduction for that prompt: "{prompt}",
 
@@ -322,10 +321,10 @@ class StreamingTemplateMiner(StreamMiner):
             """
             messages = [{'role': 'user', 'content': content}]
             response = await client.chat.completions.create(
-                model= model,
-                messages= messages,
-                temperature= 0.4,
-                stream= True,
+                model=model,
+                messages=messages,
+                temperature=0.4,
+                stream=True,
                 # seed=seed,
             )
 
@@ -336,46 +335,51 @@ class StreamingTemplateMiner(StreamMiner):
                 buffer.append(token)
                 if len(buffer) == N:
                     joined_buffer = "".join(buffer)
+                    response_body = {
+                        "tokens": joined_buffer,
+                        "prompt_analysis": '{}'
+                    }
                     await send(
                         {
                             "type": "http.response.body",
-                            "body": joined_buffer.encode("utf-8"),
+                            "body": json.dumps(response_body).encode("utf-8"),
                             "more_body": True,
                         }
                     )
                     bt.logging.info(f"Streamed tokens: {joined_buffer}")
                     buffer = []
 
-            # Send any re˘»maining data in the buffer
+            # Send any remaining data in the buffer
             if buffer:
                 joined_buffer = "".join(buffer)
+                response_body = {
+                    "tokens": joined_buffer,
+                    "prompt_analysis": '{}'
+                }
                 await send(
                     {
                         "type": "http.response.body",
-                        "body": joined_buffer.encode("utf-8"),
+                        "body": json.dumps(response_body).encode("utf-8"),
                         "more_body": False,
                     }
                 )
                 bt.logging.info(f"Streamed tokens: {joined_buffer}")
                 print(f"response is {response}")
             return buffer
-
-        async def fetch_tweets(prompt):
+    
+        async def _fetch_tweets(prompt):
             filtered_tweets = []
-            # twitter_query: TwitterQueryResult = await analyze_twitter_query(prompt)
+            prompt_analysis = None
             if self.config.miner.mock_dataset:
                 #todo we can find tweets based on twitter_query
                 filtered_tweets = get_random_tweets(15)
             else:
                 tw_client  = TwitterAPIClient()
-                # tw_client.analyse_prompt_and_fetch_tweets(prompt)
-                # db = DBClient()
-                # filtered_tweets = await db.search_in_db(twitter_query)
-                filtered_tweets= await tw_client.analyse_prompt_and_fetch_tweets(prompt)
+                filtered_tweets, prompt_analysis = await tw_client.analyse_prompt_and_fetch_tweets(prompt)
                 print(filtered_tweets)
-            return filtered_tweets
+            return filtered_tweets, prompt_analysis
     
-        async def finalize_data(prompt, model, filtered_tweets):
+        async def _finalize_data(prompt, model, filtered_tweets):
                 content =F"""
                     User Prompt Analysis and Twitter Data Integration
 
@@ -407,7 +411,7 @@ class StreamingTemplateMiner(StreamMiner):
                     # seed=seed,
                 )
 
-        async def _twitter_scraper(synapse, send: Send):
+        async def _twitter_scraper(synapse: TwitterScraperStreaming, send: Send):
             try:
                 buffer = []
                 # buffer.append('Tests 1')
@@ -419,44 +423,65 @@ class StreamingTemplateMiner(StreamMiner):
                 bt.logging.info(f"question is {prompt} with model {model}, seed: {seed}")
 
                 # buffer.append('Test 2')
-                intro_response, tweets = await asyncio.gather(
-                    intro_text(model=model, prompt=prompt, send=send),
-                    fetch_tweets(prompt)
+                intro_response, (tweets, prompt_analysis) = await asyncio.gather(
+                    _intro_text(model=model, prompt=prompt, send=send),
+                    _fetch_tweets(prompt)
                 )
+                
+                if prompt_analysis:
+                    synapse.set_prompt_analysis(prompt_analysis)
 
-                response = await finalize_data(prompt=prompt, model=model, filtered_tweets=tweets)
+                response = await _finalize_data(prompt=prompt, model=model, filtered_tweets=tweets)
 
                 # Reset buffer for finalaze_data responses
                 buffer = []
                 buffer.append('\n\n')
-
+  
                 N = 2
                 async for chunk in response:
                     token = chunk.choices[0].delta.content or ""
                     buffer.append(token)
                     if len(buffer) == N:
                         joined_buffer = "".join(buffer)
+                        # Serialize the prompt_analysis to JSON
+                        prompt_analysis_json = json.dumps(synapse.prompt_analysis.dict())
+                        # Prepare the response body with both the tokens and the prompt_analysis
+                        response_body = {
+                            "tokens": joined_buffer,
+                            "prompt_analysis": prompt_analysis_json
+                        }
+                        # Send the response body as JSON
                         await send(
                             {
                                 "type": "http.response.body",
-                                "body": joined_buffer.encode("utf-8"),
+                                "body": json.dumps(response_body).encode("utf-8"),
                                 "more_body": True,
                             }
                         )
                         bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                        # bt.logging.info(f"Prompt Analysis: {prompt_analysis_json}")
                         buffer = []
 
                 # Send any remaining data in the buffer
                 if buffer:
                     joined_buffer = "".join(buffer)
+                    # Serialize the prompt_analysis to JSON
+                    prompt_analysis_json = json.dumps(synapse.prompt_analysis.dict())
+                    # Prepare the response body with both the tokens and the prompt_analysis
+                    response_body = {
+                        "tokens": joined_buffer,
+                        "prompt_analysis": prompt_analysis_json
+                    }
+                    # Send the response body as JSON
                     await send(
                         {
                             "type": "http.response.body",
-                            "body": joined_buffer.encode("utf-8"),
+                            "body": json.dumps(response_body).encode("utf-8"),
                             "more_body": False,
                         }
                     )
                     bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                    bt.logging.info(f"Prompt Analysis: {prompt_analysis_json}")
                     print(f"response is {response}")
             except Exception as e:
                 bt.logging.error(f"error in twitter scraper {e}\n{traceback.format_exc()}")
