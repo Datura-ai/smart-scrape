@@ -18,8 +18,7 @@ async def response_stream(data):
     try:
         last_message = data['messages'][-1]
         async for response in neu.twitter_validator.organic(last_message):
-            uid, content = response
-            yield f"{content}"
+            yield f"{response}"
 
     except Exception as e:
         bt.logging.error(f"error in response_stream {traceback.format_exc()}")
