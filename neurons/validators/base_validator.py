@@ -1,53 +1,52 @@
 from abc import ABC, abstractmethod
 import asyncio
-import torch
+import torch 
+import bittensor as bt
+import argparse
 
 class AbstractNeuron(ABC):
     @abstractmethod
-    def check_config(cls, config):
-        """Check the configuration."""
+    def __init__(self):
+        self.subtensor: 'bt.subtensor' = None
+        self.wallet: 'bt.wallet' = None
+        self.metagraph: 'bt.metagraph' = None
+        self.dendrite: 'bt.dendrite' = None
+
+    @classmethod
+    @abstractmethod
+    def check_config(cls, config: 'bt.config'):
+        pass
+
+    @classmethod
+    @abstractmethod
+    def add_args(cls, parser: 'argparse.ArgumentParser'):
+        pass
+
+    @classmethod
+    @abstractmethod
+    def config(cls) -> 'bt.config':
         pass
 
     @abstractmethod
-    def add_args(cls, parser):
-        """Add arguments to the parser."""
+    def initialize_components(self):
         pass
 
     @abstractmethod
-    def config(cls):
-        """Return configuration."""
-        pass
-
-    @property
-    @abstractmethod
-    def subtensor(self):
-        """Return subtensor instance."""
-        pass
-
-    @property
-    @abstractmethod
-    def wallet(self):
-        """Return wallet instance."""
-        pass
-
-    @property
-    @abstractmethod
-    def metagraph(self):
-        """Return metagraph instance."""
-        pass
-
-    @property
-    @abstractmethod
-    def dentrite(self):
-        """Return dentrite instance."""
+    async def check_uid(self, axon, uid: int):
         pass
 
     @abstractmethod
-    async def get_available_uids(self):
-        """Get a dictionary of available UIDs and their axons asynchronously."""
+    async def get_available_uids(self) -> dict:
         pass
 
     @abstractmethod
-    async def update_scores(self, scores, wandb_data):
-        """Update scores."""
+    async def update_scores(self, scores: torch.Tensor, wandb_data):
+        pass
+
+    @abstractmethod
+    async def query_synapse(self):
+        pass
+
+    @abstractmethod
+    def run(self):
         pass
