@@ -20,12 +20,13 @@ from penalty import (
 from reward.open_assistant import OpenAssistantRewardModel
 from reward.prompt import PromptRewardModel
 from reward.dpo import DirectPreferenceRewardModel
-from utils.tasks import Task, TwitterTask
+from utils.tasks import TwitterTask
 from template.utils import get_random_tweet_prompts
 from template.services.twilio import TwitterAPIClient
+import asyncio
 
 class TwitterScraperValidator(BaseValidator):
-    def __init__(self, dendrite, config, subtensor, wallet):
+    def __init__(self, dendrite, config, subtensor, wallet, update_score, get_available_uids):
         super().__init__(dendrite, config, subtensor, wallet, timeout=60)
         self.streaming = True
         self.query_type = "text"
@@ -84,24 +85,21 @@ class TwitterScraperValidator(BaseValidator):
         }
 
         self.twillio_api = TwitterAPIClient()
+        self.metagraph = None
+        self.neuron = None
+        self.update_score = update_score
+        self.get_available_uids = get_available_uids
+
+    def set_neuron(self, metagraph, update_scores):
+        self.metagraph = metagraph 
+        self.update_scores = update_scores
     
-    async def start_query(self, available_uids, metagraph):
-        # Init Weights.
-        bt.logging.debug("loading", "moving_averaged_scores")
-        self.moving_averaged_scores = torch.zeros((metagraph.n)).to(self.device)
-        bt.logging.debug(str(self.moving_averaged_scores))
+    async def get_uids(self):
+        available_uids = await self.get_available_uids()
+        uid_list = list(available_uids.keys())
+        uids = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
+        return uids
 
-        prompt = get_random_tweet_prompts(1)[0]
-
-        task_name = "augment"
-        twitter_task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
-
-        scores, uid_scores_dict, self.wandb_data, event = await self.run_task_and_score(
-            task=twitter_task,
-            available_uids=available_uids,
-            metagraph=metagraph
-        )
-        return scores, uid_scores_dict, self.wandb_data,
 
     async def process_async_responses(self, async_responses):
         responses = []
@@ -131,7 +129,7 @@ class TwitterScraperValidator(BaseValidator):
                 responses.append(synapse_object)
         return responses
 
-    async def run_task_and_score(self, task: TwitterTask, available_uids, metagraph):
+    async def run_task_and_score(self, task: TwitterTask, is_scoring_background : False):
         task_name = task.task_name
         prompt = task.compose_prompt()
 
@@ -140,10 +138,10 @@ class TwitterScraperValidator(BaseValidator):
         # Record event start time.
         event = {"name": task_name, "task_type": task.task_type}
         start_time = time.time()
-        # Get the list of uids to query for this step.
-
-        uids = torch.tensor([random.choice(available_uids)]) if available_uids else torch.tensor([])
-        axons = [metagraph.axons[uid] for uid in uids]
+        
+        # Get random id on that step
+        uids = self.get_uids()
+        axons = [self.metagraph.axons[uid] for uid in uids]
         synapse = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
 
         # Make calls to the network with the prompt.
@@ -155,30 +153,35 @@ class TwitterScraperValidator(BaseValidator):
             deserialize=False,
         )
 
-        responses  = await self.process_async_responses(async_responses)
-       
+        responses = await self.process_async_responses(async_responses)
+    
         if responses:
             task.prompt_analysis = responses[0].prompt_analysis
 
-        # Compute the rewards for the responses given the prompt.
-        rewards: torch.FloatTensor = torch.zeros(len(responses), dtype=torch.float32).to(
-            self.device
-        )
+        if is_scoring_background:
+            # Run compute_rewards_and_penalties as a background task
+            asyncio.create_task(self.compute_rewards_and_penalties(event, task, responses, uids, start_time))
+            return responses
+        else:
+            # Wait for compute_rewards_and_penalties to complete
+            await self.compute_rewards_and_penalties(event, task, responses, uids, start_time)
+            return responses
+
+    
+    async def compute_rewards_and_penalties(self, event, prompt, task, responses, uids, start_time):
+        if responses:
+            task.prompt_analysis = responses[0].prompt_analysis
+
+        rewards = torch.zeros(len(responses), dtype=torch.float32).to(self.device)
         for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
-            reward_i_normalized, reward_event = reward_fn_i.apply(
-                task.base_text, responses, task_name
-            )
+            reward_i_normalized, reward_event = reward_fn_i.apply(task.base_text, responses, task.task_name)
             rewards += weight_i * reward_i_normalized.to(self.device)
             if not self.config.neuron.disable_log_rewards:
                 event = {**event, **reward_event}
             bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
 
         for penalty_fn_i in self.penalty_functions:
-            (
-                raw_penalty_i,
-                adjusted_penalty_i,
-                applied_penalty_i,
-            ) = penalty_fn_i.apply_penalties(responses, task)
+            raw_penalty_i, adjusted_penalty_i, applied_penalty_i = penalty_fn_i.apply_penalties(responses, task)
             rewards *= applied_penalty_i.to(self.device)
             if not self.config.neuron.disable_log_rewards:
                 event[penalty_fn_i.name + "_raw"] = raw_penalty_i.tolist()
@@ -186,58 +189,10 @@ class TwitterScraperValidator(BaseValidator):
                 event[penalty_fn_i.name + "_applied"] = applied_penalty_i.tolist()
             bt.logging.trace(str(penalty_fn_i.name), applied_penalty_i.tolist())
 
-        # # Find the best completion given the rewards vector.
-        # completions: List[str] = [comp.completion for comp in responses]
-        # completion_status_message: List[str] = [
-        #     str(comp.dendrite.status_message) for comp in responses
-        # ]
-        # completion_status_codes: List[str] = [
-        #     str(comp.dendrite.status_code) for comp in responses
-        # ]
+        scattered_rewards = self.update_moving_averaged_scores(uids, rewards)
+        self.log_event(task, event, start_time, uids, rewards, prompt=task.compose_prompt())
 
-        # best: str = ''
-        # if len(responses) != 0:
-        #     best: str = completions[rewards.argmax(dim=0)].strip()
-
-        # # Get completion times
-        # completion_times: List[float] = [
-        #     comp.dendrite.process_time if comp.dendrite.process_time != None else 0
-        #     for comp in responses
-        # ]
-
-        # Compute forward pass rewards, assumes followup_uids and answer_uids are mutually exclusive.
-        # shape: [ metagraph.n ]
-        scattered_rewards: torch.FloatTensor = self.moving_averaged_scores.scatter(
-            0, uids, rewards
-        ).to(self.device)
-        bt.logging.info(f"Scattered reward: {torch.mean(scattered_rewards)}")
-
-        # Update moving_averaged_scores with rewards produced by this step.
-        # shape: [ metagraph.n ]
-        alpha: float = self.config.neuron.moving_average_alpha
-        self.moving_averaged_scores: torch.FloatTensor = alpha * scattered_rewards + (
-            1 - alpha
-        ) * self.moving_averaged_scores.to(self.device)
-        bt.logging.info(f"Moving everaged scores: {torch.mean(self.moving_averaged_scores)}")
-
-        # Log the step event.
-        event.update(
-            {
-                "step_length": time.time() - start_time,
-                "prompt": prompt,
-                "uids": uids.tolist(),
-                # "completions": completions,
-                # "completion_times": completion_times,
-                # "completion_status_messages": completion_status_message,
-                # "completion_status_codes": completion_status_codes,
-                "rewards": rewards.tolist(),
-                # "best": best,
-            }
-        )
-        bt.logging.debug("Run Task event:", str(event))
-        # bt.logging.info(f"Best Response: {event['best']}")
-
-        scores = torch.zeros(len(metagraph.hotkeys))
+        scores = torch.zeros(len(self.metagraph.hotkeys))
         uid_scores_dict = {}
         for uid, reward, response in zip(uids, rewards.tolist(), responses):
             uid_scores_dict[uid] = reward
@@ -245,48 +200,59 @@ class TwitterScraperValidator(BaseValidator):
             self.wandb_data["scores"][uid] = reward
             self.wandb_data["responses"][uid] = response.completion
             self.wandb_data["prompts"][uid] = prompt
-            
-        # Return the event.
-        return scores, uid_scores_dict, self.wandb_data, event
-    
-    async def get_and_score(self, available_uids, metagraph):
-
-        scores, uid_scores_dict, wandb_data = await self.start_query(available_uids=available_uids, metagraph=metagraph)
-
-        return scores, uid_scores_dict, wandb_data
-    
-    async def score_responses(self, responses):
-        ...
-
-    async def return_tokens(self, uid, responses):
-        async for resp in responses:
-            if isinstance(resp, str):
-                try:
-                    chunk_data = json.loads(resp)
-                    tokens = chunk_data.get("tokens", "")
-                    bt.logging.trace(tokens)
-                    yield uid, tokens
-                except json.JSONDecodeError:
-                    bt.logging.trace(f"Failed to decode JSON chunk: {resp}")
-
-    async def organic(self, query, available_uids, metagraph):
-        prompt = query['content']
-        uid_list = list(available_uids.keys())
-        uid = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
-        # messages.append()
-        syn = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
-        bt.logging.info(f"Sending {syn.model} {self.query_type} request to uid: {uid}, timeout {self.timeout}: {syn.messages}")
-        self.wandb_data["prompts"][uid] = prompt
-        responses = await self.dendrite(metagraph.axons[uid], syn, deserialize=False, timeout=self.timeout, streaming=self.streaming)
         
-        async for response in self.return_tokens(uid, responses):
+        self.update_scores(scores, self.wandb_data)
+
+        return rewards, scattered_rewards
+
+    def update_moving_averaged_scores(self, uids, rewards):
+        scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.device)
+        bt.logging.info(f"Scattered reward: {torch.mean(scattered_rewards)}")
+
+        alpha = self.config.neuron.moving_average_alpha
+        self.moving_averaged_scores = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(self.device)
+        bt.logging.info(f"Moving averaged scores: {torch.mean(self.moving_averaged_scores)}")
+
+        return scattered_rewards
+
+    def log_event(self, task, event, start_time, uids, rewards, prompt):
+        event.update({
+            "step_length": time.time() - start_time,
+            "prompt": prompt,
+            "uids": uids.tolist(),
+            "rewards": rewards.tolist(),
+        })
+        bt.logging.debug("Run Task event:", str(event))
+    
+    async def query_and_score(self):
+        # Init Weights.
+        bt.logging.debug("loading", "moving_averaged_scores")
+        self.moving_averaged_scores = torch.zeros((self.metagraph.n)).to(self.device)
+        bt.logging.debug(str(self.moving_averaged_scores))
+
+        prompt = get_random_tweet_prompts(1)[0]
+
+        task_name = "augment"
+        twitter_task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
+
+        return await self.run_task_and_score(
+            task=twitter_task,
+            is_scoring_background=False
+        )
+
+    async def organic(self, query):
+        prompt = query['content']
+        uid = self.get_uids()
+
+        task_name = "augment"
+        twitter_task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
+
+        responses = await self.run_task_and_score(
+            task=twitter_task,
+            is_scoring_background=True
+        )
+
+        async for response in self.process_async_responses(uid, responses):
             yield response
 
-        #todo it later
-        # task_name = "augment"
-        # twitter_task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
-        # scores, uid_scores_dict, self.wandb_data, event = await self.run_task_and_score(
-        #     task=twitter_task,
-        #     available_uids=available_uids,
-        #     metagraph=metagraph
-        # )
+

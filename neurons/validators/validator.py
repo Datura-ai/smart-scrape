@@ -51,13 +51,15 @@ class neuron:
             dendrite=self.dendrite,
             config=self.config,
             subtensor=self.subtensor,
-            wallet=self.wallet
+            wallet=self.wallet,
+            neuron=self
         )
         bt.logging.info("initialized_validators")
 
         # Init the event loop.
         self.loop = asyncio.get_event_loop()
         self.step = 0
+        self.steps_passed = 0
 
     def initialize_components(self):
         bt.logging(config=self.config, logging_dir=self.config.full_path)
@@ -95,37 +97,32 @@ class neuron:
         
         return available_uids
 
-    async def process_modality(self, selected_validator):
-        available_uids = await self.get_available_uids()
-        uid_list = list(available_uids.keys())
-        bt.logging.info(f"starting {selected_validator.__class__.__name__} get_and_score for {uid_list}")
-        scores, uid_scores_dict, wandb_data = await selected_validator.get_and_score(uid_list, self.metagraph)
+    async def update_scores(self, scores, wandb_data):
         if self.config.wandb_on:
             wandb.log(wandb_data)
             bt.logging.success("wandb_log successful")
-        return scores, uid_scores_dict
+        total_scores = torch.zeros(len(self.metagraph.hotkeys))
+        total_scores += scores
+            
+        iterations_per_set_weights = 10
+        iterations_until_update = iterations_per_set_weights - ((self.steps_passed + 1) % iterations_per_set_weights)
+        bt.logging.info(f"Updating weights in {iterations_until_update} iterations.")
+
+        if iterations_until_update == 1:
+            update_weights(self, total_scores, self.steps_passed)
+
+        self.steps_passed += 1
 
     async def query_synapse(self):
         try:
-            steps_passed = 0
-            total_scores = torch.zeros(len(self.metagraph.hotkeys))
-
-            scores, uid_scores_dict = await self.process_modality(self.twitter_validator)
-            total_scores += scores
-            
-            iterations_per_set_weights = 10
-            iterations_until_update = iterations_per_set_weights - ((steps_passed + 1) % iterations_per_set_weights)
-            bt.logging.info(f"Updating weights in {iterations_until_update} iterations.")
-
-            if iterations_until_update == 1:
-                update_weights(self, total_scores, steps_passed)
-
-            steps_passed += 1
+            available_uids = await self.get_available_uids()
+            uid_list = list(available_uids.keys())
+            # self.twitter_validator.set_metagraph(self.metagraph, self.update_scores)
+            await self.twitter_validator.query_and_score(uid_list, self.metagraph)
         except Exception as e:
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(100)
     
-
     def run(self):
         bt.logging.info("run()")
         # load_state(self)
