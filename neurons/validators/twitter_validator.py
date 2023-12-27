@@ -132,7 +132,7 @@ class TwitterScraperValidator:
                 except json.JSONDecodeError:
                     bt.logging.trace(f"Failed to decode JSON chunk: {resp}")
 
-    async def run_task_and_score(self, task: TwitterTask, is_scoring_background: bool = False):
+    async def run_task_and_score(self, task: TwitterTask):
         task_name = task.task_name
         prompt = task.compose_prompt()
 
@@ -156,21 +156,7 @@ class TwitterScraperValidator:
             deserialize=False,
         )
 
-        async def process_and_score_responses():
-            responses = await self.process_async_responses(async_responses)
-            if responses:
-                task.prompt_analysis = responses[0].prompt_analysis
-            await self.compute_rewards_and_penalties(event, task, responses, uids, start_time)     
-            return responses  
-
-        if is_scoring_background:
-            # Start the background task and return the async generator for streaming
-            asyncio.create_task(process_and_score_responses())
-            return async_responses[0]
-        else:
-            # In non-streaming context, await all responses and then process
-            responses = await process_and_score_responses()
-            return responses
+        return async_responses, uids, event, start_time
     
     async def compute_rewards_and_penalties(self, event, prompt, task, responses, uids, start_time):
         if responses:
@@ -238,24 +224,62 @@ class TwitterScraperValidator:
         prompt = get_random_tweet_prompts(1)[0]
 
         task_name = "augment"
-        twitter_task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
+        task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
 
-        return await self.run_task_and_score(
-            task=twitter_task,
-            is_scoring_background=False
+        async_responses, uids, event, start_time = await self.run_task_and_score(
+            task=task
         )
-
+    
+        responses = await self.process_async_responses(async_responses)
+        if responses:
+            task.prompt_analysis = responses[0].prompt_analysis
+        await self.compute_rewards_and_penalties(event, task, responses, uids, start_time)    
+    
+    
     async def organic(self, query):
         prompt = query['content']
 
         task_name = "augment"
-        twitter_task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
+        task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
 
-        async_responses = await self.run_task_and_score(
-            task=twitter_task,
-            is_scoring_background=True
+        async_responses, uids, event, start_time = await self.run_task_and_score(
+            task=task
         )
-        async for response in self.return_tokens(async_responses):
-            yield response
+        responses = []
+        for resp in async_responses:
+            full_response = ""
+            synapse_object : TwitterScraperStreaming = None
+            prompt_analysis = None
+            async for chunk in resp:
+                if isinstance(chunk, str):
+                    # Parse the JSON chunk to extract tokens and prompt_analysis
+                    try:
+                        chunk_data = json.loads(chunk)
+                        tokens = chunk_data.get("tokens", "")
+                        full_response += tokens
+                        if "prompt_analysis" in chunk_data:
+                            prompt_analysis_json = chunk_data["prompt_analysis"]
+                            # Assuming prompt_analysis_json is a JSON string, parse it to a Python dict
+                            prompt_analysis = json.loads(prompt_analysis_json)
+                        yield tokens
+                    except json.JSONDecodeError:
+                        bt.logging.trace(f"Failed to decode JSON chunk: {chunk}")
+                elif isinstance(chunk, bt.Synapse):
+                    synapse_object = chunk
+            if synapse_object is not None:
+                synapse_object.completion = full_response
+                # Attach the prompt_analysis to the synapse_object if needed
+                if prompt_analysis is not None:
+                    synapse_object.set_prompt_analysis(prompt_analysis)
+                responses.append(synapse_object)
+
+
+        async def process_and_score_responses():
+            if responses:
+                task.prompt_analysis = responses[0].prompt_analysis
+            await self.compute_rewards_and_penalties(event, task, responses, uids, start_time)     
+            return responses  
+        
+        asyncio.create_task(process_and_score_responses())
 
 
