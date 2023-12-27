@@ -3,9 +3,10 @@ import math
 import torch
 import wandb
 import random
+import json
 import bittensor as bt
 from base_validator import BaseValidator
-from template.protocol import TwitterScraper, TwitterQueryResult
+from template.protocol import TwitterScraperStreaming, TwitterPromptAnalysisResult
 from reward import (
     RewardModelType,
 )
@@ -90,13 +91,10 @@ class TwitterScraperValidator(BaseValidator):
         self.moving_averaged_scores = torch.zeros((metagraph.n)).to(self.device)
         bt.logging.debug(str(self.moving_averaged_scores))
 
-        task_name = "augment"
         prompt = get_random_tweet_prompts(1)[0]
 
-        # query_result: TwitterQueryResult = await analyze_twitter_query(prompt)
-        query_result: TwitterQueryResult = await self.twillio_api.analyze_twitter_query(prompt=prompt)
+        task_name = "augment"
         twitter_task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
-        twitter_task.query_result = query_result
 
         scores, uid_scores_dict, self.wandb_data, event = await self.run_task_and_score(
             task=twitter_task,
@@ -106,22 +104,34 @@ class TwitterScraperValidator(BaseValidator):
         return scores, uid_scores_dict, self.wandb_data,
 
     async def process_async_responses(self, async_responses):
-            responses = []
-            for resp in async_responses:
-                full_response = ""
-                synapse_object = None
-                async for chunk in resp:
-                    if isinstance(chunk, str):
-                        bt.logging.trace(chunk)
-                        full_response += chunk
-                    elif isinstance(chunk, bt.Synapse):
-                        synapse_object = chunk
-                if synapse_object is not None:
-                    synapse_object.completion = full_response
-                    responses.append(synapse_object)
-            return responses
+        responses = []
+        for resp in async_responses:
+            full_response = ""
+            synapse_object : TwitterScraperStreaming = None
+            prompt_analysis = None
+            async for chunk in resp:
+                if isinstance(chunk, str):
+                    # Parse the JSON chunk to extract tokens and prompt_analysis
+                    try:
+                        chunk_data = json.loads(chunk)
+                        full_response += chunk_data.get("tokens", "")
+                        if "prompt_analysis" in chunk_data:
+                            prompt_analysis_json = chunk_data["prompt_analysis"]
+                            # Assuming prompt_analysis_json is a JSON string, parse it to a Python dict
+                            prompt_analysis = json.loads(prompt_analysis_json)
+                    except json.JSONDecodeError:
+                        bt.logging.trace(f"Failed to decode JSON chunk: {chunk}")
+                elif isinstance(chunk, bt.Synapse):
+                    synapse_object = chunk
+            if synapse_object is not None:
+                synapse_object.completion = full_response
+                # Attach the prompt_analysis to the synapse_object if needed
+                if prompt_analysis is not None:
+                    synapse_object.set_prompt_analysis(prompt_analysis)
+                responses.append(synapse_object)
+        return responses
 
-    async def run_task_and_score(self, task: Task, available_uids, metagraph):
+    async def run_task_and_score(self, task: TwitterTask, available_uids, metagraph):
         task_name = task.task_name
         prompt = task.compose_prompt()
 
@@ -132,14 +142,12 @@ class TwitterScraperValidator(BaseValidator):
         start_time = time.time()
         # Get the list of uids to query for this step.
 
-        av_uids = [uid for uid in available_uids]
-        uids = torch.tensor(random.sample(av_uids, len(av_uids)))
-        # uids = get_random_uids(self, k=k, exclude=exclude).to(self.device)
-        axons = [metagraph.axons[uid] for uid in uids] #temp todo
-        synapse = TwitterScraper(messages=prompt, model=self.model, seed=self.seed)
+        uids = torch.tensor([random.choice(available_uids)]) if available_uids else torch.tensor([])
+        axons = [metagraph.axons[uid] for uid in uids]
+        synapse = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
 
         # Make calls to the network with the prompt.
-        async_responses: List[bt.Synapse] = await self.dendrite(
+        async_responses: List[bt.Synapse] = await self.dendrite.forward(
             axons=axons,
             synapse=synapse,
             timeout=self.timeout,
@@ -147,7 +155,10 @@ class TwitterScraperValidator(BaseValidator):
             deserialize=False,
         )
 
-        responses = await self.process_async_responses(async_responses)
+        responses  = await self.process_async_responses(async_responses)
+       
+        if responses:
+            task.prompt_analysis = responses[0].prompt_analysis
 
         # Compute the rewards for the responses given the prompt.
         rewards: torch.FloatTensor = torch.zeros(len(responses), dtype=torch.float32).to(
@@ -175,25 +186,24 @@ class TwitterScraperValidator(BaseValidator):
                 event[penalty_fn_i.name + "_applied"] = applied_penalty_i.tolist()
             bt.logging.trace(str(penalty_fn_i.name), applied_penalty_i.tolist())
 
+        # # Find the best completion given the rewards vector.
+        # completions: List[str] = [comp.completion for comp in responses]
+        # completion_status_message: List[str] = [
+        #     str(comp.dendrite.status_message) for comp in responses
+        # ]
+        # completion_status_codes: List[str] = [
+        #     str(comp.dendrite.status_code) for comp in responses
+        # ]
 
-        # Find the best completion given the rewards vector.
-        completions: List[str] = [comp.completion for comp in responses]
-        completion_status_message: List[str] = [
-            str(comp.dendrite.status_message) for comp in responses
-        ]
-        completion_status_codes: List[str] = [
-            str(comp.dendrite.status_code) for comp in responses
-        ]
+        # best: str = ''
+        # if len(responses) != 0:
+        #     best: str = completions[rewards.argmax(dim=0)].strip()
 
-        best: str = ''
-        if len(responses) != 0:
-            best: str = completions[rewards.argmax(dim=0)].strip()
-
-        # Get completion times
-        completion_times: List[float] = [
-            comp.dendrite.process_time if comp.dendrite.process_time != None else 0
-            for comp in responses
-        ]
+        # # Get completion times
+        # completion_times: List[float] = [
+        #     comp.dendrite.process_time if comp.dendrite.process_time != None else 0
+        #     for comp in responses
+        # ]
 
         # Compute forward pass rewards, assumes followup_uids and answer_uids are mutually exclusive.
         # shape: [ metagraph.n ]
@@ -213,20 +223,19 @@ class TwitterScraperValidator(BaseValidator):
         # Log the step event.
         event.update(
             {
-                # "block": ttl_get_block(self),
                 "step_length": time.time() - start_time,
                 "prompt": prompt,
                 "uids": uids.tolist(),
-                "completions": completions,
-                "completion_times": completion_times,
-                "completion_status_messages": completion_status_message,
-                "completion_status_codes": completion_status_codes,
+                # "completions": completions,
+                # "completion_times": completion_times,
+                # "completion_status_messages": completion_status_message,
+                # "completion_status_codes": completion_status_codes,
                 "rewards": rewards.tolist(),
-                "best": best,
+                # "best": best,
             }
         )
         bt.logging.debug("Run Task event:", str(event))
-        bt.logging.info(f"Best Response: {event['best']}")
+        # bt.logging.info(f"Best Response: {event['best']}")
 
         scores = torch.zeros(len(metagraph.hotkeys))
         uid_scores_dict = {}
@@ -252,17 +261,32 @@ class TwitterScraperValidator(BaseValidator):
     async def return_tokens(self, uid, responses):
         async for resp in responses:
             if isinstance(resp, str):
-                bt.logging.trace(resp)
-                yield uid, resp
+                try:
+                    chunk_data = json.loads(resp)
+                    tokens = chunk_data.get("tokens", "")
+                    bt.logging.trace(tokens)
+                    yield uid, tokens
+                except json.JSONDecodeError:
+                    bt.logging.trace(f"Failed to decode JSON chunk: {resp}")
 
-    async def organic(self, metagraph, query):
+    async def organic(self, query, available_uids, metagraph):
         prompt = query['content']
-        uid = 1
+        uid_list = list(available_uids.keys())
+        uid = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
         # messages.append()
-        syn = TwitterScraper(messages=prompt, model=self.model, seed=self.seed)
+        syn = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
         bt.logging.info(f"Sending {syn.model} {self.query_type} request to uid: {uid}, timeout {self.timeout}: {syn.messages}")
         self.wandb_data["prompts"][uid] = prompt
         responses = await self.dendrite(metagraph.axons[uid], syn, deserialize=False, timeout=self.timeout, streaming=self.streaming)
         
         async for response in self.return_tokens(uid, responses):
             yield response
+
+        #todo it later
+        # task_name = "augment"
+        # twitter_task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
+        # scores, uid_scores_dict, self.wandb_data, event = await self.run_task_and_score(
+        #     task=twitter_task,
+        #     available_uids=available_uids,
+        #     metagraph=metagraph
+        # )

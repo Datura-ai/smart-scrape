@@ -2,7 +2,7 @@ import pydantic
 import bittensor as bt
 import typing
 from abc import ABC, abstractmethod
-from typing import List, Union, Callable, Awaitable, Dict, Optional
+from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -84,7 +84,26 @@ class StreamPrompting( bt.StreamingSynapse ):
             "completion": self.completion,
         }
 
-class TwitterScraper(bt.StreamingSynapse):
+class TwitterPromptAnalysisResult(BaseModel):
+    api_params: Dict[str, Any] = {}
+    keywords: List[str] = []
+    hashtags: List[str] = []
+    user_mentions: List[str] = []
+
+    def fill(self, response: Dict[str, Any]):
+        if 'api_params' in response:
+            self.api_params = response['api_params']
+        if 'keywords' in response:
+            self.keywords = response['keywords']
+        if 'hashtags' in response:
+            self.hashtags = response['hashtags']
+        if 'user_mentions' in response:
+            self.user_mentions = response['user_mentions']
+
+    def __str__(self):
+        return f"Query String: {self.api_params}, Keywords: {self.keywords}, Hashtags: {self.hashtags}, User Mentions: {self.user_mentions}"
+
+class TwitterScraperStreaming(bt.StreamingSynapse):
     messages: str = pydantic.Field(
             ...,
             title="Messages",
@@ -111,17 +130,20 @@ class TwitterScraper(bt.StreamingSynapse):
         description="Seed for text generation. This attribute is immutable and cannot be updated.",
     )
 
-    completion: str = pydantic.Field(
-        "",
-        title="Completion",
-        description="Completion status of the current StreamPrompting object. This attribute is mutable and can be updated.",
-    )
-
     model: str = pydantic.Field(
         "",
         title="model",
         description="The model that which to use when calling openai for your response.",
     )
+
+    prompt_analysis: TwitterPromptAnalysisResult = pydantic.Field(
+        default_factory=lambda: TwitterPromptAnalysisResult(),
+        title="Prompt Analysis",
+        description="Analysis of the Twitter query result."
+    )
+
+    def set_prompt_analysis(self, data: any):
+        self.prompt_analysis = data
 
     async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:
@@ -160,12 +182,5 @@ class TwitterScraper(bt.StreamingSynapse):
             "completion": self.completion,
         }
     
-class TwitterQueryResult:
-    def __init__(self, response):
-        self.api_params = response.get('api_params', '')
-        self.keywords = response.get('keywords', [])
-        self.hashtags = response.get('hashtags', [])
-        self.user_mentions = response.get('user_mentions', [])
-
-    def __str__(self):
-        return f"Query String: {self.api_params}, Keywords: {self.keywords}, Hashtags: {self.hashtags}, User Mentions: {self.user_mentions}"
+    class Config:
+        arbitrary_types_allowed = True

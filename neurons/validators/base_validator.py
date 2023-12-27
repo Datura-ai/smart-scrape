@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 
 class BaseValidator(ABC):
     def __init__(self, dendrite, config, subtensor, wallet, timeout):
-        self.dendrite = dendrite
+        self.dendrite: bt.dendrite = dendrite
         self.config = config
         self.subtensor = subtensor
         self.wallet = wallet
