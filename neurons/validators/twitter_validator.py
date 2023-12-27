@@ -120,6 +120,17 @@ class TwitterScraperValidator:
                     synapse_object.set_prompt_analysis(prompt_analysis)
                 responses.append(synapse_object)
         return responses
+    
+    async def return_tokens(self, chunks):
+        async for resp in chunks:
+            if isinstance(resp, str):
+                try:
+                    chunk_data = json.loads(resp)
+                    tokens = chunk_data.get("tokens", "")
+                    bt.logging.trace(tokens)
+                    yield tokens
+                except json.JSONDecodeError:
+                    bt.logging.trace(f"Failed to decode JSON chunk: {resp}")
 
     async def run_task_and_score(self, task: TwitterTask, is_scoring_background: bool = False):
         task_name = task.task_name
@@ -145,23 +156,20 @@ class TwitterScraperValidator:
             deserialize=False,
         )
 
-        if is_scoring_background:
-            # Process responses asynchronously and compute rewards and penalties in the background
-            async def process_and_score_responses():
-                responses = await self.process_async_responses(async_responses)
-                if responses:
-                    task.prompt_analysis = responses[0].prompt_analysis
-                await self.compute_rewards_and_penalties(event, task, responses, uids, start_time)
-
-            # Start the background task and return the async generator for streaming
-            asyncio.create_task(process_and_score_responses())
-            return self.process_async_responses(async_responses)
-        else:
-            # In non-streaming context, await all responses and then process
+        async def process_and_score_responses():
             responses = await self.process_async_responses(async_responses)
             if responses:
                 task.prompt_analysis = responses[0].prompt_analysis
-            await self.compute_rewards_and_penalties(event, task, responses, uids, start_time)
+            await self.compute_rewards_and_penalties(event, task, responses, uids, start_time)     
+            return responses  
+
+        if is_scoring_background:
+            # Start the background task and return the async generator for streaming
+            asyncio.create_task(process_and_score_responses())
+            return async_responses[0]
+        else:
+            # In non-streaming context, await all responses and then process
+            responses = await process_and_score_responses()
             return responses
     
     async def compute_rewards_and_penalties(self, event, prompt, task, responses, uids, start_time):
@@ -247,8 +255,7 @@ class TwitterScraperValidator:
             task=twitter_task,
             is_scoring_background=True
         )
-
-        async for response in async_responses:
+        async for response in self.return_tokens(async_responses):
             yield response
 
 
