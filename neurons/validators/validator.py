@@ -110,27 +110,15 @@ class neuron(AbstractNeuron):
 
     async def query_synapse(self):
         try:
-            available_uids = await self.get_available_uids()
-            uid_list = list(available_uids.keys())
-            # self.twitter_validator.set_metagraph(self.metagraph, self.update_scores)
-            await self.twitter_validator.query_and_score(uid_list, self.metagraph)
+            await self.twitter_validator.query_and_score()
         except Exception as e:
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(100)
     
     def run(self):
         bt.logging.info("run()")
-        # load_state(self)
-        # checkpoint(self)
         try:
             while True:
-                if not self.wallet.hotkey.ss58_address in self.metagraph.hotkeys:
-                    raise Exception(
-                        f"Validator is not registered - hotkey {self.wallet.hotkey.ss58_address} not in metagraph"
-                    )
-
-                # bt.logging.info(f"step({self.step}) block({ttl_get_block( self )})")
-
                 # Run multiple forwards.
                 async def run_forward():
                     coroutines = [
@@ -142,20 +130,6 @@ class neuron(AbstractNeuron):
 
                 self.loop.run_until_complete(run_forward())
 
-                # # Resync the network state
-                # if should_checkpoint(self):
-                #     checkpoint(self)
-
-                # # Set the weights on chain.
-                # if should_set_weights(self):
-                #     set_weights(self)
-                #     save_state(self)
-
-                # # Rollover wandb to a new run.
-                # if should_reinit_wandb(self):
-                #     reinit_wandb(self)
-
-                # self.prev_block = ttl_get_block(self)
                 self.step += 1
         except Exception as err:
             bt.logging.error("Error in training loop", str(err))

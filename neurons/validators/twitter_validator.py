@@ -224,8 +224,6 @@ class TwitterScraperValidator:
         bt.logging.debug("Run Task event:", str(event))
     
     async def query_and_score(self):
-
-
         prompt = get_random_tweet_prompts(1)[0]
 
         task_name = "augment"
