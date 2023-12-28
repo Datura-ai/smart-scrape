@@ -93,12 +93,7 @@ class TwitterScraperValidator:
     
     async def get_uids(self):
         available_uids = await self.neuron.get_available_uids()
-
-        print(" available_uids ----------" )
-        print(available_uids)
-        print(" available_uids ----------" )
         uid_list = list(available_uids.keys())
-        print(" available_uids Length ----------", len(uid_list))
         uids = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
         print(" Random uids ----------" )
         print(uids)

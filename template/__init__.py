@@ -57,7 +57,7 @@ valid_validators = ['5FFApaS75bv5pJHfAp2FVLBj9ZaXuFDjEypsaBNc1wCfe52v', '5EhvL1F
 WHITELISTED_KEYS = testnet_key + test_key + valid_validators
 BLACKLISTED_KEYS = ["5G1NjW9YhXLadMWajvTkfcJy6up3yH2q1YzMXDTi6ijanChe"]
 
-PROJECT_NAME = 'smart-scrape'
+PROJECT_NAME = 'smart-scrape-pr'
 
 # Import all submodules.
 from . import protocol

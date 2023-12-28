@@ -36,7 +36,7 @@ def init_wandb(self):
         run = wandb.init(
             name=run_name,
             project=template.PROJECT_NAME,
-            entity='cortex-t',
+            entity='smart-scrape',
             config=self.config,
             dir=self.config.full_path,
             reinit=True
