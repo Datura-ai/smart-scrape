@@ -59,17 +59,17 @@ class TwitterScraperValidator:
             raise Exception(message)
     
         self.reward_functions = [
-            OpenAssistantRewardModel(device=self.device)
-            if self.neuron.config.reward.rlhf_weight > 0
-            else MockRewardModel(RewardModelType.rlhf.value),  
+            # OpenAssistantRewardModel(device=self.device)
+            # if self.neuron.config.reward.rlhf_weight > 0
+            # else MockRewardModel(RewardModelType.rlhf.value),  
 
-            PromptRewardModel(device=self.device)
-            if self.neuron.config.reward.prompt_based_weight > 0
-            else MockRewardModel(RewardModelType.prompt.value),
+            # PromptRewardModel(device=self.device)
+            # if self.neuron.config.reward.prompt_based_weight > 0
+            # else MockRewardModel(RewardModelType.prompt.value),
 
-            DirectPreferenceRewardModel(device=self.device)
-            if self.neuron.config.reward.dpo_weight > 0
-            else MockRewardModel(RewardModelType.prompt.value),                
+            # DirectPreferenceRewardModel(device=self.device)
+            # if self.neuron.config.reward.dpo_weight > 0
+            # else MockRewardModel(RewardModelType.prompt.value),                
         ]
 
         self.penalty_functions = [
@@ -93,8 +93,17 @@ class TwitterScraperValidator:
     
     async def get_uids(self):
         available_uids = await self.neuron.get_available_uids()
+
+        print(" available_uids ----------" )
+        print(available_uids)
+        print(" available_uids ----------" )
         uid_list = list(available_uids.keys())
+        print(" available_uids Length ----------", len(uid_list))
         uids = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
+        print(" Random uids ----------" )
+        print(uids)
+        print(" Random uids ----------" )
+        uid_list = list(available_uids.keys())
         return uids
 
     async def process_async_responses(self, async_responses):
