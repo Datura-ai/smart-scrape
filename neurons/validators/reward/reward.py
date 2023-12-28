@@ -27,7 +27,7 @@ from dataclasses import dataclass, asdict, fields
 class BaseRewardEvent:
     reward: float = 1.0
     normalized_reward: float = None
-œ
+
     @staticmethod
     def parse_reward_events(reward_events):
         if reward_events == None or len(reward_events) == 0:
