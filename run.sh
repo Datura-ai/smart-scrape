@@ -79,7 +79,8 @@ read_version_value() {
 
 check_package_installed() {
     local package_name="$1"
-    os_name=$(uname -s)
+    os_name=$(uname -s)api
+    
     
     if [[ "$os_name" == "Linux" ]]; then
         # Use dpkg-query to check if the package is installed
