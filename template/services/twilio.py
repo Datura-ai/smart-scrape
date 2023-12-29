@@ -149,7 +149,7 @@ class TwitterAPIClient:
             return result, prompt_analysis
         except Exception as e:
             print(e)
-            return []
+            return [], None
         
     async def analyze_twitter_query(self, prompt):
         try:
