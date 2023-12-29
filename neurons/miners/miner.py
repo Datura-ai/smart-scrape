@@ -306,6 +306,7 @@ class StreamingTemplateMiner(StreamMiner):
         bt.logging.info(f"started processing for synapse {synapse}")
 
         async def _intro_text(model, prompt, send):
+            return
             content = f"""
             Generate introduction for that prompt: "{prompt}",
 

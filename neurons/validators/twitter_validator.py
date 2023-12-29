@@ -166,55 +166,63 @@ class TwitterScraperValidator:
         return async_responses, uids, event, start_time
     
     async def compute_rewards_and_penalties(self, event, prompt, task, responses, uids, start_time):
-        bt.logging.info("Computing rewards and penalties")
-        if responses:
-            task.prompt_analysis = responses[0].prompt_analysis
+        try:
+            bt.logging.info("Computing rewards and penalties")
+            if responses:
+                task.prompt_analysis = responses[0].prompt_analysis
 
-        rewards = torch.zeros(len(responses), dtype=torch.float32).to(self.neuron.config.neuron.device)
-        for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
-            reward_i_normalized, reward_event = reward_fn_i.apply(task.base_text, responses, task.task_name)
-            rewards += weight_i * reward_i_normalized.to(self.neuron.config.neuron.device)
-            if not self.neuron.config.neuron.disable_log_rewards:
-                event = {**event, **reward_event}
-            bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
-            bt.logging.info(f"Applied reward function: {reward_fn_i.name}")
+            rewards = torch.zeros(len(responses), dtype=torch.float32).to(self.neuron.config.neuron.device)
+            for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
+                reward_i_normalized, reward_event = reward_fn_i.apply(task.base_text, responses, task.task_name)
+                rewards += weight_i * reward_i_normalized.to(self.neuron.config.neuron.device)
+                if not self.neuron.config.neuron.disable_log_rewards:
+                    event = {**event, **reward_event}
+                bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
+                bt.logging.info(f"Applied reward function: {reward_fn_i.name}")
 
-        for penalty_fn_i in self.penalty_functions:
-            raw_penalty_i, adjusted_penalty_i, applied_penalty_i = penalty_fn_i.apply_penalties(responses, task)
-            rewards *= applied_penalty_i.to(self.neuron.config.neuron.device)
-            if not self.neuron.config.neuron.disable_log_rewards:
-                event[penalty_fn_i.name + "_raw"] = raw_penalty_i.tolist()
-                event[penalty_fn_i.name + "_adjusted"] = adjusted_penalty_i.tolist()
-                event[penalty_fn_i.name + "_applied"] = applied_penalty_i.tolist()
-            bt.logging.trace(str(penalty_fn_i.name), applied_penalty_i.tolist())
-            bt.logging.info(f"Applied penalty function: {penalty_fn_i.name}")
+            for penalty_fn_i in self.penalty_functions:
+                raw_penalty_i, adjusted_penalty_i, applied_penalty_i = penalty_fn_i.apply_penalties(responses, task)
+                rewards *= applied_penalty_i.to(self.neuron.config.neuron.device)
+                if not self.neuron.config.neuron.disable_log_rewards:
+                    event[penalty_fn_i.name + "_raw"] = raw_penalty_i.tolist()
+                    event[penalty_fn_i.name + "_adjusted"] = adjusted_penalty_i.tolist()
+                    event[penalty_fn_i.name + "_applied"] = applied_penalty_i.tolist()
+                bt.logging.trace(str(penalty_fn_i.name), applied_penalty_i.tolist())
+                bt.logging.info(f"Applied penalty function: {penalty_fn_i.name}")
 
-        scattered_rewards = self.update_moving_averaged_scores(uids, rewards)
-        self.log_event(task, event, start_time, uids, rewards, prompt=task.compose_prompt())
+            scattered_rewards = self.update_moving_averaged_scores(uids, rewards)
+            self.log_event(task, event, start_time, uids, rewards, prompt=task.compose_prompt())
 
-        scores = torch.zeros(len(self.neuron.metagraph.hotkeys))
-        uid_scores_dict = {}
-        for uid, reward, response in zip(uids, rewards.tolist(), responses):
-            uid_scores_dict[uid] = reward
-            scores[uid] = reward
-            self.wandb_data["scores"][uid] = reward
-            self.wandb_data["responses"][uid] = response.completion
-            self.wandb_data["prompts"][uid] = prompt
-            bt.logging.info(f"Updated scores and wandb_data for uid: {uid}")
-        
-        await self.neuron.update_scores(scores, self.wandb_data)
+            scores = torch.zeros(len(self.neuron.metagraph.hotkeys))
+            uid_scores_dict = {}
+            for uid, reward, response in zip(uids, rewards.tolist(), responses):
+                uid_scores_dict[uid] = reward
+                scores[uid] = reward
+                self.wandb_data["scores"][uid] = reward
+                self.wandb_data["responses"][uid] = response.completion
+                self.wandb_data["prompts"][uid] = prompt
+                bt.logging.info(f"Updated scores and wandb_data for uid: {uid}")
+            
+            await self.neuron.update_scores(scores, self.wandb_data)
 
-        return rewards, scattered_rewards
+            return rewards, scattered_rewards
+        except Exception as e:
+                print(f"Error in process_async_responses: {e}")
+                bt.logging.error(f"Error in process_async_responses: {e}")
 
     def update_moving_averaged_scores(self, uids, rewards):
-        scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.neuron.config.neuron.device)
-        bt.logging.info(f"Scattered reward: {torch.mean(scattered_rewards)}")
+        try:
+            scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.neuron.config.neuron.device)
+            bt.logging.info(f"Scattered reward: {torch.mean(scattered_rewards)}")
 
-        alpha = self.neuron.config.neuron.moving_average_alpha
-        self.moving_averaged_scores = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(self.neuron.config.neuron.device)
-        bt.logging.info(f"Moving averaged scores: {torch.mean(self.moving_averaged_scores)}")
+            alpha = self.neuron.config.neuron.moving_average_alpha
+            self.moving_averaged_scores = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(self.neuron.config.neuron.device)
+            bt.logging.info(f"Moving averaged scores: {torch.mean(self.moving_averaged_scores)}")
 
-        return scattered_rewards
+            return scattered_rewards
+        except Exception as e:
+                print(f"Error in process_async_responses: {e}")
+                bt.logging.error(f"Error in process_async_responses: {e}")
 
     def log_event(self, task, event, start_time, uids, rewards, prompt):
         event.update({
@@ -227,24 +235,28 @@ class TwitterScraperValidator:
         bt.logging.debug("Run Task event:", str(event))
     
     async def query_and_score(self):
-        prompt = get_random_tweet_prompts(1)[0]
+        try:
+            prompt = get_random_tweet_prompts(1)[0]
 
-        task_name = "augment"
-        task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
+            task_name = "augment"
+            task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
 
-        async_responses, uids, event, start_time = await self.run_task_and_score(
-            task=task
-        )
-    
-        responses = await self.process_async_responses(async_responses)
-        if responses:
-            task.prompt_analysis = responses[0].prompt_analysis
-        await self.compute_rewards_and_penalties(event=event, 
-                                                 prompt=prompt,
-                                                 task=task, 
-                                                 responses=responses, 
-                                                 uids=uids, 
-                                                 start_time=start_time)    
+            async_responses, uids, event, start_time = await self.run_task_and_score(
+                task=task
+            )
+        
+            responses = await self.process_async_responses(async_responses)
+            if responses:
+                task.prompt_analysis = responses[0].prompt_analysis
+            await self.compute_rewards_and_penalties(event=event, 
+                                                    prompt=prompt,
+                                                    task=task, 
+                                                    responses=responses, 
+                                                    uids=uids, 
+                                                    start_time=start_time)    
+        except Exception as e:
+            print(f"Error in process_async_responses: {e}")
+            bt.logging.error(f"Error in process_async_responses: {e}")
     
     
     async def organic(self, query):

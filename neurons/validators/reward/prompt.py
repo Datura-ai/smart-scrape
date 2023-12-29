@@ -46,60 +46,64 @@ class PromptRewardModel(BaseRewardModel):
         self.tokenizer.padding_side = "left"
 
         self.model = AutoModelForCausalLM.from_pretrained(
-            PromptRewardModel.reward_model_name, torch_dtype=torch.float16
+            PromptRewardModel.reward_model_name, torch_dtype=torch.float32
         ).to(self.device)
 
     def reward(self, prompt: str, completion: str, name: str) -> BaseRewardEvent:
-        reward_event = BaseRewardEvent()
+        try:
+            reward_event = BaseRewardEvent()
 
-        with torch.no_grad():
-            # Choose correct scoring prompt for request type.
-            if name == "augment":
-                scoring_prompt = AugmentPrompt()
-            elif name == "followup":
-                scoring_prompt = FollowupPrompt()
-            elif name == "answer":
-                scoring_prompt = AnswerPrompt()
-            else:
-                reward_event.reward = 0
+            with torch.no_grad():
+                # Choose correct scoring prompt for request type.
+                if name == "augment":
+                    scoring_prompt = AugmentPrompt()
+                elif name == "followup":
+                    scoring_prompt = FollowupPrompt()
+                elif name == "answer":
+                    scoring_prompt = AnswerPrompt()
+                else:
+                    reward_event.reward = 0
+                    return reward_event
+
+                # Format scoring prompt for this completion.
+                scoring_prompt_text = scoring_prompt.text(prompt, completion)
+
+                # Tokenize formatted scoring prompt.
+                encodings_dict = self.tokenizer(
+                    scoring_prompt_text,
+                    truncation=False,
+                    max_length=2048,
+                    padding="max_length",
+                    return_tensors="pt",
+                )
+                input_ids = encodings_dict["input_ids"].to(self.device)
+
+                # Prompt local reward model.
+                start_time = time.time()
+                generated_tokens = self.model.generate(
+                    input_ids, max_new_tokens=2, max_time=1
+                )
+                duration = time.time() - start_time
+                generated_text = self.tokenizer.batch_decode(
+                    generated_tokens, skip_special_tokens=True
+                )
+
+                # Extract score from generated text.
+                score_text = generated_text[0][len(scoring_prompt_text) :]
+                score = scoring_prompt.extract_score(score_text)
+                bt.logging.trace(
+                    f"PromptRewardModel | {name} score: {score} | {repr(score_text)} | "
+                    f"{duration:.2f}s | {repr(completion[:70])}"
+                )
+
+                # Scale 0-10 score to 0-1 range.
+                score /= 10.0
+
+                reward_event.reward = score
                 return reward_event
-
-            # Format scoring prompt for this completion.
-            scoring_prompt_text = scoring_prompt.text(prompt, completion)
-
-            # Tokenize formatted scoring prompt.
-            encodings_dict = self.tokenizer(
-                scoring_prompt_text,
-                truncation=False,
-                max_length=2048,
-                padding="max_length",
-                return_tensors="pt",
-            )
-            input_ids = encodings_dict["input_ids"].to(self.device)
-
-            # Prompt local reward model.
-            start_time = time.time()
-            generated_tokens = self.model.generate(
-                input_ids, max_new_tokens=2, max_time=1
-            )
-            duration = time.time() - start_time
-            generated_text = self.tokenizer.batch_decode(
-                generated_tokens, skip_special_tokens=True
-            )
-
-            # Extract score from generated text.
-            score_text = generated_text[0][len(scoring_prompt_text) :]
-            score = scoring_prompt.extract_score(score_text)
-            bt.logging.trace(
-                f"PromptRewardModel | {name} score: {score} | {repr(score_text)} | "
-                f"{duration:.2f}s | {repr(completion[:70])}"
-            )
-
-            # Scale 0-10 score to 0-1 range.
-            score /= 10.0
-
-            reward_event.reward = score
-            return reward_event
+        except Exception as e:
+            print(f"Error in process_async_responses: {e}")
+            bt.logging.error(f"Error in process_async_responses: {e}")
 
     def get_rewards(
         self, prompt: str, completions: List[str], name: str
