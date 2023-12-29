@@ -37,7 +37,7 @@ class TwitterScraperValidator:
 
         # Init device.
         bt.logging.debug("loading", "device")
-        bt.logging.debug("DEVICE", str(self.neuron.config.neuron.device))
+        bt.logging.debug("self.neuron.config.neuron.device = ", str(self.neuron.config.neuron.device))
 
         self.reward_weights = torch.tensor(
             [
@@ -94,11 +94,9 @@ class TwitterScraperValidator:
         available_uids = await self.neuron.get_available_uids()
         uid_list = list(available_uids.keys())
         uids = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
-        print(" Random uids ----------" )
-        print(uids)
-        print(" Random uids ----------" )
+        bt.logging.info(" Random uids ---------- ", uids)
         uid_list = list(available_uids.keys())
-        return uids
+        return uids.to(self.neuron.config.neuron.device)
 
     async def process_async_responses(self, async_responses):
         responses = []
@@ -207,11 +205,14 @@ class TwitterScraperValidator:
 
             return rewards, scattered_rewards
         except Exception as e:
-                print(f"Error in process_async_responses: {e}")
-                bt.logging.error(f"Error in process_async_responses: {e}")
+                bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
 
     def update_moving_averaged_scores(self, uids, rewards):
         try:
+            # uids = uids.to(self.neuron.config.neuron.device)
+            # rewards = rewards.to(self.neuron.config.neuron.device)
+            # scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards)
+
             scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.neuron.config.neuron.device)
             bt.logging.info(f"Scattered reward: {torch.mean(scattered_rewards)}")
 
@@ -221,8 +222,7 @@ class TwitterScraperValidator:
 
             return scattered_rewards
         except Exception as e:
-                print(f"Error in process_async_responses: {e}")
-                bt.logging.error(f"Error in process_async_responses: {e}")
+                bt.logging.error(f"Error in update_moving_averaged_scores: {e}")
 
     def log_event(self, task, event, start_time, uids, rewards, prompt):
         event.update({
@@ -255,8 +255,7 @@ class TwitterScraperValidator:
                                                     uids=uids, 
                                                     start_time=start_time)    
         except Exception as e:
-            print(f"Error in process_async_responses: {e}")
-            bt.logging.error(f"Error in process_async_responses: {e}")
+            bt.logging.error(f"Error in query_and_score: {e}")
     
     
     async def organic(self, query):
