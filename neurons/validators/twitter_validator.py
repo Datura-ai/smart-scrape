@@ -37,8 +37,7 @@ class TwitterScraperValidator:
 
         # Init device.
         bt.logging.debug("loading", "device")
-        self.device = torch.device(self.neuron.config.neuron.device)
-        bt.logging.debug(str(self.device))
+        bt.logging.debug("DEVICE", str(self.neuron.config.neuron.device))
 
         self.reward_weights = torch.tensor(
             [
@@ -47,7 +46,7 @@ class TwitterScraperValidator:
                 self.neuron.config.reward.dpo_weight,
             ],
             dtype=torch.float32,
-        ).to(self.device)
+        ).to(self.neuron.config.neuron.device)
 
 
         if self.reward_weights.sum() != 1:
@@ -59,15 +58,15 @@ class TwitterScraperValidator:
             raise Exception(message)
     
         self.reward_functions = [
-            OpenAssistantRewardModel(device=self.device)
+            OpenAssistantRewardModel(device=self.neuron.config.neuron.device)
             if self.neuron.config.reward.rlhf_weight > 0
             else MockRewardModel(RewardModelType.rlhf.value),  
 
-            PromptRewardModel(device=self.device)
+            PromptRewardModel(device=self.neuron.config.neuron.device)
             if self.neuron.config.reward.prompt_based_weight > 0
             else MockRewardModel(RewardModelType.prompt.value),
 
-            # DirectPreferenceRewardModel(device=self.device)
+            # DirectPreferenceRewardModel(device=self.neuron.config.neuron.device)
             # if self.neuron.config.reward.dpo_weight > 0
             # else MockRewardModel(RewardModelType.prompt.value),                
         ]
@@ -88,7 +87,7 @@ class TwitterScraperValidator:
         self.twillio_api = TwitterAPIClient()
         # Init Weights.
         bt.logging.debug("loading", "moving_averaged_scores")
-        self.moving_averaged_scores = torch.zeros((self.neuron.metagraph.n)).to(self.device)
+        self.moving_averaged_scores = torch.zeros((self.neuron.metagraph.n)).to(self.neuron.config.neuron.device)
         bt.logging.debug(str(self.moving_averaged_scores))
     
     async def get_uids(self):
@@ -171,10 +170,10 @@ class TwitterScraperValidator:
         if responses:
             task.prompt_analysis = responses[0].prompt_analysis
 
-        rewards = torch.zeros(len(responses), dtype=torch.float32).to(self.device)
+        rewards = torch.zeros(len(responses), dtype=torch.float32).to(self.neuron.config.neuron.device)
         for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
             reward_i_normalized, reward_event = reward_fn_i.apply(task.base_text, responses, task.task_name)
-            rewards += weight_i * reward_i_normalized.to(self.device)
+            rewards += weight_i * reward_i_normalized.to(self.neuron.config.neuron.device)
             if not self.neuron.config.neuron.disable_log_rewards:
                 event = {**event, **reward_event}
             bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
@@ -182,7 +181,7 @@ class TwitterScraperValidator:
 
         for penalty_fn_i in self.penalty_functions:
             raw_penalty_i, adjusted_penalty_i, applied_penalty_i = penalty_fn_i.apply_penalties(responses, task)
-            rewards *= applied_penalty_i.to(self.device)
+            rewards *= applied_penalty_i.to(self.neuron.config.neuron.device)
             if not self.neuron.config.neuron.disable_log_rewards:
                 event[penalty_fn_i.name + "_raw"] = raw_penalty_i.tolist()
                 event[penalty_fn_i.name + "_adjusted"] = adjusted_penalty_i.tolist()
@@ -208,11 +207,11 @@ class TwitterScraperValidator:
         return rewards, scattered_rewards
 
     def update_moving_averaged_scores(self, uids, rewards):
-        scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.device)
+        scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.neuron.config.neuron.device)
         bt.logging.info(f"Scattered reward: {torch.mean(scattered_rewards)}")
 
         alpha = self.neuron.config.neuron.moving_average_alpha
-        self.moving_averaged_scores = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(self.device)
+        self.moving_averaged_scores = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(self.neuron.config.neuron.device)
         bt.logging.info(f"Moving averaged scores: {torch.mean(self.moving_averaged_scores)}")
 
         return scattered_rewards
