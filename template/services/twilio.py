@@ -6,7 +6,7 @@ from datetime import datetime
 from template.utils import call_openai, tweet_prompts
 from template.protocol import TwitterPromptAnalysisResult
 
-BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TKEN')
+BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TOKEN')
 
 print("BEARER_TOKEN ===========", BEARER_TOKEN)
 
@@ -137,6 +137,7 @@ class TwitterAPIClient:
     
     async def analyse_prompt_and_fetch_tweets(self, prompt):
         try:
+            print("BEARER_TOKEN ===========", BEARER_TOKEN)
             query = await self.generat_query_params_from_prompt(prompt)
             prompt_analysis = TwitterPromptAnalysisResult()
             prompt_analysis.fill(query)
