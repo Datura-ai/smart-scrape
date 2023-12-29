@@ -1,5 +1,5 @@
 bittensor
-torch
+torch==2.1.0
 wandb
 transformers
 openai>=1.3.2
@@ -12,3 +12,4 @@ scikit-learn
 datasets
 apify-client==1.6.1
 elasticsearch==8.11.1
+sentencepiece
