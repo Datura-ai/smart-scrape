@@ -76,14 +76,6 @@ class TwitterScraperValidator:
             AccuracyPenaltyModel(max_penalty=1),
         ]
 
-        self.wandb_data = {
-            "modality": "twitter_scrapper",
-            "prompts": {},
-            "responses": {},
-            "scores": {},
-            "timestamps": {},
-        }
-
         self.twillio_api = TwitterAPIClient()
         # Init Weights.
         bt.logging.debug("loading", "moving_averaged_scores")
@@ -193,19 +185,28 @@ class TwitterScraperValidator:
 
             scores = torch.zeros(len(self.neuron.metagraph.hotkeys))
             uid_scores_dict = {}
-            for uid, reward, response in zip(uids, rewards.tolist(), responses):
+            wandb_data = {
+                "modality": "twitter_scrapper",
+                "prompts": {},
+                "responses": {},
+                "scores": {},
+                "timestamps": {},
+            }
+            for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
+                uid = uid_tensor.item()  # Convert tensor to int
                 uid_scores_dict[uid] = reward
-                scores[uid] = reward
-                self.wandb_data["scores"][uid] = reward
-                self.wandb_data["responses"][uid] = response.completion
-                self.wandb_data["prompts"][uid] = prompt
-                bt.logging.info(f"Updated scores and wandb_data for uid: {uid}")
-            
-            await self.neuron.update_scores(scores, self.wandb_data)
+                scores[uid] = reward  # Now 'uid' is an int, which is a valid key type
+                wandb_data["scores"][uid] = reward
+                wandb_data["responses"][uid] = response.completion
+                wandb_data["prompts"][uid] = prompt
+            bt.logging.info(f"Updated scores and wandb_data for uid: {uid}", wandb_data)
+                    
+            await self.neuron.update_scores(scores, wandb_data)
 
             return rewards, scattered_rewards
         except Exception as e:
-                bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
+            bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
+            raise
 
     def update_moving_averaged_scores(self, uids, rewards):
         try:
@@ -222,7 +223,8 @@ class TwitterScraperValidator:
 
             return scattered_rewards
         except Exception as e:
-                bt.logging.error(f"Error in update_moving_averaged_scores: {e}")
+            bt.logging.error(f"Error in update_moving_averaged_scores: {e}")
+            raise
 
     def log_event(self, task, event, start_time, uids, rewards, prompt):
         event.update({
@@ -256,6 +258,7 @@ class TwitterScraperValidator:
                                                     start_time=start_time)    
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")
+            raise
     
     
     async def organic(self, query):

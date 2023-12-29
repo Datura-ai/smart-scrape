@@ -306,7 +306,6 @@ class StreamingTemplateMiner(StreamMiner):
         bt.logging.info(f"started processing for synapse {synapse}")
 
         async def _intro_text(model, prompt, send):
-            return
             content = f"""
             Generate introduction for that prompt: "{prompt}",
 
@@ -387,7 +386,7 @@ class StreamingTemplateMiner(StreamMiner):
                     Twitter Data: "{filtered_tweets}"
 
                     Tasks:
-                    1. Create a Tailored Response: Analyze the user's prompt and the provided Twitter data to generate a meaningful and relevant response.
+                    1. Create a Response: Analyze the user's prompt and the provided Twitter data to generate a meaningful and relevant response.
                     2. Share Relevant Twitter Links: Include links to several pertinent tweets. These links will enable users to view tweet details directly.
                     3. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
 

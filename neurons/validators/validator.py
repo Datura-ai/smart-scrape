@@ -93,20 +93,25 @@ class neuron(AbstractNeuron):
         return available_uids
 
     async def update_scores(self, scores, wandb_data):
-        if self.config.wandb_on:
-            wandb.log(wandb_data)
-            bt.logging.success("wandb_log successful")
-        total_scores = torch.zeros(len(self.metagraph.hotkeys))
-        total_scores += scores
-            
-        iterations_per_set_weights = 10
-        iterations_until_update = iterations_per_set_weights - ((self.steps_passed + 1) % iterations_per_set_weights)
-        bt.logging.info(f"Updating weights in {iterations_until_update} iterations.")
+        try:
+            if self.config.wandb_on:
+                wandb.log(wandb_data)
+                bt.logging.success("wandb_log successful")
+            total_scores = torch.zeros(len(self.metagraph.hotkeys))
+            total_scores += scores
+                
+            iterations_per_set_weights = 10
+            iterations_until_update = iterations_per_set_weights - ((self.steps_passed + 1) % iterations_per_set_weights)
+            bt.logging.info(f"Updating weights in {iterations_until_update} iterations.")
 
-        if iterations_until_update == 1:
-            update_weights(self, total_scores, self.steps_passed)
+            if iterations_until_update == 1:
+                update_weights(self, total_scores, self.steps_passed)
 
-        self.steps_passed += 1
+            self.steps_passed += 1
+        except Exception as e:
+            bt.logging.error(f"Error in update_scores: {e}")
+            raise
+
 
     async def query_synapse(self):
         try:

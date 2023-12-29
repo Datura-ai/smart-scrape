@@ -24,62 +24,75 @@ import bittensor as bt
 import template
    
 def init_wandb(self):
-    if self.config.wandb_on:
-        run_name = f'validator-{self.my_uuid}-{template.__version__}'
-        self.config.uid = self.my_uuid
-        self.config.hotkey = self.wallet.hotkey.ss58_address
-        self.config.run_name = run_name
-        self.config.version = template.__version__
-        self.config.type = 'validator'
+    try:
+        if self.config.wandb_on:
+            run_name = f'validator-{self.my_uuid}-{template.__version__}'
+            self.config.uid = self.my_uuid
+            self.config.hotkey = self.wallet.hotkey.ss58_address
+            self.config.run_name = run_name
+            self.config.version = template.__version__
+            self.config.type = 'validator'
 
-        # Initialize the wandb run for the single project
-        run = wandb.init(
-            name=run_name,
-            project=template.PROJECT_NAME,
-            entity=template.ENTITY,
-            config=self.config,
-            dir=self.config.full_path,
-            reinit=True
-        )
+            # Initialize the wandb run for the single project
+            run = wandb.init(
+                name=run_name,
+                project=template.PROJECT_NAME,
+                entity=template.ENTITY,
+                config=self.config,
+                dir=self.config.full_path,
+                reinit=True
+            )
 
-        # Sign the run to ensure it's from the correct hotkey
-        signature = self.wallet.hotkey.sign(run.id.encode()).hex()
-        self.config.signature = signature 
-        wandb.config.update(self.config, allow_val_change=True)
+            # Sign the run to ensure it's from the correct hotkey
+            signature = self.wallet.hotkey.sign(run.id.encode()).hex()
+            self.config.signature = signature 
+            wandb.config.update(self.config, allow_val_change=True)
 
-        bt.logging.success(f"Started wandb run for project '{template.PROJECT_NAME}'")
+            bt.logging.success(f"Started wandb run for project '{template.PROJECT_NAME}'")
+    except Exception as e:
+        bt.logging.error(f"Error in init_wandb: {e}")
+        raise
+
 
 def set_weights(self, scores):
-    # alpha of .3 means that each new score replaces 30% of the weight of the previous weights
-    alpha = .3
-    if self.moving_average_scores is None:
-        self.moving_average_scores = scores.clone()
+    try:
+        # alpha of .3 means that each new score replaces 30% of the weight of the previous weights
+        alpha = .3
+        if self.moving_average_scores is None:
+            self.moving_average_scores = scores.clone()
 
-    # Update the moving average scores
-    self.moving_average_scores = alpha * scores + (1 - alpha) * self.moving_average_scores
-    bt.logging.info(f"Updated moving average of weights: {self.moving_average_scores}")
-    self.subtensor.set_weights(
-        netuid=self.config.netuid, 
-        wallet=self.wallet, 
-        uids=self.metagraph.uids, 
-        weights=self.moving_average_scores, 
-        wait_for_inclusion=False)
-    bt.logging.success("Successfully set weights.")
+        # Update the moving average scores
+        self.moving_average_scores = alpha * scores + (1 - alpha) * self.moving_average_scores
+        bt.logging.info(f"Updated moving average of weights: {self.moving_average_scores}")
+        self.subtensor.set_weights(
+            netuid=self.config.netuid, 
+            wallet=self.wallet, 
+            uids=self.metagraph.uids, 
+            weights=self.moving_average_scores, 
+            wait_for_inclusion=False)
+        bt.logging.success("Successfully set weights.")
+    except Exception as e:
+        bt.logging.error(f"Error in set_weights: {e}")
+        raise
 
 def update_weights(self, total_scores, steps_passed):
-    """ Update weights based on total scores, using min-max normalization for display"""
-    avg_scores = total_scores / (steps_passed + 1)
+    try:
+        """ Update weights based on total scores, using min-max normalization for display"""
+        avg_scores = total_scores / (steps_passed + 1)
 
-    # Normalize avg_scores to a range of 0 to 1
-    min_score = torch.min(avg_scores)
-    max_score = torch.max(avg_scores)
-    
-    if max_score - min_score != 0:
-        normalized_scores = (avg_scores - min_score) / (max_score - min_score)
-    else:
-        normalized_scores = torch.zeros_like(avg_scores)
+        # Normalize avg_scores to a range of 0 to 1
+        min_score = torch.min(avg_scores)
+        max_score = torch.max(avg_scores)
+        
+        if max_score - min_score != 0:
+            normalized_scores = (avg_scores - min_score) / (max_score - min_score)
+        else:
+            normalized_scores = torch.zeros_like(avg_scores)
 
-    bt.logging.info(f"normalized_scores = {normalized_scores}")
-    # We can't set weights with normalized scores because that disrupts the weighting assigned to each validator class
-    # Weights get normalized anyways in weight_utils
-    set_weights(self, avg_scores)
+        bt.logging.info(f"normalized_scores = {normalized_scores}")
+        # We can't set weights with normalized scores because that disrupts the weighting assigned to each validator class
+        # Weights get normalized anyways in weight_utils
+        set_weights(self, avg_scores)
+    except Exception as e:
+        bt.logging.error(f"Error in update_weights: {e}")
+        raise
