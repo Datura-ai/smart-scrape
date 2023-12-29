@@ -499,7 +499,7 @@ def get_valid_hotkeys(config):
     while True:
         metagraph = subtensor.metagraph(18)
         try:
-            runs = api.runs(f"smart-scrape/{template.PROJECT_NAME}")
+            runs = api.runs(f"{template.ENTITY}/{template.PROJECT_NAME}")
             latest_version = get_version()
             for run in runs:
                 if run.state == "running":

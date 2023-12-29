@@ -33,5 +33,5 @@ class DefaultRewardFrameworkConfig:
     Note: All the weights should add up to 1.0.
     """
     dpo_model_weight: float = 0
-    rlhf_model_weight: float = 1
-    prompt_model_weight: float = 0
+    rlhf_model_weight: float = 0
+    prompt_model_weight: float = 1
