@@ -67,8 +67,8 @@ Prior to running a miner or validator, you must [create a wallet](https://github
 ```bash
 # To run the miner
 python -m neurons/miners/miner.py 
-    --netuid 41  
-    --subtensor.network test 
+    --netuid 22
+    --subtensor.network finney
     --wallet.name <your miner wallet> # Must be created using the bittensor-cli
     --wallet.hotkey <your validator hotkey> # Must be created using the bittensor-cli
     --logging.debug # Run in debug mode, alternatively --logging.trace for trace mode
@@ -76,8 +76,8 @@ python -m neurons/miners/miner.py
 
 # To run the validator
 python -m neurons/validators/validator.py
-    --netuid 41
-    --subtensor.network test 
+    --netuid 22
+    --subtensor.network finney
     --wallet.name <your validator wallet>  # Must be created using the bittensor-cli
     --wallet.hotkey <your validator hotkey> # Must be created using the bittensor-cli
     --logging.debug # Run in debug mode, alternatively --logging.trace for trace mode
