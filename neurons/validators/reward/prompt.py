@@ -46,7 +46,7 @@ class PromptRewardModel(BaseRewardModel):
         self.tokenizer.padding_side = "left"
 
         self.model = AutoModelForCausalLM.from_pretrained(
-            PromptRewardModel.reward_model_name, torch_dtype=torch.float32
+            PromptRewardModel.reward_model_name, torch_dtype=torch.float16
         ).to(self.device)
 
     def reward(self, prompt: str, completion: str, name: str) -> BaseRewardEvent:
@@ -102,8 +102,7 @@ class PromptRewardModel(BaseRewardModel):
                 reward_event.reward = score
                 return reward_event
         except Exception as e:
-            print(f"Error in process_async_responses: {e}")
-            bt.logging.error(f"Error in process_async_responses: {e}")
+            bt.logging.error(f"Error in  PromptRewardModel reward method: {e}")
 
     def get_rewards(
         self, prompt: str, completions: List[str], name: str

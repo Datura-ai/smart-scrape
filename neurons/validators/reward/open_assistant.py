@@ -42,15 +42,17 @@ class OpenAssistantRewardModel(BaseRewardModel):
         ).to(self.device)
 
     def reward_single(self, prompt: str, completion: str, name: str) -> BaseRewardEvent:
-        reward_event = BaseRewardEvent()
+        try:
+            reward_event = BaseRewardEvent()
 
-        with torch.no_grad():
-            inputs = self.tokenizer(prompt, completion, return_tensors="pt").to(
-                self.device
-            )
-            reward_event.reward = float(self.model(**inputs).logits[0].cpu().detach())
-            return reward_event
-
+            with torch.no_grad():
+                inputs = self.tokenizer(prompt, completion, return_tensors="pt").to(
+                    self.device
+                )
+                reward_event.reward = float(self.model(**inputs).logits[0].cpu().detach())
+                return reward_event
+        except Exception as e:
+            bt.logging.error(f"Error in  OpenAssistantRewardModel reward_single method: {e}")
     def get_rewards(
         self, prompt: str, completions: List[str], name: str
     ) -> List[BaseRewardEvent]:

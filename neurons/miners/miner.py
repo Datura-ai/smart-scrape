@@ -365,7 +365,6 @@ class StreamingTemplateMiner(StreamMiner):
                     }
                 )
                 bt.logging.info(f"Streamed tokens: {joined_buffer}")
-                print(f"response is {response}")
             return buffer
     
         async def _fetch_tweets(prompt):
@@ -377,7 +376,6 @@ class StreamingTemplateMiner(StreamMiner):
             else:
                 tw_client  = TwitterAPIClient()
                 filtered_tweets, prompt_analysis = await tw_client.analyse_prompt_and_fetch_tweets(prompt)
-                print(filtered_tweets)
             return filtered_tweets, prompt_analysis
     
         async def _finalize_data(prompt, model, filtered_tweets):
@@ -429,9 +427,9 @@ class StreamingTemplateMiner(StreamMiner):
                     _fetch_tweets(prompt)
                 )
                 
-                print("Prompt analysis ===============================================")
-                print(prompt_analysis)
-                print("Prompt analysis ===============================================")
+                bt.logging.info("Prompt analysis ===============================================")
+                bt.logging.info(prompt_analysis)
+                bt.logging.info("Prompt analysis ===============================================")
                 if prompt_analysis:
                     synapse.set_prompt_analysis(prompt_analysis)
 
@@ -486,7 +484,7 @@ class StreamingTemplateMiner(StreamMiner):
                     )
                     bt.logging.info(f"Streamed tokens: {joined_buffer}")
                     bt.logging.info(f"Prompt Analysis: {prompt_analysis_json}")
-                    print(f"response is {response}")
+                    bt.logging.info(f"response is {response}")
             except Exception as e:
                 bt.logging.error(f"error in twitter scraper {e}\n{traceback.format_exc()}")
 

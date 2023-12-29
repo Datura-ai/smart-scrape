@@ -5,10 +5,9 @@ import asyncio
 from datetime import datetime
 from template.utils import call_openai, tweet_prompts
 from template.protocol import TwitterPromptAnalysisResult
+import bittensor as bt
 
 BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TOKEN')
-
-print("BEARER_TOKEN ===========", BEARER_TOKEN)
 
 twitter_api_query_example = {
     'query': '(from:twitterdev -is:retweet) OR #twitterdev',
@@ -129,29 +128,28 @@ class TwitterAPIClient:
             }}"
         """
         messages = [{'role': 'user', 'content': content }]
-        print(content)
+        bt.logging.info(content)
         res = await call_openai(messages, 0.2, "gpt-4-1106-preview", None,  {"type": "json_object"})
         response_dict = json.loads(res)
-        print(response_dict)
+        bt.logging.info("generat_query_params_from_prompt Content: ", response_dict)
         return response_dict
     
     async def analyse_prompt_and_fetch_tweets(self, prompt):
         try:
-            print("BEARER_TOKEN ===========", BEARER_TOKEN)
             query = await self.generat_query_params_from_prompt(prompt)
             prompt_analysis = TwitterPromptAnalysisResult()
             prompt_analysis.fill(query)
-            print(" ============================================= ")
-            print(prompt_analysis.api_params['query'])
+            bt.logging.info(" ============================================= ")
+            bt.logging.info(prompt_analysis.api_params['query'])
             prompt_analysis.api_params['max_results'] = 10
-            print(" ============================================= ")
+            bt.logging.info(" ============================================= ")
             result = self.get_recent_tweets(prompt_analysis.api_params)
-            print("Tweeter fetched ===================================================")
-            print(result)
-            print("Tweeter fetched ===================================================")
+            bt.logging.info("Tweeter fetched ===================================================")
+            bt.logging.info(result)
+            bt.logging.info("Tweeter fetched ===================================================")
             return result, prompt_analysis
         except Exception as e:
-            print(e)
+            bt.logging.info(e)
             return [], None
         
     async def analyze_twitter_query(self, prompt):
@@ -164,27 +162,27 @@ class TwitterAPIClient:
             print(e)
             return {}
 
-if __name__ == "__main__":
-    client = TwitterAPIClient()
-    query_params = {
-    #   'query': "(OpenAI OR GPT-3 OR DALL-E OR ChatGPT OR artificial intelligence OR machine learning OR #OpenAI OR #ArtificialIntelligence OR #MachineLearning OR #GPT3 OR #DALLE OR #ChatGPT OR #AITrends OR #TechTrends) -is:retweet"
-    #   'query': '(OpenAI OR GPT-3) (#OpenAI OR #ArtificialIntelligence)'
-    # 'query': '(x1 OR x3) (#x2 OR #x4) (x1 OR x3) (#x2 OR #x4)'
-        # 'tweet.fields': 'author_id'
-        # 'query': "#nowplaying (horrible OR worst OR sucks OR bad OR disappointing) (place_country:US OR place_country:MX OR place_country:CA) -happy -exciting -excited -favorite -fav -amazing -lovely -incredible"
+# if __name__ == "__main__":
+#     client = TwitterAPIClient()
+#     query_params = {
+#     #   'query': "(OpenAI OR GPT-3 OR DALL-E OR ChatGPT OR artificial intelligence OR machine learning OR #OpenAI OR #ArtificialIntelligence OR #MachineLearning OR #GPT3 OR #DALLE OR #ChatGPT OR #AITrends OR #TechTrends) -is:retweet"
+#     #   'query': '(OpenAI OR GPT-3) (#OpenAI OR #ArtificialIntelligence)'
+#     # 'query': '(x1 OR x3) (#x2 OR #x4) (x1 OR x3) (#x2 OR #x4)'
+#         # 'tweet.fields': 'author_id'
+#         # 'query': "#nowplaying (horrible OR worst OR sucks OR bad OR disappointing) (place_country:US OR place_country:MX OR place_country:CA) -happy -exciting -excited -favorite -fav -amazing -lovely -incredible"
 
 
-        'query': '(OpenAI OR GPT-3 OR DALL-E OR ChatGPT OR AI OR artificial intelligence OR machine learning OR technology OR trends) (#OpenAI OR #AI OR #ArtificialIntelligence OR #MachineLearning OR #GPT3 OR #DALLE OR #ChatGPT OR #TechTrends) -is:retweet since:2022-01-01T00:00:00Z until:2022-12-31T23:59:59Z'
-    }
-    # result = client.get_recent_tweets(query_params=query_params)
-    # print(result)
+#         'query': '(OpenAI OR GPT-3 OR DALL-E OR ChatGPT OR AI OR artificial intelligence OR machine learning OR technology OR trends) (#OpenAI OR #AI OR #ArtificialIntelligence OR #MachineLearning OR #GPT3 OR #DALLE OR #ChatGPT OR #TechTrends) -is:retweet since:2022-01-01T00:00:00Z until:2022-12-31T23:59:59Z'
+#     }
+#     # result = client.get_recent_tweets(query_params=query_params)
+#     # print(result)
 
-    # # Run the async function using asyncio
-    for i in tweet_prompts:
-        result = asyncio.run(client.analyse_prompt_and_fetch_tweets(i))
+#     # # Run the async function using asyncio
+#     for i in tweet_prompts:
+#         result = asyncio.run(client.analyse_prompt_and_fetch_tweets(i))
         
-        print(len(result))
-        # if len(result) > 0
-        #    print(result)
+#         print(len(result))
+#         # if len(result) > 0
+#         #    print(result)
     
-    # client.get_recent_tweets(query_params)
+#     # client.get_recent_tweets(query_params)
