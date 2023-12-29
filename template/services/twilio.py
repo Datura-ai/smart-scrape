@@ -8,6 +8,8 @@ from template.protocol import TwitterPromptAnalysisResult
 
 BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TKEN')
 
+print("BEARER_TOKEN ===========", BEARER_TOKEN)
+
 twitter_api_query_example = {
     'query': '(from:twitterdev -is:retweet) OR #twitterdev',
     'tweet.fields': "",
