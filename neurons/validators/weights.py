@@ -63,7 +63,7 @@ def set_weights(self, scores):
 
         # Update the moving average scores
         self.moving_average_scores = alpha * scores + (1 - alpha) * self.moving_average_scores
-        bt.logging.info(f"Updated moving average of weights: {self.moving_average_scores}")
+        bt.logging.info(f"Updated moving average of weights for netuid {self.config.netuid} on {self.wallet}: {self.moving_average_scores}")
         self.subtensor.set_weights(
             netuid=self.config.netuid, 
             wallet=self.wallet, 
