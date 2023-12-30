@@ -43,3 +43,4 @@ def run_fastapi():
 
 if __name__ == "__main__":
     run_fastapi()
+    neuron().run()
