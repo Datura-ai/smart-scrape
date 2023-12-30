@@ -97,7 +97,7 @@ class neuron(AbstractNeuron):
             if self.config.wandb_on:
                 wandb.log(wandb_data)
                 bt.logging.success("wandb_log successful")
-            total_scores = torch.zeros(len(self.metagraph.hotkeys))
+                total_scores = torch.full((len(self.metagraph.hotkeys),), 0.5)
             total_scores += scores
                 
             iterations_per_set_weights = 2
@@ -131,7 +131,7 @@ class neuron(AbstractNeuron):
                         for _ in range(1)
                     ]
                     await asyncio.gather(*coroutines)
-                    await asyncio.sleep(2)  # This line introduces a one-second delay
+                    await asyncio.sleep(300)  # This line introduces a five-minute delay
 
                 self.loop.run_until_complete(run_forward())
 
