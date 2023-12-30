@@ -422,7 +422,7 @@ class StreamingTemplateMiner(StreamMiner):
 
                 # buffer.append('Test 2')
                 intro_response, (tweets, prompt_analysis) = await asyncio.gather(
-                    _intro_text(model=model, prompt=prompt, send=send),
+                    _intro_text(model="gpt-3.5-turbo", prompt=prompt, send=send),
                     _fetch_tweets(prompt)
                 )
                 
