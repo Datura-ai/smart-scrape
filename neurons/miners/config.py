@@ -71,26 +71,8 @@ def get_config() -> "bt.Config":
         help="If True, the miner does not set weights.",
         default=False,
     )
-    parser.add_argument(
-        "--miner.no_serve",
-        action="store_true",
-        help="If True, the miner doesnt serve the axon.",
-        default=False,
-    )
-    parser.add_argument(
-        "--miner.no_start_axon",
-        action="store_true",
-        help="If True, the miner doesnt start the axon.",
-        default=False,
-    )
-    # Mocks.
-    parser.add_argument(
-        "--miner.mock_subtensor",
-        action="store_true",
-        help="If True, the miner will allow non-registered hotkeys to mine.",
-        default=False,
-    )
 
+    # Mocks.    
     parser.add_argument(
         "--miner.mock_dataset",
         type=str2bool,

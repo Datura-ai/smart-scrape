@@ -70,12 +70,33 @@ nvidia-smi
 Launch the process using `pm2` and specify the GPU to use by setting the `CUDA_VISIBLE_DEVICES` variable. Adjust the following command to your local paths, available GPUs, and other preferences:
 
 ```sh
-CUDA_VISIBLE_DEVICES=1 pm2 start ~/tutorial/smart-scrape/neurons/validators/validator.py \
-    --name validator1 --interpreter ~/miniconda3/envs/val/bin/python -- \
-    --wallet.name validator --netuid 8 --wallet.hotkey vali --subtensor.network test \
-    --logging.debug --neuron.reward_path ~/.bittensor/test-subnet1-validators \
-    --axon.port 8899
+CUDA_VISIBLE_DEVICES=1 pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name validator_api -- 
+    --wallet.name <your-wallet-name>  
+    --netuid 22 
+    --wallet.hotkey <your-wallet-hot-key>  
+    --subtensor.network <network>  
+    --logging.debug
+
+#example
+pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name validator_api -- --wallet.name validator --netuid 41 --wallet.hotkey default --subtensor.network testnet --logging.debug
+
 ```
+
+### Variable Explanation
+- `--wallet.name`: Provide the name of your wallet.
+- `--wallet.hotkey`: Enter your wallet's hotkey.
+- `--netuid`: Use `41` for testnet.
+- `--subtensor.network`: Specify the network you want to use (`finney`, `test`, `local`, etc).
+- `--logging.debug`: Adjust the logging level according to your preference.
+- `--axon.port`: Specify the port number you want to use.
+
+- `--neuron.name`: Trials for this miner go in miner.root / (wallet_cold - wallet_hot) / miner.name. 
+- `--neuron.device`: Device to run the validator on. cuda or cpu
+- `--neuron.disable_log_rewards`: Disable all reward logging, suppresses reward functions and their values from being logged to wandb. Default: False
+- `--neuron.moving_average_alpha`: Moving average alpha parameter, how much to add of the new observation. Default: 0.05
+- `--reward.prompt_based_weight`: Weight for the prompt-based reward model
+- `--reward.dpo_weight`: Weight for the dpo reward model
+- `--reward.rlhf_weight`: Weight for the rlhf reward model
 
 ## 6. Monitor Your Process
 Use the following `pm2` commands to monitor the status and logs of your process:

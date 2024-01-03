@@ -31,8 +31,6 @@ def check_config(cls, config: "bt.Config"):
     # bt.subtensor.check_config(config)
 
     if config.mock:
-        config.neuron.mock_reward_models = True
-        config.neuron.mock_gating_model = True
         config.neuron.mock_dataset = False
         config.wallet._mock = True
 
@@ -85,18 +83,14 @@ def add_args(cls, parser):
         help="Device to run the validator on.",
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
+    
     parser.add_argument(
         "--neuron.disable_log_rewards",
         action="store_true",
         help="Disable all reward logging, suppresses reward functions and their values from being logged to wandb.",
         default=False,
     )
-    parser.add_argument(
-        "--neuron.mock_reward_models",
-        action="store_true",
-        help="Dont download the reward model.",
-        default=False,
-    )
+
     parser.add_argument(
         "--neuron.moving_average_alpha",
         type=float,

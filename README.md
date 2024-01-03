@@ -84,11 +84,11 @@ For step-by-step guidance on setting up and running a miner, validator, or opera
 - [Miner](./docs/running_a_miner.md)
 - [Validator](./docs/running_a_validator.md)
 - [Testnet](./docs/running_on_testnet.md)
+- [Mainnet](./docs/running_on_mainnet.md)
 
 </div>
 
 ---
-
 
 # Running
 
@@ -110,7 +110,7 @@ These validators are designed to run and update themselves automatically. To run
    pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 -- 
     --wallet.name <your-wallet-name> 
     --wallet.hotkey <your-wallet-hot-key> 
-    --subtensor.network finney 
+    --subtensor.network <network> 
     --netuid 22 
     --axon.port <port> 
    ```
@@ -120,7 +120,7 @@ These validators are designed to run and update themselves automatically. To run
         --wallet.name <your-wallet-name>  
         --netuid 22 
         --wallet.hotkey <your-wallet-hot-key>  
-        --subtensor.network finney  
+        --subtensor.network <network>  
         --logging.debug
    ```
 
