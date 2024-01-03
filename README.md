@@ -79,6 +79,14 @@ python -m neurons/validators/validator.py
 ```
 
 
+### Detailed Instructions for Running a Miner
+For step-by-step guidance on setting up and running a miner, refer to the [miner setup guide](./docs/running_a_miner.md).
+
+### Detailed Instructions for Running a Validator
+For step-by-step guidance on setting up and running a validator, refer to the [validator setup guide](./docs/running_a_validator.md).
+
+### Detailed Instructions for Running on the Testnet
+For step-by-step guidance on setting up and running on the testnet, refer to the [testnet guide](./docs/running_on_testnet.md).
 
 </div>
 
