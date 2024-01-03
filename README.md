@@ -145,7 +145,10 @@ but bear in mind that
 as default wandb policy.
 
 
+
 # Minimum Compute Resource Specifications
+<details>
+
 
 To ensure optimal performance of Smart-Scrape, your system should meet the following minimum compute resource specifications:
 
@@ -179,3 +182,5 @@ To ensure optimal performance of Smart-Scrape, your system should meet the follo
     - Minimum Upload: 20 Mbps
 
 Please ensure that your system complies with these specifications before proceeding with the installation and operation of Smart-Scrape.
+
+</details>
