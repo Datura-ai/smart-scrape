@@ -22,7 +22,7 @@ from reward.prompt import PromptRewardModel
 from reward.dpo import DirectPreferenceRewardModel
 from utils.tasks import TwitterTask
 from template.utils import get_random_tweet_prompts
-from template.services.twilio import TwitterAPIClient
+from template.services.twitter import TwitterAPIClient
 import asyncio
 
 class TwitterScraperValidator:
