@@ -94,6 +94,7 @@ class neuron(AbstractNeuron):
 
     async def update_scores(self, scores, wandb_data):
         try:
+            total_scores = torch.full((len(self.metagraph.hotkeys),), 0.5)
             if self.config.wandb_on:
                 wandb.log(wandb_data)
                 bt.logging.success("wandb_log successful")
