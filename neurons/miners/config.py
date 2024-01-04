@@ -80,6 +80,14 @@ def get_config() -> "bt.Config":
         default=False
     )
 
+    # Mocks.    
+    parser.add_argument(
+        "--miner.intro_text",
+        type=str2bool,
+        help="If True, the miner will retrieve data from mock dataset",
+        default=True
+    )
+
     # Adds subtensor specific arguments i.e. --subtensor.chain_endpoint ... --subtensor.network ...
     bt.subtensor.add_args(parser)
 
