@@ -20,6 +20,7 @@ import torch
 from typing import List, Union
 from .config import RewardModelType
 from .reward import BaseRewardModel, BaseRewardEvent
+import bittensor as bt
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 
