@@ -87,24 +87,7 @@ class TwitterScrapperMiner:
                     }
                 )
                 bt.logging.info(f"Streamed tokens: {joined_buffer}")
-                buffer = []
 
-        # Send any remaining data in the buffer
-        if buffer:
-            joined_buffer = "".join(buffer)
-            response_body = {
-                "tokens": joined_buffer,
-                "prompt_analysis": '{}',
-                "tweets": "{}"
-            }
-            await send(
-                {
-                    "type": "http.response.body",
-                    "body": json.dumps(response_body).encode("utf-8"),
-                    "more_body": False,
-                }
-            )
-            bt.logging.info(f"Streamed tokens: {joined_buffer}")
         return buffer
 
     async def fetch_tweets(self, prompt):
@@ -186,12 +169,12 @@ class TwitterScrapperMiner:
                 if len(buffer) == N:
                     joined_buffer = "".join(buffer)
                     # Serialize the prompt_analysis to JSON
-                    prompt_analysis_json = json.dumps(synapse.prompt_analysis.dict())
+                    # prompt_analysis_json = json.dumps(synapse.prompt_analysis.dict())
                     # Prepare the response body with both the tokens and the prompt_analysis
                     response_body = {
                         "tokens": joined_buffer,
-                        "prompt_analysis": prompt_analysis_json,
-                        "tweets": synapse.tweets
+                        "prompt_analysis": "{}",
+                        "tweets": "{}"
                     }
                     # Send the response body as JSON
                     await send(
@@ -206,7 +189,7 @@ class TwitterScrapperMiner:
                     buffer = []
 
             # Send any remaining data in the buffer
-            if buffer:
+            if synapse.prompt_analysis or synapse.tweets:
                 joined_buffer = "".join(buffer)
                 # Serialize the prompt_analysis to JSON
                 prompt_analysis_json = json.dumps(synapse.prompt_analysis.dict())
