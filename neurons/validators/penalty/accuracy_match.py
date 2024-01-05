@@ -4,6 +4,7 @@ from typing import List
 from template.protocol import TwitterPromptAnalysisResult
 from utils.tasks import TwitterTask
 from penalty import PenaltyModelType, BasePenaltyModel
+from template.protocol import TwitterScraperStreaming
 
 class AccuracyPenaltyModel(BasePenaltyModel):
     """
@@ -51,7 +52,7 @@ class AccuracyPenaltyModel(BasePenaltyModel):
         self.hashtag_regex = re.compile(hashtag_pattern, re.IGNORECASE) if hashtag_pattern else None
         self.user_regex = re.compile(user_pattern, re.IGNORECASE) if user_pattern else None
 
-    def calculate_penalties(self, task: TwitterTask, completions: List[str]) -> torch.FloatTensor:
+    def calculate_penalties(self, task: TwitterTask, responses: List[TwitterScraperStreaming]) -> torch.FloatTensor:
         """
         Calculates the penalties for each completion based on the absence of
         keywords, hashtags, or user mentions as defined in the task's query result.
@@ -64,9 +65,10 @@ class AccuracyPenaltyModel(BasePenaltyModel):
             A tensor of penalties for each completion.
         """
         prompt = task.base_text
-        self._compile_patterns(task.prompt_analysis)
         penalties = []
-        for completion in completions:
+        for response in responses:
+            completion = response.completion
+            self._compile_patterns(response.prompt_analysis)
             penalty = 0.0
             if self.keyword_regex and not self.keyword_regex.search(completion):
                 penalty += self.max_penalty / 3

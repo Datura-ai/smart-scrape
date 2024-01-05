@@ -22,7 +22,6 @@ from typing import List
 from abc import ABC, abstractmethod
 from utils.tasks import Task
 
-
 class BasePenaltyModel(ABC):
     def __init__(self, max_penalty: float):
         self.max_penalty = max_penalty
@@ -39,14 +38,14 @@ class BasePenaltyModel(ABC):
         return str(self.name)
 
     @abstractmethod
-    def calculate_penalties(task: Task, completions: List[str]) -> torch.FloatTensor:
+    def calculate_penalties(task: Task, responses: List[bt.Synapse]) -> torch.FloatTensor:
         ...
 
     def apply_penalties(
         self, responses: List[bt.Synapse], task: Task
     ) -> torch.FloatTensor:
-        completions = [response.completion for response in responses]
-        raw_penalties = self.calculate_penalties(task, completions)
+        # completions = [response.completion for response in responses]
+        raw_penalties = self.calculate_penalties(task, responses)
 
         # Clip penalties between 0 and 1
         adjusted_penalties = torch.clip(raw_penalties, 0, 1)

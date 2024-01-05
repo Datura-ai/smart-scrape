@@ -19,7 +19,7 @@ import torch
 from typing import List
 from utils.tasks import Task
 from penalty.penalty import BasePenaltyModel, PenaltyModelType
-
+import bittensor as bt
 
 class TaskValidationPenaltyModel(BasePenaltyModel):
     @property
@@ -27,8 +27,9 @@ class TaskValidationPenaltyModel(BasePenaltyModel):
         return PenaltyModelType.task_validation_penalty.value
 
     def calculate_penalties(
-        self, task: Task, completions: List[str]
+        self, task: Task,  responses: List[bt.Synapse]
     ) -> torch.FloatTensor:
+        completions = [response.completion for response in responses]
         accumulated_penalties: torch.FloatTensor = torch.zeros(
             len(completions), dtype=torch.float32
         )
