@@ -101,6 +101,7 @@ class TwitterScraperValidator:
             full_response = ""
             synapse_object : TwitterScraperStreaming = None
             prompt_analysis = None
+            tweets = None
             async for chunk in resp:
                 if isinstance(chunk, str):
                     # Parse the JSON chunk to extract tokens and prompt_analysis
@@ -111,6 +112,8 @@ class TwitterScraperValidator:
                             prompt_analysis_json = chunk_data["prompt_analysis"]
                             # Assuming prompt_analysis_json is a JSON string, parse it to a Python dict
                             prompt_analysis = json.loads(prompt_analysis_json)
+                        if "tweets" in chunk_data:
+                            tweets = chunk_data["tweets"]
                     except json.JSONDecodeError:
                         bt.logging.trace(f"Failed to decode JSON chunk: {chunk}")
                 elif isinstance(chunk, bt.Synapse):
@@ -120,6 +123,8 @@ class TwitterScraperValidator:
                 # Attach the prompt_analysis to the synapse_object if needed
                 if prompt_analysis is not None:
                     synapse_object.set_prompt_analysis(prompt_analysis)
+                if prompt_analysis is not None:
+                    synapse_object.set_tweets(tweets)
                 responses.append(synapse_object)
         return responses
     
@@ -163,9 +168,6 @@ class TwitterScraperValidator:
     async def compute_rewards_and_penalties(self, event, prompt, task, responses, uids, start_time):
         try:
             bt.logging.info("Computing rewards and penalties")
-            if responses:
-                task.prompt_analysis = responses[0].prompt_analysis
-
             rewards = torch.zeros(len(responses), dtype=torch.float32).to(self.neuron.config.neuron.device)
             for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
                 reward_i_normalized, reward_event = reward_fn_i.apply(task.base_text, responses, task.task_name)
@@ -215,10 +217,6 @@ class TwitterScraperValidator:
 
     def update_moving_averaged_scores(self, uids, rewards):
         try:
-            # uids = uids.to(self.neuron.config.neuron.device)
-            # rewards = rewards.to(self.neuron.config.neuron.device)
-            # scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards)
-
             scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.neuron.config.neuron.device)
             bt.logging.info(f"Scattered reward: {torch.mean(scattered_rewards)}")
 
@@ -254,33 +252,36 @@ class TwitterScraperValidator:
             )
         
             responses = await self.process_async_responses(async_responses)
-            if responses:
-                task.prompt_analysis = responses[0].prompt_analysis
             await self.compute_rewards_and_penalties(event=event, 
                                                     prompt=prompt,
                                                     task=task, 
                                                     responses=responses, 
                                                     uids=uids, 
-                                                    start_time=start_time)    
+                                                    start_time=start_time)     
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")
             raise
     
     
     async def organic(self, query):
-        prompt = query['content']
-
+        prompt = query['content']        
         task_name = "augment"
         task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
 
         async_responses, uids, event, start_time = await self.run_task_and_score(
             task=task
         )
+        async_responses, uids, event, start_time = await self.run_task_and_score(
+            task=task,
+            strategy=QUERY_MINERS.RANDOM
+        )
+
         responses = []
         for resp in async_responses:
             full_response = ""
             synapse_object : TwitterScraperStreaming = None
             prompt_analysis = None
+            tweets = None
             async for chunk in resp:
                 if isinstance(chunk, str):
                     # Parse the JSON chunk to extract tokens and prompt_analysis
@@ -292,6 +293,8 @@ class TwitterScraperValidator:
                             prompt_analysis_json = chunk_data["prompt_analysis"]
                             # Assuming prompt_analysis_json is a JSON string, parse it to a Python dict
                             prompt_analysis = json.loads(prompt_analysis_json)
+                        if "tweets" in chunk_data:
+                            tweets = chunk_data["tweets"]
                         yield tokens
                     except json.JSONDecodeError:
                         bt.logging.trace(f"Failed to decode JSON chunk: {chunk}")
@@ -302,12 +305,12 @@ class TwitterScraperValidator:
                 # Attach the prompt_analysis to the synapse_object if needed
                 if prompt_analysis is not None:
                     synapse_object.set_prompt_analysis(prompt_analysis)
+                if prompt_analysis is not None:
+                    synapse_object.set_tweets(tweets)
                 responses.append(synapse_object)
 
 
         async def process_and_score_responses():
-            if responses:
-                task.prompt_analysis = responses[0].prompt_analysis
             await self.compute_rewards_and_penalties(event=event,
                                                      prompt=prompt, 
                                                      task=task, 

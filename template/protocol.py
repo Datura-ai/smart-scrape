@@ -130,7 +130,7 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
         description="Seed for text generation. This attribute is immutable and cannot be updated.",
     )
 
-    model: str = pydantic.Field(
+    model: Optional[str] = pydantic.Field(
         "",
         title="model",
         description="The model that which to use when calling openai for your response.",
@@ -142,8 +142,18 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
         description="Analysis of the Twitter query result."
     )
 
+    tweets: str = pydantic.Field(
+        "",
+        title="tweets",
+        description="Fetched Tweets.",
+    )
+
+
     def set_prompt_analysis(self, data: any):
         self.prompt_analysis = data
+
+    def set_tweets(self, data: any):
+        self.tweets = data
 
     async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:

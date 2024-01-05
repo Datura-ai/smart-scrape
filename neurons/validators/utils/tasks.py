@@ -40,6 +40,5 @@ class Task(ABC):
 
 
 class TwitterTask(Task):
-    prompt_analysis: TwitterPromptAnalysisResult = None
     def compose_prompt(self) -> str:
         return self.base_text
