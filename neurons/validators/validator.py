@@ -143,11 +143,20 @@ class neuron(AbstractNeuron):
         except Exception as err:
             bt.logging.error("Error in training loop", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
+    
+    async def run_syn_qs(self):
+        if self.config.neuron.run_random_miner_syn_qs_interval > 0:
+            await asyncio.sleep(60)
+            self.run(self.config.neuron.run_random_miner_syn_qs_interval, QUERY_MINERS.RANDOM)
+
+        if self.config.neuron.run_all_miner_syn_qs_interval > 0:
+            await asyncio.sleep(120)
+            self.run(self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.ALL)
 
 
 
 def main():
-    neuron().run()
+    neuron().run_syn_qs()
 
 if __name__ == "__main__":
     main()

@@ -29,6 +29,7 @@ __spec_version__ = (
 
 import os
 from openai import AsyncOpenAI
+from enum import Enum
 AsyncOpenAI.api_key = os.environ.get('OPENAI_API_KEY')
 if not AsyncOpenAI.api_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable.")
@@ -59,6 +60,11 @@ BLACKLISTED_KEYS = ["5G1NjW9YhXLadMWajvTkfcJy6up3yH2q1YzMXDTi6ijanChe"]
 
 ENTITY = 'smart-scrape'
 PROJECT_NAME = 'smart-wandb'
+
+
+class QUERY_MINERS(Enum):
+    ALL = 'all'
+    RANDOM = 'random'
 
 # Import all submodules.
 from . import protocol

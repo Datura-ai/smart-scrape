@@ -16,14 +16,6 @@ EXPECTED_ACCESS_KEY = os.environ.get('VALIDATOR_ACCESS_KEY')
 
 neu = neuron()
 
-async def run_syn_qs():
-    if neu.config.neuron.run_random_miner_syn_qs_interval > 0:
-        neu.run(neu.config.neuron.run_random_miner_syn_qs_interval, QUERY_MINERS.RANDOM)
-
-    if neu.config.neuron.run_all_miner_syn_qs_interval > 0:
-        time.sleep(120)
-        neu.run(neu.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.ALL)
-
 async def response_stream(data):
     try:
         last_message = data['messages'][-1]
@@ -52,5 +44,5 @@ def run_fastapi():
     uvicorn.run(app, host="0.0.0.0", port=8005)
 
 if __name__ == "__main__":
-    asyncio.get_event_loop().create_task(run_syn_qs())
+    asyncio.get_event_loop().create_task(neu.run_syn_qs())
     run_fastapi()

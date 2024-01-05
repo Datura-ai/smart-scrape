@@ -125,14 +125,14 @@ def add_args(cls, parser):
         "--neuron.run_random_miner_syn_qs_interval",
         type=int,
         help="Sets the interval, in seconds, for querying a random subset of miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.",
-        default=0,
+        default=300,
     )
     
     parser.add_argument(
         "--neuron.run_all_miner_syn_qs_interval",
         type=int,
         help="Sets the interval, in seconds, for querying all miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.",
-        default=0,
+        default=3600,
     )
 
 
