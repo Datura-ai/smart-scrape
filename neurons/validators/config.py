@@ -66,7 +66,9 @@ def add_args(cls, parser):
     parser.add_argument(
         "--netuid", type=int, help="Prompting network netuid", default=1
     )
+
     parser.add_argument('--wandb.off', action='store_false', dest='wandb_on')
+
     parser.set_defaults(wandb_on=True)
 
     parser.add_argument(
@@ -97,24 +99,42 @@ def add_args(cls, parser):
         help="Moving average alpha parameter, how much to add of the new observation.",
         default=0.05,
     )
+
     parser.add_argument(
         "--reward.dpo_weight",
         type=float,
         help="Weight for the dpo reward model",
         default=DefaultRewardFrameworkConfig.dpo_model_weight,
     )
+
     parser.add_argument(
         "--reward.rlhf_weight",
         type=float,
         help="Weight for the rlhf reward model",
         default=DefaultRewardFrameworkConfig.rlhf_model_weight,
     )
+
     parser.add_argument(
         "--reward.prompt_based_weight",
         type=float,
         help="Weight for the prompt-based reward model",
         default=DefaultRewardFrameworkConfig.prompt_model_weight,
     )
+
+    parser.add_argument(
+        "--neuron.run_random_miner_syn_qs_interval",
+        type=int,
+        help="Sets the interval, in seconds, for querying a random subset of miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.",
+        default=0,
+    )
+    
+    parser.add_argument(
+        "--neuron.run_all_miner_syn_qs_interval",
+        type=int,
+        help="Sets the interval, in seconds, for querying all miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.",
+        default=0,
+    )
+
 
 
 def config(cls):

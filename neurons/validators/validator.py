@@ -11,6 +11,7 @@ from config import add_args, check_config, config
 from weights import init_wandb, update_weights
 from traceback import print_exception
 from base_validator import AbstractNeuron
+from template import QUERY_MINERS
 
 
 class neuron(AbstractNeuron):
@@ -114,25 +115,27 @@ class neuron(AbstractNeuron):
             raise
 
 
-    async def query_synapse(self):
+    async def query_synapse(self, strategy=QUERY_MINERS.RANDOM):
         try:
-            await self.twitter_validator.query_and_score()
+            await self.twitter_validator.query_and_score(strategy)
         except Exception as e:
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(100)
     
-    def run(self):
-        bt.logging.info("run()")
+
+
+    def run(self, interval=300, strategy=QUERY_MINERS.RANDOM):
+        bt.logging.info(f"run: interval={interval}; strategy={strategy}")
         try:
             while True:
                 # Run multiple forwards.
                 async def run_forward():
                     coroutines = [
-                        self.query_synapse()
+                        self.query_synapse(strategy)
                         for _ in range(1)
                     ]
                     await asyncio.gather(*coroutines)
-                    await asyncio.sleep(300)  # This line introduces a five-minute delay
+                    await asyncio.sleep(interval)  # This line introduces a five-minute delay
 
                 self.loop.run_until_complete(run_forward())
 

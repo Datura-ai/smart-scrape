@@ -23,6 +23,7 @@ from reward.dpo import DirectPreferenceRewardModel
 from utils.tasks import TwitterTask
 from template.utils import get_random_tweet_prompts
 from template.services.twitter import TwitterAPIClient
+from template import QUERY_MINERS
 import asyncio
 
 class TwitterScraperValidator:
@@ -82,9 +83,13 @@ class TwitterScraperValidator:
         self.moving_averaged_scores = torch.zeros((self.neuron.metagraph.n)).to(self.neuron.config.neuron.device)
         bt.logging.debug(str(self.moving_averaged_scores))
     
-    async def get_uids(self):
+    async def get_uids(self, strategy=QUERY_MINERS.RANDOM):
         available_uids = await self.neuron.get_available_uids()
         uid_list = list(available_uids.keys())
+        if strategy == QUERY_MINERS.RANDOM:
+            uids = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
+        elif strategy == QUERY_MINERS.ALL:
+            uids = torch.tensor(uid_list) if uid_list else torch.tensor([])
         uids = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
         bt.logging.info(" Random uids ---------- ", uids)
         uid_list = list(available_uids.keys())
@@ -129,7 +134,7 @@ class TwitterScraperValidator:
                 except json.JSONDecodeError:
                     bt.logging.trace(f"Failed to decode JSON chunk: {resp}")
 
-    async def run_task_and_score(self, task: TwitterTask):
+    async def run_task_and_score(self, task: TwitterTask, strategy=QUERY_MINERS.RANDOM):
         task_name = task.task_name
         prompt = task.compose_prompt()
 
@@ -140,7 +145,7 @@ class TwitterScraperValidator:
         start_time = time.time()
         
         # Get random id on that step
-        uids = await self.get_uids()
+        uids = await self.get_uids(strategy)
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
         synapse = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
 
@@ -236,7 +241,7 @@ class TwitterScraperValidator:
         })
         bt.logging.debug("Run Task event:", str(event))
     
-    async def query_and_score(self):
+    async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
             prompt = get_random_tweet_prompts(1)[0]
 
@@ -244,7 +249,8 @@ class TwitterScraperValidator:
             task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
-                task=task
+                task=task,
+                strategy=strategy
             )
         
             responses = await self.process_async_responses(async_responses)

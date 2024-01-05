@@ -94,6 +94,8 @@ pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name valid
 - `--neuron.device`: Device to run the validator on. cuda or cpu
 - `--neuron.disable_log_rewards`: Disable all reward logging, suppresses reward functions and their values from being logged to wandb. Default: False
 - `--neuron.moving_average_alpha`: Moving average alpha parameter, how much to add of the new observation. Default: 0.05
+- `--neuron.run_random_miner_syn_qs_interval`: Sets the interval, in seconds, for querying a random subset of miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.
+- `--neuron.run_all_miner_syn_qs_interval`: Sets the interval, in seconds, for querying all miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.
 - `--reward.prompt_based_weight`: Weight for the prompt-based reward model
 - `--reward.dpo_weight`: Weight for the dpo reward model
 - `--reward.rlhf_weight`: Weight for the rlhf reward model
