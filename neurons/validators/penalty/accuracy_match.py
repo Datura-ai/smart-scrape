@@ -79,28 +79,3 @@ class AccuracyPenaltyModel(BasePenaltyModel):
             penalties.append(penalty)
         return torch.tensor(penalties, dtype=torch.float32)
 
-    def calculate_penalties_from_query(self, prompt_analysis: TwitterPromptAnalysisResult, completions: List[str]) -> torch.FloatTensor:
-        """
-        Calculates the penalties for each completion based on the absence of
-        keywords, hashtags, or user mentions as defined in the provided query result.
-
-        Args:
-            prompt_analysis: The TwitterPromptAnalysisResult containing the query criteria.
-            completions: A list of strings representing the completed texts.
-
-        Returns:
-            A tensor of penalties for each completion.
-        """
-        self._compile_patterns(prompt_analysis)
-        penalties = []
-        for completion in completions:
-            penalty = 0.0
-            if self.keyword_regex and not self.keyword_regex.search(completion):
-                penalty += self.max_penalty / 3
-            if self.hashtag_regex and not self.hashtag_regex.search(completion):
-                penalty += self.max_penalty / 3
-            if self.user_regex and not self.user_regex.search(completion):
-                penalty += self.max_penalty / 3
-            penalties.append(penalty)
-        return torch.tensor(penalties, dtype=torch.float32)
-

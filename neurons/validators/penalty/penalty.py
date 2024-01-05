@@ -62,3 +62,4 @@ class BasePenaltyModel(ABC):
 class PenaltyModelType(Enum):
     task_validation_penalty = "task_validation_penalty"
     accuracy_match_penalty = "accuracy_match_penalty"
+    link_validation_penalty = "link_validation_penalty"

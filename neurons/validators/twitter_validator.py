@@ -15,7 +15,8 @@ from utils.mock import MockRewardModel
 import time
 from penalty import (
     TaskValidationPenaltyModel,
-    AccuracyPenaltyModel
+    AccuracyPenaltyModel,
+    LinkValidationPenaltyModel
 )
 from reward.open_assistant import OpenAssistantRewardModel
 from reward.prompt import PromptRewardModel
@@ -74,6 +75,7 @@ class TwitterScraperValidator:
 
         self.penalty_functions = [
             TaskValidationPenaltyModel(max_penalty=0.6),
+            LinkValidationPenaltyModel(max_penalty=0.9),
             AccuracyPenaltyModel(max_penalty=1),
         ]
 

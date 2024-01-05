@@ -144,6 +144,17 @@ class TwitterAPIClient:
         if response.status_code != 200:
             raise Exception(response.status_code, response.text)
         return response.json()
+    
+    def get_tweet_by_id(self, tweet_id):
+        tweet_url = f"https://api.twitter.com/2/tweets/{tweet_id}"
+        json_response = self.connect_to_endpoint(tweet_url, {})
+        return json.dumps(json_response, indent=4, sort_keys=True)
+    
+    def get_tweets_by_ids(self, tweet_ids):
+        ids = ','.join(tweet_ids)  # Combine all tweet IDs into a comma-separated string
+        tweets_url = f"https://api.twitter.com/2/tweets?ids={ids}"
+        json_response = self.connect_to_endpoint(tweets_url, {})
+        return json.dumps(json_response, indent=4, sort_keys=True)
 
     def get_recent_tweets(self, query_params):
         search_url = "https://api.twitter.com/2/tweets/search/recent"
