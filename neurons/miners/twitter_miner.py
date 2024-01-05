@@ -76,7 +76,8 @@ class TwitterScrapperMiner:
                 joined_buffer = "".join(buffer)
                 response_body = {
                     "tokens": joined_buffer,
-                    "prompt_analysis": '{}'
+                    "prompt_analysis": '{}',
+                    "tweets": "{}"
                 }
                 await send(
                     {
@@ -93,7 +94,8 @@ class TwitterScrapperMiner:
             joined_buffer = "".join(buffer)
             response_body = {
                 "tokens": joined_buffer,
-                "prompt_analysis": '{}'
+                "prompt_analysis": '{}',
+                "tweets": "{}"
             }
             await send(
                 {
@@ -169,6 +171,7 @@ class TwitterScrapperMiner:
             bt.logging.info("Prompt analysis ===============================================")
             if prompt_analysis:
                 synapse.set_prompt_analysis(prompt_analysis)
+            synapse.set_tweets(tweets)
 
             response = await self.finalize_data(prompt=prompt, model=model, filtered_tweets=tweets)
 
@@ -187,7 +190,8 @@ class TwitterScrapperMiner:
                     # Prepare the response body with both the tokens and the prompt_analysis
                     response_body = {
                         "tokens": joined_buffer,
-                        "prompt_analysis": prompt_analysis_json
+                        "prompt_analysis": prompt_analysis_json,
+                        "tweets": synapse.tweets
                     }
                     # Send the response body as JSON
                     await send(
@@ -209,7 +213,8 @@ class TwitterScrapperMiner:
                 # Prepare the response body with both the tokens and the prompt_analysis
                 response_body = {
                     "tokens": joined_buffer,
-                    "prompt_analysis": prompt_analysis_json
+                    "prompt_analysis": prompt_analysis_json,
+                    "tweets": synapse.tweets
                 }
                 # Send the response body as JSON
                 await send(
