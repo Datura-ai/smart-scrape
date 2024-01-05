@@ -146,17 +146,17 @@ class neuron(AbstractNeuron):
     
     async def run_syn_qs(self):
         if self.config.neuron.run_random_miner_syn_qs_interval > 0:
-            await asyncio.sleep(60)
+            await asyncio.sleep(5)
             self.run(self.config.neuron.run_random_miner_syn_qs_interval, QUERY_MINERS.RANDOM)
 
         if self.config.neuron.run_all_miner_syn_qs_interval > 0:
-            await asyncio.sleep(120)
+            await asyncio.sleep(60)
             self.run(self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.ALL)
 
 
 
 def main():
-    neuron().run_syn_qs()
+    asyncio.run(neuron().run_syn_qs())
 
 if __name__ == "__main__":
     main()
