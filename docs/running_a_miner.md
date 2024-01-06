@@ -1,30 +1,32 @@
 # Bittensor (Smart-Scrape) Miner Setup Guide
 
-This guide provides detailed instructions for setting up and running a Bittensor Smart-Scrape miner using the smart-scrape repository.
+This guide details the process for setting up and running a Bittensor Smart-Scrape miner using the smart-scrape repository.
 
 ## Prerequisites
-Before you begin the setup process, make sure you have the following prerequisites ready:
+Before starting, ensure you have:
 
-- PM2: A process manager to keep your miner running. If it's not already installed, you can find the installation instructions [here](https://pm2.io/docs/runtime/guide/installation/).
+- **PM2:** A process manager to maintain your miner. If not installed, see [PM2 Installation](https://pm2.io/docs/runtime/guide/installation/).
 
-- Environment Variables: Certain environment variables need to be set before running the miner. Please refer to the [Environment Variables Guide](./env_variables.md) for details.
+- **Environment Variables:** Set the necessary variables as per the [Environment Variables Guide](./env_variables.md).
 
-## 1. Install the smart-scrape Repository
-To start, install the smart-scrape repository. Navigate to the directory where you’ve cloned or downloaded `smart-scrape`, and run the following command:
+## Setup Process
+
+### 1. Install the smart-scrape Repository
+First, install the smart-scrape repository. In your terminal, navigate to the smart-scrape directory and execute:
 
 ```sh
 python -m pip install -e ~/smart-scrape
 ```
 
-## 2. Install Specific Miner Requirements
-If there are any additional requirements for your miner, install them by running:
+### 2. Install Miner-Specific Requirements
+Install any additional requirements for the miner:
 
 ```sh
 python -m pip install -r requirements.txt
 ```
 
-## 3. Load and Run the Miner
-Once you have installed the necessary packages, you can load and run the miner using PM2. Set the `CUDA_VISIBLE_DEVICES` variable to the GPU you want to use, and adjust the other variables according to your setup.
+### 3. Configure and Run the Miner
+Configure and launch the miner using PM2. Set `CUDA_VISIBLE_DEVICES` to your preferred GPU and adjust the following parameters:
 
 ```sh
 CUDA_VISIBLE_DEVICES=0 pm2 start neurons/miners/miner.py \
@@ -37,26 +39,22 @@ CUDA_VISIBLE_DEVICES=0 pm2 start neurons/miners/miner.py \
 --logging.debug \
 --axon.port <port>
 
-#Example
-pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 -- --wallet.name miner --wallet.hotkey default --subtensor.network testnet --netuid 41 --axon.port 14001  --logging.debug
-
+# Example
+pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 -- --wallet.name miner --wallet.hotkey default --subtensor.network testnet --netuid 41 --axon.port 14001 --logging.debug
 ```
 
-### Variable Explanation
-- `--wallet.name`: Provide the name of your wallet.
-- `--wallet.hotkey`: Enter your wallet's hotkey.
-- `--netuid`: Use `41` for testnet.
-- `--subtensor.network`: Specify the network you want to use (`finney`, `test`, `local`, etc).
-- `--logging.debug`: Adjust the logging level according to your preference.
-- `--axon.port`: Specify the port number you want to use.
+#### Variable Explanation
+- `--wallet.name`: Your wallet's name.
+- `--wallet.hotkey`: Your wallet's hotkey.
+- `--netuid`: Network UID, `41` for testnet.
+- `--subtensor.network`: Choose network (`finney`, `test`, `local`, etc).
+- `--logging.debug`: Set logging level.
+- `--axon.port`: Desired port number.
 
-- `--miner.name`: Trials for this miner go in miner.root / (wallet_cold - wallet_hot) / miner.name 
-- `--miner.mock_dataset`: If True, the miner will retrieve data from mock dataset
-- `--miner.blocks_per_epoch`: Blocks until the miner sets weights on chain
-- `--miner.no_set_weights`: If True, the miner does not set weights.
-
-
-
+- `--miner.name`: Path for miner data (miner.root / (wallet_cold - wallet_hot) / miner.name).
+- `--miner.mock_dataset`: Set to True to use a mock dataset.
+- `--miner.blocks_per_epoch`: Number of blocks until setting weights on chain.
+- `--miner.no_set_weights`: Set to True to avoid setting weights.
 
 ## Conclusion
-By following this guide, you should be able to setup and run a Smart-scrape miner using the smart-scrape repository with PM2. Ensure that you monitor your processes and check the logs regularly for any issues or important information. For more details or if you encounter any problems, refer to the official documentation or seek help from the community.
+Following these steps, your Smart-Scrape miner should be operational. Regularly monitor your processes and logs for any issues. For additional information or assistance, consult the official documentation or community resources.
