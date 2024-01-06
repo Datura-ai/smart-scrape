@@ -1,122 +1,134 @@
-
 <div align="center">
 
-# **Bittensor Smart-Scrape** <!-- omit in toc -->
-<!-- [![Discord Chat](https://img.shields.io/discord/308323056592486420.svg)](https://discord.gg/bittensor) -->
+# **Bittensor Smart-Scrape**
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
 
-
 </div>
 
+## Introduction
 
-# Introduction
+**Bittensor Smart-Scrape:** Streamlining Twitter Data Analysis on Subnet 22
 
-Smart-Scrape on Bittensor Subnet 22: Simplified AI-Powered Twitter Data Analysis
+Welcome to Smart-Scrape, a cutting-edge tool hosted on the Bittensor network, designed for effective and simplified analysis of Twitter data. This tool is ideal for researchers, marketers, and data analysts who seek to extract insightful information from Twitter with ease.
 
-Smart-Scrape is an efficient tool designed for straightforward Twitter data analysis. Hosted on the Bittensor network, it caters to researchers, marketers, and data analysts. It focuses on simplifying the extraction of valuable insights from Twitter.
+### Key Features
 
-Key Features:
+- **AI-Powered Analysis:** Harnesses artificial intelligence to delve into Twitter data, providing deeper insights into user interactions.
+- **Real-Time Data Access:** Connects directly with Twitter's database for the latest information.
+- **Sentiment Analysis:** Determines the emotional tone of tweets, aiding in understanding public sentiment.
+- **Metadata Analysis:** Dives into tweet details like timestamps and retweet counts for a comprehensive view.
+- **Time-Efficient:** Minimizes manual data sorting, saving valuable research time.
+- **User-Friendly Design:** Suitable for both beginners and experts.
 
-- AI-Powered Analysis: Uses AI models to interpret Twitter data, aiming for a clear understanding of user interactions.
-- Real-Time Data: Accesses Twitter's database in real-time, ensuring up-to-date information.
-- Sentiment Analysis: Identifies emotional tones in tweets, useful for understanding public opinion.
-- Metadata Analysis: Examines tweet details like timestamps and retweet counts for a comprehensive data overview.
-- Time-Saving for Researchers: Filters relevant data, reducing manual sorting effort.
-- Easy-to-Use: Designed to be user-friendly, accommodating both experts and beginners.
+### Advantages
 
-Advantages of Smart-Scrape:
-
-- Decentralized: As part of Bittensor, it promises enhanced reliability.
-- Customizable: Adapts to specific user needs for targeted analysis.
-- Data-Driven Insights: Helps in making informed decisions.
-- Versatile: Suitable for various purposes, from market research to academic studies.
-
-Smart-Scrape streamlines Twitter data analysis with its AI capabilities, offering a user-friendly and efficient way to tap into the wealth of information on Twitter.
-
-</div>
+- **Decentralized Platform:** Ensures reliability through its placement on the Bittensor network.
+- **Customizability:** Tailors data analysis to meet specific user requirements.
+- **Informed Decision-Making:** Facilitates data-driven strategies.
+- **Versatility:** Applicable for diverse research fields, from market analysis to academic studies.
 
 ---
 
-# Installation
-This repository requires python3.8 or higher. To install, simply clone this repository and install the requirements.
-```bash
-git clone https://github.com/surcyf123/smart-scrape.git
-cd smart-scrape
-python -m pip install -r requirements.txt
-python -m pip install -e .
-```
+## Installation
 
-</div>
+**Requirements:** Python 3.8 or higher
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/surcyf123/smart-scrape.git
+   ```
+2. Install the requirements:
+   ```bash
+   cd smart-scrape
+   python -m pip install -r requirements.txt
+   python -m pip install -e .
+   ```
 
 ---
 
-Prior to running a miner or validator, you must [create a wallet](https://github.com/opentensor/docs/blob/main/reference/btcli.md) and [register the wallet to a netuid](https://github.com/opentensor/docs/blob/main/subnetworks/registration.md). Once you have done so, you can run the miner and validator with the following commands.
-```bash
-# To run the miner
-python -m neurons/miners/miner.py 
-    --netuid 22
-    --subtensor.network finney
-    --wallet.name <your miner wallet> # Must be created using the bittensor-cli
-    --wallet.hotkey <your validator hotkey> # Must be created using the bittensor-cli
-    --logging.debug # Run in debug mode, alternatively --logging.trace for trace mode
-    --axon.port 14000
+## Preparing Your Environment
 
-# To run both the validator & API
-python -m neurons/validators/api.py
-    --netuid 22
-    --subtensor.network finney
-    --wallet.name <your validator wallet>  # Must be created using the bittensor-cli
-    --wallet.hotkey <your validator hotkey> # Must be created using the bittensor-cli
-    --logging.debug # Run in debug mode, alternatively --logging.trace for trace mode
+Before running a miner or validator, ensure to:
 
-# To run only the validator
-python -m neurons/validators/validator.py
-    --netuid 22
-    --subtensor.network finney
-    --wallet.name <your validator wallet>  # Must be created using the bittensor-cli
-    --wallet.hotkey <your validator hotkey> # Must be created using the bittensor-cli
-    --logging.debug # Run in debug mode, alternatively --logging.trace for trace mode
-```
+- [Create a wallet](https://github.com/opentensor/docs/blob/main/reference/btcli.md).
+- [Register the wallet to a netuid](https://github.com/opentensor/docs/blob/main/subnetworks/registration.md).
 
+### Running Commands
+
+- **To run the miner:**
+  ```bash
+  python -m neurons/miners/miner.py 
+      --netuid 22
+      --subtensor.network finney
+      --wallet.name <your miner wallet>
+      --wallet.hotkey <your validator hotkey>
+      --logging.debug
+      --axon.port 14000
+  ```
+
+- **To run both the validator & API:**
+  ```bash
+  python -m neurons/validators/api.py
+      --netuid 22
+      --subtensor.network finney
+      --wallet.name <your validator wallet>
+      --wallet.hotkey <your validator hotkey>
+      --logging.debug
+  ```
+
+- **To run only the validator:**
+  ```bash
+  python -m neurons/validators/validator.py
+      --netuid 22
+      --subtensor.network finney
+      --wallet.name <your validator wallet>
+      --wallet.hotkey <your validator hotkey>
+      --logging.debug
+  ```
 
 ### Detailed Setup Instructions
-For step-by-step guidance on setting up and running a miner, validator, or operating on the testnet, refer to the following guides:
-- [Miner](./docs/running_a_miner.md)
-- [Validator](./docs/running_a_validator.md)
-- [Testnet](./docs/running_on_testnet.md)
-- [Mainnet](./docs/running_on_mainnet.md)
 
-</div>
+For step-by-step guidance on setting up and running a miner, validator, or operating on the testnet or mainnet, refer to the following guides:
+- [Miner Setup](./docs/running_a_miner.md)
+- [Validator Setup](./docs/running_a_validator.md)
+- [Testnet Operations](./docs/running_on_testnet.md)
+- [Mainnet Operations](./docs/running_on_mainnet.md)
 
 ---
 
-# Running
+## Environment Variables Configuration
 
-These validators are designed to run and update themselves automatically. To run a validator, follow these steps:
+For setting up the necessary environment variables for your miner or validator, please refer to the [Environment Variables Guide](./docs/env_variables.md).
 
-1. Install this repository, you can do so by following the steps outlined in [the installation section](#installation).
-2. Install [Weights and Biases](https://docs.wandb.ai/quickstart) and run `wandb login` within this repository. This will initialize Weights and Biases, enabling you to view KPIs and Metrics on your validator. (Strongly recommended to help the network improve from data sharing)
-3. Install [PM2](https://pm2.io/docs/runtime/guide/installation/) on your system.
-   **On Linux**:
+---
+
+## Running Your Validators
+
+Validators are designed to run and update themselves automatically. Follow these steps to run a validator:
+
+1. Install this repository as outlined in [the installation section](#installation).
+2. Set up [Weights and Biases](https://docs.wandb.ai/quickstart) and run `wandb login` within this repository for KPIs and Metrics monitoring.
+3. Install [PM2](https://pm2.io/docs/runtime/guide/installation/).
+   - **On Linux**:
+     ```bash
+     sudo apt update && sudo apt install npm && sudo npm install pm2 -g && pm2 update
+     ```
+   - **On Mac OS**:
+     ```bash
+     brew update && brew install npm && sudo npm install pm2 -g && pm2 update
+     ```
+4. Run the `Miner` script:
    ```bash
-   sudo apt update && sudo apt install npm && sudo npm install pm2 -g && pm2 update
-   ``` 
-   **On Mac OS**
-   ```bash
-   brew update && brew install npm && sudo npm install pm2 -g && pm2 update
-   ```
-4. Run the `Miner` script which will handle running your miner.
-   ```bash
-   pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 -- 
+   pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 --
     --wallet.name <your-wallet-name> 
     --wallet.hotkey <your-wallet-hot-key> 
     --subtensor.network <network> 
     --netuid 22 
     --axon.port <port> 
    ```
-5. Run the `Validator & API` script which will handle running your validator.
+5. Run the `Validator & API` script:
    ```bash
-    pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name validator_api -- 
+    pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name validator_api --
         --wallet.name <your-wallet-name>  
         --netuid 22 
         --wallet.hotkey <your-wallet-hot-key>  
@@ -124,60 +136,16 @@ These validators are designed to run and update themselves automatically. To run
         --logging.debug
    ```
 
-# Environment Variables Configuration
-For a comprehensive guide on setting up the necessary environment variables for your miner or validator, please refer to the [Environment Variables Guide](./docs/env_variables.md).
+---
 
-# Real-time monitoring with wandb integration
-By default, the text prompting validator sends data to wandb, allowing users to monitor running validators and access key metrics in real-time, such as:
+## Real-time Monitoring with wandb Integration
+
+The text prompting validator sends data to wandb, allowing real-time monitoring with key metrics like:
 - Gating model loss
 - Hardware usage
 - Forward pass time
 - Block duration
 
-All the data sent to wandb is publicly available to the community at the following [link](https://wandb.ai/smart-scrape/smart-wandb).
+Data is publicly available at [this link](https://wandb.ai/smart-scrape/smart-wandb). Note that [data from anonymous users is deleted after 7 days](https://docs.wandb.ai/guides/app/features/anon).
 
-You don't need to have a wandb account to access the data or to generate a new run,
-but bear in mind that
-[data generated by anonymous users will be deleted after 7 days](https://docs.wandb.ai/guides/app/features/anon#:~:text=If%20there's%20no%20account%2C%20we,be%20available%20for%207%20days)
-as default wandb policy.
-
-
-
-<!-- # Minimum Compute Resource Specifications
-<details>
-
-
-To ensure optimal performance of Smart-Scrape, your system should meet the following minimum compute resource specifications:
-
-- **CPU:**
-  - Minimum Cores: 16
-  - Minimum Speed: 2.5 GHz per core
-  - Architecture: x86_64
-
-- **GPU:**
-  - Required: No
-  - Minimum VRAM: Not applicable
-  - CUDA Cores: Not applicable
-  - Minimum Compute Capability: Not applicable
-
-- **Memory:**
-  - Minimum RAM: 24 GB
-  - Minimum Swap Space: 24 GB
-
-- **Storage:**
-  - Minimum Free Space: 200 GB
-  - Type: SSD preferred
-  - IOPS: 1000 (if applicable)
-
-- **Operating System:**
-  - Name: Ubuntu
-  - Version: 20.04 or higher
-
-- **Network:**
-  - Bandwidth:
-    - Minimum Download: 100 Mbps
-    - Minimum Upload: 20 Mbps
-
-Please ensure that your system complies with these specifications before proceeding with the installation and operation of Smart-Scrape.
-
-</details> -->
+</div>
