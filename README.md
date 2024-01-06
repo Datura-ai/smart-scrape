@@ -124,16 +124,8 @@ These validators are designed to run and update themselves automatically. To run
         --logging.debug
    ```
 
-# Environment Variables Setup
-```bash
-export OPENAI_API_KEY=""
-
-export WANDB_API_KEY=""
-
-export TWITTER_BEARER_TOKEN=""
-
-export VALIDATOR_ACCESS_KEY=""
-```
+# Environment Variables Configuration
+For a comprehensive guide on setting up the necessary environment variables for your miner or validator, please refer to the [Environment Variables Guide](./docs/env_variables.md).
 
 # Real-time monitoring with wandb integration
 By default, the text prompting validator sends data to wandb, allowing users to monitor running validators and access key metrics in real-time, such as:

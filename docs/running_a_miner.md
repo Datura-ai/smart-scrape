@@ -3,7 +3,11 @@
 This guide provides detailed instructions for setting up and running a Bittensor Smart-Scrape miner using the smart-scrape repository.
 
 ## Prerequisites
-Before you begin, ensure that you have PM2 installed to manage your processes. If you don’t have it installed, follow the installation guide [here](https://pm2.io/docs/runtime/guide/installation/).
+Before you begin the setup process, make sure you have the following prerequisites ready:
+
+- PM2: A process manager to keep your miner running. If it's not already installed, you can find the installation instructions [here](https://pm2.io/docs/runtime/guide/installation/).
+
+- Environment Variables: Certain environment variables need to be set before running the miner. Please refer to the [Environment Variables Guide](./env_variables.md) for details.
 
 ## 1. Install the smart-scrape Repository
 To start, install the smart-scrape repository. Navigate to the directory where you’ve cloned or downloaded `smart-scrape`, and run the following command:
@@ -50,6 +54,9 @@ pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 
 - `--miner.mock_dataset`: If True, the miner will retrieve data from mock dataset
 - `--miner.blocks_per_epoch`: Blocks until the miner sets weights on chain
 - `--miner.no_set_weights`: If True, the miner does not set weights.
+
+
+
 
 ## Conclusion
 By following this guide, you should be able to setup and run a Smart-scrape miner using the smart-scrape repository with PM2. Ensure that you monitor your processes and check the logs regularly for any issues or important information. For more details or if you encounter any problems, refer to the official documentation or seek help from the community.

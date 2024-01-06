@@ -67,7 +67,10 @@ Check which GPUs are available by running:
 nvidia-smi
 ```
 
-Launch the process using `pm2` and specify the GPU to use by setting the `CUDA_VISIBLE_DEVICES` variable. Adjust the following command to your local paths, available GPUs, and other preferences:
+To launch the process with `pm2`, set the `CUDA_VISIBLE_DEVICES` environment variable to designate the GPU. Modify the command below according to your system configuration, available GPU resources, and preferences:
+
+Please ensure that all required environment variables are set prior to running the validator. For a comprehensive list and setup guide, refer to the [Environment Variables Guide](./env_variables.md).
+
 
 ```sh
 CUDA_VISIBLE_DEVICES=1 pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name validator_api -- 
