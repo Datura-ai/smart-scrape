@@ -110,16 +110,16 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
             completion = response.completion
             twitter_links = self.find_twitter_links(completion)
             if twitter_links and all(self.is_valid_twitter_link(link) for link in twitter_links):
-                tweets = []
+                valid_links = []
                 errors = []
                 json_response = self.fetch_twitter_data_for_links(twitter_links)
                 if 'data' in json_response:
-                    tweets =  json_response['data']
+                    valid_links =  json_response['data']
                 elif 'errors' in json_response:
                     errors = json_response['errors']
                 
-                response.tweets = json.dumps(tweets, indent=4, sort_keys=True)
-                penalty = self.max_penalty * len(tweets) / len(twitter_links)
+                response.tweets = json.dumps(valid_links, indent=4, sort_keys=True)
+                penalty = self.max_penalty * len(valid_links) / len(twitter_links)
                 penalties.append(penalty)
             else:
                 penalties.append(0.0)

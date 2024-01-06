@@ -1,4 +1,3 @@
-import threading
 import os
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, HTTPException, Request
@@ -6,8 +5,6 @@ import uvicorn
 import bittensor as bt
 import traceback
 from validator import neuron
-from weights import init_wandb, update_weights
-from template import QUERY_MINERS
 import time
 import asyncio
 
