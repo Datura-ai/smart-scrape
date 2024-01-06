@@ -20,9 +20,9 @@ import time
 import torch
 import bittensor as bt
 from typing import List, Union
-from .config import RewardModelType
+from .config import RewardModelType, RewardScoringType
 from .reward import BaseRewardModel, BaseRewardEvent
-from utils.prompts import AugmentPrompt, FollowupPrompt, AnswerPrompt
+from utils.prompts import TwitterQuestionAnswerPrompt, TwitterSummaryLinksContetPrompt
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 class PromptRewardModel(BaseRewardModel):
@@ -32,7 +32,7 @@ class PromptRewardModel(BaseRewardModel):
     def name(self) -> str:
         return RewardModelType.prompt.value
 
-    def __init__(self, device: str):
+    def __init__(self, device: str, request_type):
         super().__init__()
         self.device = device
 
@@ -55,12 +55,10 @@ class PromptRewardModel(BaseRewardModel):
 
             with torch.no_grad():
                 # Choose correct scoring prompt for request type.
-                if name == "augment":
-                    scoring_prompt = AugmentPrompt()
-                elif name == "followup":
-                    scoring_prompt = FollowupPrompt()
-                elif name == "answer":
-                    scoring_prompt = AnswerPrompt()
+                if name == RewardScoringType.twitter_question_answer_score:
+                    scoring_prompt = TwitterQuestionAnswerPrompt()
+                elif name == RewardScoringType.twitter_summary_links_conten_template:
+                    scoring_prompt = TwitterSummaryLinksContetPrompt()
                 else:
                     reward_event.reward = 0
                     return reward_event
