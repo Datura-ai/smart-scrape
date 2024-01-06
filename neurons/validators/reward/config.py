@@ -18,7 +18,6 @@
 from dataclasses import dataclass
 from enum import Enum
 
-
 class RewardModelType(Enum):
     task_validator = "task_validator_filter"
     accuracy_match = "keyword_match_penalty"
@@ -26,6 +25,10 @@ class RewardModelType(Enum):
     rlhf = "rlhf_reward_model"
     prompt = "prompt_reward_model"
     dpo = "dpo_reward_model"
+
+class RewardScoringType(Enum):
+    twitter_question_answer_score = "twitter_question_answer_score"
+    twitter_summary_links_conten_template = "twitter_summary_links_conten_template"
 
 @dataclass(frozen=True)
 class DefaultRewardFrameworkConfig:
