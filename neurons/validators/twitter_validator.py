@@ -13,7 +13,7 @@ from reward import (
 from typing import List
 from utils.mock import MockRewardModel
 import time
-from penalty import (
+from neurons.validators.penalty import (
     TaskValidationPenaltyModel,
     AccuracyPenaltyModel,
     LinkValidationPenaltyModel
@@ -21,7 +21,7 @@ from penalty import (
 from reward.open_assistant import OpenAssistantRewardModel
 from reward.prompt import PromptRewardModel
 from reward.dpo import DirectPreferenceRewardModel
-from utils.tasks import TwitterTask
+from neurons.validators.utils.tasks import TwitterTask
 from template.utils import get_random_tweet_prompts
 from template.services.twitter import TwitterAPIClient
 from template import QUERY_MINERS
@@ -75,7 +75,7 @@ class TwitterScraperValidator:
 
         self.penalty_functions = [
             TaskValidationPenaltyModel(max_penalty=0.6),
-            LinkValidationPenaltyModel(max_penalty=0.9),
+            LinkValidationPenaltyModel(max_penalty=1),
             AccuracyPenaltyModel(max_penalty=1),
         ]
 

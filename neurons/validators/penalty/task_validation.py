@@ -17,8 +17,8 @@
 # DEALINGS IN THE SOFTWARE.
 import torch
 from typing import List
-from utils.tasks import Task
-from penalty.penalty import BasePenaltyModel, PenaltyModelType
+from neurons.validators.utils.tasks import Task
+from neurons.validators.penalty.penalty import BasePenaltyModel, PenaltyModelType
 import bittensor as bt
 
 class TaskValidationPenaltyModel(BasePenaltyModel):

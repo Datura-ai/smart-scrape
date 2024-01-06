@@ -2,8 +2,8 @@ import torch
 import re
 from typing import List
 from template.protocol import TwitterPromptAnalysisResult
-from utils.tasks import TwitterTask
-from penalty import PenaltyModelType, BasePenaltyModel
+from neurons.validators.utils.tasks import TwitterTask
+from neurons.validators.penalty import PenaltyModelType, BasePenaltyModel
 from template.protocol import TwitterScraperStreaming
 
 class AccuracyPenaltyModel(BasePenaltyModel):
