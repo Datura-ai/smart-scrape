@@ -46,6 +46,7 @@ class TwitterScraperValidator:
             [
                 self.neuron.config.reward.rlhf_weight,
                 self.neuron.config.reward.prompt_based_weight,
+                self.neuron.config.reward.prompt_summary_links_content_based_weight,
                 self.neuron.config.reward.dpo_weight,
             ],
             dtype=torch.float32,
@@ -179,14 +180,24 @@ class TwitterScraperValidator:
         for response in responses:
             time.sleep(10)
             completion = response.completion
+            bt.logging.debug(
+                f"process_content_links completion: {completion}"
+            )
             twitter_links = self.twitter_api.find_twitter_links(completion)
-            json_response = self.fetch_twitter_data_for_links(twitter_links)
-            if 'data' in json_response:
-                links_content =  json_response['data']
-                response.links_content = links_content
-            elif 'errors' in json_response:
-                errors = json_response['errors']
-                bt.logging.info(f"Process cotent links: {errors}")
+            bt.logging.debug(
+                f"process_content_links twitter_links: {twitter_links}"
+            )
+            if len(twitter_links) > 0:
+                json_response = self.twitter_api.fetch_twitter_data_for_links(twitter_links)
+                bt.logging.debug(
+                    f"process_content_links fetch_twitter_data_for_links: {json_response}"
+                )
+                if 'data' in json_response:
+                    links_content =  json_response['data']
+                    response.links_content = links_content
+                elif 'errors' in json_response:
+                    errors = json_response['errors']
+                    bt.logging.info(f"Process cotent links: {errors}")
 
     async def compute_rewards_and_penalties(self, event, prompt, task, responses, uids, start_time):
         try:

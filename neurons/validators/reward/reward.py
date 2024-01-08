@@ -120,7 +120,7 @@ class BaseRewardModel:
 
         return rewards
     
-    def get_successful_completions(responses: List[bt.Synapse]):
+    def get_successful_completions(self, responses: List[bt.Synapse]):
         successful_completions_indices: List[int] = [
             idx
             for idx, resp in enumerate(responses)

@@ -115,13 +115,13 @@ class PromptRewardModel(BaseRewardModel):
     def get_rewards(
         self, prompt: str, responses: List[bt.Synapse], name: str
     ) -> List[BaseRewardEvent]:
+        completions: List[str] = self.get_successful_completions(responses)
         bt.logging.debug(
             f"PromptRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
         )
         bt.logging.trace(
             f"PromptRewardModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
         )
-        completions: List[str] = self.get_successful_completions(responses)
         # Get all the reward results.
         reward_events = [
             self.reward(prompt, completion, name) for completion in completions
