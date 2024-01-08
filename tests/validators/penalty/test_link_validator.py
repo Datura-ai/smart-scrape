@@ -75,7 +75,11 @@ class LinkValidationPenaltyModelTestCase(unittest.TestCase):
             TwitterScraperStreaming(completion=completion1, 
                                     messages='', 
                                     model='', 
-                                    seed=1),
+                                    seed=1,
+                                    links_content=[
+                                        'https://twitter.com/XtalksFood/status/1743286252969828589',
+                                        'https://twitter.com/XtalksFood/status/1743286252969828589'
+                                    ]),
             TwitterScraperStreaming(completion=completion2, 
                                     messages='', 
                                     model='', 
