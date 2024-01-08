@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from neurons.validators.utils.tasks import TwitterTask
 from neurons.validators.penalty import BasePenaltyModel, PenaltyModelType
 from template.protocol import TwitterScraperStreaming
-from template.services.twitter import TwitterAPIClient 
+from template.services.twitter import TwitterAPIClient, VALID_DOMAINS
 
 
 class LinkValidationPenaltyModel(BasePenaltyModel):
@@ -15,7 +15,6 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
     A class to validate the presence and relevance of Twitter links in a text.
     Inherits from BasePenaltyModel.
     """
-    VALID_DOMAINS = ["twitter.com", "x.com"]
 
     def __init__(self, max_penalty: float):
         """
@@ -26,8 +25,8 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
             prompt_content: The content of the user's prompt to check relevance.
         """
         super().__init__(max_penalty)
-        self.twitter_link_regex = re.compile(r'https?://(?:' + '|'.join(re.escape(domain) for domain in self.VALID_DOMAINS) + r')/[\w/:%#\$&\?\(\)~\.=\+\-]+', re.IGNORECASE)
         self.client = TwitterAPIClient()
+        
 
     @property
     def name(self) -> str:
@@ -39,17 +38,6 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
         """
         return PenaltyModelType.link_validation_penalty.value
 
-    def find_twitter_links(self, text: str) -> List[str]:
-        """
-        Find all Twitter links in the given text.
-
-        Args:
-            text: The text to search for Twitter links.
-
-        Returns:
-            A list of found Twitter links.
-        """
-        return self.twitter_link_regex.findall(text)
 
     def is_valid_twitter_link(self, url: str) -> bool:
         """
@@ -62,7 +50,7 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
             True if the URL is a valid Twitter link, False otherwise.
         """
         parsed_url = urlparse(url)
-        return parsed_url.netloc.lower() in self.VALID_DOMAINS
+        return parsed_url.netloc.lower() in VALID_DOMAINS
     
     def fetch_twitter_data_for_links(self, links: List[str]) -> List[dict]:
         """
@@ -74,22 +62,9 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
         Returns:
             A list of dictionaries containing the retrieved Twitter data.
         """
-        tweet_ids = [self.extract_tweet_id(link) for link in links if self.is_valid_twitter_link(link)]
+        tweet_ids = [self.client.extract_tweet_id(link) for link in links if self.is_valid_twitter_link(link)]
         return self.client.get_tweets_by_ids(tweet_ids)
 
-    @staticmethod
-    def extract_tweet_id(url: str) -> str:
-        """
-        Extract the tweet ID from a Twitter URL.
-
-        Args:
-            url: The Twitter URL to extract the tweet ID from.
-
-        Returns:
-            The extracted tweet ID.
-        """
-        match = re.search(r'/status/(\d+)', url)
-        return match.group(1) if match else None
 
 
     def calculate_penalties(self, task: TwitterTask, responses: List[TwitterScraperStreaming]) -> torch.FloatTensor:
@@ -108,15 +83,15 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
         for response in responses:
             time.sleep(10)
             completion = response.completion
-            twitter_links = self.find_twitter_links(completion)
+            twitter_links = self.client.find_twitter_links(completion)
             if twitter_links and all(self.is_valid_twitter_link(link) for link in twitter_links):
-                valid_links = []
-                errors = []
-                json_response = self.fetch_twitter_data_for_links(twitter_links)
-                if 'data' in json_response:
-                    valid_links =  json_response['data']
-                elif 'errors' in json_response:
-                    errors = json_response['errors']
+                valid_links = response.links_content
+                # errors = []
+                # json_response = self.fetch_twitter_data_for_links(twitter_links)
+                # if 'data' in json_response:
+                #     valid_links =  json_response['data']
+                # elif 'errors' in json_response:
+                #     errors = json_response['errors']
                 
                 response.tweets = json.dumps(valid_links, indent=4, sort_keys=True)
                 penalty = self.max_penalty * len(valid_links) / len(twitter_links)

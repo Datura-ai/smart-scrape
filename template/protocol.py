@@ -148,6 +148,11 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
         description="Fetched Tweets.",
     )
 
+    links_content: Optional[List[str]] = pydantic.Field(
+        default_factory=list,
+        title="Links",
+        description="A list of extracted links from the tweets.",
+    )
 
     def set_prompt_analysis(self, data: any):
         self.prompt_analysis = data

@@ -135,8 +135,9 @@ class DirectPreferenceRewardModel(BaseRewardModel):
             return reward_event
 
     def get_rewards(
-        self, prompt: str, completions: List[str], name: str
+        self, prompt: str, responses: List[bt.Synapse], name: str
     ) -> List[BaseRewardEvent]:
+        completions: List[str] = self.get_successful_completions(responses)
         # Get all the reward results.
         reward_events = [
             self.reward_single(prompt, completion, name) for completion in completions

@@ -122,6 +122,13 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
+        "--reward.prompt_summary_links_content_based_weight",
+        type=float,
+        help="Specifies the weight for the reward model that evaluates the relevance and quality of summary text in conjunction with linked content data.",
+        default=DefaultRewardFrameworkConfig.prompt_model_summary_links_content_weight,
+    )
+
+    parser.add_argument(
         "--neuron.run_random_miner_syn_qs_interval",
         type=int,
         help="Sets the interval, in seconds, for querying a random subset of miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.",

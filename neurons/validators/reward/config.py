@@ -28,7 +28,7 @@ class RewardModelType(Enum):
 
 class RewardScoringType(Enum):
     twitter_question_answer_score = "twitter_question_answer_score"
-    twitter_summary_links_conten_template = "twitter_summary_links_conten_template"
+    twitter_summary_links_content_template = "twitter_summary_links_content_template"
 
 @dataclass(frozen=True)
 class DefaultRewardFrameworkConfig:
@@ -36,5 +36,6 @@ class DefaultRewardFrameworkConfig:
     Note: All the weights should add up to 1.0.
     """
     dpo_model_weight: float = 0
-    rlhf_model_weight: float = 0.5
+    rlhf_model_weight: float = 0.1
     prompt_model_weight: float = 0.5
+    prompt_model_summary_links_content_weight: float = 0.4

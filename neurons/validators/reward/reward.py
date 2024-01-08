@@ -57,7 +57,7 @@ class BaseRewardModel:
 
     @abstractmethod
     def get_rewards(
-        self, prompt: str, completion: List[str], name: str
+        self, prompt: str, responses: List[bt.Synapse], name: str
     ) -> Union[torch.FloatTensor, dict]:
         ...
 
@@ -119,6 +119,19 @@ class BaseRewardModel:
         )
 
         return rewards
+    
+    def get_successful_completions(responses: List[bt.Synapse]):
+        successful_completions_indices: List[int] = [
+            idx
+            for idx, resp in enumerate(responses)
+            if resp.dendrite.status_code == 200
+        ]
+
+        # Get all completions from responding calls.
+        successful_completions: List[str] = [
+            responses[idx].completion.strip() for idx in successful_completions_indices
+        ]
+        return successful_completions
 
     def apply(
         self, prompt: str, responses: List[bt.Synapse], name: str
@@ -132,14 +145,9 @@ class BaseRewardModel:
             if resp.dendrite.status_code == 200
         ]
 
-        # Get all completions from responding calls.
-        successful_completions: List[str] = [
-            responses[idx].completion.strip() for idx in successful_completions_indices
-        ]
-
         # Reward each completion.
         reward_events = BaseRewardEvent.parse_reward_events(
-            self.get_rewards(prompt, successful_completions, name)
+            self.get_rewards(prompt, responses, name)
         )
         successful_rewards = torch.tensor(
             reward_events.pop("reward"), dtype=torch.float32

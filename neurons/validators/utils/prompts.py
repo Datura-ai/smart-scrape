@@ -88,7 +88,7 @@ class TwitterSummaryLinksContetPrompt(ScoringPrompt):
 
     def __init__(self):
         super().__init__()
-        self.template = twitter_summary_links_conten_template
+        self.template = twitter_summary_links_content_template
 
 def find_unique_tags(input_text: str):
     r"""Find all substrings that match the pattern '<...>'."""
@@ -170,7 +170,7 @@ Explanation: The answer fails to provide any relevant Twitter links or informati
 
 
 
-twitter_summary_links_conten_template = """
+twitter_summary_links_content_template = """
 Score the relevance, succinctness, and quality of a summary given a SummarLinksContent. 
 The context is within <SummarLinksContent></SummarLinksContent> tags, 
 and the question is within <Summary></Summary> tags. 

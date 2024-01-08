@@ -1,3 +1,3 @@
 
 from .reward import BaseRewardModel
-from .config import RewardModelType, DefaultRewardFrameworkConfig
+from .config import RewardModelType, DefaultRewardFrameworkConfig, RewardScoringType

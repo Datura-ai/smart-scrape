@@ -9,6 +9,7 @@ from base_validator import AbstractNeuron
 from template.protocol import TwitterScraperStreaming, TwitterPromptAnalysisResult
 from reward import (
     RewardModelType,
+    RewardScoringType
 )
 from typing import List
 from utils.mock import MockRewardModel
@@ -62,29 +63,36 @@ class TwitterScraperValidator:
         self.reward_functions = [
             OpenAssistantRewardModel(device=self.neuron.config.neuron.device)
             if self.neuron.config.reward.rlhf_weight > 0
-            else MockRewardModel(RewardModelType.rlhf.value),  
+            else MockRewardModel(RewardModelType.rlhf.value), 
 
-            PromptRewardModel(device=self.neuron.config.neuron.device)
+            PromptRewardModel(device=self.neuron.config.neuron.device, 
+                              scoring_type=RewardScoringType.twitter_question_answer_score)
             if self.neuron.config.reward.prompt_based_weight > 0
             else MockRewardModel(RewardModelType.prompt.value),
 
-            # DirectPreferenceRewardModel(device=self.neuron.config.neuron.device)
-            # if self.neuron.config.reward.dpo_weight > 0
-            # else MockRewardModel(RewardModelType.prompt.value),                
+            PromptRewardModel(device=self.neuron.config.neuron.device, 
+                              scoring_type=RewardScoringType.twitter_summary_links_content_template)
+            if self.neuron.config.reward.prompt_summary_links_content_based_weight > 0
+            else MockRewardModel(RewardModelType.prompt.value),
+
+            DirectPreferenceRewardModel(device=self.neuron.config.neuron.device)
+            if self.neuron.config.reward.dpo_weight > 0
+            else MockRewardModel(RewardModelType.prompt.value),                
         ]
 
         self.penalty_functions = [
             TaskValidationPenaltyModel(max_penalty=0.6),
-            LinkValidationPenaltyModel(max_penalty=1),
-            AccuracyPenaltyModel(max_penalty=1),
+            LinkValidationPenaltyModel(max_penalty=0.9),
+            AccuracyPenaltyModel(max_penalty=0.7),
         ]
 
-        self.twillio_api = TwitterAPIClient()
+        self.twitter_api = TwitterAPIClient()
         # Init Weights.
         bt.logging.debug("loading", "moving_averaged_scores")
         self.moving_averaged_scores = torch.zeros((self.neuron.metagraph.n)).to(self.neuron.config.neuron.device)
         bt.logging.debug(str(self.moving_averaged_scores))
     
+
     async def get_uids(self, strategy=QUERY_MINERS.RANDOM):
         available_uids = await self.neuron.get_available_uids()
         uid_list = list(available_uids.keys())
@@ -167,9 +175,25 @@ class TwitterScraperValidator:
 
         return async_responses, uids, event, start_time
     
+    def process_content_links(self, responses):
+        for response in responses:
+            time.sleep(10)
+            completion = response.completion
+            twitter_links = self.twitter_api.find_twitter_links(completion)
+            json_response = self.fetch_twitter_data_for_links(twitter_links)
+            if 'data' in json_response:
+                links_content =  json_response['data']
+                response.links_content = links_content
+            elif 'errors' in json_response:
+                errors = json_response['errors']
+                bt.logging.info(f"Process cotent links: {errors}")
+
     async def compute_rewards_and_penalties(self, event, prompt, task, responses, uids, start_time):
         try:
             bt.logging.info("Computing rewards and penalties")
+
+            self.process_content_links(responses)
+
             rewards = torch.zeros(len(responses), dtype=torch.float32).to(self.neuron.config.neuron.device)
             for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
                 reward_i_normalized, reward_event = reward_fn_i.apply(task.base_text, responses, task.task_name)

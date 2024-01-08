@@ -32,7 +32,7 @@ class PromptRewardModel(BaseRewardModel):
     def name(self) -> str:
         return RewardModelType.prompt.value
 
-    def __init__(self, device: str, request_type):
+    def __init__(self, device: str, scoring_type: None):
         super().__init__()
         self.device = device
 
@@ -48,6 +48,7 @@ class PromptRewardModel(BaseRewardModel):
         self.model = AutoModelForCausalLM.from_pretrained(
             PromptRewardModel.reward_model_name, torch_dtype=torch.float16
         ).to(self.device)
+        self.scoring_type = scoring_type
 
     def reward(self, prompt: str, completion: str, name: str) -> BaseRewardEvent:
         try:
@@ -57,11 +58,20 @@ class PromptRewardModel(BaseRewardModel):
                 # Choose correct scoring prompt for request type.
                 if name == RewardScoringType.twitter_question_answer_score:
                     scoring_prompt = TwitterQuestionAnswerPrompt()
-                elif name == RewardScoringType.twitter_summary_links_conten_template:
+                elif name == RewardScoringType.twitter_summary_links_content_template:
                     scoring_prompt = TwitterSummaryLinksContetPrompt()
                 else:
                     reward_event.reward = 0
                     return reward_event
+                
+                if self.scoring_type:
+                    if name == RewardScoringType.twitter_question_answer_score:
+                        scoring_prompt = TwitterQuestionAnswerPrompt()
+                    elif name == RewardScoringType.twitter_summary_links_content_template:
+                        scoring_prompt = TwitterSummaryLinksContetPrompt()
+                    else:
+                        reward_event.reward = 0
+                        return reward_event 
 
                 # Format scoring prompt for this completion.
                 scoring_prompt_text = scoring_prompt.text(prompt, completion)
@@ -103,7 +113,7 @@ class PromptRewardModel(BaseRewardModel):
             bt.logging.error(f"Error in  PromptRewardModel reward method: {e}")
 
     def get_rewards(
-        self, prompt: str, completions: List[str], name: str
+        self, prompt: str, responses: List[bt.Synapse], name: str
     ) -> List[BaseRewardEvent]:
         bt.logging.debug(
             f"PromptRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
@@ -111,6 +121,7 @@ class PromptRewardModel(BaseRewardModel):
         bt.logging.trace(
             f"PromptRewardModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
         )
+        completions: List[str] = self.get_successful_completions(responses)
         # Get all the reward results.
         reward_events = [
             self.reward(prompt, completion, name) for completion in completions
