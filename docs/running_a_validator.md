@@ -6,7 +6,7 @@ We recommend using `pm2` for process management. For installation, see the [pm2 
 
 ## Hardware Requirements:
 - **Recommended:** A100 80GB
-- **Minimum:** A40 48GB or A6000 48GB
+- **Minimum:** 24GB VRAM: A4000/A5000/3090 is most cost efficient
 
 ## 0. Install Conda Environment
 Create and activate a new conda environment named `val` with Python 3.10:
