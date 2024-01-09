@@ -61,7 +61,12 @@ class TwitterScraperValidator:
             bt.logging.error(message)
             raise Exception(message)
     
-        tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
+        tokenizer = None
+        model = None
+        if self.neuron.config.reward.prompt_based_weight > 0 or \
+           self.neuron.config.reward.prompt_summary_links_content_based_weight > 0:
+            tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
+           
         self.reward_functions = [
             OpenAssistantRewardModel(device=self.neuron.config.neuron.device)
             if self.neuron.config.reward.rlhf_weight > 0
@@ -99,19 +104,7 @@ class TwitterScraperValidator:
         bt.logging.debug("loading", "moving_averaged_scores")
         self.moving_averaged_scores = torch.zeros((self.neuron.metagraph.n)).to(self.neuron.config.neuron.device)
         bt.logging.debug(str(self.moving_averaged_scores))
-    
 
-    async def get_uids(self, strategy=QUERY_MINERS.RANDOM):
-        available_uids = await self.neuron.get_available_uids()
-        uid_list = list(available_uids.keys())
-        if strategy == QUERY_MINERS.RANDOM:
-            uids = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
-        elif strategy == QUERY_MINERS.ALL:
-            uids = torch.tensor(uid_list) if uid_list else torch.tensor([])
-        uids = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
-        bt.logging.info(" Random uids ---------- ", uids)
-        uid_list = list(available_uids.keys())
-        return uids.to(self.neuron.config.neuron.device)
 
     async def process_async_responses(self, async_responses):
         responses = []
@@ -168,7 +161,7 @@ class TwitterScraperValidator:
         start_time = time.time()
         
         # Get random id on that step
-        uids = await self.get_uids(strategy)
+        uids = await self.neuron.get_uids(strategy)
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
         synapse = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
 
@@ -186,26 +179,34 @@ class TwitterScraperValidator:
     def process_content_links(self, responses):
         try:
             for response in responses:
-                time.sleep(10)
-                completion = response.completion
-                bt.logging.debug(
-                    f"process_content_links completion: {completion}"
-                )
-                twitter_links = self.twitter_api.find_twitter_links(completion)
-                bt.logging.debug(
-                    f"process_content_links twitter_links: {twitter_links}"
-                )
-                if len(twitter_links) > 0:
-                    json_response = self.twitter_api.fetch_twitter_data_for_links(twitter_links)
+                if self.neuron.config.neuron.disable_twitter_links_content_fetch:
+                    result = json.loads(response.tweets)
+                    if 'data' in result:
+                        links_content = [{'id': item.get('id'), 'text': item.get('text')} for item in result['data']]
+                        com_links = self.twitter_api.find_twitter_links(response.completion)
+                        tweet_ids = [self.twitter_api.extract_tweet_id(link) for link in com_links]
+                        response.links_content = [content for content in links_content if content['id'] in tweet_ids]
+                else:    
+                    time.sleep(10)
+                    completion = response.completion
                     bt.logging.debug(
-                        f"process_content_links fetch_twitter_data_for_links: {json_response}"
+                        f"process_content_links completion: {completion}"
                     )
-                    if 'data' in json_response:
-                        links_content =  json_response['data']
-                        response.links_content = links_content
-                    elif 'errors' in json_response:
-                        errors = json_response['errors']
-                        bt.logging.info(f"Process cotent links: {errors}")
+                    twitter_links = self.twitter_api.find_twitter_links(completion)
+                    bt.logging.debug(
+                        f"process_content_links twitter_links: {twitter_links}"
+                    )
+                    if len(twitter_links) > 0:
+                        json_response = self.twitter_api.fetch_twitter_data_for_links(twitter_links)
+                        bt.logging.debug(
+                            f"process_content_links fetch_twitter_data_for_links: {json_response}"
+                        )
+                        if 'data' in json_response:
+                            links_content =  json_response['data']
+                            response.links_content = links_content
+                        elif 'errors' in json_response:
+                            errors = json_response['errors']
+                            bt.logging.info(f"Process cotent links: {errors}")
         except Exception as e:
             bt.logging.error(f"Error in process_content_links: {e}")
             return
