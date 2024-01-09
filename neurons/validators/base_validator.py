@@ -36,6 +36,10 @@ class AbstractNeuron(ABC):
         pass
 
     @abstractmethod
+    async def get_uids(self, axon, uid: int):
+        pass
+
+    @abstractmethod
     async def get_available_uids(self) -> dict:
         pass
 

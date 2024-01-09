@@ -2,9 +2,10 @@ import torch
 import wandb
 import asyncio
 import traceback
+import random
 import bittensor as bt
 import template.utils as utils
-
+from typing import List
 from template.protocol import IsAlive
 from twitter_validator import TwitterScraperValidator
 from config import add_args, check_config, config
@@ -56,6 +57,7 @@ class neuron(AbstractNeuron):
         self.loop = asyncio.get_event_loop()
         self.step = 0
         self.steps_passed = 0
+        self.exclude = []
 
     def initialize_components(self):
         bt.logging(config=self.config, logging_dir=self.config.full_path)
@@ -72,6 +74,9 @@ class neuron(AbstractNeuron):
     async def check_uid(self, axon, uid):
         """Asynchronously check if a UID is available."""
         try:
+            if self.config.neuron.only_allowed_miners and axon.hotkey not in self.config.neuron.only_allowed_miners:
+                return None
+                
             response = await self.dendrite(axon, IsAlive(), deserialize=False, timeout=4)
             if response.is_success:
                 bt.logging.trace(f"UID {uid} is active")
@@ -83,15 +88,88 @@ class neuron(AbstractNeuron):
             bt.logging.error(f"Error checking UID {uid}: {e}\n{traceback.format_exc()}")
             return None
 
-    async def get_available_uids(self):
+    async def get_available_uids_is_alive(self):
         """Get a dictionary of available UIDs and their axons asynchronously."""
         tasks = {uid.item(): self.check_uid(self.metagraph.axons[uid.item()], uid.item()) for uid in self.metagraph.uids}
         results = await asyncio.gather(*tasks.values())
 
-        # Create a dictionary of UID to axon info for active UIDs
-        available_uids = {uid: axon_info for uid, axon_info in zip(tasks.keys(), results) if axon_info is not None}
+
+        # # Create a dictionary of UID to axon info for active UIDs
+        available_uids = [uid for uid, axon_info in zip(tasks.keys(), results) if axon_info is not None]
+        # available_uids = {uid: axon_info for uid, axon_info in zip(tasks.keys(), results) if axon_info is not None}
+
         
         return available_uids
+
+
+    def check_uid_availability(
+        self, metagraph: "bt.metagraph.Metagraph", uid: int, vpermit_tao_limit: int = 4096
+    ) -> bool:
+        """Check if uid is available. The UID should be available if it is serving and has less than vpermit_tao_limit stake
+        Args:
+            metagraph (:obj: bt.metagraph.Metagraph): Metagraph object
+            uid (int): uid to be checked
+            vpermit_tao_limit (int): Validator permit tao limit
+        Returns:
+            bool: True if uid is available, False otherwise
+        """
+        # Filter non serving axons.
+        if not metagraph.axons[uid].is_serving:
+            return False
+        # Filter validator permit > 1024 stake.
+        if metagraph.validator_permit[uid]:
+            if metagraph.S[uid] > vpermit_tao_limit:
+                return False
+        # Available otherwise.
+        return True
+
+    async def get_available_uids(self, k: int = None, exclude: List[int] = None) -> torch.LongTensor:
+        """Returns k available random uids from the metagraph.
+        Args:
+            k (int): Number of uids to return.
+            exclude (List[int]): List of uids to exclude from the random sampling.
+        Returns:
+            uids (torch.LongTensor): Randomly sampled available uids.
+        Notes:
+            If `k` is larger than the number of available `uids`, set `k` to the number of available `uids`.
+        """
+        candidate_uids = []
+        avail_uids = []
+
+        for uid in range(self.metagraph.n.item()):
+            uid_is_available = self.check_uid_availability(
+                self.metagraph, uid, self.config.neuron.vpermit_tao_limit
+            )
+            uid_is_not_excluded = exclude is None or uid not in exclude
+
+            if uid_is_available:
+                avail_uids.append(uid)
+                if uid_is_not_excluded:
+                    candidate_uids.append(uid)
+
+        # Check if candidate_uids contain enough for querying, if not grab all avaliable uids
+        available_uids = candidate_uids
+        # if len(candidate_uids) < k:
+        #     available_uids += random.sample(
+        #         [uid for uid in avail_uids if uid not in candidate_uids],
+        #         k - len(candidate_uids),
+        #     )
+        # uids = torch.tensor(random.sample(available_uids, len(available_uids)))
+        return available_uids
+    
+        
+    async def get_uids(self, strategy=QUERY_MINERS.RANDOM):
+        # uid_list = await self.get_available_uids()
+        uid_list =  await self.get_available_uids_is_alive() #uid_list_is_live =
+        # uid_list = list(available_uids.keys())
+        if strategy == QUERY_MINERS.RANDOM:
+            uids = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
+        elif strategy == QUERY_MINERS.ALL:
+            uids = torch.tensor(uid_list) if uid_list else torch.tensor([])
+        bt.logging.info(" Random uids ---------- ", uids)
+        # uid_list = list(available_uids.keys())
+        return uids.to(self.config.neuron.device)
+
 
     async def update_scores(self, scores, wandb_data):
         try:
