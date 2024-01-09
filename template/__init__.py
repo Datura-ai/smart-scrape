@@ -19,7 +19,7 @@
 
 
 # version must stay on line 22
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 version_split = __version__.split(".")
 __spec_version__ = (
     (1000 * int(version_split[0]))
@@ -46,6 +46,7 @@ MAX_REQUESTS = 30
 # must have the test_key whitelisted to avoid a global blacklist
 testnet_key = ["5EhEZN6soubtKJm8RN7ANx9FGZ2JezxBUFxr45cdsHtDp3Uk"]
 test_key = ["5DcRHcCwD33YsHfj4PX5j2evWLniR1wSWeNmpf5RXaspQT6t"]
+
 valid_validators = ['5FFApaS75bv5pJHfAp2FVLBj9ZaXuFDjEypsaBNc1wCfe52v', '5EhvL1FVkQPpMjZX4MAADcW42i3xPSF1KiCpuaxTYVr28sux', 
                     '5CXRfP2ekFhe62r7q3vppRajJmGhTi7vwvb2yr79jveZ282w', '5CaNj3BarTHotEK1n513aoTtFeXcjf6uvKzAyzNuv9cirUoW', 
                     '5HK5tp6t2S59DywmHRWPBVJeJ86T61KjurYqeooqj8sREpeN', '5DvTpiniW9s3APmHRYn8FroUWyfnLtrsid5Mtn5EwMXHN2ed', 
@@ -55,11 +56,12 @@ valid_validators = ['5FFApaS75bv5pJHfAp2FVLBj9ZaXuFDjEypsaBNc1wCfe52v', '5EhvL1F
                     '5H66kJAzBCv2DC9poHATLQqyt3ag8FLSbHf6rMqTiRcS52rc',
                     '5FKstHjZkh4v3qAMSBa1oJcHCLjxYZ8SNTSz1opTv4hR7gVB', '5DXTJSPVvf1sow1MU4npJPewEAwhPRb6CWsk4RX9RFt2PRbj', # server 
                     ]
+
 WHITELISTED_KEYS = testnet_key + test_key + valid_validators
 BLACKLISTED_KEYS = ["5G1NjW9YhXLadMWajvTkfcJy6up3yH2q1YzMXDTi6ijanChe"]
 
 ENTITY = 'smart-scrape'
-PROJECT_NAME = 'smart-wandb'
+PROJECT_NAME = 'smart-scrape-2.0'
 
 
 class QUERY_MINERS(Enum):
