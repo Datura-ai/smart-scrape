@@ -61,31 +61,36 @@ class PromptRewardModel(BaseRewardModel):
     
         self.scoring_type = scoring_type
 
-    def reward(self, prompt: str, completion: str, name: str) -> BaseRewardEvent:
+    def reward(self, prompt: str, response: bt.Synapse, name: str) -> BaseRewardEvent:
         try:
+            completion = self.get_successful_completion(response=response)
             reward_event = BaseRewardEvent()
 
             with torch.no_grad():
                 # Choose correct scoring prompt for request type.
-                if name == RewardScoringType.twitter_question_answer_score:
-                    scoring_prompt = TwitterQuestionAnswerPrompt()
-                elif name == RewardScoringType.twitter_summary_links_content_template:
-                    scoring_prompt = TwitterSummaryLinksContetPrompt()
+                # Determine the scoring prompt based on the provided name or the default scoring type.
+                scoring_prompt = None
+                if self.scoring_type:
+                    scoring_type = self.scoring_type
                 else:
+                    scoring_type = name
+
+                scoring_prompt_text = None
+                if scoring_type == RewardScoringType.twitter_question_answer_score:
+                    scoring_prompt = TwitterQuestionAnswerPrompt()
+                elif scoring_type == RewardScoringType.twitter_summary_links_content_template:
+                    scoring_prompt = TwitterSummaryLinksContetPrompt()
+                    # Convert list of links content to string before passing to the prompt
+                    links_content_str = str(response.links_content)
+                    scoring_prompt_text = scoring_prompt.text(prompt, completion, links_content_str)
+
+                if scoring_prompt is None:
                     reward_event.reward = 0
                     return reward_event
-                
-                if self.scoring_type:
-                    if name == RewardScoringType.twitter_question_answer_score:
-                        scoring_prompt = TwitterQuestionAnswerPrompt()
-                    elif name == RewardScoringType.twitter_summary_links_content_template:
-                        scoring_prompt = TwitterSummaryLinksContetPrompt()
-                    else:
-                        reward_event.reward = 0
-                        return reward_event 
 
-                # Format scoring prompt for this completion.
-                scoring_prompt_text = scoring_prompt.text(prompt, completion)
+                if not scoring_prompt_text:
+                    # Format scoring prompt for this completion.
+                    scoring_prompt_text = scoring_prompt.text(prompt, completion)
 
                 # Tokenize formatted scoring prompt.
                 encodings_dict = self.tokenizer(
@@ -135,7 +140,7 @@ class PromptRewardModel(BaseRewardModel):
         )
         # Get all the reward results.
         reward_events = [
-            self.reward(prompt, completion, name) for completion in completions
+            self.reward(prompt, response, name) for response in responses
         ]
 
         return reward_events

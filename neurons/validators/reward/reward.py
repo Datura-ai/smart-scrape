@@ -132,6 +132,14 @@ class BaseRewardModel:
             responses[idx].completion.strip() for idx in successful_completions_indices
         ]
         return successful_completions
+    
+    def get_successful_completion(self, response: bt.Synapse):
+        # Check if the response is successful.
+        if response.dendrite.status_code == 200:
+            # Get the completion from the successful response.
+            successful_completion = response.completion.strip()
+            return successful_completion
+        return None
 
     def apply(
         self, prompt: str, responses: List[bt.Synapse], name: str
