@@ -30,10 +30,10 @@ async def process_twitter_validatordator(request: Request, data: dict):
     if access_key != EXPECTED_ACCESS_KEY:
         raise HTTPException(status_code=401, detail="Invalid access key")
     
-    available_uids = await neu.get_available_uids()
+    # available_uids = await neu.get_available_uids()
 
-    if not available_uids:
-        raise HTTPException(status_code=503, detail="Miners are not available")
+    # if not available_uids:
+    #     raise HTTPException(status_code=503, detail="Miners are not available")
   
     return StreamingResponse(response_stream(data))
 
