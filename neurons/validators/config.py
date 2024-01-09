@@ -142,6 +142,26 @@ def add_args(cls, parser):
         default=3600,
     )
 
+    parser.add_argument(
+        "--neuron.vpermit_tao_limit",
+        type=int,
+        help="The maximum number of TAO allowed to query a validator with a vpermit.",
+        default=4096,
+    )
+
+    parser.add_argument(
+        "--neuron.disable_twitter_links_content_fetch",
+        action="store_true",
+        help="Enables the option to skip fetching content data for Twitter links, relying solely on the data provided by miners.",
+        default=True,
+    )
+
+    parser.add_argument(
+        "--neuron.only_allowed_miners",
+        type=lambda x: x.split(','),
+        help="A list of miner identifiers, hotkey",
+        default=[],
+    )
 
 
 def config(cls):

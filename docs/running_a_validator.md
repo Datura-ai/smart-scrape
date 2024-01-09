@@ -97,6 +97,8 @@ pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name valid
 - `--reward.prompt_summary_links_content_based_weight`: Specifies the weight for the reward model that evaluates the relevance and quality of summary text in conjunction with linked content data.
 - `--reward.dpo_weight`: Weight for the dpo reward model
 - `--reward.rlhf_weight`: Weight for the rlhf reward model
+- `--neuron.only_allowed_miners`: A list of miner identifiers, hotkey
+- `--neuron.disable_twitter_links_content_fetch`: Enables the option to skip fetching content data for Twitter links, relying solely on the data provided by miners
 
 ## 7. Monitor Your Process
 Monitor the status and logs:
