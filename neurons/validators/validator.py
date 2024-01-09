@@ -71,10 +71,10 @@ class neuron(AbstractNeuron):
             bt.logging.error(f"Your validator: {self.wallet} is not registered to chain connection: {self.subtensor}. Run btcli register --netuid 18 and try again.")
             exit()
 
-    async def check_uid(self, axon, uid):
+    async def check_uid(self, axon, uid, is_only_allowed_miner = False):
         """Asynchronously check if a UID is available."""
         try:
-            if self.config.neuron.only_allowed_miners and axon.hotkey not in self.config.neuron.only_allowed_miners:
+            if self.config.neuron.only_allowed_miners and axon.hotkey not in self.config.neuron.only_allowed_miners and is_only_allowed_miner:
                 return None
                 
             response = await self.dendrite(axon, IsAlive(), deserialize=False, timeout=4)
@@ -88,11 +88,10 @@ class neuron(AbstractNeuron):
             bt.logging.error(f"Error checking UID {uid}: {e}\n{traceback.format_exc()}")
             return None
 
-    async def get_available_uids_is_alive(self):
+    async def get_available_uids_is_alive(self, is_only_allowed_miner = False):
         """Get a dictionary of available UIDs and their axons asynchronously."""
-        tasks = {uid.item(): self.check_uid(self.metagraph.axons[uid.item()], uid.item()) for uid in self.metagraph.uids}
+        tasks = {uid.item(): self.check_uid(self.metagraph.axons[uid.item()], uid.item(), is_only_allowed_miner) for uid in self.metagraph.uids}
         results = await asyncio.gather(*tasks.values())
-
 
         # # Create a dictionary of UID to axon info for active UIDs
         available_uids = [uid for uid, axon_info in zip(tasks.keys(), results) if axon_info is not None]
@@ -158,15 +157,15 @@ class neuron(AbstractNeuron):
         return available_uids
     
         
-    async def get_uids(self, strategy=QUERY_MINERS.RANDOM):
+    async def get_uids(self, strategy=QUERY_MINERS.RANDOM, is_only_allowed_miner=False):
         # uid_list = await self.get_available_uids()
-        uid_list =  await self.get_available_uids_is_alive() #uid_list_is_live =
+        uid_list =  await self.get_available_uids_is_alive(is_only_allowed_miner) #uid_list_is_live =
         # uid_list = list(available_uids.keys())
         if strategy == QUERY_MINERS.RANDOM:
             uids = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
         elif strategy == QUERY_MINERS.ALL:
             uids = torch.tensor(uid_list) if uid_list else torch.tensor([])
-        bt.logging.info(" Random uids ---------- ", uids)
+        bt.logging.info("Run uids ---------- ", uids)
         # uid_list = list(available_uids.keys())
         return uids.to(self.config.neuron.device)
 

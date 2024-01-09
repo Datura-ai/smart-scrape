@@ -127,6 +127,9 @@ class PromptRewardModel(BaseRewardModel):
                 return reward_event
         except Exception as e:
             bt.logging.error(f"Error in Prompt reward method: {e}")
+            reward_event = BaseRewardEvent()
+            reward_event.reward = 0
+            return reward_event
 
     def get_rewards(
         self, prompt: str, responses: List[bt.Synapse], name: str, scoring_type: RewardScoringType = None

@@ -150,7 +150,7 @@ class TwitterScraperValidator:
                 except json.JSONDecodeError:
                     bt.logging.trace(f"Failed to decode JSON chunk: {resp}")
 
-    async def run_task_and_score(self, task: TwitterTask, strategy=QUERY_MINERS.RANDOM):
+    async def run_task_and_score(self, task: TwitterTask, strategy=QUERY_MINERS.RANDOM, is_only_allowed_miner=True):
         task_name = task.task_name
         prompt = task.compose_prompt()
 
@@ -161,7 +161,8 @@ class TwitterScraperValidator:
         start_time = time.time()
         
         # Get random id on that step
-        uids = await self.neuron.get_uids(strategy)
+        uids = await self.neuron.get_uids(strategy=strategy, 
+                                          is_only_allowed_miner=is_only_allowed_miner)
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
         synapse = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
 
@@ -331,7 +332,8 @@ class TwitterScraperValidator:
         )
         async_responses, uids, event, start_time = await self.run_task_and_score(
             task=task,
-            strategy=QUERY_MINERS.RANDOM
+            strategy=QUERY_MINERS.RANDOM,
+            is_only_allowed_miner=True
         )
 
         responses = []
