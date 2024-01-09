@@ -20,7 +20,7 @@ from neurons.validators.penalty import (
     LinkValidationPenaltyModel
 )
 from reward.open_assistant import OpenAssistantRewardModel
-from reward.prompt import PromptRewardModel
+from reward.prompt import PromptRewardModel, init_tokenizer
 from reward.dpo import DirectPreferenceRewardModel
 from neurons.validators.utils.tasks import TwitterTask
 from template.utils import get_random_tweet_prompts
@@ -61,18 +61,25 @@ class TwitterScraperValidator:
             bt.logging.error(message)
             raise Exception(message)
     
+        tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
         self.reward_functions = [
             OpenAssistantRewardModel(device=self.neuron.config.neuron.device)
             if self.neuron.config.reward.rlhf_weight > 0
             else MockRewardModel(RewardModelType.rlhf.value), 
 
             PromptRewardModel(device=self.neuron.config.neuron.device, 
-                              scoring_type=RewardScoringType.twitter_question_answer_score)
+                              scoring_type=RewardScoringType.twitter_question_answer_score,
+                              tokenizer=tokenizer,
+                              model=model
+                              )
             if self.neuron.config.reward.prompt_based_weight > 0
             else MockRewardModel(RewardModelType.prompt.value),
 
             PromptRewardModel(device=self.neuron.config.neuron.device, 
-                              scoring_type=RewardScoringType.twitter_summary_links_content_template)
+                              scoring_type=RewardScoringType.twitter_summary_links_content_template,
+                              tokenizer=tokenizer,
+                              model=model
+                              )
             if self.neuron.config.reward.prompt_summary_links_content_based_weight > 0
             else MockRewardModel(RewardModelType.prompt.value),
 
@@ -177,27 +184,31 @@ class TwitterScraperValidator:
         return async_responses, uids, event, start_time
     
     def process_content_links(self, responses):
-        for response in responses:
-            time.sleep(10)
-            completion = response.completion
-            bt.logging.debug(
-                f"process_content_links completion: {completion}"
-            )
-            twitter_links = self.twitter_api.find_twitter_links(completion)
-            bt.logging.debug(
-                f"process_content_links twitter_links: {twitter_links}"
-            )
-            if len(twitter_links) > 0:
-                json_response = self.twitter_api.fetch_twitter_data_for_links(twitter_links)
+        try:
+            for response in responses:
+                time.sleep(10)
+                completion = response.completion
                 bt.logging.debug(
-                    f"process_content_links fetch_twitter_data_for_links: {json_response}"
+                    f"process_content_links completion: {completion}"
                 )
-                if 'data' in json_response:
-                    links_content =  json_response['data']
-                    response.links_content = links_content
-                elif 'errors' in json_response:
-                    errors = json_response['errors']
-                    bt.logging.info(f"Process cotent links: {errors}")
+                twitter_links = self.twitter_api.find_twitter_links(completion)
+                bt.logging.debug(
+                    f"process_content_links twitter_links: {twitter_links}"
+                )
+                if len(twitter_links) > 0:
+                    json_response = self.twitter_api.fetch_twitter_data_for_links(twitter_links)
+                    bt.logging.debug(
+                        f"process_content_links fetch_twitter_data_for_links: {json_response}"
+                    )
+                    if 'data' in json_response:
+                        links_content =  json_response['data']
+                        response.links_content = links_content
+                    elif 'errors' in json_response:
+                        errors = json_response['errors']
+                        bt.logging.info(f"Process cotent links: {errors}")
+        except Exception as e:
+            bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
+            return
 
     async def compute_rewards_and_penalties(self, event, prompt, task, responses, uids, start_time):
         try:
@@ -236,6 +247,7 @@ class TwitterScraperValidator:
                 "scores": {},
                 "timestamps": {},
             }
+            uid = None  # Initialize uid to None
             for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
                 uid = uid_tensor.item()  # Convert tensor to int
                 uid_scores_dict[uid] = reward
@@ -243,15 +255,19 @@ class TwitterScraperValidator:
                 wandb_data["scores"][uid] = reward
                 wandb_data["responses"][uid] = response.completion
                 wandb_data["prompts"][uid] = prompt
-            bt.logging.info(f"Updated scores and wandb_data for uid: {uid}", wandb_data)
-                    
+
+            # Check if uid was set during the loop
+            if uid is not None:
+                bt.logging.info(f"Updated scores and wandb_data for uid: {uid}", wandb_data)
+            else:
+                bt.logging.info("No uids to update scores and wandb_data for.")
+
             await self.neuron.update_scores(scores, wandb_data)
 
             return rewards, scattered_rewards
         except Exception as e:
             bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
             raise
-
     def update_moving_averaged_scores(self, uids, rewards):
         try:
             scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.neuron.config.neuron.device)
@@ -267,6 +283,9 @@ class TwitterScraperValidator:
             raise
 
     def log_event(self, task, event, start_time, uids, rewards, prompt):
+        def log_event(event):
+            for key, value in event.items():
+                bt.logging.debug(f"{key}: {value}")
         event.update({
             "step_length": time.time() - start_time,
             "prompt": prompt,
@@ -275,6 +294,7 @@ class TwitterScraperValidator:
             "propmt": task.base_text
         })
         bt.logging.debug("Run Task event:", str(event))
+        # log_event(event)
     
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:

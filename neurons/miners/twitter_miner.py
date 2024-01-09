@@ -45,6 +45,8 @@ class TwitterScrapperMiner:
         if not self.miner.config.miner.intro_text:
             return
         
+        bt.logging.info(f"Run intro text")
+
         content = f"""
         Generate introduction for that prompt: "{prompt}",
 

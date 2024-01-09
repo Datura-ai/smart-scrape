@@ -25,6 +25,22 @@ from .reward import BaseRewardModel, BaseRewardEvent
 from utils.prompts import TwitterQuestionAnswerPrompt, TwitterSummaryLinksContetPrompt
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
+def init_tokenizer(device):
+
+    # https://huggingface.co/VMware/open-llama-7b-open-instruct
+    # Fast tokenizer results in incorrect encoding, set the use_fast = False parameter.
+    tokenizer = AutoTokenizer.from_pretrained(
+        PromptRewardModel.reward_model_name, use_fast=False
+    )
+    # Generative default expects most recent token on right-hand side with padding on left.
+    # https://github.com/huggingface/transformers/pull/10552
+    tokenizer.padding_side = "left"
+
+    model = AutoModelForCausalLM.from_pretrained(
+        PromptRewardModel.reward_model_name, torch_dtype=torch.float16
+    ).to(device)
+    return tokenizer, model
+
 class PromptRewardModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
 
@@ -32,22 +48,17 @@ class PromptRewardModel(BaseRewardModel):
     def name(self) -> str:
         return RewardModelType.prompt.value
 
-    def __init__(self, device: str, scoring_type: None):
+    def __init__(self, device: str, scoring_type: None, tokenizer= None, model = None):
         super().__init__()
         self.device = device
-
-        # https://huggingface.co/VMware/open-llama-7b-open-instruct
-        # Fast tokenizer results in incorrect encoding, set the use_fast = False parameter.
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            PromptRewardModel.reward_model_name, use_fast=False
-        )
-        # Generative default expects most recent token on right-hand side with padding on left.
-        # https://github.com/huggingface/transformers/pull/10552
-        self.tokenizer.padding_side = "left"
-
-        self.model = AutoModelForCausalLM.from_pretrained(
-            PromptRewardModel.reward_model_name, torch_dtype=torch.float16
-        ).to(self.device)
+        if not tokenizer:
+            tokenizer, model = init_tokenizer(device)
+            self.tokenizer = tokenizer
+            self.model = model
+        else:
+            self.tokenizer = tokenizer
+            self.model = model
+    
         self.scoring_type = scoring_type
 
     def reward(self, prompt: str, completion: str, name: str) -> BaseRewardEvent:
@@ -110,10 +121,10 @@ class PromptRewardModel(BaseRewardModel):
                 reward_event.reward = score
                 return reward_event
         except Exception as e:
-            bt.logging.error(f"Error in  PromptRewardModel reward method: {e}")
+            bt.logging.error(f"Error in Prompt reward method: {e}")
 
     def get_rewards(
-        self, prompt: str, responses: List[bt.Synapse], name: str
+        self, prompt: str, responses: List[bt.Synapse], name: str, scoring_type: RewardScoringType = None
     ) -> List[BaseRewardEvent]:
         completions: List[str] = self.get_successful_completions(responses)
         bt.logging.debug(
