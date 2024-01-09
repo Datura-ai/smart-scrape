@@ -5,8 +5,8 @@ This document provides detailed instructions for setting up and running a Bitten
 We recommend using `pm2` for process management. For installation, see the [pm2 installation guide](https://pm2.io/docs/runtime/guide/installation/).
 
 ## Hardware Requirements:
-- **Recommended:** A100 80GB
-- **Minimum:** A40 48GB or A6000 48GB
+- **Recommended:** RTX 3090
+- **Minimum:** 24GB VRAM: A4000/A5000/3090 is most cost efficient
 
 ## 0. Install Conda Environment
 Create and activate a new conda environment named `val` with Python 3.10:
@@ -38,13 +38,6 @@ Create new cold and hot keys:
 ```sh
 btcli wallet new_coldkey
 btcli wallet new_hotkey
-```
-
-### 3.1 Get some TAO
-Obtain TAO for your wallet on the test network (or purchase OTC/mine for mainnet):
-
-```sh
-btcli wallet faucet --wallet.name validator --subtensor.network test
 ```
 
 ## 4. Register your UID on the Network
