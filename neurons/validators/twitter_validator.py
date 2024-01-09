@@ -207,7 +207,7 @@ class TwitterScraperValidator:
                         errors = json_response['errors']
                         bt.logging.info(f"Process cotent links: {errors}")
         except Exception as e:
-            bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
+            bt.logging.error(f"Error in process_content_links: {e}")
             return
 
     async def compute_rewards_and_penalties(self, event, prompt, task, responses, uids, start_time):
