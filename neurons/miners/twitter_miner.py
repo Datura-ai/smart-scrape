@@ -42,6 +42,7 @@ class TwitterScrapperMiner:
         self.miner = miner
 
     async def intro_text(self, model, prompt, send):
+        bt.logging.info("miner.intro_text => ", self.miner.config.miner.intro_text)
         if not self.miner.config.miner.intro_text:
             return
         
@@ -89,7 +90,19 @@ class TwitterScrapperMiner:
                     }
                 )
                 bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                buffer = []
 
+        await send(
+            {
+                "type": "http.response.body",
+                "body": json.dumps({
+                    "tokens": "\n\n",
+                    "prompt_analysis": '{}',
+                    "tweets": "{}"
+                }).encode("utf-8"),
+                "more_body": True,
+            }
+        )
         return buffer
 
     async def fetch_tweets(self, prompt):
@@ -110,6 +123,7 @@ class TwitterScrapperMiner:
                 User Prompt: "{prompt}"
 
                 Twitter Data: "{filtered_tweets}"
+
 
                 Tasks:
                 1. Create a Response: Analyze the user's prompt and the provided Twitter data to generate a meaningful and relevant response.
@@ -158,13 +172,11 @@ class TwitterScrapperMiner:
                 synapse.set_prompt_analysis(prompt_analysis)
             synapse.set_tweets(tweets)
 
-            response = await self.finalize_data(prompt=prompt, model=model, filtered_tweets=tweets)
+            response = await self.finalize_data(prompt=prompt, model=model, filtered_tweets=tweets, prompt_analysis=prompt_analysis)
 
             # Reset buffer for finalaze_data responses
             buffer = []
-            buffer.append('\n\n')
-
-            N = 2
+            N = 1
             async for chunk in response:
                 token = chunk.choices[0].delta.content or ""
                 buffer.append(token)
