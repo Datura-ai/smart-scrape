@@ -276,17 +276,17 @@ class TwitterScraperValidator:
     def update_moving_averaged_scores(self, uids, rewards):
         try:
             scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.neuron.config.neuron.device)
-            bt.logging.info(f"Scattered reward: {torch.mean(scattered_rewards)}")
+            average_reward = torch.mean(scattered_rewards)
+            bt.logging.info(f"Scattered reward: {average_reward:.6f}")  # Rounds to 6 decimal places for logging
 
             alpha = self.neuron.config.neuron.moving_average_alpha
             self.moving_averaged_scores = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(self.neuron.config.neuron.device)
-            bt.logging.info(f"Moving averaged scores: {torch.mean(self.moving_averaged_scores)}")
-
+            bt.logging.info(f"Moving averaged scores: {torch.mean(self.moving_averaged_scores):.6f}")  # Rounds to 6 decimal places for logging
             return scattered_rewards
         except Exception as e:
             bt.logging.error(f"Error in update_moving_averaged_scores: {e}")
             raise
-
+        
     def log_event(self, task, event, start_time, uids, rewards, prompt):
         def log_event(event):
             for key, value in event.items():
