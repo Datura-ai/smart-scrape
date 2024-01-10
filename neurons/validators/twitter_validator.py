@@ -181,13 +181,16 @@ class TwitterScraperValidator:
         try:
             for response in responses:
                 if self.neuron.config.neuron.disable_twitter_links_content_fetch:
-                    result = json.loads(response.tweets)
-                    if 'data' in result:
-                        links_content = [{'id': item.get('id'), 'text': item.get('text')} for item in result['data']]
-                        com_links = self.twitter_api.find_twitter_links(response.completion)
-                        tweet_ids = [self.twitter_api.extract_tweet_id(link) for link in com_links]
-                        response.links_content = [content for content in links_content if content['id'] in tweet_ids]
-                else:    
+                    if response.tweets is not None:  # Check if response.tweets is not None
+                        result = json.loads(response.tweets)
+                        if 'data' in result:
+                            links_content = [{'id': item.get('id'), 'text': item.get('text')} for item in result['data']]
+                            com_links = self.twitter_api.find_twitter_links(response.completion)
+                            tweet_ids = [self.twitter_api.extract_tweet_id(link) for link in com_links]
+                            response.links_content = [content for content in links_content if content['id'] in tweet_ids]
+                    else:
+                        bt.logging.error("response.tweets is None, cannot process content links.")
+                else:
                     time.sleep(10)
                     completion = response.completion
                     bt.logging.debug(
