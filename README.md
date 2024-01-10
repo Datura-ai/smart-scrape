@@ -93,6 +93,7 @@ For step-by-step guidance on setting up and running a miner, validator, or opera
 - [Validator Setup](./docs/running_a_validator.md)
 - [Testnet Operations](./docs/running_on_testnet.md)
 - [Mainnet Operations](./docs/running_on_mainnet.md)
+- [Setting Up and Running the Web Application with Validator Integration](./ui/README.md)
 
 ---
 
