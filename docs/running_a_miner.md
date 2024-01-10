@@ -26,7 +26,7 @@ python -m pip install -r requirements.txt
 ```
 
 ### 3. Configure and Run the Miner
-Configure and launch the miner using PM2. Set `CUDA_VISIBLE_DEVICES` to your preferred GPU and adjust the following parameters:
+Configure and launch the miner using PM2:
 
 ```sh
 pm2 start neurons/miners/miner.py \
