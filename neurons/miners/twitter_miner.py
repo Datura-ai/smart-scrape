@@ -89,6 +89,7 @@ class TwitterScrapperMiner:
                         "more_body": True,
                     }
                 )
+                await asyncio.sleep(0.1)  # Wait for 100 milliseconds
                 bt.logging.info(f"Streamed tokens: {joined_buffer}")
                 buffer = []
 
@@ -116,7 +117,7 @@ class TwitterScrapperMiner:
             filtered_tweets, prompt_analysis = await tw_client.analyse_prompt_and_fetch_tweets(prompt)
         return filtered_tweets, prompt_analysis
 
-    async def finalize_data(self, prompt, model, filtered_tweets):
+    async def finalize_data(self, prompt, model, filtered_tweets, prompt_analysis):
             content =F"""
                 User Prompt Analysis and Twitter Data Integration
 
@@ -124,11 +125,13 @@ class TwitterScrapperMiner:
 
                 Twitter Data: "{filtered_tweets}"
 
+                Analysis of User's Prompt: "{prompt_analysis}"
 
                 Tasks:
                 1. Create a Response: Analyze the user's prompt and the provided Twitter data to generate a meaningful and relevant response.
                 2. Share Relevant Twitter Links: Include links to several pertinent tweets. These links will enable users to view tweet details directly.
                 3. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
+                4. You would explain how you did retrieve data based on Analysis of User's Prompt.
 
                 Output Guidelines:
                 1. Comprehensive Analysis: Synthesize insights from both the user's prompt and the Twitter data to formulate a well-rounded response.
