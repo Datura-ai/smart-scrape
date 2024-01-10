@@ -29,7 +29,7 @@ python -m pip install -r requirements.txt
 Configure and launch the miner using PM2. Set `CUDA_VISIBLE_DEVICES` to your preferred GPU and adjust the following parameters:
 
 ```sh
-CUDA_VISIBLE_DEVICES=0 pm2 start neurons/miners/miner.py \
+pm2 start neurons/miners/miner.py \
 --miner.name Smart-Scrape \
 --interpreter <path-to-python-binary> -- \
 --wallet.name <wallet-name> \
