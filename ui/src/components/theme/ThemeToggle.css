@@ -1,0 +1,55 @@
+.dark_mode_label {
+    width: 65px;
+    height: 30px;
+    position: relative;
+    display: block;
+    border-radius: 200px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.dark_mode_label svg.sun {
+    content: "";
+    width: 25px;
+    height: 25px;
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    background: linear-gradient(180deg, #ffcc89, #d8860b);
+    border-radius: 180px;
+    transition: 0.3s;
+}
+.dark_mode_label svg.moon {
+    content: "";
+    width: 25px;
+    height: 25px;
+    position: absolute;
+    padding: 2px;
+    top: 3px;
+    left: 3px;
+    background: linear-gradient(180deg, #777, #3a3a3a);
+    border-radius: 180px;
+    transition: 0.3s;
+}
+.dark_mode_input:checked + .dark_mode_label:after {
+    background: linear-gradient(180deg, #777, #3a3a3a);
+}
+.dark_mode_label:active:after {
+    width: 30px;
+}
+
+.dark_mode_label svg {
+    position: absolute;
+    width: 20px;
+    top: 5px;
+    z-index: 100;
+}
+.dark_mode_label svg.sun {
+    left: 5px;
+    fill: #fff;
+    transition: 0.3s;
+}
+.dark_mode_label svg.moon {
+    left: 5px;
+    fill: #fff;
+    transition: 0.3s;
+}

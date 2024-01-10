@@ -1,0 +1,79 @@
+:root {
+  --primary: #ffffff;
+  --primary-2: #3c8083;
+  --brand-primary: #3c8083;
+  --secondary: #303030;
+  --secondary-2: #505050;
+  --selection: #303030;
+  --navbar: #f8f9fa;
+  --navbar-shadow-1: rgba(0, 0, 0, 0.2);
+  --navbar-shadow-2: rgba(0, 0, 0, 0.14);
+  --navbar-shadow-3: rgba(0, 0, 0, 0.12);
+  --svg-primary: rgba(0, 0, 0, 0.7);  
+
+  --text-base: #505050;
+  --text-primary: #303030;
+  --text-secondary: #e5e5e5;
+  --text-darker-gray: #999999;
+
+  --hover: #18585b;
+  --hover-1: rgba(0, 0, 0, 0.15);
+  --hover-2: rgba(0, 0, 0, 0.25);
+  --hover-3: #737373;
+  --hover-secondary: #505050;
+  --cyan: #ced4da;
+  --green: #37b679;
+  --red: #ed3641;
+  --pink: #e64980;
+  --orange: #e9851b;
+  --purple: #f81ce5;
+  --blue: #4487b2;
+  --violet: #5f3dc4;
+  --violet-light: #7048e8;
+  --accents-0: #eeeeee;
+  --accents-1: #f6f6f6;
+  --accents-2: #f2f2f2;
+  --accents-3: #e2e2e2;
+  --accents-4: #f4f4f4;
+  --accents-5: #e4e4e4;
+  --accents-6: #868e96;
+  --accents-7: #959595;
+  --accents-8: #c3c3c3;
+  --accents-9: #212529;
+  --lighter-black: #111111;
+  --lighter-orange: #eaeaea;
+  --font-sans: "inter", "Helvetica", sans-serif;
+}
+
+.dark {
+  --primary: #1c1d1a;
+  --primary-2: #111;
+  --secondary: #e0e1dd;
+  --secondary-2: #f1f3f5;
+  --hover: rgba(255, 255, 255, 0.075);
+  --hover-1: rgba(255, 255, 255, 0.15);
+  --hover-2: rgba(255, 255, 255, 0.25);
+  --selection: var(--purple);
+  --navbar: #1c1d1a;
+  --navbar-shadow-1:rgb(255, 255, 255, 1);
+  /* --navbar-shadow-2:rgba(231, 231, 231, 0); */
+  /* --navbar-shadow-3:rgba(231, 231, 231, 0); */
+  --svg-primary: rgba(255, 255, 255, 0.7);
+
+  --text-base: white;
+  --text-primary: white;
+  --text-secondary: black;
+  --text-darker-gray: #ebebeb;
+
+  --accents-0: #212529;
+  --accents-1: #343a40;
+  --accents-2: #495057;
+  --accents-3: #adb5bd;
+  --accents-4: #343532;
+  --accents-5: #ced4da;
+  --accents-6: #dee2e6;
+  --accents-7: #e9ecef;
+  --accents-8: #f1f3f5;
+  --accents-9: #f8f9fa;
+  --lighter-black: #111111;
+}

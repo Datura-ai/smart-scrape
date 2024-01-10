@@ -1,0 +1,12 @@
+.navbarShadow {
+    box-shadow: 
+    var(--navbar-shadow-1) 0px 2px 4px -1px,
+    var(--navbar-shadow-2) 0px 4px 5px 0px,
+    var(--navbar-shadow-3) 0px 1px 10px 0px; 
+    background-color: var(--navbar);  
+}
+
+.logo {
+    width: 90px;
+    height: 64px;
+  }

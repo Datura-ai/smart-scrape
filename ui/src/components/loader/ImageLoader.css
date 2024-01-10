@@ -1,0 +1,52 @@
+.spinner-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .spinner-dot {
+    width: 0.8rem;
+    height: 0.8rem;
+    margin: 0.08rem;
+    background-color: #808487; /* You can customize the color */
+    border-radius: 50%;
+    animation: spin 1s infinite linear;
+    animation-delay: (.1s * n);
+    opacity:0.3;
+    display: inline-block;
+    animation: slide 1s infinite;
+  }
+  
+  .spinner-dot:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+  
+  .spinner-dot:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  
+  .spinner-dot:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+  
+  .spinner-dot:nth-child(4) {
+    animation-delay: 0.4s;
+  }
+  
+  .spinner-dot:nth-child(5) {
+    animation-delay: 0.5s;
+  }
+  
+  @keyframes slide {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.3;
+      transform: scale(2);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  

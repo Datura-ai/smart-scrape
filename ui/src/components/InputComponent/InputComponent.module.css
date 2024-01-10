@@ -1,0 +1,67 @@
+.-z-1 {
+    z-index: -1;
+}
+
+.origin-0 {
+    transform-origin: 0%;
+}
+
+.input-style {
+    color: var(--text-primary);
+    font-family: Inter;
+    font-size: 15px;
+    border: 1px solid rgba(118, 118, 118,0.3) !important;
+    /* @apply text-base border border-accents-0; */
+}
+
+.input-style:focus {
+    border: 1px solid rgb(133, 133, 133);
+}
+
+.input-style:not(:placeholder-shown) {
+    border-bottom: 1px solid var(--text-secondary);
+}
+
+.error-style {
+    /* color: #505050; */
+    font-family: Inter;
+    font-size: 15px;
+    /* @apply text-base border border-accents-0; */
+    border: 1px solid #ed3641;
+}
+
+.label {
+    font-family: Inter;
+    /* @apply text-base text-sm md:text-normal tracking-h2 leading-5.5; */
+}
+
+.error-message {
+    font-size: 12px !important;
+    @apply text-red text-medium font-normal leading-5.5 tracking-h2;
+    font-family: Inter;
+}
+
+.input-component:focus + .input-label,
+.input-component:not(:placeholder-shown) + .input-label {
+    --tw-translate-x: 0;
+    --tw-translate-y: 0;
+    --tw-rotate: 0;
+    --tw-skew-x: 0;
+    --tw-skew-y: 0;
+    transform: translateX(var(--tw-translate-x)) translateY(var(--tw-translate-y))
+        rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y))
+        scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+    --tw-scale-x: 0.75;
+    --tw-scale-y: 0.75;
+    --tw-translate-y: -1.5rem;
+    transform-origin: 45px 20px;
+    @apply px-1 font-medium z-50;
+}
+
+.input-component:focus + .input-label {
+    @apply px-1 left-0 z-50;
+}
+
+.error-style.input-component:focus + .input-label {
+    @apply px-1 text-red left-0 z-50;
+}
