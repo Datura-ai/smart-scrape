@@ -36,8 +36,11 @@ def init_tokenizer(device):
     # https://github.com/huggingface/transformers/pull/10552
     tokenizer.padding_side = "left"
 
+    # Check if the device is CPU or CUDA and set the precision accordingly
+    torch_dtype = torch.float32 if device == 'cpu' else torch.float16
+
     model = AutoModelForCausalLM.from_pretrained(
-        PromptRewardModel.reward_model_name, torch_dtype=torch.float16
+        PromptRewardModel.reward_model_name, torch_dtype=torch_dtype
     ).to(device)
     return tokenizer, model
 
