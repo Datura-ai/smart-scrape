@@ -28,7 +28,6 @@ query_examples = [
     'pepsi OR cola OR "coca cola"',
     '("Twitter API" OR #v2) -"recent search"',
     'thankunext #fanart OR @arianagrande',
-
     'to:twitterdev OR to:twitterapi -to:twitter',
     'from:TwitterDev url:"https://t.co"',
     'retweets_of:twitterdev OR retweets_of:twitterapi',
