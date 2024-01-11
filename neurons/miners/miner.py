@@ -257,9 +257,6 @@ class StreamMiner(ABC):
                 )
                 bt.logging.info(log)
 
-                # --- Set weights.
-                if not self.config.miner.no_set_weights:
-                    pass
                 step += 1
 
         except KeyboardInterrupt:

@@ -54,7 +54,7 @@ pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 
 - `--miner.name`: Path for miner data (miner.root / (wallet_cold - wallet_hot) / miner.name).
 - `--miner.mock_dataset`: Set to True to use a mock dataset.
 - `--miner.blocks_per_epoch`: Number of blocks until setting weights on chain.
-- `--miner.no_set_weights`: Set to True to avoid setting weights.
+
 
 ## Conclusion
 Following these steps, your Smart-Scrape miner should be operational. Regularly monitor your processes and logs for any issues. For additional information or assistance, consult the official documentation or community resources.
