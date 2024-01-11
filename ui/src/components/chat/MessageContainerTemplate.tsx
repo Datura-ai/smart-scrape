@@ -12,12 +12,12 @@ const MessageContainerTemplate: FC<TemplateProps> = ({ onMessageSubmit, containe
   }
 
   const defaultQuestions = [
-    "#RecipeTrends: What are the hottest culinary creations taking over Twitter this year?", 
-    "How are Bittensor and Crypto spicing up 2024's recipes?", 
-    "What's the latest buzz in recipes this year?", 
-    "#Bitcoin: How are latest Bitcoin trends shaping investment and tech strategies?"
-  ]
-
+    "What are the recent sports events?",
+    "How are Bittensor and Crypto spicing up the recipes in 2024?",
+    "Tell me the recent news about the Bitcoin ETF.",
+    "What is the current sentiment about the US presidential race?"
+  ];
+  
   return (
     <div className={`flex flex-col h-full justify-end items-center ${containerClassName || ""
       }`}>
