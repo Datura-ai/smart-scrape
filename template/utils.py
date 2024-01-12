@@ -211,7 +211,7 @@ def get_version(line_number = 22):
 def send_discord_alert(message, webhook_url):
     data = {
         "content": f"@everyone {message}",
-        "username": "Subnet18 Updates"
+        "username": "Subnet22 Updates"
     }
     try:
         response = requests.post(webhook_url, json=data)

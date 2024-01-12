@@ -26,10 +26,10 @@ python -m pip install -r requirements.txt
 ```
 
 ### 3. Configure and Run the Miner
-Configure and launch the miner using PM2. Set `CUDA_VISIBLE_DEVICES` to your preferred GPU and adjust the following parameters:
+Configure and launch the miner using PM2:
 
 ```sh
-CUDA_VISIBLE_DEVICES=0 pm2 start neurons/miners/miner.py \
+pm2 start neurons/miners/miner.py \
 --miner.name Smart-Scrape \
 --interpreter <path-to-python-binary> -- \
 --wallet.name <wallet-name> \
@@ -54,7 +54,7 @@ pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 
 - `--miner.name`: Path for miner data (miner.root / (wallet_cold - wallet_hot) / miner.name).
 - `--miner.mock_dataset`: Set to True to use a mock dataset.
 - `--miner.blocks_per_epoch`: Number of blocks until setting weights on chain.
-- `--miner.no_set_weights`: Set to True to avoid setting weights.
+
 
 ## Conclusion
 Following these steps, your Smart-Scrape miner should be operational. Regularly monitor your processes and logs for any issues. For additional information or assistance, consult the official documentation or community resources.

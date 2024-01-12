@@ -53,6 +53,11 @@ Before running a miner or validator, ensure to:
 - [Create a wallet](https://github.com/opentensor/docs/blob/main/reference/btcli.md).
 - [Register the wallet to a netuid](https://github.com/opentensor/docs/blob/main/subnetworks/registration.md).
 
+
+### Environment Variables Configuration
+
+For setting up the necessary environment variables for your miner or validator, please refer to the [Environment Variables Guide](./docs/env_variables.md).
+
 ### Running Commands
 
 - **To run the miner:**
@@ -97,12 +102,6 @@ For step-by-step guidance on setting up and running a miner, validator, or opera
 
 ---
 
-## Environment Variables Configuration
-
-For setting up the necessary environment variables for your miner or validator, please refer to the [Environment Variables Guide](./docs/env_variables.md).
-
----
-
 ## Running Your Validators
 
 Validators are designed to run and update themselves automatically. Follow these steps to run a validator:
@@ -139,6 +138,28 @@ Validators are designed to run and update themselves automatically. Follow these
 
 ---
 
+# Running the Validator API with Automatic Updates
+
+These validators are designed to run and update themselves automatically. To run a validator, follow these steps:
+
+1. Install this repository, you can do so by following the steps outlined in [the installation section](#installation).
+2. Install [Weights and Biases](https://docs.wandb.ai/quickstart) and run `wandb login` within this repository. This will initialize Weights and Biases, enabling you to view KPIs and Metrics on your validator. (Strongly recommended to help the network improve from data sharing)
+3. Install [PM2](https://pm2.io/docs/runtime/guide/installation/) and the [`jq` package](https://jqlang.github.io/jq/) on your system.
+   **On Linux**:
+   ```bash
+   sudo apt update && sudo apt install jq && sudo apt install npm && sudo npm install pm2 -g && pm2 update
+   ``` 
+   **On Mac OS**
+   ```bash
+   brew update && brew install jq && brew install npm && sudo npm install pm2 -g && pm2 update
+   ```
+4. Run the `run.sh` script which will handle running your validator and pulling the latest updates as they are issued. 
+   ```bash
+   pm2 start run.sh --name smart_scrape_validators_autoupdate -- --wallet.name <your-wallet-name> --wallet.hotkey <your-wallet-hot-key>
+   ```
+
+This will run **two** PM2 process: one for the validator which is called `smart_scrape_validators_main_process` by default (you can change this in `run.sh`), and one for the run.sh script (in step 4, we named it `smart_scrape_validators_autoupdate`). The script will check for updates every 30 minutes, if there is an update then it will pull it, install it, restart `smart_scrape_validators_main_process` and then restart itself.
+
 ## Real-time Monitoring with wandb Integration
 
 The text prompting validator sends data to wandb, allowing real-time monitoring with key metrics like:
@@ -147,6 +168,6 @@ The text prompting validator sends data to wandb, allowing real-time monitoring 
 - Forward pass time
 - Block duration
 
-Data is publicly available at [this link](https://wandb.ai/smart-scrape/smart-wandb). Note that [data from anonymous users is deleted after 7 days](https://docs.wandb.ai/guides/app/features/anon).
+Data is publicly available at [this link](https://wandb.ai/smart-scrape/smart-scrape-2.0). Note that [data from anonymous users is deleted after 7 days](https://docs.wandb.ai/guides/app/features/anon).
 
 </div>

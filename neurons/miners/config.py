@@ -64,14 +64,6 @@ def get_config() -> "bt.Config":
         default=100,
     )
 
-    # Switches.
-    parser.add_argument(
-        "--miner.no_set_weights",
-        action="store_true",
-        help="If True, the miner does not set weights.",
-        default=False,
-    )
-
     # Mocks.    
     parser.add_argument(
         "--miner.mock_dataset",
