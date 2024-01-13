@@ -13,7 +13,6 @@ class ToolEnvKeyType(Enum):
     def __str__(self):
         return self.value
 
-
 class ToolEnvKey(BaseModel):
     label: str = Field()
     key: str = Field()
