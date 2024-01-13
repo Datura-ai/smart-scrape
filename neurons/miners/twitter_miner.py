@@ -173,7 +173,12 @@ class TwitterScrapperMiner:
             bt.logging.info("Prompt analysis ===============================================")
             if prompt_analysis:
                 synapse.set_prompt_analysis(prompt_analysis)
-            synapse.set_tweets(tweets)
+            
+            if not isinstance(tweets, str):
+                tweets_json = json.dumps(tweets)
+                synapse.set_tweets(tweets_json)
+            else:
+                synapse.set_tweets(tweets)
 
             response = await self.finalize_data(prompt=prompt, model=model, filtered_tweets=tweets, prompt_analysis=prompt_analysis)
 
