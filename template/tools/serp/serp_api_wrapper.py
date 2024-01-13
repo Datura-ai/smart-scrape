@@ -6,10 +6,8 @@ import os
 import sys
 from typing import Any, Dict, Optional, Tuple
 import aiohttp
-
 from pydantic import BaseModel, Extra, Field, root_validator
 from template.utils import get_from_dict_or_env
-
 
 SERP_API_KEY = os.environ.get('SERP_API_KEY')
 

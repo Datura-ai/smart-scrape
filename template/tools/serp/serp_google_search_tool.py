@@ -1,7 +1,7 @@
 from typing import Optional, Type
 
-from langchain.callbacks.manager import CallbackManagerForToolRun
-from langchain.utilities.serpapi import SerpAPIWrapper
+# from langchain.callbacks.manager import CallbackManagerForToolRun
+from serp_api_wrapper import SerpAPIWrapper
 from pydantic import BaseModel, Field
 
 from exceptions import ToolEnvKeyException
@@ -22,6 +22,7 @@ class SerpGoogleSearchTool(BaseTool):
 
     description = (
         "This tool performs Google searches and extracts relevant snippets and webpages. "
+        
         "It's particularly useful for staying updated with current events and finding quick answers to your queries."
     )
 
@@ -30,7 +31,7 @@ class SerpGoogleSearchTool(BaseTool):
     tool_id = "a66b3b20-d0a2-4b53-a775-197bc492e816"
 
     def _run(
-        self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
+        self, query: str, # run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         """Search Google and return the results."""
         serpapi_api_key = self.get_env_key("SERP_API_KEY")
@@ -41,6 +42,7 @@ class SerpGoogleSearchTool(BaseTool):
             )
 
         search = SerpAPIWrapper(serpapi_api_key=serpapi_api_key)
+
 
         try:
             return search.run(query)

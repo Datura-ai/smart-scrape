@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import List
 from tools.base import BaseToolkit, BaseTool, ToolEnvKey, ToolEnvKeyType
-from tools.serp.serp_google_search import SerpGoogleSearchTool
+from serp_google_search_tool import SerpGoogleSearchTool
 
 
 class SerpGoogleSearchToolkit(BaseToolkit, ABC):

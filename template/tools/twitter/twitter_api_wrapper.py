@@ -10,6 +10,7 @@ import bittensor as bt
 from typing import List
 from urllib.parse import urlparse
 
+
 BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TOKEN')
 VALID_DOMAINS = ["twitter.com", "x.com"]
 twitter_api_query_example = {

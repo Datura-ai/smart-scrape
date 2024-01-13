@@ -1,7 +1,8 @@
 from abc import ABC
 from typing import List
 from tools.base import BaseToolkit, BaseTool, ToolEnvKey
-from tools.twitter.tweet import TweetTool
+from tools.twitter.get_recent_tweets_tool import GetRecentTweetsTool
+from tools.twitter.get_full_archive_tweets_tool import GetFullArchiveTweetsTool
 
 
 class TwitterToolkit(BaseToolkit, ABC):
@@ -13,7 +14,7 @@ class TwitterToolkit(BaseToolkit, ABC):
     is_active = False
 
     def get_tools(self) -> List[BaseTool]:
-        return [TweetTool()]
+        return [GetRecentTweetsTool(), GetFullArchiveTweetsTool()]
 
     def get_env_keys(self) -> List[ToolEnvKey]:
         return []
