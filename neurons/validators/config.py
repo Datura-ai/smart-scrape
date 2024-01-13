@@ -139,7 +139,7 @@ def add_args(cls, parser):
         "--neuron.run_all_miner_syn_qs_interval",
         type=int,
         help="Sets the interval, in seconds, for querying all miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.",
-        default=3600,
+        default=600,
     )
 
     parser.add_argument(
