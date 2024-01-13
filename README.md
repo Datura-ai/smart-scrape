@@ -154,7 +154,7 @@ These validators are designed to run and update themselves automatically. To run
    ```
 4. Run the `run.sh` script which will handle running your validator and pulling the latest updates as they are issued. 
    ```bash
-   pm2 start run.sh --name smart_scrape_validators_autoupdate -- --wallet.name <your-wallet-name> --wallet.hotkey <your-wallet-hot-key>
+   pm2 start run.sh --name smart_scrape_validators_autoupdate -- --wallet.name <your-wallet-name> --wallet.hotkey <your-wallet-hot-key> --logging.debug
    ```
 
 This will run **two** PM2 process: one for the validator which is called `smart_scrape_validators_main_process` by default (you can change this in `run.sh`), and one for the run.sh script (in step 4, we named it `smart_scrape_validators_autoupdate`). The script will check for updates every 30 minutes, if there is an update then it will pull it, install it, restart `smart_scrape_validators_main_process` and then restart itself.
