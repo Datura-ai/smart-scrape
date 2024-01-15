@@ -41,6 +41,7 @@ Welcome to Smart-Scrape, a cutting-edge tool hosted on the Bittensor network, de
    ```bash
    cd smart-scrape
    python -m pip install -r requirements.txt
+   python -m pip install -e .
    ```
 
 ---
