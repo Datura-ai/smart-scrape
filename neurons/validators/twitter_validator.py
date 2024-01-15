@@ -368,7 +368,7 @@ class TwitterScraperValidator:
                 # Attach the prompt_analysis to the synapse_object if needed
                 if prompt_analysis is not None:
                     synapse_object.set_prompt_analysis(prompt_analysis)
-                if prompt_analysis is not None:
+                if tweets is not None:
                     synapse_object.set_tweets(tweets)
                 responses.append(synapse_object)
 
