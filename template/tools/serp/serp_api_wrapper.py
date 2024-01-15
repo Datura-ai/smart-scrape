@@ -34,8 +34,6 @@ class SerpAPIWrapper(BaseModel):
 
     Example:
         .. code-block:: python
-
-            from langchain.utilities import SerpAPIWrapper
             serpapi = SerpAPIWrapper()
     """
 
@@ -216,4 +214,4 @@ class SerpAPIWrapper(BaseModel):
         if len(snippets) > 0:
             return str(snippets)
         else:
-            return "No good search result foundo
+            return "No good search result foundo"

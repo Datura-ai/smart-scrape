@@ -1,7 +1,7 @@
 from typing import List
 from openai import OpenAI
 from template.tools.base import BaseTool, BaseToolkit
-from get_tools import get_all_tools, get_avalaible_functions
+from template.tools.get_tools import get_all_tools, get_avalaible_functions
 import json
 import os
 
@@ -18,8 +18,6 @@ class ToolManger:
             self.tools = tools
         if model:
             self.model = model
-
-
 
     def set_tools(self, tools):
         self.tools = tools
@@ -65,3 +63,8 @@ class ToolManger:
                 messages=messages,
             )  # get a new response from the model where it can see the function response
             return second_response
+
+
+if __name__ == "__main__":
+    cl = ToolManger()
+    cl.run("Last openai trands")

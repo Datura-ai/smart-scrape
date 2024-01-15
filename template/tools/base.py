@@ -2,7 +2,6 @@ from abc import abstractmethod
 from enum import Enum
 from typing import Dict, List, Optional
 
-# from langchain.tools import BaseTool as LangchainBaseTool
 from pydantic import BaseModel, Field, validator
 
 class ToolEnvKeyType(Enum):
@@ -50,6 +49,11 @@ class BaseTool():
 
     def get_env_key(self, key: str):
         return self.configs.get(key)
+    
+    @abstractmethod
+    def get_params(self) -> List[ToolEnvKey]:
+        # Add file related config keys here
+        pass
 
 
 class BaseToolkit(BaseModel):
@@ -68,6 +72,7 @@ class BaseToolkit(BaseModel):
     def get_env_keys(self) -> List[ToolEnvKey]:
         # Add file related config keys here
         pass
+
 
 class ToolEnvKeyException(Exception):
     pass

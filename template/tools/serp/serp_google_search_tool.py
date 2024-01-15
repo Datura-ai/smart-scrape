@@ -1,12 +1,8 @@
-from typing import Optional, Type
-
-# from langchain.callbacks.manager import CallbackManagerForToolRun
-from serp_api_wrapper import SerpAPIWrapper
+from typing import Optional, Type, Dict, Any
+from .serp_api_wrapper import SerpAPIWrapper
 from pydantic import BaseModel, Field
 
-from base import ToolEnvKeyException
-from tools.base import BaseTool
-
+from template.tools.base import ToolEnvKeyException, BaseTool
 
 class SerpGoogleSearchSchema(BaseModel):
     query: str = Field(
@@ -30,6 +26,22 @@ class SerpGoogleSearchTool(BaseTool):
 
     tool_id = "a66b3b20-d0a2-4b53-a775-197bc492e816"
 
+    def get_params(self) -> Dict[str, Any]:
+        """Get parameters."""
+        params =  {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The city and state, e.g. San Francisco, CA",
+                },
+                "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+            },
+            "required": ["location"],
+        },
+        return params
+    
+
     def _run(
         self, query: str, # run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
@@ -42,7 +54,6 @@ class SerpGoogleSearchTool(BaseTool):
             )
 
         search = SerpAPIWrapper(serpapi_api_key=serpapi_api_key)
-
 
         try:
             return search.run(query)

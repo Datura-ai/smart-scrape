@@ -1,8 +1,8 @@
 from abc import ABC
 from typing import List
-from tools.base import BaseToolkit, BaseTool, ToolEnvKey
-from tools.twitter.get_recent_tweets_tool import GetRecentTweetsTool
-from tools.twitter.get_full_archive_tweets_tool import GetFullArchiveTweetsTool
+from template.tools.base import BaseToolkit, BaseTool, ToolEnvKey
+from template.tools.twitter.get_recent_tweets_tool import GetRecentTweetsTool
+from template.tools.twitter.get_full_archive_tweets_tool import GetFullArchiveTweetsTool
 
 
 class TwitterToolkit(BaseToolkit, ABC):

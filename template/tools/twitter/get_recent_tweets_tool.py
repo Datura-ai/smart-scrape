@@ -1,10 +1,9 @@
-from typing import Optional, Type
+from typing import Optional, Type, Dict, Any
 
-# from langchain.callbacks.manager import CallbackManagerForToolRun
 from pydantic import BaseModel, Field
 
-from tools.base import BaseTool
-from twitter_api_wrapper import TwitterAPIClient
+from template.tools.base import BaseTool
+from .twitter_api_wrapper import TwitterAPIClient
 
 class TweetSchema(BaseModel):
     query: str = Field(
@@ -27,6 +26,21 @@ class GetRecentTweetsTool(BaseTool):
     
     client = TwitterAPIClient()
 
+    def get_params(self) -> Dict[str, Any]:
+        """Get parameters."""
+        params =  {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The city and state, e.g. San Francisco, CA",
+                },
+                "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+            },
+            "required": ["location"],
+        },
+        return params
+    
     def _run(
         self, query: str, #run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:

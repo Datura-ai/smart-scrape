@@ -24,9 +24,14 @@ from typing import List, Dict, Tuple
 
 from template.utils import get_version
 from template.protocol import StreamPrompting, IsAlive, TwitterScraperStreaming
-from template.services.twitter import TwitterAPIClient
-from template.db import DBClient, get_random_tweets
+# from template.services.twitter import TwitterAPIClient
+# from template.db import DBClient, get_random_tweets
 from twitter_miner import TwitterScrapperMiner
+from template.tools.tool_manager import ToolManger
+
+
+mg = ToolManger()
+mg.run("openai trandes research 2024")
 
 OpenAI.api_key = os.environ.get('OPENAI_API_KEY')
 if not OpenAI.api_key:

@@ -1,9 +1,8 @@
-from typing import Optional, Type
+from typing import Optional, Type, Dict, Any
 
-# from langchain.callbacks.manager import CallbackManagerForToolRun
 from pydantic import BaseModel, Field
 
-from tools.base import BaseTool
+from template.tools.base import BaseTool
 
 class TweetSchema(BaseModel):
     query: str = Field(
@@ -23,6 +22,21 @@ class GetFullArchiveTweetsTool(BaseTool):
     args_schema: Type[TweetSchema] = TweetSchema
 
     tool_id = "6e57b718-8953-448b-98db-fd19c1d1469c"
+
+    def get_params(self) -> Dict[str, Any]:
+        """Get parameters."""
+        params =  {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The city and state, e.g. San Francisco, CA",
+                },
+                "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+            },
+            "required": ["location"],
+        },
+        return params
 
     def _run(
         self, query: str, #run_manager: Optional[CallbackManagerForToolRun] = None
