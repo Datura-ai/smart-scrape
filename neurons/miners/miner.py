@@ -8,11 +8,8 @@ import pathlib
 import asyncio
 import template
 import argparse
-import requests
 import threading
 import traceback
-import numpy as np
-import pandas as pd
 import bittensor as bt
 
 from openai import OpenAI
@@ -23,10 +20,10 @@ from starlette.types import Send
 from abc import ABC, abstractmethod
 from transformers import GPT2Tokenizer
 from config import get_config, check_config
-from typing import List, Dict, Tuple, Union, Callable, Awaitable
+from typing import List, Dict, Tuple
 
 from template.utils import get_version
-from template.protocol import StreamPrompting, IsAlive, TwitterScraperStreaming, TwitterPromptAnalysisResult
+from template.protocol import StreamPrompting, IsAlive, TwitterScraperStreaming
 from template.services.twitter import TwitterAPIClient
 from template.db import DBClient, get_random_tweets
 from twitter_miner import TwitterScrapperMiner
