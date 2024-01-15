@@ -231,6 +231,6 @@ class TwitterScrapperMiner:
                 )
                 bt.logging.info(f"Streamed tokens: {joined_buffer}")
                 bt.logging.info(f"Prompt Analysis: {prompt_analysis_json}")
-                bt.logging.info(f"response is {response}")
+                # bt.logging.info(f"response is {response}")
         except Exception as e:
             bt.logging.error(f"error in twitter scraper {e}\n{traceback.format_exc()}")
