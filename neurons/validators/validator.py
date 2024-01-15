@@ -179,7 +179,7 @@ class neuron(AbstractNeuron):
                 total_scores = torch.full((len(self.metagraph.hotkeys),), 0.5)
             total_scores += scores
                 
-            iterations_per_set_weights = 2
+            iterations_per_set_weights = 1
             iterations_until_update = iterations_per_set_weights - ((self.steps_passed + 1) % iterations_per_set_weights)
             bt.logging.info(f"Updating weights in {iterations_until_update} iterations.")
 
