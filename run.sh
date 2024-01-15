@@ -5,7 +5,7 @@ script="neurons/validators/api.py"
 autoRunLoc=$(readlink -f "$0")
 proc_name="smart_scrape_validators_api_main_process" 
 args=()
-version_location="./prompting/validators/__init__.py"
+version_location="./template/__init__.py"
 version="__version__"
 
 old_args=$@

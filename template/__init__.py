@@ -19,13 +19,15 @@
 
 
 # version must stay on line 22
-__version__ = "0.0.3"
+__version__ = "0.0.12"
 version_split = __version__.split(".")
 __spec_version__ = (
     (1000 * int(version_split[0]))
     + (10 * int(version_split[1]))
     + (1 * int(version_split[2]))
 )
+
+print("__version__" , __version__)
 
 import os
 from openai import AsyncOpenAI
@@ -62,6 +64,7 @@ BLACKLISTED_KEYS = ["5G1NjW9YhXLadMWajvTkfcJy6up3yH2q1YzMXDTi6ijanChe"]
 
 ENTITY = 'smart-scrape'
 PROJECT_NAME = 'smart-scrape-2.0'
+
 
 
 class QUERY_MINERS(Enum):
