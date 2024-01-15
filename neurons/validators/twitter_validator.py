@@ -228,7 +228,8 @@ class TwitterScraperValidator:
                 if not self.neuron.config.neuron.disable_log_rewards:
                     event = {**event, **reward_event}
                 bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
-                bt.logging.info(f"Applied reward function: {reward_fn_i.name}")
+                bt.logging.info(f"Applied reward function: {reward_fn_i.name} with reward: {reward_event.get(reward_fn_i.name, 'N/A')}")
+                
 
             for penalty_fn_i in self.penalty_functions:
                 raw_penalty_i, adjusted_penalty_i, applied_penalty_i = penalty_fn_i.apply_penalties(responses, task)
@@ -238,7 +239,7 @@ class TwitterScraperValidator:
                     event[penalty_fn_i.name + "_adjusted"] = adjusted_penalty_i.tolist()
                     event[penalty_fn_i.name + "_applied"] = applied_penalty_i.tolist()
                 bt.logging.trace(str(penalty_fn_i.name), applied_penalty_i.tolist())
-                bt.logging.info(f"Applied penalty function: {penalty_fn_i.name}")
+                bt.logging.info(f"Applied penalty function: {penalty_fn_i.name} with reward: {adjusted_penalty_i.tolist()}")
 
             scattered_rewards = self.update_moving_averaged_scores(uids, rewards)
             self.log_event(task, event, start_time, uids, rewards, prompt=task.compose_prompt())

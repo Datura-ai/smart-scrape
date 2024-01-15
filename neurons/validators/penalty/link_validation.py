@@ -81,7 +81,7 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
         self.prompt_content = task.base_text
         penalties = []
         for response in responses:
-            time.sleep(10)
+            # time.sleep(2)
             completion = response.completion
             twitter_links = self.client.find_twitter_links(completion)
             if twitter_links and all(self.is_valid_twitter_link(link) for link in twitter_links):
