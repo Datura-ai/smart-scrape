@@ -16,7 +16,7 @@ class GetFullArchiveTweetsTool(BaseTool):
 
     name = "Tweet on Twitter"
 
-    slug = "tweeterTweet"
+    slug = "get_full_archive_tweets"
 
     description = "Tweet a message using Twitter."
 

@@ -1,19 +1,25 @@
 from typing import List
 from openai import OpenAI
 from template.tools.base import BaseTool, BaseToolkit
-from get_tools import get_all_tools
+from get_tools import get_all_tools, get_avalaible_functions
 import json
 import os
-OpenAI
+
 OpenAI.api_key = os.environ.get('OPENAI_API_KEY')
 
 class ToolManger:
     client = OpenAI()
     tools:List[BaseToolkit] = get_all_tools()
-    available_functions = {}
+    available_functions = get_avalaible_functions()
+    model = "gpt-3.5-turbo-1106"
 
-    def __int__(self, tools):
-        self.tools = tools
+    def __int__(self, tools = None, model = None):
+        if tools:
+            self.tools = tools
+        if model:
+            self.model = model
+
+
 
     def set_tools(self, tools):
         self.tools = tools
@@ -25,7 +31,7 @@ class ToolManger:
         # Step 1: send the conversation and available functions to the model
         messages = [{"role": "user", "content": content}]
         response = self.client.chat.completions.create(
-            model="gpt-3.5-turbo-1106",
+            model=self.model,
             messages=messages,
             tools=self.tools,
             tool_choice=tool_choice,  # auto is default, but we'll be explicit
@@ -36,16 +42,15 @@ class ToolManger:
         if tool_calls:
             # Step 3: call the function
             # Note: the JSON response may not always be valid; be sure to handle errors
-            available_functions =   # only one function in this example, but you can have multiple
             messages.append(response_message)  # extend conversation with assistant's reply
             # Step 4: send the info for each function call and function response to the model
             for tool_call in tool_calls:
                 function_name = tool_call.function.name
-                function_to_call = available_functions[function_name]
+                function_to_call = self.available_functions[function_name]
                 function_args = json.loads(tool_call.function.arguments)
                 function_response = function_to_call(
                     location=function_args.get("location"),
-                    unit=function_args.get("unit"),OpenAI
+                    unit=function_args.get("unit"),
                 )
                 messages.append(
                     {

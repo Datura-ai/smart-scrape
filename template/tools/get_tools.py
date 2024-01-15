@@ -19,10 +19,25 @@ def get_all_tools():
             {
                 "type": "function",
                 "function": {
-                    "name": tool.name,
+                    "name": tool.slug,
                     "description": tool.description,
                     "parameters": tool.get_params(),
                 },
+            }
+            for tool in toolkit.get_tools()
+        ]
+        result.extend(tools)
+
+    return result
+
+def get_avalaible_functions():
+    """Return a list of all tools."""
+    result = []
+
+    for toolkit in TOOLKITS:
+        tools = [
+            {
+                [tool.slug]: tool._run,
             }
             for tool in toolkit.get_tools()
         ]

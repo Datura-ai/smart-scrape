@@ -4,7 +4,7 @@ from typing import Optional, Type
 from serp_api_wrapper import SerpAPIWrapper
 from pydantic import BaseModel, Field
 
-from exceptions import ToolEnvKeyException
+from base import ToolEnvKeyException
 from tools.base import BaseTool
 
 
@@ -18,7 +18,7 @@ class SerpGoogleSearchSchema(BaseModel):
 class SerpGoogleSearchTool(BaseTool):
     name = "Serp Google Search"
 
-    slug = "serpGoogleSearch"
+    slug = "ser_google_seach"
 
     description = (
         "This tool performs Google searches and extracts relevant snippets and webpages. "

@@ -17,7 +17,7 @@ class GetRecentTweetsTool(BaseTool):
 
     name = "Tweet on Twitter"
 
-    slug = "tweeterTweet"
+    slug = "get_recent_tweets"
 
     description = "Tweet a message using Twitter."
 

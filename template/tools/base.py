@@ -2,7 +2,7 @@ from abc import abstractmethod
 from enum import Enum
 from typing import Dict, List, Optional
 
-from langchain.tools import BaseTool as LangchainBaseTool
+# from langchain.tools import BaseTool as LangchainBaseTool
 from pydantic import BaseModel, Field, validator
 
 class ToolEnvKeyType(Enum):
@@ -41,7 +41,7 @@ class ToolEnvKey(BaseModel):
             raise ValueError("key_type should be string/file/integer")
 
 
-class BaseTool(LangchainBaseTool):
+class BaseTool():
     tool_id: str
     configs: Dict[str, str] = {}
     slug: Optional[str] = None
@@ -59,27 +59,6 @@ class BaseToolkit(BaseModel):
     slug: str
     is_active: bool = Field(default=True)
 
-    def get_tools_with_configs(
-        self, db, account, settings, agent_with_configs, callback_handler
-    ) -> List[BaseTool]:
-        # configs = ConfigModel.get_configs(
-        #     db=db, query=ConfigQueryParams(toolkit_id=self.toolkit_id), account=account
-        # )
-        # config_dict = {config.key: config.value for config in configs}
-        tools = self.get_tools()
-
-        for tool in tools:
-            # tool.configs = config_dict
-            tool.toolkit_slug = self.slug
-            # tool.settings = settings
-            # tool.account = account
-            # tool.agent_with_configs = agent_with_configs
-
-            # if callback_handler:
-            #     tool.callbacks = [callback_handler]
-
-        return tools
-
     @abstractmethod
     def get_tools(self) -> List[BaseTool]:
         # Add file related tools object here
@@ -89,3 +68,6 @@ class BaseToolkit(BaseModel):
     def get_env_keys(self) -> List[ToolEnvKey]:
         # Add file related config keys here
         pass
+
+class ToolEnvKeyException(Exception):
+    pass

@@ -9,7 +9,7 @@ import aiohttp
 from pydantic import BaseModel, Extra, Field, root_validator
 from template.utils import get_from_dict_or_env
 
-SERP_API_KEY = os.environ.get('SERP_API_KEY')
+# SERP_API_KEY = os.environ.get('SERP_API_KEY')
 
 class HiddenPrints:
     """Context manager to hide prints."""
@@ -216,4 +216,4 @@ class SerpAPIWrapper(BaseModel):
         if len(snippets) > 0:
             return str(snippets)
         else:
-            return "No good search result found"
+            return "No good search result foundo
