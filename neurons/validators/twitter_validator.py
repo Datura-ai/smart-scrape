@@ -36,7 +36,7 @@ class TwitterScraperValidator:
         self.weight = 1
         self.seed = 1234
         self.neuron = neuron
-        self.timeout=75
+        self.timeout=180
 
         # Init device.
         bt.logging.debug("loading", "device")
