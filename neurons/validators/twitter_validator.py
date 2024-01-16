@@ -267,7 +267,7 @@ class TwitterScraperValidator:
 
             # Check if uid was set during the loop
             if uid is not None:
-                bt.logging.info(f"Updated scores and wandb_data for uid: {uid}", wandb_data)
+                bt.logging.info(f"Updated scores and wandb_data for uid: {uid} === ", wandb_data)
             else:
                 bt.logging.info("No uids to update scores and wandb_data for.")
 
@@ -335,9 +335,6 @@ class TwitterScraperValidator:
         task_name = "augment"
         task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
 
-        async_responses, uids, event, start_time = await self.run_task_and_score(
-            task=task
-        )
         async_responses, uids, event, start_time = await self.run_task_and_score(
             task=task,
             strategy=QUERY_MINERS.RANDOM,
