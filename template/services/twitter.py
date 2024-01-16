@@ -65,6 +65,11 @@ bad_query_examples = [
 
 ]
 
+# - media.fields allowed values: "duration_ms,height,media_key,preview_image_url,type,url,width"
+# - max_results only between 10 - 100
+# - user.fields only allowed: "created_at,description,entities,id,location,name,pinned_tweet_id,profile_image_url,protected,url,username,verified,withheld"
+# - tweet.fields only allowed: "attachments,author_id,context_annotations,conversation_id,created_at,entities,geo,id,in_reply_to_user_id,lang,possibly_sensitive,referenced_tweets,reply_settings,source,text,withheld,edit_history_tweet_ids"
+
 def get_query_gen_prompt(prompt, is_accuracy=True):
     accuracy_text = ""
     if is_accuracy:
@@ -94,10 +99,10 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - If a query.word consists of two or more words, enclose them in quotation marks, i.e "Coca cola"
             - Don't use "since:" and "until:" for date filter
             - end_time must be on or after start_date
-            - media.fields allowed values: "duration_ms,height,media_key,preview_image_url,type,url,width"
+            - media.fields allowed values: "preview_image_url,type,url,width"
             - max_results only between 10 - 100
-            - user.fields only allowed: "created_at,description,entities,id,location,name,pinned_tweet_id,profile_image_url,protected,url,username,verified,withheld"
-            - tweet.fields only allowed: "attachments,author_id,context_annotations,conversation_id,created_at,entities,geo,id,in_reply_to_user_id,lang,possibly_sensitive,referenced_tweets,reply_settings,source,text,withheld,edit_history_tweet_ids"
+            - user.fields only allowed: "created_at,description,id,location,name,profile_image_url,url,username,verified"
+            - tweet.fields only allowed: "author_id,created_at,id,lang,possibly_sensitive,source,text"
 
         Output example:
         {{

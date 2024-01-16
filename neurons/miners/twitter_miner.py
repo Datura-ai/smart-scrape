@@ -89,7 +89,7 @@ class TwitterScrapperMiner:
                         "more_body": True,
                     }
                 )
-                await asyncio.sleep(0.1)  # Wait for 100 milliseconds
+                # await asyncio.sleep(0.1)  # Wait for 100 milliseconds
                 bt.logging.info(f"Streamed tokens: {joined_buffer}")
                 buffer = []
 
@@ -171,14 +171,14 @@ class TwitterScrapperMiner:
             bt.logging.info("Prompt analysis ===============================================")
             bt.logging.info(prompt_analysis)
             bt.logging.info("Prompt analysis ===============================================")
-            if prompt_analysis:
-                synapse.set_prompt_analysis(prompt_analysis)
+            # if prompt_analysis:
+            #     synapse.set_prompt_analysis(prompt_analysis)
             
-            if not isinstance(tweets, str):
-                tweets_json = json.dumps(tweets)
-                synapse.set_tweets(tweets_json)
-            else:
-                synapse.set_tweets(tweets)
+            # if not isinstance(tweets, str):
+            #     tweets_json = json.dumps(tweets)
+            #     synapse.set_tweets(tweets_json)
+            # else:
+            #     synapse.set_tweets(tweets)
 
             response = await self.finalize_data(prompt=prompt, model=model, filtered_tweets=tweets, prompt_analysis=prompt_analysis)
 
@@ -211,15 +211,19 @@ class TwitterScrapperMiner:
                     buffer = []
 
             # Send any remaining data in the buffer
-            if synapse.prompt_analysis or synapse.tweets:
+            if prompt_analysis or tweets:
                 joined_buffer = "".join(buffer)
                 # Serialize the prompt_analysis to JSON
-                prompt_analysis_json = json.dumps(synapse.prompt_analysis.dict())
+                prompt_analysis_json = json.dumps(prompt_analysis.dict())
                 # Prepare the response body with both the tokens and the prompt_analysis
+
+                tweets_json = tweets
+                if not isinstance(tweets, str):
+                    tweets_json = json.dumps(tweets)
                 response_body = {
                     "tokens": joined_buffer,
                     "prompt_analysis": prompt_analysis_json,
-                    "tweets": synapse.tweets
+                    "tweets": tweets_json
                 }
                 # Send the response body as JSON
                 await send(
@@ -231,6 +235,7 @@ class TwitterScrapperMiner:
                 )
                 bt.logging.info(f"Streamed tokens: {joined_buffer}")
                 bt.logging.info(f"Prompt Analysis: {prompt_analysis_json}")
+                bt.logging.info(f"Responsed Tweets Length: {len(tweets_json)}")
                 # bt.logging.info(f"response is {response}")
         except Exception as e:
             bt.logging.error(f"error in twitter scraper {e}\n{traceback.format_exc()}")
