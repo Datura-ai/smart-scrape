@@ -44,10 +44,10 @@ class TwitterScraperValidator:
 
         self.reward_weights = torch.tensor(
             [
-                self.neuron.config.reward.rlhf_weight,
+                # self.neuron.config.reward.rlhf_weight,
                 self.neuron.config.reward.prompt_based_weight,
-                self.neuron.config.reward.prompt_summary_links_content_based_weight,
-                self.neuron.config.reward.dpo_weight,
+                # self.neuron.config.reward.prompt_summary_links_content_based_weight,
+                # self.neuron.config.reward.dpo_weight,
             ],
             dtype=torch.float32,
         ).to(self.neuron.config.neuron.device)
@@ -68,9 +68,9 @@ class TwitterScraperValidator:
             tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
            
         self.reward_functions = [
-            OpenAssistantRewardModel(device=self.neuron.config.neuron.device)
-            if self.neuron.config.reward.rlhf_weight > 0
-            else MockRewardModel(RewardModelType.rlhf.value), 
+            # OpenAssistantRewardModel(device=self.neuron.config.neuron.device)
+            # if self.neuron.config.reward.rlhf_weight > 0
+            # else MockRewardModel(RewardModelType.rlhf.value), 
 
             PromptRewardModel(device=self.neuron.config.neuron.device, 
                               scoring_type=RewardScoringType.twitter_question_answer_score,
@@ -80,23 +80,23 @@ class TwitterScraperValidator:
             if self.neuron.config.reward.prompt_based_weight > 0
             else MockRewardModel(RewardModelType.prompt.value),
 
-            PromptRewardModel(device=self.neuron.config.neuron.device, 
-                              scoring_type=RewardScoringType.twitter_summary_links_content_template,
-                              tokenizer=tokenizer,
-                              model=model
-                              )
-            if self.neuron.config.reward.prompt_summary_links_content_based_weight > 0
-            else MockRewardModel(RewardModelType.prompt.value),
+            # PromptRewardModel(device=self.neuron.config.neuron.device, 
+            #                   scoring_type=RewardScoringType.twitter_summary_links_content_template,
+            #                   tokenizer=tokenizer,
+            #                   model=model
+            #                   )
+            # if self.neuron.config.reward.prompt_summary_links_content_based_weight > 0
+            # else MockRewardModel(RewardModelType.prompt.value),
 
-            DirectPreferenceRewardModel(device=self.neuron.config.neuron.device)
-            if self.neuron.config.reward.dpo_weight > 0
-            else MockRewardModel(RewardModelType.prompt.value),                
+            # DirectPreferenceRewardModel(device=self.neuron.config.neuron.device)
+            # if self.neuron.config.reward.dpo_weight > 0
+            # else MockRewardModel(RewardModelType.prompt.value),                
         ]
 
         self.penalty_functions = [
-            TaskValidationPenaltyModel(max_penalty=0.6),
+            # TaskValidationPenaltyModel(max_penalty=0.6),
             LinkValidationPenaltyModel(max_penalty=0.9),
-            AccuracyPenaltyModel(max_penalty=0.7),
+            AccuracyPenaltyModel(max_penalty=1),
         ]
 
         self.twitter_api = TwitterAPIClient()
@@ -261,6 +261,9 @@ class TwitterScraperValidator:
                 wandb_data["scores"][uid] = reward
                 wandb_data["responses"][uid] = response.completion
                 wandb_data["prompts"][uid] = prompt
+                bt.logging.info(f"Response completion length: {len(response.completion)}")
+                bt.logging.info(f"Response tweets length: {len(response.tweets)}")
+                bt.logging.info(f"Response links_content length: {len(response.links_content)}")
 
             # Check if uid was set during the loop
             if uid is not None:
@@ -274,6 +277,7 @@ class TwitterScraperValidator:
         except Exception as e:
             bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
             raise
+        
     def update_moving_averaged_scores(self, uids, rewards):
         try:
             scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.neuron.config.neuron.device)

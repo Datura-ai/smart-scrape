@@ -85,7 +85,7 @@ class PromptRewardModel(BaseRewardModel):
                     scoring_prompt = TwitterSummaryLinksContetPrompt()
                     # Convert list of links content to string before passing to the prompt
                     links_content_str = str(response.links_content)
-                    scoring_prompt_text = scoring_prompt.text(prompt, completion, links_content_str)
+                    scoring_prompt_text = scoring_prompt.text(completion, links_content_str)
 
                 if scoring_prompt is None:
                     reward_event.reward = 0

@@ -37,5 +37,5 @@ class DefaultRewardFrameworkConfig:
     """
     dpo_model_weight: float = 0
     rlhf_model_weight: float = 0
-    prompt_model_weight: float = 0.7
-    prompt_model_summary_links_content_weight: float = 0.3
+    prompt_model_weight: float = 1
+    prompt_model_summary_links_content_weight: float = 0
