@@ -89,7 +89,7 @@ class TwitterScrapperMiner:
                         "more_body": True,
                     }
                 )
-                # await asyncio.sleep(0.1)  # Wait for 100 milliseconds
+                await asyncio.sleep(0.1)  # Wait for 100 milliseconds
                 bt.logging.info(f"Streamed tokens: {joined_buffer}")
                 buffer = []
 
