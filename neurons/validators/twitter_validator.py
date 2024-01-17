@@ -261,9 +261,18 @@ class TwitterScraperValidator:
                 wandb_data["scores"][uid] = reward
                 wandb_data["responses"][uid] = response.completion
                 wandb_data["prompts"][uid] = prompt
-                bt.logging.info(f"Response completion length: {len(response.completion)}")
-                bt.logging.info(f"Response tweets length: {len(response.tweets)}")
-                bt.logging.info(f"Response links_content length: {len(response.links_content)}")
+                if response.completion is not None:
+                    bt.logging.info(f"Response completion length: {len(response.completion)}")
+                else:
+                    bt.logging.info("Response completion is None")
+                if response.tweets is not None:
+                    bt.logging.info(f"Response tweets length: {len(response.tweets)}")
+                else:
+                    bt.logging.info("Response tweets is None")
+                if response.links_content is not None:
+                    bt.logging.info(f"Response links_content length: {len(response.links_content)}")
+                else:
+                    bt.logging.info("Response links_content is None")
 
             # Check if uid was set during the loop
             if uid is not None:
