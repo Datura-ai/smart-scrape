@@ -120,27 +120,38 @@ class TwitterScrapperMiner:
     async def finalize_data(self, prompt, model, filtered_tweets, prompt_analysis):
             content =F"""
                 User Prompt Analysis and Twitter Data Integration
+                In <UserPrompt> provided User's prompt (Question).
+                In <PromptAnalysis> I anaysis that prompts and generate query for API, keywords, hashtags, user_mentions.
+                In <TwitterData>, Provided Twitter API fetched data.
 
-                User Prompt: "{prompt}"
+                
+                <UserPrompt>
+                {prompt}
+                </UserPrompt>
 
-                Twitter Data: "{filtered_tweets}"
+                <TwitterData>
+                {filtered_tweets}
+                </TwitterData>
 
-                Analysis of User's Prompt: "{prompt_analysis}"
-
+                <PromptAnalysis>
+                {prompt_analysis}
+                </PromptAnalysis>
+                
                 Tasks:
-                1. Create a Response: Analyze the user's prompt and the provided Twitter data to generate a meaningful and relevant response.
-                2. Share Relevant Twitter Links: Include links to several pertinent tweets. These links will enable users to view tweet details directly.
+                1. Create a Response: Analyze UserPrompt and the provided TwitterData to generate a meaningful and relevant response.
+                2. Share Relevant Twitter Links: Include Twitter links to several pertinent tweets from provided TwitterData. These links will enable users to view tweet details directly. But only use Twitter links in your response and must return valid links.
                 3. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
-                4. You would explain how you did retrieve data based on Analysis of User's Prompt.
+                4. You would explain how you did retrieve data based on Analysis of UserPrompt.
 
                 Output Guidelines:
-                1. Comprehensive Analysis: Synthesize insights from both the user's prompt and the Twitter data to formulate a well-rounded response.
+                1. Comprehensive Analysis: Synthesize insights from both the UserPrompt and the TwitterData to formulate a well-rounded response.
 
                 Operational Rules:
-                1. No Twitter Data Scenario: If no Twitter data is provided, inform the user that current Twitter insights related to their topic are unavailable.
+                1. No TwitterData Scenario: If no TwitterData is provided, inform the user that current Twitter insights related to their topic are unavailable.
                 3. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
-                4. Seamless Integration: Avoid explicitly stating "Based on the provided Twitter data" in responses. Assume user awareness of the data integration process.
+                4. Seamless Integration: Avoid explicitly stating "Based on the provided TwitterData" in responses. Assume user awareness of the data integration process.
                 5. Please separate your responses into sections for easy reading.
+                6. TwitterData.id you can use generate twitter links
             """
             messages = [{'role': 'user', 'content': content}]
             return await client.chat.completions.create(
@@ -235,7 +246,7 @@ class TwitterScrapperMiner:
                 )
                 bt.logging.info(f"Streamed tokens: {joined_buffer}")
                 bt.logging.info(f"Prompt Analysis: {prompt_analysis_json}")
-                bt.logging.info(f"Responsed Tweets Length: {len(tweets_json)}")
+                bt.logging.info(f"Responsed Tweets Length: {len(tweets_json) if tweets_json is not None else 0}")
                 # bt.logging.info(f"response is {response}")
         except Exception as e:
             bt.logging.error(f"error in twitter scraper {e}\n{traceback.format_exc()}")
