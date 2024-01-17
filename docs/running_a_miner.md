@@ -54,6 +54,7 @@ pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 
 - `--miner.name`: Path for miner data (miner.root / (wallet_cold - wallet_hot) / miner.name).
 - `--miner.mock_dataset`: Set to True to use a mock dataset.
 - `--miner.blocks_per_epoch`: Number of blocks until setting weights on chain.
+- `--miner.intro_text`: If True, the miner will return intro text
 
 
 ## Conclusion

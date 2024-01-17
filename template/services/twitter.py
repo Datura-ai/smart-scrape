@@ -99,10 +99,12 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - If a query.word consists of two or more words, enclose them in quotation marks, i.e "Coca cola"
             - Don't use "since:" and "until:" for date filter
             - end_time must be on or after start_date
+            - use lang filter in query, and filter based on user's language, default lang.en
             - media.fields allowed values: "preview_image_url,type,url,width"
             - max_results only between 10 - 100
             - user.fields only allowed: "created_at,description,id,location,name,profile_image_url,url,username,verified"
-            - tweet.fields only allowed: "author_id,created_at,id,lang,possibly_sensitive,source,text"
+            - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,source,text"
+
 
         Output example:
         {{
@@ -137,7 +139,9 @@ class TwitterAPIClient:
     def __init__(self):
         # self.bearer_token = os.environ.get("BEARER_TOKEN")
         self.bearer_token = BEARER_TOKEN
-        self.twitter_link_regex = re.compile(r'https?://(?:' + '|'.join(re.escape(domain) for domain in VALID_DOMAINS) + r')/[\w/:%#\$&\?\(\)~\.=\+\-]+', re.IGNORECASE)
+        self.twitter_link_regex = re.compile(
+            r'https?://(?:' + '|'.join(re.escape(domain) for domain in VALID_DOMAINS) +
+            r')/[\w/:%#\$&\?\(\)~\.=\+\-]+(?<![\.\)])', re.IGNORECASE)
 
     def bearer_oauth(self, r):
         """
