@@ -36,7 +36,7 @@ class TwitterScraperValidator:
         self.weight = 1
         self.seed = 1234
         self.neuron = neuron
-        self.timeout=180
+        self.timeout=120
 
         # Init device.
         bt.logging.debug("loading", "device")
@@ -109,34 +109,48 @@ class TwitterScraperValidator:
     async def process_async_responses(self, async_responses):
         responses = []
         for resp in async_responses:
-            full_response = ""
-            synapse_object : TwitterScraperStreaming = None
-            prompt_analysis = None
-            tweets = None
-            async for chunk in resp:
-                if isinstance(chunk, str):
-                    # Parse the JSON chunk to extract tokens and prompt_analysis
-                    try:
-                        chunk_data = json.loads(chunk)
-                        full_response += chunk_data.get("tokens", "")
-                        if "prompt_analysis" in chunk_data:
-                            prompt_analysis_json = chunk_data["prompt_analysis"]
-                            # Assuming prompt_analysis_json is a JSON string, parse it to a Python dict
-                            prompt_analysis = json.loads(prompt_analysis_json)
-                        if "tweets" in chunk_data:
-                            tweets = chunk_data["tweets"]
-                    except json.JSONDecodeError:
-                        bt.logging.trace(f"Failed to decode JSON chunk: {chunk}")
-                elif isinstance(chunk, bt.Synapse):
-                    synapse_object = chunk
-            if synapse_object is not None:
-                synapse_object.completion = full_response
-                # Attach the prompt_analysis to the synapse_object if needed
-                if prompt_analysis is not None:
-                    synapse_object.set_prompt_analysis(prompt_analysis)
-                if prompt_analysis is not None:
-                    synapse_object.set_tweets(tweets)
-                responses.append(synapse_object)
+            try:
+                full_response = ""
+                synapse_object : TwitterScraperStreaming = None
+                prompt_analysis = None
+                tweets = None
+                try:
+                    async for chunk in resp:
+                        if isinstance(chunk, str):
+                            # Parse the JSON chunk to extract tokens and prompt_analysis
+                            try:
+                                chunk_data = json.loads(chunk)
+                                full_response += chunk_data.get("tokens", "")
+                                if "prompt_analysis" in chunk_data:
+                                    prompt_analysis_json = chunk_data["prompt_analysis"]
+                                    # Assuming prompt_analysis_json is a JSON string, parse it to a Python dict
+                                    prompt_analysis = json.loads(prompt_analysis_json)
+                                if "tweets" in chunk_data:
+                                    tweets = chunk_data["tweets"]
+                            except json.JSONDecodeError:
+                                bt.logging.trace(f"Failed to decode JSON chunk: {chunk}")
+                        elif isinstance(chunk, bt.Synapse):
+                            if chunk.is_failure:
+                                raise Exception("Chunk error")
+                            synapse_object = chunk
+                except Exception as e:
+                        bt.logging.info(f"Error async for chunk in res: {e}")
+                        #todo fix it
+                        responses.append(TwitterScraperStreaming(messages='prompt', model=self.model, seed=self.seed))
+                        continue
+                
+                if synapse_object is not None:
+                    synapse_object.completion = full_response
+                    # Attach the prompt_analysis to the synapse_object if needed
+                    if prompt_analysis is not None:
+                        synapse_object.set_prompt_analysis(prompt_analysis)
+                    if prompt_analysis is not None:
+                        synapse_object.set_tweets(tweets)
+                    responses.append(synapse_object)
+            except Exception as e:
+                bt.logging.error(f"Error for resp in async_responses:: {e}")
+                responses.append(TwitterScraperStreaming(messages='prompt', model=self.model, seed=self.seed))
+
         return responses
     
     async def return_tokens(self, chunks):
@@ -181,7 +195,7 @@ class TwitterScraperValidator:
         try:
             for response in responses:
                 if self.neuron.config.neuron.disable_twitter_links_content_fetch:
-                    if response.tweets is not None:  # Check if response.tweets is not None
+                    if response.tweets is not None and response.tweets.strip():  
                         result = json.loads(response.tweets)
                         if 'data' in result:
                             links_content = [{'id': item.get('id'), 'text': item.get('text')} for item in result['data']]
@@ -189,7 +203,7 @@ class TwitterScraperValidator:
                             tweet_ids = [self.twitter_api.extract_tweet_id(link) for link in com_links]
                             response.links_content = [content for content in links_content if content['id'] in tweet_ids]
                     else:
-                        bt.logging.error("response.tweets is None, cannot process content links.")
+                        bt.logging.info("response.tweets is None, cannot process content links.")
                 else:
                     time.sleep(10)
                     completion = response.completion
@@ -253,6 +267,13 @@ class TwitterScraperValidator:
                 "scores": {},
                 "timestamps": {},
             }
+            uid = None
+            bt.logging.info(f"======================== Reward ===========================")
+            for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
+                uid = uid_tensor.item()
+                bt.logging.info(f"uid: {uid} = score: {reward}")
+            bt.logging.info(f"======================== Reward ===========================")
+
             uid = None  # Initialize uid to None
             for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
                 uid = uid_tensor.item()  # Convert tensor to int
@@ -324,7 +345,8 @@ class TwitterScraperValidator:
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
-                strategy=strategy
+                strategy=strategy,
+                is_only_allowed_miner=False
             )
         
             responses = await self.process_async_responses(async_responses)
@@ -340,59 +362,75 @@ class TwitterScraperValidator:
     
     
     async def organic(self, query):
-        prompt = query['content']        
-        task_name = "augment"
-        task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
+        try:
+            prompt = query['content']        
+            task_name = "augment"
+            task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
 
-        async_responses, uids, event, start_time = await self.run_task_and_score(
-            task=task,
-            strategy=QUERY_MINERS.RANDOM,
-            is_only_allowed_miner=True
-        )
+            async_responses, uids, event, start_time = await self.run_task_and_score(
+                task=task,
+                strategy=QUERY_MINERS.RANDOM,
+                is_only_allowed_miner=True
+            )
 
-        responses = []
-        for resp in async_responses:
-            full_response = ""
-            synapse_object : TwitterScraperStreaming = None
-            prompt_analysis = None
-            tweets = None
-            async for chunk in resp:
-                if isinstance(chunk, str):
-                    # Parse the JSON chunk to extract tokens and prompt_analysis
+            responses = []
+            for resp in async_responses:
+                try:
+                    full_response = ""
+                    synapse_object : TwitterScraperStreaming = None
+                    prompt_analysis = None
+                    tweets = None
                     try:
-                        chunk_data = json.loads(chunk)
-                        tokens = chunk_data.get("tokens", "")
-                        full_response += tokens
-                        if "prompt_analysis" in chunk_data:
-                            prompt_analysis_json = chunk_data["prompt_analysis"]
-                            # Assuming prompt_analysis_json is a JSON string, parse it to a Python dict
-                            prompt_analysis = json.loads(prompt_analysis_json)
-                        if "tweets" in chunk_data:
-                            tweets = chunk_data["tweets"]
-                        yield tokens
-                    except json.JSONDecodeError:
-                        bt.logging.trace(f"Failed to decode JSON chunk: {chunk}")
-                elif isinstance(chunk, bt.Synapse):
-                    synapse_object = chunk
-            if synapse_object is not None:
-                synapse_object.completion = full_response
-                # Attach the prompt_analysis to the synapse_object if needed
-                if prompt_analysis is not None:
-                    synapse_object.set_prompt_analysis(prompt_analysis)
-                if tweets is not None:
-                    synapse_object.set_tweets(tweets)
-                responses.append(synapse_object)
+                        async for chunk in resp:
+                                if isinstance(chunk, str):
+                                    # Parse the JSON chunk to extract tokens and prompt_analysis
+                                    try:
+                                        chunk_data = json.loads(chunk)
+                                        tokens = chunk_data.get("tokens", "")
+                                        full_response += tokens
+                                        if "prompt_analysis" in chunk_data:
+                                            prompt_analysis_json = chunk_data["prompt_analysis"]
+                                            # Assuming prompt_analysis_json is a JSON string, parse it to a Python dict
+                                            prompt_analysis = json.loads(prompt_analysis_json)
+                                        if "tweets" in chunk_data:
+                                            tweets = chunk_data["tweets"]
+                                        yield tokens
+                                    except json.JSONDecodeError:
+                                        bt.logging.trace(f"Failed to decode JSON chunk: {chunk}")
+                                elif isinstance(chunk, bt.Synapse):
+                                    if chunk.is_failure:
+                                        raise Exception("Chunk error")
+                                    synapse_object = chunk
+                    except Exception as e:
+                        bt.logging.info(f"Error async for chunk in res: {e}")
+                        responses.append(TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed))
+                        continue
+
+                    if synapse_object is not None:
+                        synapse_object.completion = full_response
+                        # Attach the prompt_analysis to the synapse_object if needed
+                        if prompt_analysis is not None:
+                            synapse_object.set_prompt_analysis(prompt_analysis)
+                        if tweets is not None:
+                            synapse_object.set_tweets(tweets)
+                        responses.append(synapse_object)
+                except Exception as e:
+                    bt.logging.info(f"Error for resp in async_responses:: {e}")
+                    responses.append(TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed))
 
 
-        async def process_and_score_responses():
-            await self.compute_rewards_and_penalties(event=event,
-                                                     prompt=prompt, 
-                                                     task=task, 
-                                                     responses=responses, 
-                                                     uids=uids, 
-                                                     start_time=start_time)
-            return responses  
-        
-        asyncio.create_task(process_and_score_responses())
+            async def process_and_score_responses():
+                await self.compute_rewards_and_penalties(event=event,
+                                                        prompt=prompt, 
+                                                        task=task, 
+                                                        responses=responses, 
+                                                        uids=uids, 
+                                                        start_time=start_time)
+                return responses  
+            
+            asyncio.create_task(process_and_score_responses())
+        except Exception as e:
+            bt.logging.error(f"Error in organic: {e}")
+            raise e
 
 

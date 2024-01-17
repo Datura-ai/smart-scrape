@@ -74,7 +74,7 @@ class neuron(AbstractNeuron):
     async def check_uid(self, axon, uid, is_only_allowed_miner = False):
         """Asynchronously check if a UID is available."""
         try:
-            if self.config.neuron.only_allowed_miners and axon.hotkey not in self.config.neuron.only_allowed_miners and is_only_allowed_miner:
+            if self.config.neuron.only_allowed_miners and str(uid) not in self.config.neuron.only_allowed_miners and is_only_allowed_miner:
                 return None
                 
             response = await self.dendrite(axon, IsAlive(), deserialize=False, timeout=4)
