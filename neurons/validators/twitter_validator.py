@@ -361,7 +361,7 @@ class TwitterScraperValidator:
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=QUERY_MINERS.RANDOM,
-                is_only_allowed_miner=False
+                is_only_allowed_miner=True
             )
 
             responses = []
