@@ -108,40 +108,53 @@ class TwitterScraperValidator:
 
 
     async def process_single_response(self, resp, prompt):
+        default = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
         full_response = ""
-        synapse_object: TwitterScraperStreaming = None
+        synapse_object = None  # Replace with actual class if different
         prompt_analysis = None
         tweets = None
+
         try:
             async for chunk in resp:
                 if isinstance(chunk, str):
                     try:
                         chunk_data = json.loads(chunk)
-                        full_response += chunk_data.get("tokens", "")
-                        if "prompt_analysis" in chunk_data:
-                            prompt_analysis_json = chunk_data["prompt_analysis"]
+                        content_type = chunk_data.get("type")
+
+                        if content_type == "text":
+                            text_content = chunk_data.get("content", "")
+                            full_response += text_content
+                            # retrun text_content  # Yield text content for further processing
+
+                        elif content_type == "prompt_analysis":
+                            prompt_analysis_json = chunk_data.get("content", "{}")
                             prompt_analysis = json.loads(prompt_analysis_json)
-                        if "tweets" in chunk_data:
-                            tweets = chunk_data["tweets"]
-                    except json.JSONDecodeError:
-                        bt.logging.trace(f"Failed to decode JSON chunk: {chunk}")
-                elif isinstance(chunk, bt.Synapse):
+
+                        elif content_type == "tweets":
+                            tweets_json = chunk_data.get("content", "[]")
+                            tweets = json.loads(tweets_json)
+
+                    except Exception as e:
+                        bt.logging.trace(f"Failed to decode JSON chunk: {chunk}, {e}")
+
+                elif isinstance(chunk, bt.Synapse):  # Replace with actual condition if different
                     if chunk.is_failure:
                         raise Exception("Chunk error")
                     synapse_object = chunk
         except Exception as e:
             bt.logging.info(f"Error async for chunk in res: {e}")
-            return TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
+            return default
 
         if synapse_object is not None:
+            bt.logging.info(f"LENGTH =========== {len(full_response)}")
             synapse_object.completion = full_response
             if prompt_analysis is not None:
                 synapse_object.set_prompt_analysis(prompt_analysis)
             if tweets is not None:
                 synapse_object.set_tweets(tweets)
             return synapse_object
-        else:
-            return TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
+
+        return default
         
     async def process_async_responses(self, async_responses, prompt):
         # Create a list of coroutine objects for each response
@@ -192,13 +205,11 @@ class TwitterScraperValidator:
         try:
             for response in responses:
                 if self.neuron.config.neuron.disable_twitter_links_content_fetch:
-                    if response.tweets is not None and response.tweets.strip():  
-                        result = json.loads(response.tweets)
-                        if 'data' in result:
-                            links_content = [{'id': item.get('id'), 'text': item.get('text')} for item in result['data']]
-                            com_links = self.twitter_api.find_twitter_links(response.completion)
-                            tweet_ids = [self.twitter_api.extract_tweet_id(link) for link in com_links]
-                            response.links_content = [content for content in links_content if content['id'] in tweet_ids]
+                    if response.tweets:  
+                        links_content = [{'id': item.get('id'), 'text': item.get('text')} for item in response.tweets]
+                        com_links = self.twitter_api.find_twitter_links(response.completion)
+                        tweet_ids = [self.twitter_api.extract_tweet_id(link) for link in com_links]
+                        response.links_content = [content for content in links_content if content['id'] in tweet_ids]
                     else:
                         bt.logging.info("response.tweets is None, cannot process content links.")
                 else:
@@ -286,7 +297,7 @@ class TwitterScraperValidator:
             return rewards, scattered_rewards
         except Exception as e:
             bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
-            raise
+            raise e
         
     def update_moving_averaged_scores(self, uids, rewards):
         try:
@@ -300,7 +311,7 @@ class TwitterScraperValidator:
             return scattered_rewards
         except Exception as e:
             bt.logging.error(f"Error in update_moving_averaged_scores: {e}")
-            raise
+            raise e
         
     def log_event(self, task, event, start_time, uids, rewards, prompt):
         def log_event(event):
@@ -350,17 +361,63 @@ class TwitterScraperValidator:
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=QUERY_MINERS.RANDOM,
-                is_only_allowed_miner=True
+                is_only_allowed_miner=False
             )
 
-            # Instead of gathering all responses at once, iterate over them and yield as they are processed
+            responses = []
             for resp in async_responses:
-                processed_response = await self.process_single_response(resp, prompt)
-                yield processed_response  # Yield each processed response
+                try:
+                    full_response = ""
+                    synapse_object = None  # Replace with actual class if different
+                    prompt_analysis = None
+                    tweets = None
 
-            # After yielding all responses, you can still compute rewards and penalties if needed
-            # Note that this part will only execute after all responses have been yielded and processed by the caller
-            responses = [await self.process_single_response(resp, prompt) for resp in async_responses]
+                    try:
+                        async for chunk in resp:
+                            if isinstance(chunk, str):
+                                try:
+                                    chunk_data = json.loads(chunk)
+                                    content_type = chunk_data.get("type")
+
+                                    if content_type == "text":
+                                        text_content = chunk_data.get("content", "")
+                                        full_response += text_content
+                                        yield text_content  # Yield text content for further processing
+
+                                    elif content_type == "prompt_analysis":
+                                        prompt_analysis_json = chunk_data.get("content", "{}")
+                                        prompt_analysis = json.loads(prompt_analysis_json)
+
+                                    elif content_type == "tweets":
+                                        tweets_json = chunk_data.get("content", "[]")
+                                        tweets = json.loads(tweets_json)
+
+                                except Exception as e:
+                                    bt.logging.trace(f"Failed to decode JSON chunk: {chunk}, {e}")
+
+                            elif isinstance(chunk, bt.Synapse):  # Replace with actual condition if different
+                                if chunk.is_failure:
+                                    raise Exception("Chunk error")
+                                synapse_object = chunk
+
+                    except Exception as e:
+                        bt.logging.info(f"Error async for chunk in res: {e}")
+                        responses.append(TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed))
+                        continue
+
+                    if synapse_object is not None:
+                        bt.logging.info(f"LENGTH =========== {len(full_response)}")
+                        synapse_object.completion = full_response
+                        if prompt_analysis is not None:
+                            synapse_object.set_prompt_analysis(prompt_analysis)
+                        if tweets is not None:
+                            synapse_object.set_tweets(tweets)
+                        responses.append(synapse_object)
+
+                except Exception as e:
+                    bt.logging.info(f"Error for resp in async_responses: {e}")
+                    responses.append(TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed))
+
             
             async def process_and_score_responses():
                 await self.compute_rewards_and_penalties(event=event,
