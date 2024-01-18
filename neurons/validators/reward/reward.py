@@ -117,11 +117,8 @@ class BaseRewardModel:
         # rewards = 0.5 * (
         #     1 + torch.erf(rewards / torch.sqrt(torch.tensor([2.0])).to(rewards.device))
         # )
-        rewards = torch.where(
-            rewards == 0,
-            rewards,
-            0.5 * (1 + torch.erf(rewards / torch.sqrt(torch.tensor([2.0])).to(rewards.device)))
-        )
+        common_formula = torch.erf(rewards / torch.sqrt(torch.tensor([2.0])).to(rewards.device))
+        rewards = torch.where(rewards == 0, 0, 0.5 * (1 + common_formula))
 
         return rewards
     
@@ -129,13 +126,14 @@ class BaseRewardModel:
         successful_completions_indices: List[int] = [
             idx
             for idx, resp in enumerate(responses)
-            if resp.dendrite.status_code == 200
+            if resp.dendrite.status_code == 200 and resp.links_content
         ]
 
         # Get all completions from responding calls.
         successful_completions: List[str] = [
             responses[idx].completion.strip() for idx in successful_completions_indices
         ]
+
         return successful_completions
     
     def get_successful_completion(self, response: bt.Synapse):
