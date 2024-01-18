@@ -77,15 +77,14 @@ class TwitterScrapperMiner:
             buffer.append(token)
             if len(buffer) == N:
                 joined_buffer = "".join(buffer)
-                response_body = {
-                    "tokens": joined_buffer,
-                    "prompt_analysis": '{}',
-                    "tweets": "{}"
+                text_response_body = {
+                    "type": "text",
+                    "content": joined_buffer
                 }
                 await send(
                     {
                         "type": "http.response.body",
-                        "body": json.dumps(response_body).encode("utf-8"),
+                        "body": json.dumps(text_response_body).encode("utf-8"),
                         "more_body": True,
                     }
                 )
@@ -93,17 +92,6 @@ class TwitterScrapperMiner:
                 bt.logging.info(f"Streamed tokens: {joined_buffer}")
                 buffer = []
 
-        await send(
-            {
-                "type": "http.response.body",
-                "body": json.dumps({
-                    "tokens": "\n\n",
-                    "prompt_analysis": '{}',
-                    "tweets": "{}"
-                }).encode("utf-8"),
-                "more_body": True,
-            }
-        )
         return buffer
 
     async def fetch_tweets(self, prompt):
@@ -197,67 +185,77 @@ class TwitterScrapperMiner:
 
             response = await self.finalize_data(prompt=prompt, model=model, filtered_tweets=tweets, prompt_analysis=prompt_analysis)
 
-            # Reset buffer for finalaze_data responses
+            # Reset buffer for finalizing data responses
             buffer = []
             N = 1
             full_text = []  # Initialize a list to store all chunks of text
+            more_body = True
             async for chunk in response:
                 token = chunk.choices[0].delta.content or ""
                 buffer.append(token)
                 full_text.append(token)  # Append the token to the full_text list
                 if len(buffer) == N:
                     joined_buffer = "".join(buffer)
-                    # Serialize the prompt_analysis to JSON
-                    # prompt_analysis_json = json.dumps(synapse.prompt_analysis.dict())
-                    # Prepare the response body with both the tokens and the prompt_analysis
-                    response_body = {
-                        "tokens": joined_buffer,
-                        "prompt_analysis": "{}",
-                        "tweets": "{}"
+                    # Stream the text
+                    text_response_body = {
+                        "type": "text",
+                        "content": joined_buffer
                     }
-                    # Send the response body as JSON
                     await send(
                         {
                             "type": "http.response.body",
-                            "body": json.dumps(response_body).encode("utf-8"),
+                            "body": json.dumps(text_response_body).encode("utf-8"),
                             "more_body": True,
                         }
                     )
                     bt.logging.info(f"Streamed tokens: {joined_buffer}")
-                    # bt.logging.info(f"Prompt Analysis: {prompt_analysis_json}")
                     buffer = []  # Clear the buffer for the next set of tokens
+
             joined_full_text = "".join(full_text)  # Join all text chunks
             bt.logging.info(f"================================== Completion Responsed ===================================") 
             bt.logging.info(f"{joined_full_text}")  # Print the full text at the end
             bt.logging.info(f"================================== Completion Responsed ===================================") 
             
-
-            # Send any remaining data in the buffer
-            if prompt_analysis or tweets:
-                joined_buffer = "".join(buffer)
-                # Serialize the prompt_analysis to JSON
+            # Send prompt_analysis
+            if prompt_analysis:
                 prompt_analysis_json = json.dumps(prompt_analysis.dict())
-                # Prepare the response body with both the tokens and the prompt_analysis
-
-                tweets_json = tweets
-                if not isinstance(tweets, str):
-                    tweets_json = json.dumps(tweets)
-                response_body = {
-                    "tokens": joined_buffer,
-                    "prompt_analysis": prompt_analysis_json,
-                    "tweets": tweets_json
+                prompt_analysis_response_body = {
+                    "type": "prompt_analysis",
+                    "content": prompt_analysis_json
                 }
-                # Send the response body as JSON
                 await send(
                     {
                         "type": "http.response.body",
-                        "body": json.dumps(response_body).encode("utf-8"),
+                        "body": json.dumps(prompt_analysis_response_body).encode("utf-8"),
+                        "more_body": True,
+                    }
+                )
+                bt.logging.info(f"Prompt Analysis sent")
+
+            # Send tweets
+            if tweets: 
+                result = json.loads(tweets)
+                if 'data' in result:
+                    tweets_data = result['data']
+                else:
+                    tweets_data = []
+                tweets_json = json.dumps(tweets_data)
+                tweets_response_body = {
+                    "type": "tweets",
+                    "content": tweets_json
+                }
+                print(tweets_json)
+                more_body = False
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": json.dumps(tweets_response_body).encode("utf-8"),
                         "more_body": False,
                     }
                 )
-                bt.logging.info(f"Streamed tokens: {joined_buffer}")
-                bt.logging.info(f"Prompt Analysis: {prompt_analysis_json}")
-                bt.logging.info(f"Responsed Tweets Length: {len(tweets_json) if tweets_json is not None else 0}")
-                # bt.logging.info(f"response is {response}")
+                bt.logging.info(f"Tweet data sent")
+
+            bt.logging.info(f"End of Streaming")
+
         except Exception as e:
             bt.logging.error(f"error in twitter scraper {e}\n{traceback.format_exc()}")
