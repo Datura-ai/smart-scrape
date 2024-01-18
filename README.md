@@ -168,6 +168,6 @@ The text prompting validator sends data to wandb, allowing real-time monitoring 
 - Forward pass time
 - Block duration
 
-Data is publicly available at [this link](https://wandb.ai/smart-scrape/smart-scrape-2.0). Note that [data from anonymous users is deleted after 7 days](https://docs.wandb.ai/guides/app/features/anon).
+Data is publicly available at [this link](https://wandb.ai/smart-scrape/smart-scrape-1.0). Note that [data from anonymous users is deleted after 7 days](https://docs.wandb.ai/guides/app/features/anon).
 
 </div>

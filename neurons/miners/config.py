@@ -77,7 +77,7 @@ def get_config() -> "bt.Config":
         "--miner.intro_text",
         type=str2bool,
         help="If True, the miner will return intro text",
-        default=True
+        default=False
     )
 
     # Adds subtensor specific arguments i.e. --subtensor.chain_endpoint ... --subtensor.network ...

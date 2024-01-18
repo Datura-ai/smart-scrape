@@ -19,7 +19,7 @@
 
 
 # version must stay on line 22
-__version__ = "0.0.16"
+__version__ = "0.0.17"
 version_split = __version__.split(".")
 __spec_version__ = (
     (1000 * int(version_split[0]))
@@ -63,7 +63,7 @@ WHITELISTED_KEYS = testnet_key + test_key + valid_validators
 BLACKLISTED_KEYS = ["5G1NjW9YhXLadMWajvTkfcJy6up3yH2q1YzMXDTi6ijanChe"]
 
 ENTITY = 'smart-scrape'
-PROJECT_NAME = 'smart-scrape-2.0'
+PROJECT_NAME = 'smart-scrape-1.0'
 
 
 

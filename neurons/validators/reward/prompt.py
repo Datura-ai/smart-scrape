@@ -24,6 +24,7 @@ from .config import RewardModelType, RewardScoringType
 from .reward import BaseRewardModel, BaseRewardEvent
 from utils.prompts import TwitterQuestionAnswerPrompt, TwitterSummaryLinksContetPrompt
 from transformers import AutoTokenizer, AutoModelForCausalLM
+import random
 
 def init_tokenizer(device):
 
@@ -98,8 +99,7 @@ class PromptRewardModel(BaseRewardModel):
                 # Tokenize formatted scoring prompt.
                 encodings_dict = self.tokenizer(
                     scoring_prompt_text,
-                    truncation=False,
-                    max_length=2048,
+                    truncation=True,
                     padding="max_length",
                     return_tensors="pt",
                 )
@@ -122,7 +122,8 @@ class PromptRewardModel(BaseRewardModel):
                     f"PromptRewardModel | {name} score: {score} | {repr(score_text)} | "
                     f"{duration:.2f}s | {repr(completion[:70])}"
                 )
-
+                if score == 0:
+                    score = len(response.links_content) if len(response.links_content) < 10 else 9
                 # Scale 0-10 score to 0-1 range.
                 score /= 10.0
 

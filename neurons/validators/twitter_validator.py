@@ -106,38 +106,59 @@ class TwitterScraperValidator:
         bt.logging.debug(str(self.moving_averaged_scores))
 
 
+    def extract_json_chunk(self, chunk):
+        stack = []
+        start_index = None
+        json_objects = []
 
+        for i, char in enumerate(chunk):
+            if char == '{':
+                if not stack:
+                    start_index = i
+                stack.append(char)
+            elif char == '}':
+                stack.pop()
+                if not stack and start_index is not None:
+                    json_str = chunk[start_index:i+1]
+                    try:
+                        json_obj = json.loads(json_str)
+                        json_objects.append(json_obj)
+                        start_index = None
+                    except json.JSONDecodeError as e:
+                        # Handle the case where json_str is not a valid JSON object
+                        continue
+
+        remaining_chunk = chunk[i+1:] if start_index is None else chunk[start_index:]
+
+        return json_objects, remaining_chunk
+    
     async def process_single_response(self, resp, prompt):
         default = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
         full_response = ""
-        synapse_object = None  # Replace with actual class if different
+        synapse_object = None
         prompt_analysis = None
         tweets = None
 
         try:
             async for chunk in resp:
                 if isinstance(chunk, str):
-                    try:
-                        chunk_data = json.loads(chunk)
-                        content_type = chunk_data.get("type")
+                    json_objects, remaining_chunk = self.extract_json_chunk(chunk)
+                    for json_data in json_objects:
+                        content_type = json_data.get("type")
 
                         if content_type == "text":
-                            text_content = chunk_data.get("content", "")
+                            text_content = json_data.get("content", "")
                             full_response += text_content
-                            # retrun text_content  # Yield text content for further processing
 
                         elif content_type == "prompt_analysis":
-                            prompt_analysis_json = chunk_data.get("content", "{}")
+                            prompt_analysis_json = json_data.get("content", "{}")
                             prompt_analysis = json.loads(prompt_analysis_json)
 
                         elif content_type == "tweets":
-                            tweets_json = chunk_data.get("content", "[]")
+                            tweets_json = json_data.get("content", "[]")
                             tweets = json.loads(tweets_json)
 
-                    except Exception as e:
-                        bt.logging.trace(f"Failed to decode JSON chunk: {chunk}, {e}")
-
-                elif isinstance(chunk, bt.Synapse):  # Replace with actual condition if different
+                elif isinstance(chunk, bt.Synapse):
                     if chunk.is_failure:
                         raise Exception("Chunk error")
                     synapse_object = chunk
