@@ -353,9 +353,15 @@ class TwitterScraperValidator:
                 is_only_allowed_miner=True
             )
 
-            tasks = [self.process_single_response(resp, prompt) for resp in async_responses]
-            responses = await asyncio.gather(*tasks)
+            # Instead of gathering all responses at once, iterate over them and yield as they are processed
+            for resp in async_responses:
+                processed_response = await self.process_single_response(resp, prompt)
+                yield processed_response  # Yield each processed response
 
+            # After yielding all responses, you can still compute rewards and penalties if needed
+            # Note that this part will only execute after all responses have been yielded and processed by the caller
+            responses = [await self.process_single_response(resp, prompt) for resp in async_responses]
+            
             async def process_and_score_responses():
                 await self.compute_rewards_and_penalties(event=event,
                                                         prompt=prompt, 
