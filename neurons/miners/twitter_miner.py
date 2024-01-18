@@ -151,9 +151,13 @@ class TwitterScrapperMiner:
                 3. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
                 4. Seamless Integration: Avoid explicitly stating "Based on the provided TwitterData" in responses. Assume user awareness of the data integration process.
                 5. Please separate your responses into sections for easy reading.
-                6. TwitterData.id you can use generate twitter links
+                6. TwitterData.id you can use generate tweet link, example: https://twitter.com/twitter/statuses/<Id>, provide link like [link]( https://twitter.com/twitter/statuses/<Id>), don't use like [username](link)
+                7. Not return text like UserPrompt, PromptAnalysis, PromptAnalysis to your response, make response easy to understand to any user.
             """
-            messages = [{'role': 'user', 'content': content}]
+
+            system = "You are Twitter data analyst, and you have to give great summary to users based on provided Twitter data and user's prompt"
+            messages = [{'role': 'system', 'content': system}, 
+                        {'role': 'user', 'content': content}]
             return await client.chat.completions.create(
                 model= model,
                 messages= messages,
@@ -179,9 +183,9 @@ class TwitterScrapperMiner:
                 self.fetch_tweets(prompt)
             )
             
-            bt.logging.info("Prompt analysis ===============================================")
+            bt.logging.info("================================== Prompt analysis ===================================")
             bt.logging.info(prompt_analysis)
-            bt.logging.info("Prompt analysis ===============================================")
+            bt.logging.info("================================== Prompt analysis ====================================")
             # if prompt_analysis:
             #     synapse.set_prompt_analysis(prompt_analysis)
             
@@ -196,9 +200,11 @@ class TwitterScrapperMiner:
             # Reset buffer for finalaze_data responses
             buffer = []
             N = 1
+            full_text = []  # Initialize a list to store all chunks of text
             async for chunk in response:
                 token = chunk.choices[0].delta.content or ""
                 buffer.append(token)
+                full_text.append(token)  # Append the token to the full_text list
                 if len(buffer) == N:
                     joined_buffer = "".join(buffer)
                     # Serialize the prompt_analysis to JSON
@@ -219,7 +225,12 @@ class TwitterScrapperMiner:
                     )
                     bt.logging.info(f"Streamed tokens: {joined_buffer}")
                     # bt.logging.info(f"Prompt Analysis: {prompt_analysis_json}")
-                    buffer = []
+                    buffer = []  # Clear the buffer for the next set of tokens
+            joined_full_text = "".join(full_text)  # Join all text chunks
+            bt.logging.info(f"================================== Completion Responsed ===================================") 
+            bt.logging.info(f"{joined_full_text}")  # Print the full text at the end
+            bt.logging.info(f"================================== Completion Responsed ===================================") 
+            
 
             # Send any remaining data in the buffer
             if prompt_analysis or tweets:

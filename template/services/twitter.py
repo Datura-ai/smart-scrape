@@ -103,7 +103,7 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - media.fields allowed values: "preview_image_url,type,url,width"
             - max_results only between 10 - 100
             - user.fields only allowed: "created_at,description,id,location,name,profile_image_url,url,username,verified"
-            - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,source,text"
+            - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text"
 
 
         Output example:
@@ -279,7 +279,7 @@ class TwitterAPIClient:
         Returns:
             The extracted tweet ID.
         """
-        match = re.search(r'/status/(\d+)', url)
+        match = re.search(r'/status(?:es)?/(\d+)', url)
         return match.group(1) if match else None
 
     def fetch_twitter_data_for_links(self, links: List[str]) -> List[dict]:
