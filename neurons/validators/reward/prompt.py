@@ -87,7 +87,7 @@ class PromptRewardModel(BaseRewardModel):
                     links_content_str = str(response.links_content)
                     scoring_prompt_text = scoring_prompt.text(completion, links_content_str)
 
-                if scoring_prompt is None:
+                if scoring_prompt is None or not response.links_content:
                     reward_event.reward = 0
                     return reward_event
 

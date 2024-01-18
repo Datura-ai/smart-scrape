@@ -114,8 +114,13 @@ class BaseRewardModel:
         if self.var > 0:
             rewards /= torch.sqrt(self.var)
         # Scale the standardized rewards to the range [0, 1] using the error function as a cumulative distribution function (CDF).
-        rewards = 0.5 * (
-            1 + torch.erf(rewards / torch.sqrt(torch.tensor([2.0])).to(rewards.device))
+        # rewards = 0.5 * (
+        #     1 + torch.erf(rewards / torch.sqrt(torch.tensor([2.0])).to(rewards.device))
+        # )
+        rewards = torch.where(
+            rewards == 0,
+            rewards,
+            0.5 * (1 + torch.erf(rewards / torch.sqrt(torch.tensor([2.0])).to(rewards.device)))
         )
 
         return rewards
