@@ -88,16 +88,14 @@ class neuron(AbstractNeuron):
             bt.logging.error(f"Error checking UID {uid}: {e}\n{traceback.format_exc()}")
             return None
 
-    async def get_available_uids_is_alive(self, is_only_allowed_miner = False):
+    async def get_available_uids_is_alive(self, is_only_allowed_miner=False):
         """Get a dictionary of available UIDs and their axons asynchronously."""
         tasks = {uid.item(): self.check_uid(self.metagraph.axons[uid.item()], uid.item(), is_only_allowed_miner) for uid in self.metagraph.uids}
-        results = await asyncio.gather(*tasks.values())
+        results = await asyncio.gather(*tasks.values(), return_exceptions=True)
 
-        # # Create a dictionary of UID to axon info for active UIDs
-        available_uids = [uid for uid, axon_info in zip(tasks.keys(), results) if axon_info is not None]
-        # available_uids = {uid: axon_info for uid, axon_info in zip(tasks.keys(), results) if axon_info is not None}
+        # Filter out the exceptions and keep the successful results
+        available_uids = [uid for uid, result in zip(tasks.keys(), results) if not isinstance(result, Exception)]
 
-        
         return available_uids
 
 

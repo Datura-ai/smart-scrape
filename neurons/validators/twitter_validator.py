@@ -208,6 +208,9 @@ class TwitterScraperValidator:
         # Get random id on that step
         uids = await self.neuron.get_uids(strategy=strategy, 
                                           is_only_allowed_miner=is_only_allowed_miner)
+        if uids.nelement() == 0:
+            bt.logging.error("No available UIDs for running scoring")
+            return None
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
         synapse = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
 
