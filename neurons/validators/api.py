@@ -44,7 +44,7 @@ async def response_stream_event(data):
             sse_data = "\n".join(
                 f"data: {line if line else ' '}" for line in lines
             )
-            print("sse_data: ", sse_data)
+            # print("sse_data: ", sse_data)
             yield f"{sse_data}\n\n"
         # Here you might want to do something with merged_chunks
         # after the loop has finished
