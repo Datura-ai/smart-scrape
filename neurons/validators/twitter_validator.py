@@ -313,7 +313,7 @@ class TwitterScraperValidator:
                 wandb_data["responses"][uid] = response.completion
                 wandb_data["prompts"][uid] = prompt
 
-            await self.neuron.update_scores(scores, wandb_data)
+            await self.neuron.update_scores(self.moving_averaged_scores, wandb_data)
 
             return rewards, scattered_rewards
         except Exception as e:

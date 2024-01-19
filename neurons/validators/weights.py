@@ -54,26 +54,60 @@ def init_wandb(self):
         raise
 
 
-def set_weights(self, scores):
-    try:
-        # alpha of .3 means that each new score replaces 30% of the weight of the previous weights
-        alpha = .3
-        if self.moving_average_scores is None:
-            self.moving_average_scores = scores.clone()
+# def set_weights(self, scores):
+#     try:
+#         # alpha of .3 means that each new score replaces 30% of the weight of the previous weights
+#         alpha = .3
+#         if self.moving_average_scores is None:
+#             self.moving_average_scores = scores.clone()
 
-        # Update the moving average scores
-        self.moving_average_scores = alpha * scores + (1 - alpha) * self.moving_average_scores
-        bt.logging.info(f"Updated moving average of weights for netuid {self.config.netuid} on {self.wallet}: {self.moving_average_scores}")
-        self.subtensor.set_weights(
-            netuid=self.config.netuid, 
-            wallet=self.wallet, 
-            uids=self.metagraph.uids, 
-            weights=self.moving_average_scores, 
-            wait_for_inclusion=False)
-        bt.logging.success("Successfully set weights.")
-    except Exception as e:
-        bt.logging.error(f"Error in set_weights: {e}")
-        raise
+#         # Update the moving average scores
+#         self.moving_average_scores = alpha * scores + (1 - alpha) * self.moving_average_scores
+#         bt.logging.info(f"Updated moving average of weights for netuid {self.config.netuid} on {self.wallet}: {self.moving_average_scores}")
+#         self.subtensor.set_weights(
+#             netuid=self.config.netuid, 
+#             wallet=self.wallet, 
+#             uids=self.metagraph.uids, 
+#             weights=self.moving_average_scores, 
+#             wait_for_inclusion=False)
+#         bt.logging.success("Successfully set weights.")
+#     except Exception as e:
+#         bt.logging.error(f"Error in set_weights: {e}")
+#         raise
+
+def set_weights(self, moving_averaged_scores):
+    if torch.all(moving_averaged_scores == 0):
+        return
+    # Calculate the average reward for each uid across non-zero values.
+    # Replace any NaN values with 0.
+    raw_weights = torch.nn.functional.normalize(moving_averaged_scores, p=1, dim=0)
+    bt.logging.trace("raw_weights", raw_weights)
+    bt.logging.trace("top10 values", raw_weights.sort()[0])
+    bt.logging.trace("top10 uids", raw_weights.sort()[1])
+
+    # Process the raw weights to final_weights via subtensor limitations.
+    (
+        processed_weight_uids,
+        processed_weights,
+    ) = bt.utils.weight_utils.process_weights_for_netuid(
+        uids=self.metagraph.uids.to("cpu"),
+        weights=raw_weights.to("cpu"),
+        netuid=self.config.netuid,
+        subtensor=self.subtensor,
+        metagraph=self.metagraph,
+    )
+    bt.logging.trace("processed_weights", processed_weights)
+    bt.logging.trace("processed_weight_uids", processed_weight_uids)
+
+    # Set the weights on chain via our subtensor connection.
+    self.subtensor.set_weights(
+        wallet=self.wallet,
+        netuid=self.config.netuid,
+        uids=processed_weight_uids,
+        weights=processed_weights,
+        wait_for_finalization=False,
+        version_key=template.__spec_version__,
+    )
 
 def update_weights(self, total_scores, steps_passed):
     try:

@@ -9,7 +9,7 @@ from typing import List
 from template.protocol import IsAlive
 from twitter_validator import TwitterScraperValidator
 from config import add_args, check_config, config
-from weights import init_wandb, update_weights
+from weights import init_wandb, update_weights, set_weights
 from traceback import print_exception
 from base_validator import AbstractNeuron
 from template import QUERY_MINERS
@@ -170,26 +170,43 @@ class neuron(AbstractNeuron):
         return uids.to(self.config.neuron.device)
 
 
-    async def update_scores(self, scores, wandb_data):
+    async def update_scores(self, moving_averaged_scores, wandb_data):
         try:
-            total_scores = torch.full((len(self.metagraph.hotkeys),), 0.5)
             if self.config.wandb_on:
                 wandb.log(wandb_data)
-                bt.logging.success("wandb_log successful")
-                total_scores = torch.full((len(self.metagraph.hotkeys),), 0.5)
-            total_scores += scores
-                
+           
             iterations_per_set_weights = 1
             iterations_until_update = iterations_per_set_weights - ((self.steps_passed + 1) % iterations_per_set_weights)
             bt.logging.info(f"Updating weights in {iterations_until_update} iterations.")
 
             if iterations_until_update == 1:
-                update_weights(self, total_scores, self.steps_passed)
+                set_weights(self, moving_averaged_scores)
 
             self.steps_passed += 1
         except Exception as e:
             bt.logging.error(f"Error in update_scores: {e}")
             raise
+
+    # async def update_scores(self, scores, wandb_data):
+    #     try:
+    #         total_scores = torch.full((len(self.metagraph.hotkeys),), 0.5)
+    #         if self.config.wandb_on:
+    #             wandb.log(wandb_data)
+    #             bt.logging.success("wandb_log successful")
+    #             total_scores = torch.full((len(self.metagraph.hotkeys),), 0.5)
+    #         total_scores += scores
+                
+    #         iterations_per_set_weights = 1
+    #         iterations_until_update = iterations_per_set_weights - ((self.steps_passed + 1) % iterations_per_set_weights)
+    #         bt.logging.info(f"Updating weights in {iterations_until_update} iterations.")
+
+    #         if iterations_until_update == 1:
+    #             update_weights(self, total_scores, self.steps_passed)
+
+    #         self.steps_passed += 1
+    #     except Exception as e:
+    #         bt.logging.error(f"Error in update_scores: {e}")
+    #         raise
 
 
     async def query_synapse(self, strategy=QUERY_MINERS.RANDOM):
@@ -227,7 +244,7 @@ class neuron(AbstractNeuron):
             self.run(self.config.neuron.run_random_miner_syn_qs_interval, QUERY_MINERS.RANDOM)
 
         if self.config.neuron.run_all_miner_syn_qs_interval > 0:
-            await asyncio.sleep(40)
+            await asyncio.sleep(20)
             self.run(self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.ALL)
 
 
