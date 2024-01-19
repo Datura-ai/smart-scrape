@@ -70,23 +70,22 @@ class neuron(AbstractNeuron):
         if self.wallet.hotkey.ss58_address not in self.metagraph.hotkeys:
             bt.logging.error(f"Your validator: {self.wallet} is not registered to chain connection: {self.subtensor}. Run btcli register --netuid 18 and try again.")
             exit()
-
+    
     async def check_uid(self, axon, uid, is_only_allowed_miner = False):
         """Asynchronously check if a UID is available."""
         try:
             if self.config.neuron.only_allowed_miners and axon.coldkey not in self.config.neuron.only_allowed_miners and is_only_allowed_miner:
-                return None
+                raise Exception(f"Not allowed")
                 
             response = await self.dendrite(axon, IsAlive(), deserialize=False, timeout=4)
             if response.is_success:
                 bt.logging.trace(f"UID {uid} is active")
                 return axon  # Return the axon info instead of the UID
             else:
-                bt.logging.trace(f"UID {uid} is not active")
-                return None
+                raise Exception(f"Is not active")
         except Exception as e:
-            bt.logging.error(f"Error checking UID {uid}: {e}\n{traceback.format_exc()}")
-            return None
+            bt.logging.trace(f"Checking UID {uid}: {e}\n{traceback.format_exc()}")
+            raise e
 
     async def get_available_uids_is_alive(self, is_only_allowed_miner=False):
         """Get a dictionary of available UIDs and their axons asynchronously."""
