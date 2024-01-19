@@ -154,6 +154,12 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
         description="A list of JSON objects representing the extracted links content from the tweets.",
     )
 
+    is_intro_text: bool = pydantic.Field(
+        False,
+        title="Is Intro Text",
+        description="Indicates whether the text is an introductory text.",
+    )
+
     def set_prompt_analysis(self, data: any):
         self.prompt_analysis = data
 

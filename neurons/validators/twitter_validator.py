@@ -195,7 +195,7 @@ class TwitterScraperValidator:
                 except json.JSONDecodeError:
                     bt.logging.trace(f"Failed to decode JSON chunk: {resp}")
 
-    async def run_task_and_score(self, task: TwitterTask, strategy=QUERY_MINERS.RANDOM, is_only_allowed_miner=True):
+    async def run_task_and_score(self, task: TwitterTask, strategy=QUERY_MINERS.RANDOM, is_only_allowed_miner=True, is_intro_text= False):
         task_name = task.task_name
         prompt = task.compose_prompt()
 
@@ -212,7 +212,7 @@ class TwitterScraperValidator:
             bt.logging.error("No available UIDs for running scoring")
             return None
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
-        synapse = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
+        synapse = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed, is_intro_text=is_intro_text)
 
         # Make calls to the network with the prompt.
         async_responses = await self.neuron.dendrite.forward(
@@ -375,7 +375,7 @@ class TwitterScraperValidator:
             bt.logging.error(f"Error in query_and_score: {e}")
             raise e
     
-    
+        
     async def organic(self, query):
         try:
             prompt = query['content']        
@@ -385,7 +385,8 @@ class TwitterScraperValidator:
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=QUERY_MINERS.RANDOM,
-                is_only_allowed_miner=True
+                is_only_allowed_miner=True,
+                is_intro_text=True
             )
 
             responses = []
@@ -399,27 +400,23 @@ class TwitterScraperValidator:
                     try:
                         async for chunk in resp:
                             if isinstance(chunk, str):
-                                try:
-                                    chunk_data = json.loads(chunk)
-                                    content_type = chunk_data.get("type")
+                                json_objects, remaining_chunk = self.extract_json_chunk(chunk)
+                                for json_data in json_objects:
+                                    content_type = json_data.get("type")
 
                                     if content_type == "text":
-                                        text_content = chunk_data.get("content", "")
+                                        text_content = json_data.get("content", "")
                                         full_response += text_content
                                         yield text_content  # Yield text content for further processing
 
                                     elif content_type == "prompt_analysis":
-                                        prompt_analysis_json = chunk_data.get("content", "{}")
+                                        prompt_analysis_json = json_data.get("content", "{}")
                                         prompt_analysis = json.loads(prompt_analysis_json)
 
                                     elif content_type == "tweets":
-                                        tweets_json = chunk_data.get("content", "[]")
+                                        tweets_json = json_data.get("content", "[]")
                                         tweets = json.loads(tweets_json)
-
-                                except Exception as e:
-                                    bt.logging.trace(f"Failed to decode JSON chunk: {chunk}, {e}")
-
-                            elif isinstance(chunk, bt.Synapse):  # Replace with actual condition if different
+                            elif isinstance(chunk, bt.Synapse):
                                 if chunk.is_failure:
                                     raise Exception("Chunk error")
                                 synapse_object = chunk

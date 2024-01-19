@@ -41,9 +41,13 @@ class TwitterScrapperMiner:
     def __init__(self, miner: any):
         self.miner = miner
 
-    async def intro_text(self, model, prompt, send):
+    async def intro_text(self, model, prompt, send, is_intro_text):
         bt.logging.info("miner.intro_text => ", self.miner.config.miner.intro_text)
+        bt.logging.info("Synapse.is_intro_text => ", is_intro_text)
         if not self.miner.config.miner.intro_text:
+            return
+        
+        if not is_intro_text:
             return
         
         bt.logging.info(f"Run intro text")
@@ -139,7 +143,7 @@ class TwitterScrapperMiner:
                 3. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
                 4. Seamless Integration: Avoid explicitly stating "Based on the provided TwitterData" in responses. Assume user awareness of the data integration process.
                 5. Please separate your responses into sections for easy reading.
-                6. TwitterData.id you can use generate tweet link, example: https://twitter.com/twitter/statuses/<Id>, provide link like [link]( https://twitter.com/twitter/statuses/<Id>), don't use like [username](link)
+                6. TwitterData.id you can use generate tweet link, example: https://twitter.com/twitter/statuses/<Id>
                 7. Not return text like UserPrompt, PromptAnalysis, PromptAnalysis to your response, make response easy to understand to any user.
             """
 
@@ -162,12 +166,13 @@ class TwitterScrapperMiner:
             model = synapse.model
             prompt = synapse.messages
             seed = synapse.seed
+            is_intro_text = synapse.is_intro_text
             bt.logging.info(synapse)
             bt.logging.info(f"question is {prompt} with model {model}, seed: {seed}")
 
             # buffer.append('Test 2')
             intro_response, (tweets, prompt_analysis) = await asyncio.gather(
-                self.intro_text(model="gpt-3.5-turbo", prompt=prompt, send=send),
+                self.intro_text(model="gpt-3.5-turbo", prompt=prompt, send=send, is_intro_text=is_intro_text),
                 self.fetch_tweets(prompt)
             )
             
@@ -253,7 +258,16 @@ class TwitterScrapperMiner:
                         "more_body": False,
                     }
                 )
-                bt.logging.info(f"Tweet data sent")
+                bt.logging.info(f"Tweet data sent. Number of tweets: {len(tweets_data)}")
+            
+            if more_body:
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": b"",
+                        "more_body": False,
+                    }
+                )            
 
             bt.logging.info(f"End of Streaming")
 
