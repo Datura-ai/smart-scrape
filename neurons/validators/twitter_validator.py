@@ -96,7 +96,7 @@ class TwitterScraperValidator:
         self.penalty_functions = [
             # TaskValidationPenaltyModel(max_penalty=0.6),
             LinkValidationPenaltyModel(max_penalty=0.9),
-            AccuracyPenaltyModel(max_penalty=1),
+            # AccuracyPenaltyModel(max_penalty=1),
         ]
 
         self.twitter_api = TwitterAPIClient()
@@ -136,27 +136,29 @@ class TwitterScraperValidator:
         default = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
         full_response = ""
         synapse_object = None
-        prompt_analysis = None
-        tweets = None
+        # prompt_analysis = None
+        # tweets = None
 
         try:
             async for chunk in resp:
                 if isinstance(chunk, str):
-                    json_objects, remaining_chunk = self.extract_json_chunk(chunk)
-                    for json_data in json_objects:
-                        content_type = json_data.get("type")
+                    if isinstance(chunk, str):
+                        full_response += chunk
+                    # json_objects, remaining_chunk = self.extract_json_chunk(chunk)
+                    # for json_data in json_objects:
+                    #     content_type = json_data.get("type")
 
-                        if content_type == "text":
-                            text_content = json_data.get("content", "")
-                            full_response += text_content
+                    #     if content_type == "text":
+                    #         text_content = json_data.get("content", "")
+                    #         full_response += text_content
 
-                        elif content_type == "prompt_analysis":
-                            prompt_analysis_json = json_data.get("content", "{}")
-                            prompt_analysis = json.loads(prompt_analysis_json)
+                    #     elif content_type == "prompt_analysis":
+                    #         prompt_analysis_json = json_data.get("content", "{}")
+                    #         prompt_analysis = json.loads(prompt_analysis_json)
 
-                        elif content_type == "tweets":
-                            tweets_json = json_data.get("content", "[]")
-                            tweets = json.loads(tweets_json)
+                    #     elif content_type == "tweets":
+                    #         tweets_json = json_data.get("content", "[]")
+                    #         tweets = json.loads(tweets_json)
 
                 elif isinstance(chunk, bt.Synapse):
                     if chunk.is_failure:
@@ -169,10 +171,10 @@ class TwitterScraperValidator:
         if synapse_object is not None:
             bt.logging.info(f"LENGTH =========== {len(full_response)}")
             synapse_object.completion = full_response
-            if prompt_analysis is not None:
-                synapse_object.set_prompt_analysis(prompt_analysis)
-            if tweets is not None:
-                synapse_object.set_tweets(tweets)
+            # if prompt_analysis is not None:
+            #     synapse_object.set_prompt_analysis(prompt_analysis)
+            # if tweets is not None:
+            #     synapse_object.set_tweets(tweets)
             return synapse_object
 
         return default
@@ -229,13 +231,17 @@ class TwitterScraperValidator:
         try:
             for response in responses:
                 if self.neuron.config.neuron.disable_twitter_links_content_fetch:
-                    if response.tweets:  
-                        links_content = [{'id': item.get('id'), 'text': item.get('text')} for item in response.tweets]
-                        com_links = self.twitter_api.find_twitter_links(response.completion)
-                        tweet_ids = [self.twitter_api.extract_tweet_id(link) for link in com_links]
-                        response.links_content = [content for content in links_content if content['id'] in tweet_ids]
-                    else:
-                        bt.logging.info("response.tweets is None, cannot process content links.")
+                    com_links = self.twitter_api.find_twitter_links(response.completion)
+                    response.links_content = com_links
+                    response.tweets = com_links
+                    # if response.tweets:  
+                       
+                    #     # links_content = [{'id': item.get('id'), 'text': item.get('text')} for item in response.tweets]
+                        
+                    #     # tweet_ids = [self.twitter_api.extract_tweet_id(link) for link in com_links]
+                    #     # response.links_content = [content for content in links_content if content['id'] in tweet_ids]
+                    # else:
+                    #     bt.logging.info("response.tweets is None, cannot process content links.")
                 else:
                     time.sleep(10)
                     completion = response.completion
