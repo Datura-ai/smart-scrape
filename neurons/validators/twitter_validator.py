@@ -406,22 +406,25 @@ class TwitterScraperValidator:
                     try:
                         async for chunk in resp:
                             if isinstance(chunk, str):
-                                json_objects, remaining_chunk = self.extract_json_chunk(chunk)
-                                for json_data in json_objects:
-                                    content_type = json_data.get("type")
+                                  if isinstance(chunk, str):
+                                    full_response += chunk
+                                    yield chunk
+                                # json_objects, remaining_chunk = self.extract_json_chunk(chunk)
+                                # for json_data in json_objects:
+                                #     content_type = json_data.get("type")
 
-                                    if content_type == "text":
-                                        text_content = json_data.get("content", "")
-                                        full_response += text_content
-                                        yield text_content  # Yield text content for further processing
+                                #     if content_type == "text":
+                                #         text_content = json_data.get("content", "")
+                                #         full_response += text_content
+                                #         yield text_content  # Yield text content for further processing
 
-                                    elif content_type == "prompt_analysis":
-                                        prompt_analysis_json = json_data.get("content", "{}")
-                                        prompt_analysis = json.loads(prompt_analysis_json)
+                                #     elif content_type == "prompt_analysis":
+                                #         prompt_analysis_json = json_data.get("content", "{}")
+                                #         prompt_analysis = json.loads(prompt_analysis_json)
 
-                                    elif content_type == "tweets":
-                                        tweets_json = json_data.get("content", "[]")
-                                        tweets = json.loads(tweets_json)
+                                #     elif content_type == "tweets":
+                                #         tweets_json = json_data.get("content", "[]")
+                                #         tweets = json.loads(tweets_json)
                             elif isinstance(chunk, bt.Synapse):
                                 if chunk.is_failure:
                                     raise Exception("Chunk error")
@@ -435,10 +438,10 @@ class TwitterScraperValidator:
                     if synapse_object is not None:
                         bt.logging.info(f"LENGTH =========== {len(full_response)}")
                         synapse_object.completion = full_response
-                        if prompt_analysis is not None:
-                            synapse_object.set_prompt_analysis(prompt_analysis)
-                        if tweets is not None:
-                            synapse_object.set_tweets(tweets)
+                        # if prompt_analysis is not None:
+                        #     synapse_object.set_prompt_analysis(prompt_analysis)
+                        # if tweets is not None:
+                        #     synapse_object.set_tweets(tweets)
                         responses.append(synapse_object)
 
                 except Exception as e:
