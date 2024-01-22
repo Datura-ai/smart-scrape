@@ -97,7 +97,7 @@ def set_weights(self, moving_averaged_scores):
         metagraph=self.metagraph,
     )
     weight_log_str = "\n".join([f"uid: {uid} - weight: {weight}; " for uid, weight in zip(processed_weight_uids, processed_weights)])
-    bt.logging.info(f"======================== Smartscrape Final Weights  ===========================")
+    bt.logging.info(f"======================== Smartscrape Final Weights  (Total UIds: {len(processed_weight_uids) if processed_weight_uids is not None else 0} ) ===========================")
     bt.logging.info(weight_log_str)
     bt.logging.info(f"======================== Smartscrape Final Weights ===========================")
 
