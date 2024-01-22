@@ -58,9 +58,8 @@ Before running a miner or validator, ensure to:
 
 For setting up the necessary environment variables for your miner or validator, please refer to the [Environment Variables Guide](./docs/env_variables.md).
 
-### Running Commands
+# Running the Miner
 
-- **To run the miner:**
   ```bash
   python -m neurons/miners/miner.py 
       --netuid 22
@@ -70,73 +69,6 @@ For setting up the necessary environment variables for your miner or validator, 
       --logging.debug
       --axon.port 14000
   ```
-
-- **To run both the validator & API:**
-  ```bash
-  python -m neurons/validators/api.py
-      --netuid 22
-      --subtensor.network finney
-      --wallet.name <your validator wallet>
-      --wallet.hotkey <your validator hotkey>
-      --logging.debug
-  ```
-
-- **To run only the validator:**
-  ```bash
-  python -m neurons/validators/validator.py
-      --netuid 22
-      --subtensor.network finney
-      --wallet.name <your validator wallet>
-      --wallet.hotkey <your validator hotkey>
-      --logging.debug
-  ```
-
-### Detailed Setup Instructions
-
-For step-by-step guidance on setting up and running a miner, validator, or operating on the testnet or mainnet, refer to the following guides:
-- [Miner Setup](./docs/running_a_miner.md)
-- [Validator Setup](./docs/running_a_validator.md)
-- [Testnet Operations](./docs/running_on_testnet.md)
-- [Mainnet Operations](./docs/running_on_mainnet.md)
-- [Setting Up and Running the Web Application with Validator Integration](./ui/README.md)
-
----
-
-## Running Your Validators
-
-Validators are designed to run and update themselves automatically. Follow these steps to run a validator:
-
-1. Install this repository as outlined in [the installation section](#installation).
-2. Set up [Weights and Biases](https://docs.wandb.ai/quickstart) and run `wandb login` within this repository for KPIs and Metrics monitoring.
-3. Install [PM2](https://pm2.io/docs/runtime/guide/installation/).
-   - **On Linux**:
-     ```bash
-     sudo apt update && sudo apt install npm && sudo npm install pm2 -g && pm2 update
-     ```
-   - **On Mac OS**:
-     ```bash
-     brew update && brew install npm && sudo npm install pm2 -g && pm2 update
-     ```
-4. Run the `Miner` script:
-   ```bash
-   pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 --
-    --wallet.name <your-wallet-name> 
-    --wallet.hotkey <your-wallet-hot-key> 
-    --subtensor.network <network> 
-    --netuid 22 
-    --axon.port <port> 
-   ```
-5. Run the `Validator & API` script:
-   ```bash
-    pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name validator_api --
-        --wallet.name <your-wallet-name>  
-        --netuid 22 
-        --wallet.hotkey <your-wallet-hot-key>  
-        --subtensor.network <network>  
-        --logging.debug
-   ```
-
----
 
 # Running the Validator API with Automatic Updates
 
@@ -159,6 +91,18 @@ These validators are designed to run and update themselves automatically. To run
    ```
 
 This will run **two** PM2 process: one for the validator which is called `smart_scrape_validators_main_process` by default (you can change this in `run.sh`), and one for the run.sh script (in step 4, we named it `smart_scrape_validators_autoupdate`). The script will check for updates every 30 minutes, if there is an update then it will pull it, install it, restart `smart_scrape_validators_main_process` and then restart itself.
+
+### Detailed Setup Instructions
+
+For step-by-step guidance on setting up and running a miner, validator, or operating on the testnet or mainnet, refer to the following guides:
+- [Miner Setup](./docs/running_a_miner.md)
+- [Validator Setup](./docs/running_a_validator.md)
+- [Testnet Operations](./docs/running_on_testnet.md)
+- [Mainnet Operations](./docs/running_on_mainnet.md)
+- [Setting Up and Running the Web Application with Validator Integration](./ui/README.md)
+
+---
+
 
 ## Real-time Monitoring with wandb Integration
 
