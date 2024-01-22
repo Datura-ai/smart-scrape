@@ -96,8 +96,10 @@ def set_weights(self, moving_averaged_scores):
         subtensor=self.subtensor,
         metagraph=self.metagraph,
     )
-    bt.logging.trace("processed_weights", processed_weights)
-    bt.logging.trace("processed_weight_uids", processed_weight_uids)
+    weight_log_str = "\n".join([f"uid: {uid} - weight: {weight}; " for uid, weight in zip(processed_weight_uids, processed_weights)])
+    bt.logging.info(f"======================== Smartscrape Final Weights  ===========================")
+    bt.logging.info(weight_log_str)
+    bt.logging.info(f"======================== Smartscrape Final Weights ===========================")
 
     # Set the weights on chain via our subtensor connection.
     self.subtensor.set_weights(

@@ -162,10 +162,10 @@ class TwitterScraperValidator:
 
                 elif isinstance(chunk, bt.Synapse):
                     if chunk.is_failure:
-                        raise Exception("Chunk error")
+                        raise Exception("Dendrite's status code indicates failure")
                     synapse_object = chunk
         except Exception as e:
-            bt.logging.info(f"Error async for chunk in res: {e}")
+            bt.logging.info(f"Process Single Response: {e}")
             return default
 
         if synapse_object is not None:
@@ -427,11 +427,11 @@ class TwitterScraperValidator:
                                 #         tweets = json.loads(tweets_json)
                             elif isinstance(chunk, bt.Synapse):
                                 if chunk.is_failure:
-                                    raise Exception("Chunk error")
+                                    raise Exception("Dendrite's status code indicates failure")
                                 synapse_object = chunk
 
                     except Exception as e:
-                        bt.logging.info(f"Error async for chunk in res: {e}")
+                        bt.logging.info(f"Organic Async Response: {e}")
                         responses.append(TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed))
                         continue
 
