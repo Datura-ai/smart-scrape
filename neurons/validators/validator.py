@@ -208,6 +208,7 @@ class neuron(AbstractNeuron):
 
     async def query_synapse(self, strategy=QUERY_MINERS.RANDOM):
         try:
+            self.metagraph = self.subtensor.metagraph( netuid = 22 )
             await self.twitter_validator.query_and_score(strategy)
         except Exception as e:
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
