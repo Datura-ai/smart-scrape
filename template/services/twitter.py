@@ -83,7 +83,7 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
     else:
         accuracy_text = f"""   
         RULES:
-            1. Generate keywords, hashtags, and mentions that are closely related to the user's prompt and after generate Twitter API query
+            1. Similiar Generate keywords, hashtags, and mentions that are closely related to the user's prompt and after generate Twitter API query
         """
     content = f"""
         Given the specific User's prompt: '{prompt}', please perform the following tasks and provide the results in a JSON object format:
@@ -127,8 +127,8 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
     bt.logging.info("get_query_gen_prompt End   ==============================")
     return content
 
-def get_fix_query_prompt(prompt, old_query, error):
-    task = get_query_gen_prompt(prompt=prompt)
+def get_fix_query_prompt(prompt, old_query, error, is_accuracy= True):
+    task = get_query_gen_prompt(prompt=prompt, is_accuracy=is_accuracy)
         
     old_query_text = ""
     if old_query:
@@ -214,7 +214,7 @@ class TwitterAPIClient:
         bt.logging.info("generate_query_params_from_prompt Content: ", response_dict)
         return response_dict
 
-    async def fix_twitter_query(self, prompt, query, error):
+    async def fix_twitter_query(self, prompt, query, error, is_accuracy = True):
         """
         This method refines the user's initial query by leveraging OpenAI's API 
         to parse and enhance the query with more precise keywords, hashtags, and user mentions, 
@@ -223,7 +223,8 @@ class TwitterAPIClient:
         try:
             content  = get_fix_query_prompt(prompt=prompt,
                                             old_query=query,
-                                            error=error)
+                                            error=error,
+                                            is_accuracy=is_accuracy)
             messages = [{'role': 'user', 'content': content }]
             bt.logging.info(content)
             res = await call_openai(messages, 0.5, "gpt-4-1106-preview", None,  {"type": "json_object"})
@@ -256,7 +257,7 @@ class TwitterAPIClient:
             result_json = response.json()
             if result_json.get('meta', {}).get('result_count', 0) == 0:
                 bt.logging.info("analyse_prompt_and_fetch_tweets: No tweets found, attempting next query.")
-                response, prompt_analysis = await self.retry_with_fixed_query(prompt, old_query=prompt_analysis)
+                response, prompt_analysis = await self.retry_with_fixed_query(prompt, old_query=prompt_analysis, is_accuracy=False)
                 result_json = response.json() 
             
             bt.logging.info("Tweets fetched ===================================================")
@@ -282,8 +283,8 @@ class TwitterAPIClient:
     def set_max_results(self, api_params, max_results=10):
         api_params['max_results'] = max_results
 
-    async def retry_with_fixed_query(self, prompt, old_query, error= None):
-        new_query = await self.fix_twitter_query(prompt=prompt, query=old_query, error=error)
+    async def retry_with_fixed_query(self, prompt, old_query, error= None, is_accuracy=True):
+        new_query = await self.fix_twitter_query(prompt=prompt, query=old_query, error=error, is_accuracy=is_accuracy)
         prompt_analysis = TwitterPromptAnalysisResult()
         prompt_analysis.fill(new_query)
         self.set_max_results(prompt_analysis.api_params)
