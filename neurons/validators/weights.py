@@ -96,13 +96,13 @@ def set_weights(self, moving_averaged_scores):
         subtensor=self.subtensor,
         metagraph=self.metagraph,
     )
-    weight_log_str = "\n".join([f"uid: {uid} - weight: {weight}; " for uid, weight in zip(processed_weight_uids, processed_weights)])
-    bt.logging.info(f"======================== Smartscrape Final Weights  (Total UIds: {len(processed_weight_uids) if processed_weight_uids is not None else 0} ) ===========================")
-    bt.logging.info(weight_log_str)
-    bt.logging.info(f"======================== Smartscrape Final Weights ===========================")
 
-    # Set the weights on chain via our subtensor connection.
-    self.subtensor.set_weights(
+    weights_dict = {str(uid.item()): weight.item() for uid, weight in zip(processed_weight_uids, processed_weights)}
+
+    # Log the weights dictionary
+    bt.logging.info(f"Attempting to set weights action for {weights_dict}")
+
+    success = self.subtensor.set_weights(
         wallet=self.wallet,
         netuid=self.config.netuid,
         uids=processed_weight_uids,
@@ -110,6 +110,12 @@ def set_weights(self, moving_averaged_scores):
         wait_for_finalization=False,
         version_key=template.__spec_version__,
     )
+
+    # Log the success status
+    if success:
+        bt.logging.info("Completed set weights action successfully.")
+    else:
+        bt.logging.error("Failed to complete set weights action.")
 
 def update_weights(self, total_scores, steps_passed):
     try:
