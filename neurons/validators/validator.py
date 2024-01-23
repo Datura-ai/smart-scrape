@@ -223,6 +223,7 @@ class neuron(AbstractNeuron):
     
     def run(self, interval=300, strategy=QUERY_MINERS.RANDOM):
         bt.logging.info(f"run: interval={interval}; strategy={strategy}")
+        checkpoint(self)
         try:
             while True:
                 # Run multiple forwards.
