@@ -7,7 +7,7 @@ from datetime import datetime
 from template.utils import call_openai, tweet_prompts
 from template.protocol import TwitterPromptAnalysisResult
 import bittensor as bt
-from typing import List
+from typing import List, Dict, Any
 from urllib.parse import urlparse
 
 BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TOKEN')
@@ -247,7 +247,7 @@ class TwitterAPIClient:
             
             if response.status_code == 400:
                 bt.logging.warning("analyse_prompt_and_fetch_tweets: Try to fix bad tweets Query ===================================================, {response.text}")
-                response, prompt_analysis =self.retry_with_fixed_query(prompt=prompt, old_query=query, error=response.text)
+                response, prompt_analysis = await self.retry_with_fixed_query(prompt=prompt, old_query=prompt_analysis, error=response.text)
 
             if response.status_code != 200:
                 bt.logging.error("Tweets Query ===================================================, {response.text}")
@@ -256,7 +256,7 @@ class TwitterAPIClient:
             result_json = response.json()
             if result_json.get('meta', {}).get('result_count', 0) == 0:
                 bt.logging.info("analyse_prompt_and_fetch_tweets: No tweets found, attempting next query.")
-                response, prompt_analysis = await self.retry_with_fixed_query(prompt, old_query=query)
+                response, prompt_analysis = await self.retry_with_fixed_query(prompt, old_query=prompt_analysis)
                 result_json = response.json() 
             
             bt.logging.info("Tweets fetched ===================================================")
