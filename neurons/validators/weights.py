@@ -75,12 +75,13 @@ def init_wandb(self):
 #         bt.logging.error(f"Error in set_weights: {e}")
 #         raise
 
-def set_weights(self, moving_averaged_scores):
-    if torch.all(moving_averaged_scores == 0):
+def set_weights(self):
+    if torch.all(self.moving_averaged_scores == 0):
         return
+    
     # Calculate the average reward for each uid across non-zero values.
     # Replace any NaN values with 0.
-    raw_weights = torch.nn.functional.normalize(moving_averaged_scores, p=1, dim=0)
+    raw_weights = torch.nn.functional.normalize(self.moving_averaged_scores, p=1, dim=0)
     bt.logging.trace("raw_weights", raw_weights)
     bt.logging.trace("top10 values", raw_weights.sort()[0])
     bt.logging.trace("top10 uids", raw_weights.sort()[1])

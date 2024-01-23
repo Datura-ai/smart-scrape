@@ -3,6 +3,7 @@ import wandb
 import asyncio
 import traceback
 import random
+import copy
 import bittensor as bt
 import template.utils as utils
 from typing import List
@@ -13,6 +14,12 @@ from weights import init_wandb, update_weights, set_weights
 from traceback import print_exception
 from base_validator import AbstractNeuron
 from template import QUERY_MINERS
+from template.misc import ttl_get_block
+
+from template.utils import (
+    should_checkpoint,
+    checkpoint,
+)
 
 
 class neuron(AbstractNeuron):
@@ -59,12 +66,19 @@ class neuron(AbstractNeuron):
         self.steps_passed = 0
         self.exclude = []
 
+        # Init Weights.
+        bt.logging.debug("loading", "moving_averaged_scores")
+        self.moving_averaged_scores = torch.zeros((self.metagraph.n)).to(self.config.neuron.device)
+        bt.logging.debug(str(self.moving_averaged_scores))
+        self.prev_block = ttl_get_block(self)
+
     def initialize_components(self):
         bt.logging(config=self.config, logging_dir=self.config.full_path)
         bt.logging.info(f"Running validator for subnet: {self.config.netuid} on network: {self.config.subtensor.chain_endpoint}")
         self.wallet = bt.wallet(config=self.config)
         self.subtensor = bt.subtensor(config=self.config)
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
+        self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.dendrite = bt.dendrite(wallet=self.wallet)
         self.my_uuid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
         if self.wallet.hotkey.ss58_address not in self.metagraph.hotkeys:
@@ -167,7 +181,7 @@ class neuron(AbstractNeuron):
         return uids.to(self.config.neuron.device)
 
 
-    async def update_scores(self, moving_averaged_scores, wandb_data):
+    async def update_scores(self, wandb_data):
         try:
             if self.config.wandb_on:
                 wandb.log(wandb_data)
@@ -177,33 +191,26 @@ class neuron(AbstractNeuron):
             bt.logging.info(f"Updating weights in {iterations_until_update} iterations.")
 
             if iterations_until_update == 1:
-                set_weights(self, moving_averaged_scores)
+                set_weights(self)
 
             self.steps_passed += 1
         except Exception as e:
             bt.logging.error(f"Error in update_scores: {e}")
-            raise
+            raise e
 
-    # async def update_scores(self, scores, wandb_data):
-    #     try:
-    #         total_scores = torch.full((len(self.metagraph.hotkeys),), 0.5)
-    #         if self.config.wandb_on:
-    #             wandb.log(wandb_data)
-    #             bt.logging.success("wandb_log successful")
-    #             total_scores = torch.full((len(self.metagraph.hotkeys),), 0.5)
-    #         total_scores += scores
-                
-    #         iterations_per_set_weights = 1
-    #         iterations_until_update = iterations_per_set_weights - ((self.steps_passed + 1) % iterations_per_set_weights)
-    #         bt.logging.info(f"Updating weights in {iterations_until_update} iterations.")
+    def update_moving_averaged_scores(self, uids, rewards):
+        try:
+            scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.config.neuron.device)
+            average_reward = torch.mean(scattered_rewards)
+            bt.logging.info(f"Scattered reward: {average_reward:.6f}")  # Rounds to 6 decimal places for logging
 
-    #         if iterations_until_update == 1:
-    #             update_weights(self, total_scores, self.steps_passed)
-
-    #         self.steps_passed += 1
-    #     except Exception as e:
-    #         bt.logging.error(f"Error in update_scores: {e}")
-    #         raise
+            alpha = self.config.neuron.moving_average_alpha
+            self.moving_averaged_scores = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(self.config.neuron.device)
+            bt.logging.info(f"Moving averaged scores: {torch.mean(self.moving_averaged_scores):.6f}")  # Rounds to 6 decimal places for logging
+            return scattered_rewards
+        except Exception as e:
+            bt.logging.error(f"Error in update_moving_averaged_scores: {e}")
+            raise e
 
 
     async def query_synapse(self, strategy=QUERY_MINERS.RANDOM):
@@ -214,8 +221,6 @@ class neuron(AbstractNeuron):
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(100)
     
-
-
     def run(self, interval=300, strategy=QUERY_MINERS.RANDOM):
         bt.logging.info(f"run: interval={interval}; strategy={strategy}")
         try:
@@ -231,6 +236,15 @@ class neuron(AbstractNeuron):
 
                 self.loop.run_until_complete(run_forward())
 
+                # Resync the network state
+                if should_checkpoint(self):
+                    checkpoint(self)
+
+                # # Set the weights on chain.
+                # if should_set_weights(self):
+                #     set_weights(self)
+                #     save_state(self)
+                self.prev_block = ttl_get_block(self)
                 self.step += 1
         except Exception as err:
             bt.logging.error("Error in training loop", str(err))

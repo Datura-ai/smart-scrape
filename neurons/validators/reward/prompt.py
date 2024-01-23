@@ -27,7 +27,6 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import random
 
 def init_tokenizer(device):
-
     # https://huggingface.co/VMware/open-llama-7b-open-instruct
     # Fast tokenizer results in incorrect encoding, set the use_fast = False parameter.
     tokenizer = AutoTokenizer.from_pretrained(
