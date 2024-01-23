@@ -11,6 +11,9 @@ from typing import List
 from urllib.parse import urlparse
 
 BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TOKEN')
+if not BEARER_TOKEN:
+    raise ValueError("Please set the TWITTER_BEARER_TOKEN environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md")
+
 VALID_DOMAINS = ["twitter.com", "x.com"]
 twitter_api_query_example = {
     'query': '(from:twitterdev -is:retweet) OR #twitterdev',
@@ -124,14 +127,31 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
     bt.logging.info("get_query_gen_prompt End   ==============================")
     return content
 
-def get_fix_query_prompt(prompt, prompt_analysis, error):
-    task = get_query_gen_prompt(prompt=prompt, is_accuracy=False)
-    content = F"""That was my task for you: "{task}",
-    That was your result: {prompt_analysis}
-    That was Twitter API's error: "{error}"
+def get_fix_query_prompt(prompt, old_query, error):
+    task = get_query_gen_prompt(prompt=prompt)
+        
+    old_query_text = ""
+    if old_query:
+        old_query_text = f"""Your previous query was: 
+        <OLD_QUERY>
+        {old_query}
+        </OLD_QUERY>
+        which did not return any results, Please analyse it and make better query."""
+    content = F"""That was task for you: 
+    <TASK>
+    {task}
+    <Task>,
+    That was user's promot: 
+    <PROMPT>
+    {prompt}
+    </PROMPT>
 
-    Please, make a new better output to get better result from Twitter API.
-    Output must be as Output example.
+    {old_query_text}
+
+    That was Twitter API's result: "{error}"
+
+    Please, make a new better Output to get better result from Twitter API.
+    Output must be as Output example as described in <TASK>.
     """
     return content
 
@@ -153,29 +173,34 @@ class TwitterAPIClient:
 
     def connect_to_endpoint(self, url, params):
         response = requests.get(url, auth=self.bearer_oauth, params=params)
-        print(response.status_code)
-        if response.status_code != 200:
-            raise Exception(response.status_code, response.text)
-        return response.json()
-    
+
+        if response.status_code in [401, 403]:
+            bt.logging.error(f"Critical Twitter API Ruquest error occurred: {response.text}")
+            os._exit(1)
+
+        return response
+
     def get_tweet_by_id(self, tweet_id):
         tweet_url = f"https://api.twitter.com/2/tweets/{tweet_id}"
-        json_response = self.connect_to_endpoint(tweet_url, {})
-        return json_response
+        response = self.connect_to_endpoint(tweet_url, {})
+        if response.status_code != 200:
+            return None
+        return response.json()
 
     
     def get_tweets_by_ids(self, tweet_ids):
         ids = ','.join(tweet_ids)  # Combine all tweet IDs into a comma-separated string
         tweets_url = f"https://api.twitter.com/2/tweets?ids={ids}"
-        json_response = self.connect_to_endpoint(tweets_url, {})
-        return json_response
+        response = self.connect_to_endpoint(tweets_url, {})
+        if response.status_code != 200:
+            return []
+        return response.json()
 
     def get_recent_tweets(self, query_params):
         search_url = "https://api.twitter.com/2/tweets/search/recent"
-        json_response = self.connect_to_endpoint(search_url, query_params)
-        return json.dumps(json_response, indent=4, sort_keys=True)
-
-
+        response = self.connect_to_endpoint(search_url, query_params)
+        return response
+    
     async def generate_query_params_from_prompt(self, prompt, is_accuracy = True):
         """
         This function utilizes OpenAI's API to analyze the user's query and extract relevant information such 
@@ -188,7 +213,7 @@ class TwitterAPIClient:
         response_dict = json.loads(res)
         bt.logging.info("generate_query_params_from_prompt Content: ", response_dict)
         return response_dict
-    
+
     async def fix_twitter_query(self, prompt, query, error):
         """
         This method refines the user's initial query by leveraging OpenAI's API 
@@ -197,13 +222,13 @@ class TwitterAPIClient:
         """
         try:
             content  = get_fix_query_prompt(prompt=prompt,
-                                            prompt_analysis=query,
+                                            old_query=query,
                                             error=error)
             messages = [{'role': 'user', 'content': content }]
             bt.logging.info(content)
-            res = await call_openai(messages, 0.2, "gpt-4-1106-preview", None,  {"type": "json_object"})
+            res = await call_openai(messages, 0.5, "gpt-4-1106-preview", None,  {"type": "json_object"})
             response_dict = json.loads(res)
-            bt.logging.info("generate_query_params_from_prompt Content: ", response_dict)
+            bt.logging.info("fix_twitter_query Content: ", response_dict)
             return response_dict
         except Exception as e:
             bt.logging.info(e)
@@ -211,19 +236,39 @@ class TwitterAPIClient:
 
     async def analyse_prompt_and_fetch_tweets(self, prompt):
         try:
+            result = {}
             query, prompt_analysis = await self.generate_and_analyze_query(prompt)
-            result = self.get_recent_tweets(prompt_analysis.api_params)
+            response = self.get_recent_tweets(prompt_analysis.api_params)
+
+            if response.status_code in [429, 502, 503, 504]:
+                bt.logging.warning("analyse_prompt_and_fetch_tweets ===================================================, {response.text}")
+                await asyncio.sleep(20)  # Wait for 20 seconds before retrying
+                response = self.get_recent_tweets(prompt_analysis.api_params)  # Retry fetching tweets
             
-            result_json = json.loads(result)  # Parse the JSON response
+            if response.status_code == 400:
+                bt.logging.warning("analyse_prompt_and_fetch_tweets: Try to fix bad tweets Query ===================================================, {response.text}")
+                response, prompt_analysis =self.retry_with_fixed_query(prompt=prompt, old_query=query, error=response.text)
+
+            if response.status_code != 200:
+                bt.logging.error("Tweets Query ===================================================, {response.text}")
+                raise Exception(F"analyse_prompt_and_fetch_tweets: {response.text}")
+            
+            result_json = response.json()
             if result_json.get('meta', {}).get('result_count', 0) == 0:
-                result, prompt_analysis = await self.retry_with_fixed_query(prompt, query)
+                bt.logging.info("analyse_prompt_and_fetch_tweets: No tweets found, attempting next query.")
+                response, prompt_analysis = await self.retry_with_fixed_query(prompt, old_query=query)
+                result_json = response.json() 
+            
+            bt.logging.info("Tweets fetched ===================================================")
+            bt.logging.info(result)
+            bt.logging.info("================================================================")
+            
 
-            self.log_fetched_tweets(result)
-            return result, prompt_analysis
-
+            return result_json, prompt_analysis
         except Exception as e:
-            return await self.handle_exceptions(e, prompt, query)
-
+            bt.logging.error("analyse_prompt_and_fetch_tweets, {e}")
+            raise e
+        
     async def generate_and_analyze_query(self, prompt):
         query = await self.generate_query_params_from_prompt(prompt)
         prompt_analysis = TwitterPromptAnalysisResult()
@@ -237,37 +282,14 @@ class TwitterAPIClient:
     def set_max_results(self, api_params, max_results=10):
         api_params['max_results'] = max_results
 
-    async def retry_with_fixed_query(self, prompt, query, error= None):
-        if not error:
-            new_query = await self.generate_query_params_from_prompt(prompt, is_accuracy=False)
-        else:
-            new_query = await self.fix_twitter_query(prompt=prompt, query=query, error=error)
+    async def retry_with_fixed_query(self, prompt, old_query, error= None):
+        new_query = await self.fix_twitter_query(prompt=prompt, query=old_query, error=error)
         prompt_analysis = TwitterPromptAnalysisResult()
         prompt_analysis.fill(new_query)
         self.set_max_results(prompt_analysis.api_params)
         result = self.get_recent_tweets(prompt_analysis.api_params)
         return result, prompt_analysis
 
-    def log_fetched_tweets(self, result):
-        bt.logging.info("Tweets fetched ===================================================")
-        bt.logging.info(result)
-        bt.logging.info("================================================================")
-
-    async def handle_exceptions(self, e, prompt, query):
-        if hasattr(e, 'status') and e.status == 401:
-            bt.logging.info("Unauthorized access, check API credentials.")
-        else:
-            bt.logging.info(e)
-            return await self.attempt_fix_and_fetch(prompt=prompt, query=query, error=e)
-        return [], None
-
-    async def attempt_fix_and_fetch(self, prompt, query, error):
-        try:
-            return await self.retry_with_fixed_query(prompt, query, error)
-        except Exception as e:
-            bt.logging.info(e)
-            return [], None
-        
     @staticmethod
     def extract_tweet_id(url: str) -> str:
         """
@@ -341,4 +363,4 @@ if __name__ == "__main__":
     #     # if len(result) > 0
         #    print(result)
     
-    # client.get_recent_tweets(query_params)
+    # client.get_recent_tweets(query_params)    
