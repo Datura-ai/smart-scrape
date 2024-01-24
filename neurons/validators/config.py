@@ -64,7 +64,7 @@ def check_config(cls, config: "bt.Config"):
 
 def add_args(cls, parser):
     parser.add_argument(
-        "--netuid", type=int, help="Prompting network netuid", default=1
+        "--netuid", type=int, help="Prompting network netuid", default=22
     )
 
     parser.add_argument('--wandb.off', action='store_false', dest='wandb_on')
