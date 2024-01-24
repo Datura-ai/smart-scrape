@@ -30,7 +30,7 @@ from twitter_miner import TwitterScrapperMiner
 
 OpenAI.api_key = os.environ.get('OPENAI_API_KEY')
 if not OpenAI.api_key:
-    raise ValueError("Please set the OPENAI_API_KEY environment variable.")
+    raise ValueError("Please set the OPENAI_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md")
 
 netrc_path = pathlib.Path.home() / '.netrc'
 wandb_api_key = os.getenv('WANDB_API_KEY')

@@ -172,7 +172,7 @@ class neuron(AbstractNeuron):
             if self.config.wandb_on:
                 wandb.log(wandb_data)
            
-            iterations_per_set_weights = 1
+            iterations_per_set_weights = 2
             iterations_until_update = iterations_per_set_weights - ((self.steps_passed + 1) % iterations_per_set_weights)
             bt.logging.info(f"Updating weights in {iterations_until_update} iterations.")
 
