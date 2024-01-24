@@ -170,7 +170,7 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
-        "--neuron.is_mock_reward_system",
+        "--neuron.is_disable_tokenizer_reward",
         action="store_true",
         help="If enabled, activates a mock reward system for testing and development purposes without affecting the live reward mechanisms.",
         default=False,

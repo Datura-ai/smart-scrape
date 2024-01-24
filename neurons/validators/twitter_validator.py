@@ -62,8 +62,9 @@ class TwitterScraperValidator:
     
         tokenizer = None
         model = None
-        if self.neuron.config.reward.prompt_based_weight > 0 or \
-           self.neuron.config.reward.prompt_summary_links_content_based_weight > 0:
+        if (self.neuron.config.reward.prompt_based_weight > 0 or \
+           self.neuron.config.reward.prompt_summary_links_content_based_weight > 0) and \
+           not self.neuron.config.neuron.is_disable_tokenizer_reward:
             tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
            
         self.reward_functions = [
@@ -74,7 +75,8 @@ class TwitterScraperValidator:
             PromptRewardModel(device=self.neuron.config.neuron.device, 
                               scoring_type=RewardScoringType.twitter_question_answer_score,
                               tokenizer=tokenizer,
-                              model=model
+                              model=model,
+                              is_disable_tokenizer_reward=self.neuron.config.is_disable_tokenizer_reward
                               )
             if self.neuron.config.reward.prompt_based_weight > 0
             else MockRewardModel(RewardModelType.prompt.value),              
