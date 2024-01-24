@@ -101,13 +101,6 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
-        "--reward.dpo_weight",
-        type=float,
-        help="Weight for the dpo reward model",
-        default=DefaultRewardFrameworkConfig.dpo_model_weight,
-    )
-
-    parser.add_argument(
         "--reward.rlhf_weight",
         type=float,
         help="Weight for the rlhf reward model",

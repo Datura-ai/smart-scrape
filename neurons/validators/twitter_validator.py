@@ -76,7 +76,7 @@ class TwitterScraperValidator:
                               scoring_type=RewardScoringType.twitter_question_answer_score,
                               tokenizer=tokenizer,
                               model=model,
-                              is_disable_tokenizer_reward=self.neuron.config.is_disable_tokenizer_reward
+                              is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward
                               )
             if self.neuron.config.reward.prompt_based_weight > 0
             else MockRewardModel(RewardModelType.prompt.value),              

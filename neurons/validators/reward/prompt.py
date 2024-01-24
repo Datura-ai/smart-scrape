@@ -54,13 +54,15 @@ class PromptRewardModel(BaseRewardModel):
     def __init__(self, device: str, scoring_type: None, tokenizer= None, model = None, is_disable_tokenizer_reward=False):
         super().__init__()
         self.device = device
-        if not tokenizer:
-            tokenizer, model = init_tokenizer(device)
-            self.tokenizer = tokenizer
-            self.model = model
-        else:
-            self.tokenizer = tokenizer
-            self.model = model
+
+        if not is_disable_tokenizer_reward:
+            if not tokenizer:
+                tokenizer, model = init_tokenizer(device)
+                self.tokenizer = tokenizer
+                self.model = model
+            else:
+                self.tokenizer = tokenizer
+                self.model = model
             
         self.scoring_type = scoring_type
         self.is_disable_tokenizer_reward = is_disable_tokenizer_reward
