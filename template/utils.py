@@ -267,7 +267,7 @@ def resync_metagraph(self: "validators.neuron.neuron"):
 
     if metagraph_axon_info_updated:
         bt.logging.info(
-            "Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
+            "resync_metagraph: Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
         )
 
         # Zero out all hotkeys that have been replaced.
