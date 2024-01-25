@@ -120,9 +120,9 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             }}
         }}"
     """
-    bt.logging.info("get_query_gen_prompt Start   ============================")
-    bt.logging.info(content)
-    bt.logging.info("get_query_gen_prompt End   ==============================")
+    bt.logging.trace("get_query_gen_prompt Start   ============================")
+    bt.logging.trace(content)
+    bt.logging.trace("get_query_gen_prompt End   ==============================")
     return content
 
 def get_fix_query_prompt(prompt, old_query, error, is_accuracy= True):
@@ -206,10 +206,10 @@ class TwitterAPIClient:
         """
         content  = get_query_gen_prompt(prompt, is_accuracy)
         messages = [{'role': 'user', 'content': content }]
-        bt.logging.info(content)
+        bt.logging.trace(content)
         res = await call_openai(messages, 0.2, "gpt-4-1106-preview", None,  {"type": "json_object"})
         response_dict = json.loads(res)
-        bt.logging.info("generate_query_params_from_prompt Content: ", response_dict)
+        bt.logging.trace("generate_query_params_from_prompt Content: ", response_dict)
         return response_dict
 
     async def fix_twitter_query(self, prompt, query, error, is_accuracy = True):
@@ -253,15 +253,17 @@ class TwitterAPIClient:
                 raise Exception(F"analyse_prompt_and_fetch_tweets: {response.text}")
             
             result_json = response.json()
-            if result_json.get('meta', {}).get('result_count', 0) == 0:
+            tweets_amount = result_json.get('meta', {}).get('result_count', 0)
+            if tweets_amount == 0:
                 bt.logging.info("analyse_prompt_and_fetch_tweets: No tweets found, attempting next query.")
                 response, prompt_analysis = await self.retry_with_fixed_query(prompt, old_query=prompt_analysis, is_accuracy=False)
                 result_json = response.json() 
             
-            bt.logging.info("Tweets fetched ===================================================")
-            bt.logging.info(result)
-            bt.logging.info("================================================================")
-            
+            bt.logging.trace("Tweets fetched ===================================================")
+            bt.logging.trace(result)
+            bt.logging.trace("================================================================")
+
+            bt.logging.info("Tweets fetched amount ============= {tweets_amount}")
 
             return result_json, prompt_analysis
         except Exception as e:
