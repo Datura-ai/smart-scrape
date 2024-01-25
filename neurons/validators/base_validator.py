@@ -48,6 +48,10 @@ class AbstractNeuron(ABC):
         pass
 
     @abstractmethod
+    async def update_moving_averaged_scores(self, uids, rewards):
+        pass
+
+    @abstractmethod
     async def query_synapse(self):
         pass
 

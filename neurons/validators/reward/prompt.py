@@ -27,7 +27,6 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import random
 
 def init_tokenizer(device):
-
     # https://huggingface.co/VMware/open-llama-7b-open-instruct
     # Fast tokenizer results in incorrect encoding, set the use_fast = False parameter.
     tokenizer = AutoTokenizer.from_pretrained(
@@ -52,18 +51,21 @@ class PromptRewardModel(BaseRewardModel):
     def name(self) -> str:
         return RewardModelType.prompt.value
 
-    def __init__(self, device: str, scoring_type: None, tokenizer= None, model = None):
+    def __init__(self, device: str, scoring_type: None, tokenizer= None, model = None, is_disable_tokenizer_reward=False):
         super().__init__()
         self.device = device
-        if not tokenizer:
-            tokenizer, model = init_tokenizer(device)
-            self.tokenizer = tokenizer
-            self.model = model
-        else:
-            self.tokenizer = tokenizer
-            self.model = model
-    
+
+        if not is_disable_tokenizer_reward:
+            if not tokenizer:
+                tokenizer, model = init_tokenizer(device)
+                self.tokenizer = tokenizer
+                self.model = model
+            else:
+                self.tokenizer = tokenizer
+                self.model = model
+            
         self.scoring_type = scoring_type
+        self.is_disable_tokenizer_reward = is_disable_tokenizer_reward
 
     def reward(self, prompt: str, response: bt.Synapse, name: str) -> BaseRewardEvent:
         try:
@@ -95,6 +97,14 @@ class PromptRewardModel(BaseRewardModel):
                 if not scoring_prompt_text:
                     # Format scoring prompt for this completion.
                     scoring_prompt_text = scoring_prompt.text(prompt, completion)
+
+                if self.is_disable_tokenizer_reward:
+                    length = len(response.links_content) * 2 
+                    score = length if length < 10 else 9
+                    # Scale 0-10 score to 0-1 range.
+                    score /= 10.0
+                    reward_event.reward = score
+                    return reward_event
 
                 # Tokenize formatted scoring prompt.
                 encodings_dict = self.tokenizer(

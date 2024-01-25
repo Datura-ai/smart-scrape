@@ -8,6 +8,8 @@ import base64
 import random
 import asyncio
 import template
+import copy
+import torch
 import requests
 import traceback
 import bittensor as bt
@@ -16,6 +18,9 @@ from collections import deque
 from template.protocol import TwitterPromptAnalysisResult
 from datetime import datetime
 from .dataset import tweet_prompts
+from template.misc import ttl_get_block
+
+
 
 list_update_lock = asyncio.Lock()
 _text_questions_buffer = deque()
@@ -229,4 +234,62 @@ def get_random_tweet_prompts(num_questions_needed):
 
     random.shuffle(tweet_prompts)
     return tweet_prompts[:num_questions_needed]
+
+
+def should_checkpoint(self):
+    # Check if enough epoch blocks have elapsed since the last checkpoint.
+    return (
+        ttl_get_block(self) % self.config.neuron.checkpoint_block_length
+        < self.prev_block % self.config.neuron.checkpoint_block_length
+    )
+
+
+def checkpoint(self):
+    """Checkpoints the training process."""
+    bt.logging.info("checkpoint()")
+    resync_metagraph(self)
+    # save_state(self)
+
+
+
+def resync_metagraph(self: "validators.neuron.neuron"):
+    """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
+    bt.logging.info("resync_metagraph()")
+
+    # Copies state of metagraph before syncing.
+    previous_metagraph = copy.deepcopy(self.metagraph)
+
+    # Sync the metagraph.
+    self.metagraph.sync(subtensor=self.subtensor)
+
+    # Check if the metagraph axon info has changed.
+    metagraph_axon_info_updated = previous_metagraph.axons != self.metagraph.axons
+
+    if metagraph_axon_info_updated:
+        bt.logging.info(
+            "resync_metagraph: Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
+        )
+
+        # Zero out all hotkeys that have been replaced.
+        for uid, hotkey in enumerate(self.hotkeys):
+            if hotkey != self.metagraph.hotkeys[uid]:
+                self.moving_averaged_scores[uid] = 0  # hotkey has been replaced
+
+        # Check to see if the metagraph has changed size.
+        # If so, we need to add new hotkeys and moving averages.
+        if len(self.hotkeys) < len(self.metagraph.hotkeys):
+            # Update the size of the moving average scores.
+            new_moving_average = torch.zeros((self.metagraph.n)).to(self.device)
+            min_len = min(len(self.hotkeys), len(self.moving_averaged_scores))
+            new_moving_average[:min_len] = self.moving_averaged_scores[:min_len]
+            self.moving_averaged_scores = new_moving_average
+
+        # Resize the gating model.
+        bt.logging.info("Re-syncing gating model")
+        self.gating_model.resync(previous_metagraph, self.metagraph)
+
+        # Update the hotkeys.
+        self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+
+
 

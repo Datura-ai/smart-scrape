@@ -47,7 +47,6 @@ class TwitterScraperValidator:
                 # self.neuron.config.reward.rlhf_weight,
                 self.neuron.config.reward.prompt_based_weight,
                 # self.neuron.config.reward.prompt_summary_links_content_based_weight,
-                # self.neuron.config.reward.dpo_weight,
             ],
             dtype=torch.float32,
         ).to(self.neuron.config.neuron.device)
@@ -63,8 +62,9 @@ class TwitterScraperValidator:
     
         tokenizer = None
         model = None
-        if self.neuron.config.reward.prompt_based_weight > 0 or \
-           self.neuron.config.reward.prompt_summary_links_content_based_weight > 0:
+        if (self.neuron.config.reward.prompt_based_weight > 0 or \
+           self.neuron.config.reward.prompt_summary_links_content_based_weight > 0) and \
+           not self.neuron.config.neuron.is_disable_tokenizer_reward:
             tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
            
         self.reward_functions = [
@@ -75,22 +75,11 @@ class TwitterScraperValidator:
             PromptRewardModel(device=self.neuron.config.neuron.device, 
                               scoring_type=RewardScoringType.twitter_question_answer_score,
                               tokenizer=tokenizer,
-                              model=model
+                              model=model,
+                              is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward
                               )
             if self.neuron.config.reward.prompt_based_weight > 0
-            else MockRewardModel(RewardModelType.prompt.value),
-
-            # PromptRewardModel(device=self.neuron.config.neuron.device, 
-            #                   scoring_type=RewardScoringType.twitter_summary_links_content_template,
-            #                   tokenizer=tokenizer,
-            #                   model=model
-            #                   )
-            # if self.neuron.config.reward.prompt_summary_links_content_based_weight > 0
-            # else MockRewardModel(RewardModelType.prompt.value),
-
-            # DirectPreferenceRewardModel(device=self.neuron.config.neuron.device)
-            # if self.neuron.config.reward.dpo_weight > 0
-            # else MockRewardModel(RewardModelType.prompt.value),                
+            else MockRewardModel(RewardModelType.prompt.value),              
         ]
 
         self.penalty_functions = [
@@ -98,12 +87,7 @@ class TwitterScraperValidator:
             LinkValidationPenaltyModel(max_penalty=0.9),
             # AccuracyPenaltyModel(max_penalty=1),
         ]
-
         self.twitter_api = TwitterAPIClient()
-        # Init Weights.
-        bt.logging.debug("loading", "moving_averaged_scores")
-        self.moving_averaged_scores = torch.zeros((self.neuron.metagraph.n)).to(self.neuron.config.neuron.device)
-        bt.logging.debug(str(self.moving_averaged_scores))
 
 
     def extract_json_chunk(self, chunk):
@@ -169,12 +153,6 @@ class TwitterScraperValidator:
             return default
 
         if synapse_object is not None:
-            bt.logging.info(f"LENGTH =========== {len(full_response)}")
-            synapse_object.completion = full_response
-            # if prompt_analysis is not None:
-            #     synapse_object.set_prompt_analysis(prompt_analysis)
-            # if tweets is not None:
-            #     synapse_object.set_tweets(tweets)
             return synapse_object
 
         return default
@@ -210,9 +188,7 @@ class TwitterScraperValidator:
         # Get random id on that step
         uids = await self.neuron.get_uids(strategy=strategy, 
                                           is_only_allowed_miner=is_only_allowed_miner)
-        if uids.nelement() == 0:
-            bt.logging.error("No available UIDs for running scoring")
-            return None
+        
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
         synapse = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed, is_intro_text=is_intro_text)
 
@@ -234,14 +210,6 @@ class TwitterScraperValidator:
                     com_links = self.twitter_api.find_twitter_links(response.completion)
                     response.links_content = com_links
                     response.tweets = com_links
-                    # if response.tweets:  
-                       
-                    #     # links_content = [{'id': item.get('id'), 'text': item.get('text')} for item in response.tweets]
-                        
-                    #     # tweet_ids = [self.twitter_api.extract_tweet_id(link) for link in com_links]
-                    #     # response.links_content = [content for content in links_content if content['id'] in tweet_ids]
-                    # else:
-                    #     bt.logging.info("response.tweets is None, cannot process content links.")
                 else:
                     time.sleep(10)
                     completion = response.completion
@@ -293,7 +261,7 @@ class TwitterScraperValidator:
                 bt.logging.trace(str(penalty_fn_i.name), applied_penalty_i.tolist())
                 bt.logging.info(f"Applied penalty function: {penalty_fn_i.name} with reward: {adjusted_penalty_i.tolist()}")
 
-            scattered_rewards = self.update_moving_averaged_scores(uids, rewards)
+            scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)
             self.log_event(task, event, start_time, uids, rewards, prompt=task.compose_prompt())
 
             scores = torch.zeros(len(self.neuron.metagraph.hotkeys))
@@ -322,25 +290,11 @@ class TwitterScraperValidator:
                 wandb_data["responses"][uid] = response.completion
                 wandb_data["prompts"][uid] = prompt
 
-            await self.neuron.update_scores(self.moving_averaged_scores, wandb_data)
+            await self.neuron.update_scores(wandb_data)
 
             return rewards, scattered_rewards
         except Exception as e:
             bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
-            raise e
-        
-    def update_moving_averaged_scores(self, uids, rewards):
-        try:
-            scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.neuron.config.neuron.device)
-            average_reward = torch.mean(scattered_rewards)
-            bt.logging.info(f"Scattered reward: {average_reward:.6f}")  # Rounds to 6 decimal places for logging
-
-            alpha = self.neuron.config.neuron.moving_average_alpha
-            self.moving_averaged_scores = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(self.neuron.config.neuron.device)
-            bt.logging.info(f"Moving averaged scores: {torch.mean(self.moving_averaged_scores):.6f}")  # Rounds to 6 decimal places for logging
-            return scattered_rewards
-        except Exception as e:
-            bt.logging.error(f"Error in update_moving_averaged_scores: {e}")
             raise e
         
     def log_event(self, task, event, start_time, uids, rewards, prompt):
@@ -399,9 +353,6 @@ class TwitterScraperValidator:
             for resp in async_responses:
                 try:
                     full_response = ""
-                    synapse_object = None  # Replace with actual class if different
-                    prompt_analysis = None
-                    tweets = None
 
                     try:
                         async for chunk in resp:
@@ -409,22 +360,6 @@ class TwitterScraperValidator:
                                   if isinstance(chunk, str):
                                     full_response += chunk
                                     yield chunk
-                                # json_objects, remaining_chunk = self.extract_json_chunk(chunk)
-                                # for json_data in json_objects:
-                                #     content_type = json_data.get("type")
-
-                                #     if content_type == "text":
-                                #         text_content = json_data.get("content", "")
-                                #         full_response += text_content
-                                #         yield text_content  # Yield text content for further processing
-
-                                #     elif content_type == "prompt_analysis":
-                                #         prompt_analysis_json = json_data.get("content", "{}")
-                                #         prompt_analysis = json.loads(prompt_analysis_json)
-
-                                #     elif content_type == "tweets":
-                                #         tweets_json = json_data.get("content", "[]")
-                                #         tweets = json.loads(tweets_json)
                             elif isinstance(chunk, bt.Synapse):
                                 if chunk.is_failure:
                                     raise Exception("Dendrite's status code indicates failure")
@@ -436,12 +371,6 @@ class TwitterScraperValidator:
                         continue
 
                     if synapse_object is not None:
-                        bt.logging.info(f"LENGTH =========== {len(full_response)}")
-                        synapse_object.completion = full_response
-                        # if prompt_analysis is not None:
-                        #     synapse_object.set_prompt_analysis(prompt_analysis)
-                        # if tweets is not None:
-                        #     synapse_object.set_tweets(tweets)
                         responses.append(synapse_object)
 
                 except Exception as e:
