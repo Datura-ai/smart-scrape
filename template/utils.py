@@ -17,7 +17,6 @@ from . import client
 from collections import deque
 from template.protocol import TwitterPromptAnalysisResult
 from datetime import datetime
-from .dataset import tweet_prompts
 from template.misc import ttl_get_block
 
 
@@ -170,7 +169,7 @@ def extract_python_list(text: str):
 
 async def call_openai(messages, temperature, model, seed=1234, response_format=None):
     for attempt in range(2):
-        bt.logging.debug(f"Calling Openai. Temperature = {temperature}, Model = {model}, Seed = {seed},  Messages = {messages}")
+        bt.logging.trace(f"Calling Openai. Temperature = {temperature}, Model = {model}, Seed = {seed},  Messages = {messages}")
         try:
             response = await client.chat.completions.create(
                 model=model,
@@ -180,7 +179,7 @@ async def call_openai(messages, temperature, model, seed=1234, response_format=N
                 response_format=response_format
             )
             response = response.choices[0].message.content
-            bt.logging.debug(f"validator response is {response}")
+            bt.logging.trace(f"validator response is {response}")
             return response
 
         except Exception as e:
@@ -226,15 +225,6 @@ def send_discord_alert(message, webhook_url):
             print(f"Failed to send Discord alert. Status code: {response.status_code}")
     except Exception as e:
         print(f"Failed to send Discord alert: {e}", exc_info=True)
-
-
-def get_random_tweet_prompts(num_questions_needed):
-    if num_questions_needed > len(tweet_prompts):
-        raise ValueError("Requested more prompts than available")
-
-    random.shuffle(tweet_prompts)
-    return tweet_prompts[:num_questions_needed]
-
 
 def should_checkpoint(self):
     # Check if enough epoch blocks have elapsed since the last checkpoint.

@@ -42,15 +42,15 @@ class TwitterScrapperMiner:
         self.miner = miner
 
     async def intro_text(self, model, prompt, send, is_intro_text):
-        bt.logging.info("miner.intro_text => ", self.miner.config.miner.intro_text)
-        bt.logging.info("Synapse.is_intro_text => ", is_intro_text)
+        bt.logging.trace("miner.intro_text => ", self.miner.config.miner.intro_text)
+        bt.logging.trace("Synapse.is_intro_text => ", is_intro_text)
         if not self.miner.config.miner.intro_text:
             return
         
         if not is_intro_text:
             return
         
-        bt.logging.info(f"Run intro text")
+        bt.logging.trace(f"Run intro text")
 
         content = f"""
         Generate introduction for that prompt: "{prompt}",
@@ -93,7 +93,7 @@ class TwitterScrapperMiner:
                     }
                 )
                 await asyncio.sleep(0.1)  # Wait for 100 milliseconds
-                bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                bt.logging.trace(f"Streamed tokens: {joined_buffer}")
                 buffer = []
 
         return buffer
@@ -167,8 +167,11 @@ class TwitterScrapperMiner:
             prompt = synapse.messages
             seed = synapse.seed
             is_intro_text = synapse.is_intro_text
-            bt.logging.info(synapse)
-            bt.logging.info(f"question is {prompt} with model {model}, seed: {seed}")
+            bt.logging.trace(synapse)
+            
+            bt.logging.info("================================== Prompt ===================================")
+            bt.logging.info(prompt)
+            bt.logging.info("================================== Prompt ====================================")
 
             # buffer.append('Test 2')
             intro_response, (tweets, prompt_analysis) = await asyncio.gather(
@@ -213,7 +216,7 @@ class TwitterScrapperMiner:
                             "more_body": True,
                         }
                     )
-                    bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                    bt.logging.trace(f"Streamed tokens: {joined_buffer}")
                     buffer = []  # Clear the buffer for the next set of tokens
 
             joined_full_text = "".join(full_text)  # Join all text chunks
