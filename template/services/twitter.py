@@ -11,8 +11,6 @@ from typing import List, Dict, Any
 from urllib.parse import urlparse
 
 BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TOKEN')
-if not BEARER_TOKEN:
-    raise ValueError("Please set the TWITTER_BEARER_TOKEN environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md")
 
 VALID_DOMAINS = ["twitter.com", "x.com"]
 twitter_api_query_example = {
