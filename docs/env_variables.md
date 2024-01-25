@@ -1,7 +1,3 @@
-Certainly, let's include the instructions for setting the environment variables using `.bashrc`. I'll integrate this into the enhanced guide. Here's the revised markdown version:
-
----
-
 # Enhanced Guide for Setting Up Environment Variables in Smart-Scrape System
 
 This comprehensive guide is designed to assist you in configuring the environment variables critical for the Smart-Scrape system. It highlights the specific variables required for Validators and Miners, ensuring they understand their roles and the importance of each key.
