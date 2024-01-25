@@ -186,8 +186,7 @@ class MockTwitterQuestionsDataset:
             "#FitnessTech #HealthInnovation",
             "#EVs #HybridTech",
             "#ResourceManagementTech #Conservation",
-            "#Drones #Innovation",
-            "#GigEconomy #WorkLifeBalance"
+            "#Drones #Innovation"
 
         ]
 
