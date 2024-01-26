@@ -82,7 +82,7 @@ def get_config() -> "bt.Config":
 
     parser.add_argument(
         "--miner.openai_summary_model",
-        default="gpt-3.5-turbo-11066",
+        default="gpt-3.5-turbo-1106",
         help="OpenAI model used for summarizing content.",
     )
 

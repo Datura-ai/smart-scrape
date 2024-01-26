@@ -105,8 +105,8 @@ class TwitterScrapperMiner:
             #todo we can find tweets based on twitter_query
             filtered_tweets = get_random_tweets(15)
         else:
-            openai_query_model = self.config.miner.openai_query_model
-            openai_fix_query_model = self.config.miner.openai_fix_query_model
+            openai_query_model = self.miner.config.miner.openai_query_model
+            openai_fix_query_model = self.miner.config.miner.openai_fix_query_model
             tw_client  = TwitterAPIClient(
                 openai_query_model=openai_query_model,
                 openai_fix_query_model=openai_fix_query_model
@@ -196,7 +196,7 @@ class TwitterScrapperMiner:
             # else:
             #     synapse.set_tweets(tweets)
 
-            openai_summary_model = self.config.miner.openai_summary_model
+            openai_summary_model = self.miner.config.miner.openai_summary_model
             response = await self.finalize_data(prompt=prompt, model=openai_summary_model, filtered_tweets=tweets, prompt_analysis=prompt_analysis)
 
             # Reset buffer for finalizing data responses
