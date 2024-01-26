@@ -80,6 +80,24 @@ def get_config() -> "bt.Config":
         default=True
     )
 
+    parser.add_argument(
+        "--miner.openai_summary_model",
+        default="gpt-3.5-turbo-11066",
+        help="OpenAI model used for summarizing content.",
+    )
+
+    parser.add_argument(
+        "--miner.openai_query_model",
+        default="gpt-3.5-turbo-1106",
+        help="OpenAI model used for generating queries.",
+    )
+
+    parser.add_argument(
+        "--miner.openai_fix_query_model",
+        default="gpt-4-1106-preview",
+        help="OpenAI model used for fixing queries.",
+    )
+
     # Adds subtensor specific arguments i.e. --subtensor.chain_endpoint ... --subtensor.network ...
     bt.subtensor.add_args(parser)
 
