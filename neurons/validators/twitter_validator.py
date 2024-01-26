@@ -19,9 +19,7 @@ from neurons.validators.penalty import (
     AccuracyPenaltyModel,
     LinkValidationPenaltyModel
 )
-from reward.open_assistant import OpenAssistantRewardModel
 from reward.prompt import PromptRewardModel, init_tokenizer
-from reward.dpo import DirectPreferenceRewardModel
 from neurons.validators.utils.tasks import TwitterTask
 from template.dataset import  MockTwitterQuestionsDataset
 from template.services.twitter import TwitterAPIClient
@@ -44,7 +42,6 @@ class TwitterScraperValidator:
 
         self.reward_weights = torch.tensor(
             [
-                # self.neuron.config.reward.rlhf_weight,
                 self.neuron.config.reward.prompt_based_weight,
                 # self.neuron.config.reward.prompt_summary_links_content_based_weight,
             ],

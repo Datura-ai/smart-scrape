@@ -101,13 +101,6 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
-        "--reward.rlhf_weight",
-        type=float,
-        help="Weight for the rlhf reward model",
-        default=DefaultRewardFrameworkConfig.rlhf_model_weight,
-    )
-
-    parser.add_argument(
         "--reward.prompt_based_weight",
         type=float,
         help="adjusts the influence of a scoring model that evaluates the accuracy and relevance of a node's responses to given prompts.",
