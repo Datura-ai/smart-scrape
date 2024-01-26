@@ -374,32 +374,3 @@ if __name__ == "__main__":
                 print(prompt_analysis.api_params)
                 print("=====================END prompt_analysis =======================================")
                 print("=====================END result_json=======================================")
-
-         
-
-    # print(result)
-    # result = asyncio.run(client.an`alyse_prompt_and_fetch_tweets("bittensor"))
-    # print(result)
-
-    # query_params = {
-    #   'query': "(OpenAI OR GPT-3 OR DALL-E OR ChatGPT OR artificial intelligence OR machine learning OR #OpenAI OR #ArtificialIntelligence OR #MachineLearning OR #GPT3 OR #DALLE OR #ChatGPT OR #AITrends OR #TechTrends) -is:retweet"
-    #   'query': '(OpenAI OR GPT-3) (#OpenAI OR #ArtificialIntelligence)'
-    # 'query': '(x1 OR x3) (#x2 OR #x4) (x1 OR x3) (#x2 OR #x4)'
-        # 'tweet.fields': 'author_id'
-        # 'query': "#nowplaying (horrible OR worst OR sucks OR bad OR disappointing) (place_country:US OR place_country:MX OR place_country:CA) -happy -exciting -excited -favorite -fav -amazing -lovely -incredible"
-
-
-    #     'query': '(OpenAI OR GPT-3 OR DALL-E OR ChatGPT OR AI OR artificial intelligence OR machine learning OR technology OR trends) (#OpenAI OR #AI OR #ArtificialIntelligence OR #MachineLearning OR #GPT3 OR #DALLE OR #ChatGPT OR #TechTrends) -is:retweet since:2022-01-01T00:00:00Z until:2022-12-31T23:59:59Z'
-    # }
-    # # result = client.get_recent_tweets(query_params=query_params)
-    # print(result)
-
-    # # Run the async function using asyncio
-    # for i in tweet_prompts:
-    #     result = asyncio.run(client.analyse_prompt_and_fetch_tweets(i))
-        
-    #     print(len(result))
-    #     # if len(result) > 0
-        #    print(result)
-    
-    # client.get_recent_tweets(query_params)    

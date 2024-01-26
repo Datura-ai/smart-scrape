@@ -64,11 +64,7 @@ class TwitterScraperValidator:
            not self.neuron.config.neuron.is_disable_tokenizer_reward:
             tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
            
-        self.reward_functions = [
-            # OpenAssistantRewardModel(device=self.neuron.config.neuron.device)
-            # if self.neuron.config.reward.rlhf_weight > 0
-            # else MockRewardModel(RewardModelType.rlhf.value), 
-
+        self.reward_functions = [ 
             PromptRewardModel(device=self.neuron.config.neuron.device, 
                               scoring_type=RewardScoringType.twitter_question_answer_score,
                               tokenizer=tokenizer,
@@ -117,30 +113,11 @@ class TwitterScraperValidator:
         default = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
         full_response = ""
         synapse_object = None
-        # prompt_analysis = None
-        # tweets = None
 
         try:
             async for chunk in resp:
                 if isinstance(chunk, str):
-                    if isinstance(chunk, str):
-                        full_response += chunk
-                    # json_objects, remaining_chunk = self.extract_json_chunk(chunk)
-                    # for json_data in json_objects:
-                    #     content_type = json_data.get("type")
-
-                    #     if content_type == "text":
-                    #         text_content = json_data.get("content", "")
-                    #         full_response += text_content
-
-                    #     elif content_type == "prompt_analysis":
-                    #         prompt_analysis_json = json_data.get("content", "{}")
-                    #         prompt_analysis = json.loads(prompt_analysis_json)
-
-                    #     elif content_type == "tweets":
-                    #         tweets_json = json_data.get("content", "[]")
-                    #         tweets = json.loads(tweets_json)
-
+                    full_response += chunk
                 elif isinstance(chunk, bt.Synapse):
                     if chunk.is_failure:
                         raise Exception("Dendrite's status code indicates failure")
@@ -351,13 +328,11 @@ class TwitterScraperValidator:
             for resp in async_responses:
                 try:
                     full_response = ""
-
                     try:
                         async for chunk in resp:
                             if isinstance(chunk, str):
-                                  if isinstance(chunk, str):
-                                    full_response += chunk
-                                    yield chunk
+                                full_response += chunk
+                                yield chunk
                             elif isinstance(chunk, bt.Synapse):
                                 if chunk.is_failure:
                                     raise Exception("Dendrite's status code indicates failure")
