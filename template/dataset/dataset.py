@@ -16,7 +16,7 @@ class MockTwitterQuestionsDataset:
             "What are the top opinions on Twitter about {}?",
             "How is the Twitter community responding to {}?",
             "What humorous content about {} is being shared on Twitter?",
-            "What are Twitter influencers saying about {}?",
+            "What are Twitter users saying about {}?",
             "What Twitter hashtags are currently associated with {}?",
             "How is {} being represented in Twitter memes?",
             "What are the emerging trends on Twitter related to {}?",
