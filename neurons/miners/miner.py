@@ -48,8 +48,6 @@ if not wandb_api_key and not netrc_path.exists():
 client = AsyncOpenAI(timeout=60.0)
 valid_hotkeys = []
 
-
-
 class StreamMiner(ABC):
     def __init__(self, config=None, axon=None, wallet=None, subtensor=None):
         bt.logging.info("starting stream miner")

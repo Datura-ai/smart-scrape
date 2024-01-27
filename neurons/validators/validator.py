@@ -129,6 +129,7 @@ class neuron(AbstractNeuron):
         # Filter validator permit > 1024 stake.
         if metagraph.validator_permit[uid]:
             if metagraph.S[uid] > vpermit_tao_limit:
+                
                 return False
         # Available otherwise.
         return True
@@ -215,7 +216,7 @@ class neuron(AbstractNeuron):
 
     async def query_synapse(self, strategy=QUERY_MINERS.RANDOM):
         try:
-            self.metagraph = self.subtensor.metagraph( netuid = 22 )
+            self.metagraph = self.subtensor.metagraph( netuid = self.config.netuid )
             await self.twitter_validator.query_and_score(strategy)
         except Exception as e:
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")

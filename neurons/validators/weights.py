@@ -114,7 +114,7 @@ def set_weights(self):
 
     # Log the success status
     if success:
-        bt.logging.info("Completed set weights action successfully.")
+        bt.logging.success("Completed set weights action successfully.")
     else:
         bt.logging.error("Failed to complete set weights action.")
 
