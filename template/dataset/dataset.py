@@ -96,7 +96,7 @@ class MockTwitterQuestionsDataset:
             "#eth",
             "#america",
             "#eth",
-            "#NY",
+            "#JustifyMyLove #JML #NY #Live #HD #90s #Music"
             "#code",
             "#chatgpt",
             "#aiart",
@@ -105,18 +105,19 @@ class MockTwitterQuestionsDataset:
             "#VR #TechForecast",
             "#IoT",
             "#AIFitness #HealthTech",
-            "#TravelHacks #Adventure",
+            "#TravelHacks #Adventure #trip",
             "#ElonMusk #TechNews",
             "#GenerativeAI",
             "Nvidia",
             "Ukraine",
             "google",
-            "Web 3.0",
+            "#JavaScript #ReactJS #GoLang #CloudComputing"
+            "#Serverless #DataScientist #Linux #Programming #Coding #100DaysofCode"
             "#midjourney",
-            "climate change summits",
-            "global health initiatives",
-            "space exploration missions",
-            "electric vehicles",
+            "climate change",
+            "global health",
+            "space exploration",
+            "electric vehicles #tesla #ev",
             "space tourism",
             "renewable energy",
             "virtual reality",
@@ -149,7 +150,6 @@ class MockTwitterQuestionsDataset:
             "fashion weeks",
             "culinary trends",
             "interior design ideas",
-            "DIY projects",
             "online education platforms",
             "educational reforms",
             "scholarly achievements",
@@ -186,7 +186,20 @@ class MockTwitterQuestionsDataset:
             "#FitnessTech #HealthInnovation",
             "#EVs #HybridTech",
             "#ResourceManagementTech #Conservation",
-            "#Drones #Innovation"
+            "#Drones #Innovation",
+            "#CryptoNews #Cryptos #CryptoCommunity",
+            "#CoinBase #Binance #BTC #ETH",
+            "#coffe #holiday #mood",
+            "#economy",
+            "#meme",
+            "#indiegame #gamedevelopment",
+            "#gaming #game #dev #devs",
+            "#dotnet",
+            "#Satoshi",
+            "#Muscle #AI #ArtificialIntelligence #Robotic #Robot #MachineLearning #Weight",
+            "#tractors #drones #robotic",
+            "#Robotics #AI #IoT"
+            "#movies #hollywood"
 
         ]
 
