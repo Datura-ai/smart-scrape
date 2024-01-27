@@ -110,10 +110,10 @@ class MockTwitterQuestionsDataset:
             "#GenerativeAI",
             "Nvidia",
             "Ukraine",
-            "google",
+            "google #gcf @google #gemini",
             "#JavaScript #ReactJS #GoLang #CloudComputing"
             "#Serverless #DataScientist #Linux #Programming #Coding #100DaysofCode"
-            "#midjourney",
+            "#midjourney #image #ai",
             "climate change",
             "global health",
             "space exploration",
