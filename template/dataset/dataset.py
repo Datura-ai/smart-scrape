@@ -18,8 +18,8 @@ class MockTwitterQuestionsDataset:
             "What humorous content about {} is being shared on Twitter?",
             "What are Twitter users saying about {}?",
             "What Twitter hashtags are currently associated with {}?",
-            "How is {} being represented in Twitter memes?",
-            "What are the emerging trends on Twitter related to {}?",
+            # "How is {} being represented in Twitter memes?",
+            # "What are the emerging trends on Twitter related to {}?",
         ]
 
         # Expanded list of topics, focusing on commonly discussed themes on Twitter
