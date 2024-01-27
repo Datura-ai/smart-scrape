@@ -55,6 +55,9 @@ pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 
 - `--miner.mock_dataset`: Set to True to use a mock dataset.
 - `--miner.blocks_per_epoch`: Number of blocks until setting weights on chain.
 - `--miner.intro_text`: If True, the miner will return intro text
+- `--miner.openai_summary_model`: OpenAI model used for summarizing content.
+- `--miner.openai_query_model`: OpenAI model used for generating queries.
+- `--miner.openai_fix_query_model`: "OpenAI model used for fixing queries.
 
 
 ## Conclusion

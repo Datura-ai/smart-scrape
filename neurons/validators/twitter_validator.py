@@ -19,11 +19,9 @@ from neurons.validators.penalty import (
     AccuracyPenaltyModel,
     LinkValidationPenaltyModel
 )
-from reward.open_assistant import OpenAssistantRewardModel
 from reward.prompt import PromptRewardModel, init_tokenizer
-from reward.dpo import DirectPreferenceRewardModel
 from neurons.validators.utils.tasks import TwitterTask
-from template.utils import get_random_tweet_prompts
+from template.dataset import  MockTwitterQuestionsDataset
 from template.services.twitter import TwitterAPIClient
 from template import QUERY_MINERS
 import asyncio
@@ -44,7 +42,6 @@ class TwitterScraperValidator:
 
         self.reward_weights = torch.tensor(
             [
-                # self.neuron.config.reward.rlhf_weight,
                 self.neuron.config.reward.prompt_based_weight,
                 # self.neuron.config.reward.prompt_summary_links_content_based_weight,
             ],
@@ -67,11 +64,7 @@ class TwitterScraperValidator:
            not self.neuron.config.neuron.is_disable_tokenizer_reward:
             tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
            
-        self.reward_functions = [
-            # OpenAssistantRewardModel(device=self.neuron.config.neuron.device)
-            # if self.neuron.config.reward.rlhf_weight > 0
-            # else MockRewardModel(RewardModelType.rlhf.value), 
-
+        self.reward_functions = [ 
             PromptRewardModel(device=self.neuron.config.neuron.device, 
                               scoring_type=RewardScoringType.twitter_question_answer_score,
                               tokenizer=tokenizer,
@@ -120,36 +113,17 @@ class TwitterScraperValidator:
         default = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
         full_response = ""
         synapse_object = None
-        # prompt_analysis = None
-        # tweets = None
 
         try:
             async for chunk in resp:
                 if isinstance(chunk, str):
-                    if isinstance(chunk, str):
-                        full_response += chunk
-                    # json_objects, remaining_chunk = self.extract_json_chunk(chunk)
-                    # for json_data in json_objects:
-                    #     content_type = json_data.get("type")
-
-                    #     if content_type == "text":
-                    #         text_content = json_data.get("content", "")
-                    #         full_response += text_content
-
-                    #     elif content_type == "prompt_analysis":
-                    #         prompt_analysis_json = json_data.get("content", "{}")
-                    #         prompt_analysis = json.loads(prompt_analysis_json)
-
-                    #     elif content_type == "tweets":
-                    #         tweets_json = json_data.get("content", "[]")
-                    #         tweets = json.loads(tweets_json)
-
+                    full_response += chunk
                 elif isinstance(chunk, bt.Synapse):
                     if chunk.is_failure:
                         raise Exception("Dendrite's status code indicates failure")
                     synapse_object = chunk
         except Exception as e:
-            bt.logging.info(f"Process Single Response: {e}")
+            bt.logging.trace(f"Process Single Response: {e}")
             return default
 
         if synapse_object is not None:
@@ -213,16 +187,16 @@ class TwitterScraperValidator:
                 else:
                     time.sleep(10)
                     completion = response.completion
-                    bt.logging.debug(
+                    bt.logging.trace(
                         f"process_content_links completion: {completion}"
                     )
                     twitter_links = self.twitter_api.find_twitter_links(completion)
-                    bt.logging.debug(
+                    bt.logging.trace(
                         f"process_content_links twitter_links: {twitter_links}"
                     )
                     if len(twitter_links) > 0:
                         json_response = self.twitter_api.fetch_twitter_data_for_links(twitter_links)
-                        bt.logging.debug(
+                        bt.logging.trace(
                             f"process_content_links fetch_twitter_data_for_links: {json_response}"
                         )
                         if 'data' in json_response:
@@ -313,7 +287,8 @@ class TwitterScraperValidator:
     
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
-            prompt = get_random_tweet_prompts(1)[0]
+            dataset = MockTwitterQuestionsDataset()
+            prompt = dataset.next()
 
             task_name = "augment"
             task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
@@ -353,20 +328,18 @@ class TwitterScraperValidator:
             for resp in async_responses:
                 try:
                     full_response = ""
-
                     try:
                         async for chunk in resp:
                             if isinstance(chunk, str):
-                                  if isinstance(chunk, str):
-                                    full_response += chunk
-                                    yield chunk
+                                full_response += chunk
+                                yield chunk
                             elif isinstance(chunk, bt.Synapse):
                                 if chunk.is_failure:
                                     raise Exception("Dendrite's status code indicates failure")
                                 synapse_object = chunk
 
                     except Exception as e:
-                        bt.logging.info(f"Organic Async Response: {e}")
+                        bt.logging.trace(f"Organic Async Response: {e}")
                         responses.append(TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed))
                         continue
 
@@ -374,7 +347,7 @@ class TwitterScraperValidator:
                         responses.append(synapse_object)
 
                 except Exception as e:
-                    bt.logging.info(f"Error for resp in async_responses: {e}")
+                    bt.logging.trace(f"Error for resp in async_responses: {e}")
                     responses.append(TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed))
 
             

@@ -24,7 +24,6 @@ class RewardModelType(Enum):
     sentence_match_penalty = "sentence_match_penalty"
     rlhf = "rlhf_reward_model"
     prompt = "prompt_reward_model"
-    dpo = "dpo_reward_model"
 
 class RewardScoringType(Enum):
     twitter_question_answer_score = "twitter_question_answer_score"
@@ -35,7 +34,5 @@ class DefaultRewardFrameworkConfig:
     """Reward framework default configuration.
     Note: All the weights should add up to 1.0.
     """
-    dpo_model_weight: float = 0
-    rlhf_model_weight: float = 0
     prompt_model_weight: float = 1
     prompt_model_summary_links_content_weight: float = 0
