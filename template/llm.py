@@ -41,7 +41,7 @@ class BaseLLM:
         self.config = config
         self.model_name = self.config.llm.model_name
         self.temperature = self.config.llm.temperature
-        self.system_propmt = "A chat between a curious user and an artificial intelligence assistant.\nThe assistant gives helpful, detailed, and polite answers to the user's questions."
+        self.system_prompt = "A chat between a curious user and an artificial intelligence assistant.\n The assistant gives helpful, detailed, and polite answers to the user's questions."
         self.do_prompt_injection = "Whether to use a custom 'system' prompt instead of the one sent by bittensor."
         self.do_sample = "Whether to use sampling or not (if not, uses greedy decoding)."
         self.max_new_tokens = 256
@@ -59,7 +59,9 @@ class OpenAILLM(BaseLLM):
         super(LocalLLM, self).__init__(config, *args, **kwargs)
         self.model_name = self.config.llm.model_name or "gpt-4-1106-preview"
 
-    async def prompt(messages, temperature, model=None, seed=None, response_format=None):
+    async def prompt(self, messages, temperature, response_format=None, model=None, seed=None):
+        model = model or self.model_name
+        temperature = temperature or self.temperature
         bt.logging.trace(f"Calling Openai. Temperature = {temperature}, Model = {model}, Seed = {seed},  Messages = {messages}")
         try:
             response = await client.chat.completions.create(

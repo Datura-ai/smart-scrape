@@ -106,21 +106,21 @@ def get_config() -> "bt.Config":
     )
 
     parser.add_argument(
-        "--miner.llm_summary_model",
+        "--llm.summary_model",
         default="gpt-3.5-turbo-1106",
-        help="OpenAI model used for summarizing content.",
+        help="LLM name used for summarizing content.",
     )
 
     parser.add_argument(
-        "--miner.llm_query_model",
+        "--llm.query_model",
         default="gpt-3.5-turbo-1106",
-        help="OpenAI model used for generating queries.",
+        help="LLM name used for generating queries.",
     )
 
     parser.add_argument(
-        "--miner.llm_fix_query_model",
+        "--llm.fix_query_model",
         default="gpt-4-1106-preview",
-        help="OpenAI model used for fixing queries.",
+        help="LLM name used for fixing queries.",
     )
 
     # Adds subtensor specific arguments i.e. --subtensor.chain_endpoint ... --subtensor.network ...
