@@ -71,8 +71,7 @@ def get_config() -> "bt.Config":
         help="If True, the miner will retrieve data from mock dataset",
         default=False
     )
-
-    # Mocks.    
+ 
     parser.add_argument(
         "--miner.intro_text",
         type=str2bool,
@@ -81,19 +80,45 @@ def get_config() -> "bt.Config":
     )
 
     parser.add_argument(
-        "--miner.openai_summary_model",
+        "--llm.model_provider",
+        type=str,
+        default="openai",
+        help="The provider of the language model. Options are 'openai' for OpenAI models, 'local' for local models.",
+    )
+
+
+    parser.add_argument(
+        "--llm.model_name",
+        type=str,
+        default="gpt-4-1106-preview",
+        help="Name/path of model to load. Also can be a filepath to the model weights (HF)",
+    )
+
+    parser.add_argument(
+        "--llm.temperature",
+        type=float,
+        help="Sampling temperature of model",
+        default=0.2,
+    )
+
+    parser.add_argument(
+        "--llm.device", type=str, help="Device to load model", default="cuda"
+    )
+
+    parser.add_argument(
+        "--miner.llm_summary_model",
         default="gpt-3.5-turbo-1106",
         help="OpenAI model used for summarizing content.",
     )
 
     parser.add_argument(
-        "--miner.openai_query_model",
+        "--miner.llm_query_model",
         default="gpt-3.5-turbo-1106",
         help="OpenAI model used for generating queries.",
     )
 
     parser.add_argument(
-        "--miner.openai_fix_query_model",
+        "--miner.llm_fix_query_model",
         default="gpt-4-1106-preview",
         help="OpenAI model used for fixing queries.",
     )

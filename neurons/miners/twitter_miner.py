@@ -187,14 +187,6 @@ class TwitterScrapperMiner:
             bt.logging.info("================================== Prompt analysis ===================================")
             bt.logging.info(prompt_analysis)
             bt.logging.info("================================== Prompt analysis ====================================")
-            # if prompt_analysis:
-            #     synapse.set_prompt_analysis(prompt_analysis)
-            
-            # if not isinstance(tweets, str):
-            #     tweets_json = json.dumps(tweets)
-            #     synapse.set_tweets(tweets_json)
-            # else:
-            #     synapse.set_tweets(tweets)
 
             openai_summary_model = self.miner.config.miner.openai_summary_model
             response = await self.finalize_data(prompt=prompt, model=openai_summary_model, filtered_tweets=tweets, prompt_analysis=prompt_analysis)
@@ -229,45 +221,6 @@ class TwitterScrapperMiner:
             bt.logging.info(f"================================== Completion Responsed ===================================") 
             bt.logging.info(f"{joined_full_text}")  # Print the full text at the end
             bt.logging.info(f"================================== Completion Responsed ===================================") 
-            
-            # # Send prompt_analysis
-            # if prompt_analysis:
-            #     prompt_analysis_json = json.dumps(prompt_analysis.dict())
-            #     prompt_analysis_response_body = {
-            #         "type": "prompt_analysis",
-            #         "content": prompt_analysis_json
-            #     }
-            #     await send(
-            #         {
-            #             "type": "http.response.body",
-            #             "body": json.dumps(prompt_analysis_response_body).encode("utf-8"),
-            #             "more_body": True,
-            #         }
-            #     )
-            #     bt.logging.info(f"Prompt Analysis sent")
-
-            # # Send tweets
-            # if tweets: 
-            #     result = json.loads(tweets)
-            #     if 'data' in result:
-            #         tweets_data = result['data']
-            #     else:
-            #         tweets_data = []
-            #     tweets_json = json.dumps(tweets_data)
-            #     tweets_response_body = {
-            #         "type": "tweets",
-            #         "content": tweets_json
-            #     }
-            #     print(tweets_json)
-            #     more_body = False
-            #     await send(
-            #         {
-            #             "type": "http.response.body",
-            #             "body": json.dumps(tweets_response_body).encode("utf-8"),
-            #             "more_body": False,
-            #         }
-            #     )
-            #     bt.logging.info(f"Tweet data sent. Number of tweets: {len(tweets_data)}")
             
             if more_body:
                 await send(
