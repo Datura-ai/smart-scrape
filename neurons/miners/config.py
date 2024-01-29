@@ -2,6 +2,7 @@ import bittensor as bt
 import argparse
 import os
 from distutils.util import strtobool
+import torch
 
 def str2bool(v):
     return bool(strtobool(v))
@@ -80,17 +81,23 @@ def get_config() -> "bt.Config":
     )
 
     parser.add_argument(
+        "--miner.device",
+        type=str,
+        help="Device to run the validator on.",
+        default="cuda" if torch.cuda.is_available() else "cpu",
+    )
+
+    parser.add_argument(
         "--llm.model_provider",
         type=str,
         default="openai",
         help="The provider of the language model. Options are 'openai' for OpenAI models, 'local' for local models.",
     )
 
-
     parser.add_argument(
         "--llm.model_name",
         type=str,
-        default="gpt-4-1106-preview",
+        default="gpt-3.5-turbo-1106",
         help="Name/path of model to load. Also can be a filepath to the model weights (HF)",
     )
 
@@ -99,10 +106,6 @@ def get_config() -> "bt.Config":
         type=float,
         help="Sampling temperature of model",
         default=0.2,
-    )
-
-    parser.add_argument(
-        "--llm.device", type=str, help="Device to load model", default="cuda"
     )
 
     parser.add_argument(

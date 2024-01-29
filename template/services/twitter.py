@@ -11,6 +11,7 @@ import bittensor as bt
 from typing import List, Dict, Any
 from urllib.parse import urlparse
 from template.dataset import MockTwitterQuestionsDataset
+from template.llm import LLMManger
 
 BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TOKEN')
 
@@ -157,17 +158,18 @@ def get_fix_query_prompt(prompt, old_query, error, is_accuracy= True):
 
 class TwitterAPIClient:
     def __init__(self, 
-                 openai_query_model = 'gpt-3.5-turbo-1106',
-                 openai_fix_query_model = 'gpt-4-1106-preview'
+                 llm_manager = None,
+                 query_model = 'gpt-3.5-turbo-1106',
+                 fix_query_model = 'gpt-4-1106-preview',
                  ):
         # self.bearer_token = os.environ.get("BEARER_TOKEN")
         self.bearer_token = BEARER_TOKEN
         self.twitter_link_regex = re.compile(
             r'https?://(?:' + '|'.join(re.escape(domain) for domain in VALID_DOMAINS) +
             r')/[\w/:%#\$&\?\(\)~\.=\+\-]+(?<![\.\)])', re.IGNORECASE)
-        self.openai_query_model = openai_query_model
-        self.openai_fix_query_model = openai_fix_query_model
-
+        self.query_model = query_model
+        self.fix_query_model = fix_query_model
+        self.llm = llm_manager if llm_manager else LLMManger()
 
     def bearer_oauth(self, r):
         """
@@ -215,11 +217,15 @@ class TwitterAPIClient:
         content  = get_query_gen_prompt(prompt, is_accuracy)
         messages = [{'role': 'user', 'content': content }]
         bt.logging.trace(content)
-        res = await call_openai(messages=messages, 
-                                temperature=0.2, 
-                                model=self.openai_query_model, 
-                                seed=None, 
-                                response_format={"type": "json_object"})
+        res = await self.llm.prompt(messages=messages,
+                        temperature=0.2,
+                        model=self.query_model,
+                        response_format={"type": "json_object"})
+        # res = await call_openai(messages=messages, 
+        #                         temperature=0.2, 
+        #                         model=self.query_model, 
+        #                         seed=None, 
+        #                         response_format={"type": "json_object"})
         response_dict = json.loads(res)
         bt.logging.trace("generate_query_params_from_prompt Content: ", response_dict)
         return response_dict
@@ -237,11 +243,15 @@ class TwitterAPIClient:
                                             is_accuracy=is_accuracy)
             messages = [{'role': 'user', 'content': content }]
             bt.logging.trace(content)
-            res = await call_openai(messages=messages, 
-                                    temperature=0.5, 
-                                    model=self.openai_fix_query_model, 
-                                    seed=None, 
-                                    response_format={"type": "json_object"})
+            res = await self.llm.prompt(messages=messages,
+                temperature=0.5,
+                model=self.fix_query_model,
+                response_format={"type": "json_object"})
+            # res = await call_openai(messages=messages, 
+            #                         temperature=0.5, 
+            #                         model=self.fix_query_model, 
+            #                         seed=None, 
+            #                         response_format={"type": "json_object"})
             response_dict = json.loads(res)
             bt.logging.trace("fix_twitter_query Content: ", response_dict)
             return response_dict

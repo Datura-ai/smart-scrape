@@ -1,23 +1,9 @@
-import re
 import os
-import time
-import copy
-import wandb
-import json
-import pathlib
 import asyncio
-import template
-import argparse
-import requests
-import threading
 import traceback
-import numpy as np
-import pandas as pd
 import bittensor as bt
 
 from openai import OpenAI
-from functools import partial
-from collections import deque
 from openai import AsyncOpenAI
 from starlette.types import Send
 from abc import ABC, abstractmethod
@@ -26,9 +12,10 @@ from config import get_config, check_config
 from typing import List, Dict, Tuple, Union, Callable, Awaitable
 
 from template.utils import get_version
-from template.protocol import StreamPrompting, IsAlive, TwitterScraperStreaming, TwitterPromptAnalysisResult
+from template.protocol import TwitterScraperStreaming
 from template.services.twitter import TwitterAPIClient
 from template.db import DBClient, get_random_tweets
+from template.llm import LLMManger
 
 OpenAI.api_key = os.environ.get('OPENAI_API_KEY')
 if not OpenAI.api_key:
@@ -36,12 +23,21 @@ if not OpenAI.api_key:
 
 client = AsyncOpenAI(timeout=60.0)
 
-
 class TwitterScrapperMiner:
     def __init__(self, miner: any):
         self.miner = miner
+        self.llm = LLMManger(
+            model_provider=self.miner.config.llm.model_provider,
+            model_name=self.miner.config.llm.model_name,
+            device=self.miner.config.miner.device
+        )
+        self.twitter_client = TwitterAPIClient(
+            llm_manager=self.llm,
+            query_model=self.miner.config.llm.query_model,
+            fix_query_model=self.miner.config.llm.fix_query_model
+        )
 
-    async def intro_text(self, model, prompt, send, is_intro_text):
+    async def intro_text(self, prompt, send, is_intro_text):
         bt.logging.trace("miner.intro_text => ", self.miner.config.miner.intro_text)
         bt.logging.trace("Synapse.is_intro_text => ", is_intro_text)
         if not self.miner.config.miner.intro_text:
@@ -51,7 +47,6 @@ class TwitterScrapperMiner:
             return
         
         bt.logging.trace(f"Run intro text")
-
         content = f"""
         Generate introduction for that prompt: "{prompt}",
 
@@ -66,12 +61,10 @@ class TwitterScrapperMiner:
         Output: Just return only introduction text without your comment
         """
         messages = [{'role': 'user', 'content': content}]
-        response = await client.chat.completions.create(
-            model=model,
+        response =  await self.llm.prompt(
             messages=messages,
             temperature=0.4,
             stream=True,
-            # seed=seed,
         )
 
         N = 1
@@ -81,10 +74,6 @@ class TwitterScrapperMiner:
             buffer.append(token)
             if len(buffer) == N:
                 joined_buffer = "".join(buffer)
-                text_response_body = {
-                    "type": "text",
-                    "content": joined_buffer
-                }
                 await send(
                     {
                         "type": "http.response.body",
@@ -105,13 +94,7 @@ class TwitterScrapperMiner:
             #todo we can find tweets based on twitter_query
             filtered_tweets = get_random_tweets(15)
         else:
-            openai_query_model = self.miner.config.miner.openai_query_model
-            openai_fix_query_model = self.miner.config.miner.openai_fix_query_model
-            tw_client  = TwitterAPIClient(
-                openai_query_model=openai_query_model,
-                openai_fix_query_model=openai_fix_query_model
-            )
-            filtered_tweets, prompt_analysis = await tw_client.analyse_prompt_and_fetch_tweets(prompt)
+            filtered_tweets, prompt_analysis = await self.twitter_client.analyse_prompt_and_fetch_tweets(prompt)
         return filtered_tweets, prompt_analysis
 
     async def finalize_data(self, prompt, model, filtered_tweets, prompt_analysis):
@@ -120,7 +103,6 @@ class TwitterScrapperMiner:
                 In <UserPrompt> provided User's prompt (Question).
                 In <PromptAnalysis> I anaysis that prompts and generate query for API, keywords, hashtags, user_mentions.
                 In <TwitterData>, Provided Twitter API fetched data.
-
                 
                 <UserPrompt>
                 {prompt}
@@ -155,18 +137,23 @@ class TwitterScrapperMiner:
             system = "You are Twitter data analyst, and you have to give great summary to users based on provided Twitter data and user's prompt"
             messages = [{'role': 'system', 'content': system}, 
                         {'role': 'user', 'content': content}]
-            return await client.chat.completions.create(
-                model= model,
-                messages= messages,
-                temperature= 0.1,
-                stream= True,
-                # seed=seed,
-            )
+            # return await client.chat.completions.create(
+            #     model= model,
+            #     messages= messages,
+            #     temperature= 0.1,
+            #     stream= True,
+            #     # seed=seed,
+            # )
 
+            return await self.llm.prompt(
+                messages=messages,
+                temperature=0.1,
+                stream= True
+            )
+    
     async def twitter_scraper(self, synapse: TwitterScraperStreaming, send: Send):
         try:
             buffer = []
-            # buffer.append('Tests 1')
             
             model = synapse.model
             prompt = synapse.messages
@@ -178,9 +165,8 @@ class TwitterScrapperMiner:
             bt.logging.info(prompt)
             bt.logging.info("================================== Prompt ====================================")
 
-            # buffer.append('Test 2')
             intro_response, (tweets, prompt_analysis) = await asyncio.gather(
-                self.intro_text(model="gpt-3.5-turbo", prompt=prompt, send=send, is_intro_text=is_intro_text),
+                self.intro_text(prompt=prompt, send=send, is_intro_text=is_intro_text),
                 self.fetch_tweets(prompt)
             )
             
@@ -188,8 +174,11 @@ class TwitterScrapperMiner:
             bt.logging.info(prompt_analysis)
             bt.logging.info("================================== Prompt analysis ====================================")
 
-            openai_summary_model = self.miner.config.miner.openai_summary_model
-            response = await self.finalize_data(prompt=prompt, model=openai_summary_model, filtered_tweets=tweets, prompt_analysis=prompt_analysis)
+            summary_model = self.miner.config.llm.summary_model
+            response = await self.finalize_data(prompt=prompt, 
+                                                model=summary_model, 
+                                                filtered_tweets=tweets, 
+                                                prompt_analysis=prompt_analysis)
 
             # Reset buffer for finalizing data responses
             buffer = []
@@ -202,11 +191,6 @@ class TwitterScrapperMiner:
                 full_text.append(token)  # Append the token to the full_text list
                 if len(buffer) == N:
                     joined_buffer = "".join(buffer)
-                    # Stream the text
-                    text_response_body = {
-                        "type": "text",
-                        "content": joined_buffer
-                    }
                     await send(
                         {
                             "type": "http.response.body",
