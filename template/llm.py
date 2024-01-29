@@ -25,13 +25,10 @@ class LLMManger:
                  temperature = 0.2,
                  device = 'cpu'
                  ):
-        if model_provider == ModelProviders.LOCAL:
+        if model_provider == ModelProviders.LOCAL.value:
             self.llm = LocalLLM(model_name=model_name,
                                 temperature=temperature,
                                 device=device)
-        elif model_provider == ModelProviders.OPEN_AI:
-            self.llm = OpenAILLM(model_name=model_name,
-                                 temperature=temperature)
         else:
             self.llm = OpenAILLM(model_name=model_name,
                                  temperature=temperature)
@@ -49,7 +46,7 @@ class BaseLLM:
         self.model_name = model_name
         self.temperature = temperature
         self.device = device
-        self.system_prompt = "A chat between a curious user and an artificial intelligence assistant.\n The assistant gives helpful, detailed, and polite answers to the user's questions."
+        self.system_prompt = ""
         self.do_prompt_injection = "Whether to use a custom 'system' prompt instead of the one sent by bittensor."
         self.do_sample = "Whether to use sampling or not (if not, uses greedy decoding)."
         self.max_new_tokens = 256

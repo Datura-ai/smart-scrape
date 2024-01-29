@@ -55,6 +55,10 @@ pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 
 - `--miner.mock_dataset`: Set to True to use a mock dataset.
 - `--miner.blocks_per_epoch`: Number of blocks until setting weights on chain.
 - `--miner.intro_text`: If True, the miner will return intro text
+
+- `--llm.model_provider`: The provider of the language model. Options are 'openai' for OpenAI models, 'local' for local models. Default is 'openai'.
+- `--llm.model_name`: Name/path of the language model to load. Can also be a filepath to the model weights (HF). Default is 'gpt-3.5-turbo-1106'.
+- `--llm.temperature`: Sampling temperature for the language model's generation. Lower values make the output more deterministic. Default is 0.2.
 - `--llm.summary_model`: OpenAI model used for summarizing content. Default gpt-3.5-turbo-1106
 - `--llm.query_model`: OpenAI model used for generating queries. Default gpt-3.5-turbo-1106
 - `--llm.fix_query_model`: "OpenAI model used for fixing queries. Default gpt-4-1106-preview

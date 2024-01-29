@@ -112,6 +112,7 @@ class StreamMiner(ABC):
         self.request_timestamps: Dict = {}
         thread = threading.Thread(target=get_valid_hotkeys, args=(self.config,))
         # thread.start()
+        self.tw_miner = TwitterScrapperMiner(miner=self)
 
     @abstractmethod
     def config(self) -> "bt.Config":
@@ -301,8 +302,7 @@ class StreamingTemplateMiner(StreamMiner):
 
     def twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
         bt.logging.info(f"started processing for synapse {synapse}")
-        tw_miner = TwitterScrapperMiner(self)
-        token_streamer = partial(tw_miner.twitter_scraper, synapse)
+        token_streamer = partial(self.tw_miner.twitter_scraper, synapse)
         return synapse.create_streaming_response(token_streamer)
 
 def get_valid_hotkeys(config):
