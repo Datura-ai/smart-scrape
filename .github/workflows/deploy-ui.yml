@@ -1,0 +1,65 @@
+name: Deploy to AWS CloudFront
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      REACT_APP_BACKEND_HOST: "https://taoapi.isebarn.com"
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 18
+
+      - name: Setup yarn
+        run: npm install -g yarn
+
+      # Get yarn cache directory path
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+        working-directory: web
+
+      # Cache yarn dependencies using the determined directory path
+      - uses: actions/cache@v2
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('web/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install dependencies
+        run: yarn install
+        working-directory: web
+
+      - name: Build 
+        env:
+          NODE_OPTIONS: '--max_old_space_size=4096'
+        run: yarn run build
+        working-directory: web
+
+      # - name: Postbuild
+      #   run: yarn run postbuild
+      #   working-directory: web
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: AKIAWQCPD6TONOLTCJX5 # ${{ secrets.AWS_ACCESS_KEY_ID }} #todo move env variables on github
+          aws-secret-access-key: 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 #${{ secrets.AWS_SECRET_ACCESS_KEY }} #todo move env variables on github
+          aws-region: us-east-1 #${{ secrets.AWS_REGION }}
+
+      - name: Upload to S3
+        run: |
+          aws s3 sync ./web/build s3://smartscrape-ui --delete
+
+      - name: Invalidate CloudFront Distribution
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_DISTRIBUTION }} --paths "/*"

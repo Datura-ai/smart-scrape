@@ -1,4 +1,4 @@
-import { FC, useState, useEffect, useRef } from "react";
+import { FC, useState, useEffect, useRef, Dispatch, SetStateAction } from "react";
 import Closer from "../Closer";
 
 interface InputBarProps {
@@ -6,6 +6,8 @@ interface InputBarProps {
   enabled: boolean;
   setEnabled: (enabled: boolean) => void;
   controller: React.MutableRefObject<AbortController>;
+  uids: string,
+  setUids: Dispatch<SetStateAction<string>>
 }
 
 const InputBar: FC<InputBarProps> = ({
@@ -13,6 +15,8 @@ const InputBar: FC<InputBarProps> = ({
   enabled,
   setEnabled,
   controller,
+  uids, 
+  setUids
 }) => {
   const [message, setMessage] = useState("");
   const [variations, setVariations] = useState(4);
@@ -40,9 +44,18 @@ const InputBar: FC<InputBarProps> = ({
 
   return (
     <div className="bottom-0 left-0 right-0 flex m-4 mx-6 bg-slate-100">
+      <input
+        className=""
+        style={{ flex: '1', marginRight: '10px' }}
+        value={uids}
+        onChange={(e) => setUids(e.target.value)}
+        placeholder="Type UID..."
+        disabled={!enabled}
+      />
       <textarea
         rows={message.split("\n").length}
-        className="w-full focus:outline-none focus:placeholder-gray-400 placeholder-gray-600 pl-4 bg-slate-100 text-lg py-3 resize-none"
+        className="focus:outline-none focus:placeholder-gray-400 placeholder-gray-600 pl-4 bg-slate-100 text-lg py-3 resize-none"
+        style={{ flex: '5', marginLeft: '0px'}}
         value={message}
         ref={inputRef}
         onChange={(e) => setMessage(e.target.value)}
