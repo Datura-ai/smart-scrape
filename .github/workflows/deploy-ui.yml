@@ -37,17 +37,13 @@ jobs:
 
       - name: Install dependencies
         run: yarn install
-        working-directory: web
+        working-directory: ui
 
       - name: Build 
         env:
           NODE_OPTIONS: '--max_old_space_size=4096'
         run: yarn run build
-        working-directory: web
-
-      # - name: Postbuild
-      #   run: yarn run postbuild
-      #   working-directory: web
+        working-directory: ui
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -58,7 +54,7 @@ jobs:
 
       - name: Upload to S3
         run: |
-          aws s3 sync ./web/build s3://smart-scrape-ui --delete
+          aws s3 sync ./ui/build s3://smart-scrape-ui --delete
 
       - name: Invalidate CloudFront Distribution
         run: |
