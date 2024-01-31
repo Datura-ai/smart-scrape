@@ -9,7 +9,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      REACT_APP_BACKEND_HOST: secrets.BACKEND_API_URL
+      REACT_APP_BACKEND_HOST:  ${{ secrets.BACKEND_API_URL }}
 
     steps:
       - uses: actions/checkout@v2
@@ -25,13 +25,13 @@ jobs:
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
         run: echo "::set-output name=dir::$(yarn cache dir)"
-        working-directory: web
+        working-directory: ui
 
       # Cache yarn dependencies using the determined directory path
       - uses: actions/cache@v2
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('web/yarn.lock') }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('ui/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
 
@@ -58,7 +58,7 @@ jobs:
 
       - name: Upload to S3
         run: |
-          aws s3 sync ./web/build s3://smartscrape-ui --delete
+          aws s3 sync ./web/build s3://smart-scrape-ui --delete
 
       - name: Invalidate CloudFront Distribution
         run: |
