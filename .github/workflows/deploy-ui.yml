@@ -9,11 +9,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      REACT_APP_BACKEND_HOST: ${{ env.BACKEND_API_URL }}
-      AWS_REGION: ${{ env.AWS_REGION }}
-      AWS_ACCESS_KEY_ID: ${{ env.AWS_ACCESS_KEY_ID }}
+      REACT_APP_BACKEND_HOST: ${{ secrets.BACKEND_API_URL }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ env.AWS_SECRET_ACCESS_KEY }}
-      AWS_DISTRIBUTION: ${{ env.AWS_DISTRIBUTION }}
+      AWS_DISTRIBUTION: ${{ secrets.AWS_DISTRIBUTION }}
 
     steps:
       - uses: actions/checkout@v2
