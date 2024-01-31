@@ -23,7 +23,7 @@ jobs:
         run: npm install -g yarn
 
       - name: Print BACKEND_API_URL
-        run: echo "BACKEND_API_URL is ${{ secrets.BACKEND_API_URL }}"
+        run: echo "BACKEND_API_URL is ${{ secrets.AWS_ACCESS_KEY_ID }}"
 
       # Get yarn cache directory path
       - name: Get yarn cache directory path
