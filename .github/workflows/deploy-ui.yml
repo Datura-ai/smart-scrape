@@ -9,7 +9,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      REACT_APP_BACKEND_HOST: "https://taoapi.isebarn.com"
+      REACT_APP_BACKEND_HOST: secrets.BACKEND_API_URL
 
     steps:
       - uses: actions/checkout@v2
