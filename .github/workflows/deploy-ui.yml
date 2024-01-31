@@ -10,13 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       REACT_APP_BACKEND_HOST: ${{ secrets.BACKEND_API_URL }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DISTRIBUTION: ${{ secrets.AWS_DISTRIBUTION }}
 
     steps:
       - uses: actions/checkout@v2
+
 
       - uses: actions/setup-node@v2
         with:
@@ -26,16 +23,18 @@ jobs:
         run: npm install -g yarn
 
       - name: Print BACKEND_API_URL
-        run: echo "BACKEND_API_URL is $REACT_APP_BACKEND_HOST"
+        run: echo "BACKEND_API_URL is ${{ secrets.BACKEND_API_URL }}"
 
-      - name: Print AWS_REGION
-        run: echo "AWS_REGION is $AWS_REGION"
+      - name: Print AWS_ACCESS_KEY_ID
+        run: echo "AWS_ACCESS_KEY_ID is ${{ secrets.AWS_ACCESS_KEY_ID }}"
 
+      # Get yarn cache directory path
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
         run: echo "::set-output name=dir::$(yarn cache dir)"
         working-directory: ui
 
+      # Cache yarn dependencies using the determined directory path
       - uses: actions/cache@v2
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
@@ -47,7 +46,7 @@ jobs:
         run: yarn install
         working-directory: ui
 
-      - name: Build
+      - name: Build 
         env:
           NODE_OPTIONS: '--max_old_space_size=4096'
         run: yarn run build
@@ -56,12 +55,14 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: $AWS_ACCESS_KEY_ID
-          aws-secret-access-key: $AWS_SECRET_ACCESS_KEY
-          aws-region: $AWS_REGION
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} #todo move env variables on github
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} #todo move env variables on github
+          aws-region:  ${{ secrets.AWS_REGION }}
 
       - name: Upload to S3
-        run: aws s3 sync ./ui/build s3://smart-scrape-ui --delete
+        run: |
+          aws s3 sync ./ui/build s3://smart-scrape-ui --delete
 
       - name: Invalidate CloudFront Distribution
-        run: aws cloudfront create-invalidation --distribution-id $AWS_DISTRIBUTION --paths "/*"
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_DISTRIBUTION }} --paths "/*"
