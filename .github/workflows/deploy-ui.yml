@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       REACT_APP_BACKEND_HOST: ${{ secrets.BACKEND_API_URL }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
 
     steps:
       - uses: actions/checkout@v2
@@ -23,7 +24,10 @@ jobs:
         run: npm install -g yarn
 
       - name: Print BACKEND_API_URL
-        run: echo "BACKEND_API_URL is ${{ secrets.AWS_ACCESS_KEY_ID }}"
+        run: echo "BACKEND_API_URL is ${{ secrets.BACKEND_API_URL }}"
+
+      - name: Print AWS_REGION
+        run: echo "AWS_REGION is ${{ env.AWS_REGION }}"
 
       # Get yarn cache directory path
       - name: Get yarn cache directory path
