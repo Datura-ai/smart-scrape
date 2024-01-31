@@ -82,33 +82,6 @@ class TwitterScraperValidator:
         ]
         self.twitter_api = TwitterAPIClient()
 
-
-    def extract_json_chunk(self, chunk):
-        stack = []
-        start_index = None
-        json_objects = []
-
-        for i, char in enumerate(chunk):
-            if char == '{':
-                if not stack:
-                    start_index = i
-                stack.append(char)
-            elif char == '}':
-                stack.pop()
-                if not stack and start_index is not None:
-                    json_str = chunk[start_index:i+1]
-                    try:
-                        json_obj = json.loads(json_str)
-                        json_objects.append(json_obj)
-                        start_index = None
-                    except json.JSONDecodeError as e:
-                        # Handle the case where json_str is not a valid JSON object
-                        continue
-
-        remaining_chunk = chunk[i+1:] if start_index is None else chunk[start_index:]
-
-        return json_objects, remaining_chunk
-    
     async def process_single_response(self, resp, prompt):
         default = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed)
         full_response = ""
@@ -149,7 +122,7 @@ class TwitterScraperValidator:
                 except json.JSONDecodeError:
                     bt.logging.trace(f"Failed to decode JSON chunk: {resp}")
 
-    async def run_task_and_score(self, task: TwitterTask, strategy=QUERY_MINERS.RANDOM, is_only_allowed_miner=True, is_intro_text= False):
+    async def run_task_and_score(self, task: TwitterTask, strategy=QUERY_MINERS.RANDOM, is_only_allowed_miner=True, is_intro_text= False, specified_uids=None):
         task_name = task.task_name
         prompt = task.compose_prompt()
 
@@ -161,7 +134,8 @@ class TwitterScraperValidator:
         
         # Get random id on that step
         uids = await self.neuron.get_uids(strategy=strategy, 
-                                          is_only_allowed_miner=is_only_allowed_miner)
+                                          is_only_allowed_miner=is_only_allowed_miner,
+                                          specified_uids=specified_uids)
         
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
         synapse = TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed, is_intro_text=is_intro_text)
@@ -266,7 +240,7 @@ class TwitterScraperValidator:
 
             await self.neuron.update_scores(wandb_data)
 
-            return rewards, scattered_rewards
+            return rewards
         except Exception as e:
             bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
             raise e
@@ -309,7 +283,6 @@ class TwitterScraperValidator:
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")
             raise e
-    
         
     async def organic(self, query):
         try:
@@ -321,7 +294,7 @@ class TwitterScraperValidator:
                 task=task,
                 strategy=QUERY_MINERS.RANDOM,
                 is_only_allowed_miner=True,
-                is_intro_text=True
+                is_intro_text=True,
             )
 
             responses = []
@@ -345,24 +318,58 @@ class TwitterScraperValidator:
 
                     if synapse_object is not None:
                         responses.append(synapse_object)
+                        
 
                 except Exception as e:
                     bt.logging.trace(f"Error for resp in async_responses: {e}")
                     responses.append(TwitterScraperStreaming(messages=prompt, model=self.model, seed=self.seed))
 
-            
             async def process_and_score_responses():
                 await self.compute_rewards_and_penalties(event=event,
                                                         prompt=prompt, 
                                                         task=task, 
                                                         responses=responses, 
                                                         uids=uids, 
-                                                        start_time=start_time)
-                return responses  
-            
+                                                        start_time=start_time)    
             asyncio.create_task(process_and_score_responses())
         except Exception as e:
             bt.logging.error(f"Error in organic: {e}")
             raise e
 
 
+    async def organic_specified(self, query, specified_uids=None):
+        try:
+            prompt = query['content']      
+
+            task_name = "augment"
+            task = TwitterTask(base_text=prompt, task_name=task_name, task_type="twitter_scraper", criteria=[])
+
+            yield f"Contacting miner IDs: {'; '.join(map(str, specified_uids))} \n\n\n"
+            async_responses, uids, event, start_time = await self.run_task_and_score(
+                task=task,
+                strategy=QUERY_MINERS.ALL,
+                is_only_allowed_miner=False,
+                specified_uids=specified_uids
+            )
+        
+            responses = await self.process_async_responses(async_responses, prompt)
+            rewards = await self.compute_rewards_and_penalties(event=event, 
+                                                    prompt=prompt,
+                                                    task=task, 
+                                                    responses=responses, 
+                                                    uids=uids, 
+                                                    start_time=start_time) 
+            for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
+                yield f"Miner ID: {uid_tensor.item()} - Reward: {reward:.2f}\n\n"
+                yield "----------------------------------------\n\n"
+                yield f"Miner's Completion Output:\n{response.completion}\n\n"
+                yield "========================================\n\n"
+
+            missing_uids = set(specified_uids) - set(uid.item() for uid in uids)
+            for missing_uid in missing_uids:
+                yield f"No response from Miner ID: {missing_uid}\n"
+                yield "----------------------------------------\n\n\n"
+
+        except Exception as e:
+            bt.logging.error(f"Error in query_and_score: {e}")
+            raise e
