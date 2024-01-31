@@ -6,6 +6,7 @@ import { EventSourceMessage } from "@microsoft/fetch-event-source";
 import { Message } from "../../types/Message";
 
 const ChatWindow: React.FC = () => {
+  const [uids, setUids] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputEnabled, setInputEnabled] = useState<boolean>(true);
 
@@ -121,7 +122,8 @@ const ChatWindow: React.FC = () => {
         onmessage, //selectedType === 'twitter' ? onmessage : onmessage,
         onerror,
         onclose,
-        controller.current.signal
+        controller.current.signal,
+        uids
       ).catch(() => setInputEnabled(true));
     }
   }, [messages]);
@@ -134,6 +136,8 @@ const ChatWindow: React.FC = () => {
         enabled={inputEnabled}
         setEnabled={setInputEnabled}
         controller={controller}
+        uids={uids}
+        setUids={setUids}
       />
     </div>
   );

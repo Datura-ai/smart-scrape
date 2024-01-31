@@ -85,10 +85,13 @@ class neuron(AbstractNeuron):
             bt.logging.error(f"Your validator: {self.wallet} is not registered to chain connection: {self.subtensor}. Run btcli register --netuid 18 and try again.")
             exit()
     
-    async def check_uid(self, axon, uid, is_only_allowed_miner = False):
+    async def check_uid(self, axon, uid, is_only_allowed_miner = False, specified_uids=None):
         """Asynchronously check if a UID is available."""
         try:
-            if self.config.neuron.only_allowed_miners and axon.coldkey not in self.config.neuron.only_allowed_miners and is_only_allowed_miner:
+            if specified_uids and uid not in specified_uids:
+                raise Exception(f"Not allowed in Specified Uids")
+            
+            if self.config.neuron.only_allowed_miners and axon.coldkey not in self.config.neuron.only_allowed_miners and is_only_allowed_miner and not specified_uids:
                 raise Exception(f"Not allowed")
                 
             response = await self.dendrite(axon, IsAlive(), deserialize=False, timeout=4)
@@ -101,16 +104,15 @@ class neuron(AbstractNeuron):
             bt.logging.trace(f"Checking UID {uid}: {e}\n{traceback.format_exc()}")
             raise e
 
-    async def get_available_uids_is_alive(self, is_only_allowed_miner=False):
+    async def get_available_uids_is_alive(self, is_only_allowed_miner=False, specified_uids=None):
         """Get a dictionary of available UIDs and their axons asynchronously."""
-        tasks = {uid.item(): self.check_uid(self.metagraph.axons[uid.item()], uid.item(), is_only_allowed_miner) for uid in self.metagraph.uids}
+        tasks = {uid.item(): self.check_uid(self.metagraph.axons[uid.item()], uid.item(), is_only_allowed_miner, specified_uids) for uid in self.metagraph.uids}
         results = await asyncio.gather(*tasks.values(), return_exceptions=True)
 
         # Filter out the exceptions and keep the successful results
         available_uids = [uid for uid, result in zip(tasks.keys(), results) if not isinstance(result, Exception)]
 
         return available_uids
-
 
     def check_uid_availability(
         self, metagraph: "bt.metagraph.Metagraph", uid: int, vpermit_tao_limit: int = 4096
@@ -160,19 +162,11 @@ class neuron(AbstractNeuron):
 
         # Check if candidate_uids contain enough for querying, if not grab all avaliable uids
         available_uids = candidate_uids
-        # if len(candidate_uids) < k:
-        #     available_uids += random.sample(
-        #         [uid for uid in avail_uids if uid not in candidate_uids],
-        #         k - len(candidate_uids),
-        #     )
-        # uids = torch.tensor(random.sample(available_uids, len(available_uids)))
         return available_uids
-    
         
-    async def get_uids(self, strategy=QUERY_MINERS.RANDOM, is_only_allowed_miner=False):
+    async def get_uids(self, strategy=QUERY_MINERS.RANDOM, is_only_allowed_miner=False, specified_uids=None):
         # uid_list = await self.get_available_uids()
-        uid_list =  await self.get_available_uids_is_alive(is_only_allowed_miner) #uid_list_is_live =
-        # uid_list = list(available_uids.keys())
+        uid_list =  await self.get_available_uids_is_alive(is_only_allowed_miner, specified_uids) #uid_list_is_live =
         if strategy == QUERY_MINERS.RANDOM:
             uids = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
         elif strategy == QUERY_MINERS.ALL:
@@ -180,7 +174,6 @@ class neuron(AbstractNeuron):
         bt.logging.info("Run uids ---------- ", uids)
         # uid_list = list(available_uids.keys())
         return uids.to(self.config.neuron.device)
-
 
     async def update_scores(self, wandb_data):
         try:
@@ -212,7 +205,6 @@ class neuron(AbstractNeuron):
         except Exception as e:
             bt.logging.error(f"Error in update_moving_averaged_scores: {e}")
             raise e
-
 
     async def query_synapse(self, strategy=QUERY_MINERS.RANDOM):
         try:
