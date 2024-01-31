@@ -14,7 +14,8 @@ export const fetchAnalyseTweetsSummaryMessage = async (
   onmessage: (event: EventSourceMessage) => void,
   onerror: (err: any) => void,
   onclose: () => void,
-  signal: AbortSignal
+  signal: AbortSignal,
+  uids: string
 ) => {
   await fetchEventSource(`${BACKEND_BASE_URL}/analyse-tweets-event`, {
     openWhenHidden: true,
@@ -24,7 +25,7 @@ export const fetchAnalyseTweetsSummaryMessage = async (
       Accept: "text/event-stream",
       "access_key": "hello"
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, uids : [parseInt(uids)] }),
     // @ts-ignore
     onopen(res) {
       onopen(res);
