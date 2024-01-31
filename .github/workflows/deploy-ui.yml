@@ -52,9 +52,9 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: AKIAWQCPD6TONOLTCJX5 # ${{ secrets.AWS_ACCESS_KEY_ID }} #todo move env variables on github
-          aws-secret-access-key: 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 #${{ secrets.AWS_SECRET_ACCESS_KEY }} #todo move env variables on github
-          aws-region: us-east-1 #${{ secrets.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} #todo move env variables on github
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} #todo move env variables on github
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Upload to S3
         run: |
