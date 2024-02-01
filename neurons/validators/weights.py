@@ -22,6 +22,9 @@ import wandb
 import torch
 import bittensor as bt
 import template
+import multiprocessing
+import time
+import torch
    
 def init_wandb(self):
     try:
@@ -78,7 +81,7 @@ def init_wandb(self):
 def set_weights(self):
     if torch.all(self.moving_averaged_scores == 0):
         return
-    
+
     # Calculate the average reward for each uid across non-zero values.
     # Replace any NaN values with 0.
     raw_weights = torch.nn.functional.normalize(self.moving_averaged_scores, p=1, dim=0)
@@ -103,20 +106,35 @@ def set_weights(self):
     # Log the weights dictionary
     bt.logging.info(f"Attempting to set weights action for {weights_dict}")
 
-    success = self.subtensor.set_weights(
-        wallet=self.wallet,
-        netuid=self.config.netuid,
-        uids=processed_weight_uids,
-        weights=processed_weights,
-        wait_for_finalization=False,
-        version_key=template.__spec_version__,
-    )
+    def set_weights_process():
+        success = self.subtensor.set_weights(
+            wallet=self.wallet,
+            netuid=self.config.netuid,
+            uids=processed_weight_uids,
+            weights=processed_weights,
+            wait_for_inclusion=False,
+            wait_for_finalization=False,
+            version_key=template.__weights_version__,
+        )
+        return success
 
-    # Log the success status
-    if success:
-        bt.logging.success("Completed set weights action successfully.")
-    else:
-        bt.logging.error("Failed to complete set weights action.")
+    # Start the process with a timeout
+    ttl = 30  # Time-to-live in seconds
+    process = multiprocessing.Process(
+        target=set_weights_process,
+    )
+    process.start()
+    process.join(timeout=ttl)
+
+    if process.is_alive():
+        process.terminate()
+        process.join()
+        bt.logging.error("Failed to complete set weights action after multiple attempts.")
+        return False
+
+    bt.logging.success("Completed set weights action successfully.")
+    return True
+
 
 def update_weights(self, total_scores, steps_passed):
     try:

@@ -4,7 +4,7 @@ import json
 import asyncio
 
 wallet = bt.wallet(name = "validator", hotkey = "default")
-uids = [242]
+uids = [146]
 message = "tell me about sports"
 
 axon = bt.axon(wallet=wallet)
