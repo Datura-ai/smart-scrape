@@ -228,6 +228,9 @@ class TwitterScraperValidator:
                 links_content_length = len(response.links_content) if response.links_content is not None else 0
                 tweets_length = len(response.tweets) if response.tweets is not None else 0
                 bt.logging.info(f"uid: {uid};  score: {reward};  completion length: {completion_length};  links_content length: {links_content_length}; tweets length: {tweets_length};")
+                bt.logging.info(f"{response.completion}")
+                bt.logging.info(f"uid: {uid} Completion: ---------------------")
+                bt.logging.info(f"-----------------------------")
             bt.logging.info(f"======================== Reward ===========================")
 
             for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
