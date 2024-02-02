@@ -21,6 +21,7 @@ from neurons.validators.penalty import (
 )
 from reward.prompt import PromptRewardModel, init_tokenizer
 from neurons.validators.utils.tasks import TwitterTask
+from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from template.dataset import  MockTwitterQuestionsDataset
 from template.services.twitter import TwitterAPIClient
 from template import QUERY_MINERS
@@ -156,8 +157,12 @@ class TwitterScraperValidator:
             for response in responses:
                 if self.neuron.config.neuron.disable_twitter_links_content_fetch:
                     com_links = self.twitter_api.find_twitter_links(response.completion)
+
+                    random_link = random.choice(com_links)
+                    tweets = TwitterScraperActor().get_tweets(urls=[random_link])
+
                     response.links_content = com_links
-                    response.tweets = com_links
+                    response.tweets = tweets
                 else:
                     time.sleep(10)
                     completion = response.completion
