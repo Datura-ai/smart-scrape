@@ -268,9 +268,6 @@ def resync_metagraph(self: "validators.neuron.neuron"):
 
     bt.logging.info("Synced metagraph")
     self.metagraph.load()
-
-    # # Sync the metagraph.
-    # self.metagraph.sync(subtensor=self.subtensor)
     
     # Check if the metagraph axon info has changed.
     metagraph_axon_info_updated = previous_metagraph.axons != self.metagraph.axons
