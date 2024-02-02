@@ -132,6 +132,9 @@ class PromptRewardModel(BaseRewardModel):
                     f"PromptRewardModel | {name} score: {score} | {repr(score_text)} | "
                     f"{duration:.2f}s | {repr(completion[:70])}"
                 )
+                if score == 0:
+                    length = len(response.links_content) * 2 
+                    score = length if length < 10 else 9
                 # Scale 0-10 score to 0-1 range.
                 score /= 10.0
 
