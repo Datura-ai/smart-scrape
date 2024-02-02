@@ -19,13 +19,16 @@
 
 
 # version must stay on line 22
-__version__ = "0.0.32"
+__version__ = "0.0.33"
 version_split = __version__.split(".")
 __spec_version__ = (
     (1000 * int(version_split[0]))
     + (10 * int(version_split[1]))
     + (1 * int(version_split[2]))
 )
+
+u64_max = 2**64 - 10
+__weights_version__ = u64_max
 
 print("__version__" , __version__)
 
