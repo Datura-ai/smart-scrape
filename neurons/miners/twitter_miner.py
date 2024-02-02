@@ -120,7 +120,6 @@ class TwitterScrapperMiner:
                 In <UserPrompt> provided User's prompt (Question).
                 In <PromptAnalysis> I anaysis that prompts and generate query for API, keywords, hashtags, user_mentions.
                 In <TwitterData>, Provided Twitter API fetched data.
-
                 
                 <UserPrompt>
                 {prompt}
