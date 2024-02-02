@@ -13,6 +13,8 @@ import torch
 import requests
 import traceback
 import bittensor as bt
+import threading
+import multiprocessing
 from . import client
 from collections import deque
 from template.protocol import TwitterPromptAnalysisResult
@@ -240,7 +242,10 @@ def checkpoint(self):
     resync_metagraph(self)
     # save_state(self)
 
-
+def sync_metagraph(config):
+    subtensor = bt.subtensor(config=config)
+    metagraph = subtensor.metagraph(config.netuid)
+    metagraph.save()
 
 def resync_metagraph(self: "validators.neuron.neuron"):
     """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
@@ -249,9 +254,24 @@ def resync_metagraph(self: "validators.neuron.neuron"):
     # Copies state of metagraph before syncing.
     previous_metagraph = copy.deepcopy(self.metagraph)
 
-    # Sync the metagraph.
-    self.metagraph.sync(subtensor=self.subtensor)
+    process = multiprocessing.Process(
+        target=sync_metagraph, args=(self.config,)
+    )
+    process.start()
+    ttl = 60
+    process.join(timeout=ttl)
+    if process.is_alive():
+        process.terminate()
+        process.join()
+        bt.logging.error(f"Failed to sync metagraph after {ttl} seconds")
+        return
 
+    bt.logging.info("Synced metagraph")
+    self.metagraph.load()
+
+    # # Sync the metagraph.
+    # self.metagraph.sync(subtensor=self.subtensor)
+    
     # Check if the metagraph axon info has changed.
     metagraph_axon_info_updated = previous_metagraph.axons != self.metagraph.axons
 
@@ -276,6 +296,3 @@ def resync_metagraph(self: "validators.neuron.neuron"):
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
-
-
-
