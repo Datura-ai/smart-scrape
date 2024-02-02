@@ -56,27 +56,19 @@ def init_wandb(self):
         bt.logging.error(f"Error in init_wandb: {e}")
         raise
 
+def set_weights_process(wallet, netuid, uids, weights, config, version_key):
+    subtensor = bt.subtensor(config=config)
+    success = subtensor.set_weights(
+        wallet=wallet,
+        netuid=netuid,
+        uids=uids,
+        weights=weights,
+        wait_for_inclusion=False,
+        wait_for_finalization=False,
+        version_key=version_key,
+    )
 
-# def set_weights(self, scores):
-#     try:
-#         # alpha of .3 means that each new score replaces 30% of the weight of the previous weights
-#         alpha = .3
-#         if self.moving_average_scores is None:
-#             self.moving_average_scores = scores.clone()
-
-#         # Update the moving average scores
-#         self.moving_average_scores = alpha * scores + (1 - alpha) * self.moving_average_scores
-#         bt.logging.info(f"Updated moving average of weights for netuid {self.config.netuid} on {self.wallet}: {self.moving_average_scores}")
-#         self.subtensor.set_weights(
-#             netuid=self.config.netuid, 
-#             wallet=self.wallet, 
-#             uids=self.metagraph.uids, 
-#             weights=self.moving_average_scores, 
-#             wait_for_inclusion=False)
-#         bt.logging.success("Successfully set weights.")
-#     except Exception as e:
-#         bt.logging.error(f"Error in set_weights: {e}")
-#         raise
+    return success
 
 def set_weights(self):
     if torch.all(self.moving_averaged_scores == 0):
@@ -106,22 +98,18 @@ def set_weights(self):
     # Log the weights dictionary
     bt.logging.info(f"Attempting to set weights action for {weights_dict}")
 
-    def set_weights_process():
-        success = self.subtensor.set_weights(
-            wallet=self.wallet,
-            netuid=self.config.netuid,
-            uids=processed_weight_uids,
-            weights=processed_weights,
-            wait_for_inclusion=False,
-            wait_for_finalization=False,
-            version_key=template.__weights_version__,
-        )
-        return success
-
     # Start the process with a timeout
-    ttl = 30  # Time-to-live in seconds
+    ttl = 60  # Time-to-live in seconds
     process = multiprocessing.Process(
         target=set_weights_process,
+        args=(
+            self.wallet,
+            self.config.netuid,
+            processed_weight_uids,
+            processed_weights,
+            self.config,
+            template.__weights_version__,
+        ),
     )
     process.start()
     process.join(timeout=ttl)
