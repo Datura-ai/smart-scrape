@@ -6,6 +6,7 @@ import random
 import copy
 import bittensor as bt
 import template.utils as utils
+import os
 from typing import List
 from template.protocol import IsAlive
 from twitter_validator import TwitterScraperValidator
@@ -21,6 +22,7 @@ from template.utils import (
     checkpoint,
 )
 
+VALIDATOR_ACCESS_KEY = os.environ.get('VALIDATOR_ACCESS_KEY')
 
 class neuron(AbstractNeuron):
     @classmethod

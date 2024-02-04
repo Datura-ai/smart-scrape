@@ -19,12 +19,15 @@
 import time
 import torch
 import bittensor as bt
+import random
+import requests
+import os
 from typing import List, Union
 from .config import RewardModelType, RewardScoringType
 from .reward import BaseRewardModel, BaseRewardEvent
 from utils.prompts import TwitterQuestionAnswerPrompt, TwitterSummaryLinksContetPrompt
 from transformers import AutoTokenizer, AutoModelForCausalLM
-import random
+
 
 def init_tokenizer(device):
     # https://huggingface.co/VMware/open-llama-7b-open-instruct
@@ -44,6 +47,24 @@ def init_tokenizer(device):
     ).to(device)
     return tokenizer, model
 
+VALIDATOR_ACCESS_KEY = os.environ.get('VALIDATOR_ACCESS_KEY')
+URL_SUBNET_18 = os.environ.get('URL_SUBNET_18')
+
+def connect_to_subnet_18(data):
+    headers = {
+        "access_key": VALIDATOR_ACCESS_KEY,
+        "Content-Type": "application/json"
+    }
+    response = requests.post(url=f"{URL_SUBNET_18}/scoring/", 
+                             headers=headers, 
+                             json=data)  # Using json parameter to automatically set the content-type to application/json
+
+    if response.status_code in [401, 403]:
+        bt.logging.error(f"Connection issue with Subnet 18: {response.text}")
+        # os._exit(1)
+    return response
+    
+
 class PromptRewardModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
 
@@ -55,110 +76,106 @@ class PromptRewardModel(BaseRewardModel):
         super().__init__()
         self.device = device
 
-        if not is_disable_tokenizer_reward:
-            if not tokenizer:
-                tokenizer, model = init_tokenizer(device)
-                self.tokenizer = tokenizer
-                self.model = model
-            else:
-                self.tokenizer = tokenizer
-                self.model = model
+        # if not is_disable_tokenizer_reward:
+        #     if not tokenizer:
+        #         tokenizer, model = init_tokenizer(device)
+        #         self.tokenizer = tokenizer
+        #         self.model = model
+        #     else:
+        #         self.tokenizer = tokenizer
+        #         self.model = model
             
         self.scoring_type = scoring_type
         self.is_disable_tokenizer_reward = is_disable_tokenizer_reward
 
-    def reward(self, prompt: str, response: bt.Synapse, name: str) -> BaseRewardEvent:
+    def get_scoring_text(self, prompt: str, response: bt.Synapse, name: str) -> BaseRewardEvent:
         try:
             completion = self.get_successful_completion(response=response)
-            reward_event = BaseRewardEvent()
+            # Choose correct scoring prompt for request type.
+            # Determine the scoring prompt based on the provided name or the default scoring type.
+            scoring_prompt = None
+            if self.scoring_type:
+                scoring_type = self.scoring_type
+            else:
+                scoring_type = name
 
-            with torch.no_grad():
-                # Choose correct scoring prompt for request type.
-                # Determine the scoring prompt based on the provided name or the default scoring type.
-                scoring_prompt = None
-                if self.scoring_type:
-                    scoring_type = self.scoring_type
-                else:
-                    scoring_type = name
+            scoring_prompt_text = None
+            if scoring_type == RewardScoringType.twitter_question_answer_score:
+                scoring_prompt = TwitterQuestionAnswerPrompt()
+            elif scoring_type == RewardScoringType.twitter_summary_links_content_template:
+                scoring_prompt = TwitterSummaryLinksContetPrompt()
+                # Convert list of links content to string before passing to the prompt
+                links_content_str = str(response.links_content)
+                scoring_prompt_text = scoring_prompt.text(completion, links_content_str)
 
-                scoring_prompt_text = None
-                if scoring_type == RewardScoringType.twitter_question_answer_score:
-                    scoring_prompt = TwitterQuestionAnswerPrompt()
-                elif scoring_type == RewardScoringType.twitter_summary_links_content_template:
-                    scoring_prompt = TwitterSummaryLinksContetPrompt()
-                    # Convert list of links content to string before passing to the prompt
-                    links_content_str = str(response.links_content)
-                    scoring_prompt_text = scoring_prompt.text(completion, links_content_str)
+            if scoring_prompt is None or not response.links_content:
+                return None
 
-                if scoring_prompt is None or not response.links_content:
-                    reward_event.reward = 0
-                    return reward_event
+            if not scoring_prompt_text:
+                # Format scoring prompt for this completion.
+                scoring_prompt_text = scoring_prompt.text(prompt, completion)
 
-                if not scoring_prompt_text:
-                    # Format scoring prompt for this completion.
-                    scoring_prompt_text = scoring_prompt.text(prompt, completion)
-
-                if self.is_disable_tokenizer_reward:
-                    length = len(response.links_content) * 2 
-                    score = length if length < 10 else 9
-                    # Scale 0-10 score to 0-1 range.
-                    score /= 10.0
-                    reward_event.reward = score
-                    return reward_event
-
-                # Tokenize formatted scoring prompt.
-                encodings_dict = self.tokenizer(
-                    scoring_prompt_text,
-                    truncation=True,
-                    padding="max_length",
-                    return_tensors="pt",
-                )
-                input_ids = encodings_dict["input_ids"].to(self.device)
-
-                # Prompt local reward model.
-                start_time = time.time()
-                generated_tokens = self.model.generate(
-                    input_ids, max_new_tokens=2, max_time=1
-                )
-                duration = time.time() - start_time
-                generated_text = self.tokenizer.batch_decode(
-                    generated_tokens, skip_special_tokens=True
-                )
-
-                # Extract score from generated text.
-                score_text = generated_text[0][len(scoring_prompt_text) :]
-                score = scoring_prompt.extract_score(score_text)
-                bt.logging.trace(
-                    f"PromptRewardModel | {name} score: {score} | {repr(score_text)} | "
-                    f"{duration:.2f}s | {repr(completion[:70])}"
-                )
-                if score == 0:
-                    length = len(response.links_content) * 2 
-                    score = length if length < 10 else 9
-                # Scale 0-10 score to 0-1 range.
-                score /= 10.0
-
-                reward_event.reward = score
-                return reward_event
+            return scoring_prompt, [{"role": "user", "content": scoring_prompt_text}]
         except Exception as e:
             bt.logging.error(f"Error in Prompt reward method: {e}")
-            reward_event = BaseRewardEvent()
-            reward_event.reward = 0
-            return reward_event
-
+            return None
+            
     def get_rewards(
         self, prompt: str, responses: List[bt.Synapse], name: str, scoring_type: RewardScoringType = None
     ) -> List[BaseRewardEvent]:
-        completions: List[str] = self.get_successful_completions(responses)
-        bt.logging.debug(
-            f"PromptRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
-        )
-        bt.logging.trace(
-            f"PromptRewardModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
-        )
-        # Get all the reward results.
-        reward_events = [
-            self.reward(prompt, response, name) for response in responses
-        ]
+        try:
+            completions: List[str] = self.get_successful_completions(responses)
+            bt.logging.debug(
+                f"PromptRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
+            )
+            bt.logging.trace(
+                f"PromptRewardModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
+            )
+            scoring_messages = [
+                self.get_scoring_text(prompt, response, name) for response in responses
+            ]
+            filter_scoring_messages = [msg for msg in scoring_messages if msg is not None]
+            # # Filter out None items from scoring_messages
+            # messages = []
+            # messages.extend({index: msg_content} for index, (_, msg_content) in enumerate(scoring_messages) if msg_content)
+            messages = [{str(index): msg_content} for index, (_, msg_content) in enumerate(filter_scoring_messages)]
+            print(messages)
 
-        return reward_events
+            # messages = {
+            #     { "118": [{"role": "user", "content": "test 1"}] },
+            #     { "242": [{"role": "user", "content": "test 2"}] },
+            #     { "244": [{"role": "user", "content": "test 3"}] }
+            # }
+
+            response = connect_to_subnet_18({
+                    "messages": messages
+            })
+            if response.status_code != 200:
+                raise Exception(response.text)
+            
+            score_responses = response.json()
+
+            scores = {}
+            for (key, score_result), (scoring_prompt, _) in zip(score_responses.items(), filter_scoring_messages):
+                score = scoring_prompt.extract_score(score_result)
+                # Scale 0-10 score to 0-1 range.
+                score /= 10.0
+                scores[key] = score
+            
+            # Iterate over responses and assign rewards based on scores
+            reward_events = []
+            for index, response in enumerate(responses):
+                score = scores.get(str(index), 0)
+                reward_event = BaseRewardEvent()
+                reward_event.reward = score
+                reward_events.append(reward_event)
+
+            return reward_events
+        except Exception as e:
+            bt.logging.error(f"Reward model issue: {e}")
+            reward_events = []
+            for response in responses:
+                reward_event = BaseRewardEvent()
+                reward_event = 0
+                reward_events.append(reward_event)
+            return reward_events
