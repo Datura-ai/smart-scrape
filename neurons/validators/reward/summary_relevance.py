@@ -33,7 +33,7 @@ URL_SUBNET_18 = os.environ.get('URL_SUBNET_18')
 
 def connect_to_subnet_18(data):
     headers = {
-        "access_key": EXPECTED_ACCESS_KEY,
+        "access-key": EXPECTED_ACCESS_KEY,
         "Content-Type": "application/json"
     }
     response = requests.post(url=f"{URL_SUBNET_18}/scoring/", 
@@ -59,21 +59,19 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
         self.scoring_type = scoring_type
 
-    def get_scoring_text(self, prompt: str, response: bt.Synapse, name: str) -> BaseRewardEvent:
+    def get_scoring_text(self, prompt: str, response: bt.Synapse) -> BaseRewardEvent:
         try:
             completion = self.get_successful_completion(response=response)
+            if not self.scoring_type:
+                return None
             # Choose correct scoring prompt for request type.
             # Determine the scoring prompt based on the provided name or the default scoring type.
             scoring_prompt = None
-            if self.scoring_type:
-                scoring_type = self.scoring_type
-            else:
-                scoring_type = name
 
             scoring_prompt_text = None
-            if scoring_type == RewardScoringType.twitter_question_answer_score:
+            if self.scoring_type.value == RewardScoringType.twitter_question_answer_score.value:
                 scoring_prompt = TwitterQuestionAnswerPrompt()
-            elif scoring_type == RewardScoringType.twitter_summary_links_content_template:
+            elif self.scoring_type.value == RewardScoringType.twitter_summary_links_content_template.value:
                 scoring_prompt = TwitterSummaryLinksContetPrompt()
                 # Convert list of links content to string before passing to the prompt
                 links_content_str = str(response.links_content)
@@ -103,29 +101,32 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 f"PromptRewardModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
             )
             scoring_messages = [
-                self.get_scoring_text(prompt, response, name) for response in responses
+                self.get_scoring_text(prompt, response) for response in responses
             ]
             filter_scoring_messages = [msg for msg in scoring_messages if msg is not None]
             # # Filter out None items from scoring_messages
             # messages = []
             # messages.extend({index: msg_content} for index, (_, msg_content) in enumerate(scoring_messages) if msg_content)
-            messages = [{str(index): msg_content} for index, (_, msg_content) in enumerate(filter_scoring_messages)]
-            print(messages)
-
-            response = connect_to_subnet_18({
-                    "messages": messages
-            })
-            if response.status_code != 200:
-                raise Exception(response.text)
-            
-            score_responses = response.json()
+            # messages = [{str(index): msg_content} for index, (_, msg_content) in enumerate(filter_scoring_messages)]
+            messages = [{str(index): item[1]} for index, item in enumerate(scoring_messages) if item is not None]
 
             scores = {}
-            for (key, score_result), (scoring_prompt, _) in zip(score_responses.items(), filter_scoring_messages):
-                score = scoring_prompt.extract_score(score_result)
-                # Scale 0-10 score to 0-1 range.
-                score /= 10.0
-                scores[key] = score
+            if messages:
+                response = connect_to_subnet_18({
+                        "messages": messages
+                })
+                if response.status_code != 200:
+                    bt.logging.error(f"ERROR connect to Subnet 18: {e}")
+                    raise Exception(response.text)
+                
+                score_responses = response.json()
+
+                
+                for (key, score_result), (scoring_prompt, _) in zip(score_responses.items(), filter_scoring_messages):
+                    score = scoring_prompt.extract_score(score_result)
+                    # Scale 0-10 score to 0-1 range.
+                    score /= 10.0
+                    scores[key] = score
             
             # Iterate over responses and assign rewards based on scores
             reward_events = []
@@ -141,6 +142,6 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             reward_events = []
             for response in responses:
                 reward_event = BaseRewardEvent()
-                reward_event = 0
+                reward_event.reward = 0
                 reward_events.append(reward_event)
             return reward_events
