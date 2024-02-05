@@ -101,10 +101,10 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
-        "--reward.prompt_based_weight",
+        "--reward.summary_relevance_weight",
         type=float,
         help="adjusts the influence of a scoring model that evaluates the accuracy and relevance of a node's responses to given prompts.",
-        default=DefaultRewardFrameworkConfig.prompt_model_weight,
+        default=DefaultRewardFrameworkConfig.summary_relevance_weight,
     )
 
     parser.add_argument(

@@ -34,5 +34,5 @@ class DefaultRewardFrameworkConfig:
     """Reward framework default configuration.
     Note: All the weights should add up to 1.0.
     """
-    prompt_model_weight: float = 1
+    summary_relevance_weight: float = 1
     prompt_model_summary_links_content_weight: float = 0

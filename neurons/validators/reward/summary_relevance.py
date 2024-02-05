@@ -28,31 +28,12 @@ from .reward import BaseRewardModel, BaseRewardEvent
 from utils.prompts import TwitterQuestionAnswerPrompt, TwitterSummaryLinksContetPrompt
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-
-def init_tokenizer(device):
-    # https://huggingface.co/VMware/open-llama-7b-open-instruct
-    # Fast tokenizer results in incorrect encoding, set the use_fast = False parameter.
-    tokenizer = AutoTokenizer.from_pretrained(
-        PromptRewardModel.reward_model_name, use_fast=False
-    )
-    # Generative default expects most recent token on right-hand side with padding on left.
-    # https://github.com/huggingface/transformers/pull/10552
-    tokenizer.padding_side = "left"
-
-    # Check if the device is CPU or CUDA and set the precision accordingly
-    torch_dtype = torch.float32 if device == 'cpu' else torch.float16
-
-    model = AutoModelForCausalLM.from_pretrained(
-        PromptRewardModel.reward_model_name, torch_dtype=torch_dtype
-    ).to(device)
-    return tokenizer, model
-
-VALIDATOR_ACCESS_KEY = os.environ.get('VALIDATOR_ACCESS_KEY')
+EXPECTED_ACCESS_KEY = os.environ.get('EXPECTED_ACCESS_KEY', 'hello')
 URL_SUBNET_18 = os.environ.get('URL_SUBNET_18')
 
 def connect_to_subnet_18(data):
     headers = {
-        "access_key": VALIDATOR_ACCESS_KEY,
+        "access_key": EXPECTED_ACCESS_KEY,
         "Content-Type": "application/json"
     }
     response = requests.post(url=f"{URL_SUBNET_18}/scoring/", 
@@ -65,28 +46,18 @@ def connect_to_subnet_18(data):
     return response
     
 
-class PromptRewardModel(BaseRewardModel):
-    reward_model_name: str = "VMware/open-llama-7b-open-instruct"
+class SummaryRelevanceRewardModel(BaseRewardModel):
+    reward_model_name: str = "GTP-4"
 
     @property
     def name(self) -> str:
         return RewardModelType.prompt.value
 
-    def __init__(self, device: str, scoring_type: None, tokenizer= None, model = None, is_disable_tokenizer_reward=False):
+    def __init__(self, device: str, scoring_type: None):
         super().__init__()
         self.device = device
 
-        # if not is_disable_tokenizer_reward:
-        #     if not tokenizer:
-        #         tokenizer, model = init_tokenizer(device)
-        #         self.tokenizer = tokenizer
-        #         self.model = model
-        #     else:
-        #         self.tokenizer = tokenizer
-        #         self.model = model
-            
         self.scoring_type = scoring_type
-        self.is_disable_tokenizer_reward = is_disable_tokenizer_reward
 
     def get_scoring_text(self, prompt: str, response: bt.Synapse, name: str) -> BaseRewardEvent:
         try:
@@ -140,12 +111,6 @@ class PromptRewardModel(BaseRewardModel):
             # messages.extend({index: msg_content} for index, (_, msg_content) in enumerate(scoring_messages) if msg_content)
             messages = [{str(index): msg_content} for index, (_, msg_content) in enumerate(filter_scoring_messages)]
             print(messages)
-
-            # messages = {
-            #     { "118": [{"role": "user", "content": "test 1"}] },
-            #     { "242": [{"role": "user", "content": "test 2"}] },
-            #     { "244": [{"role": "user", "content": "test 3"}] }
-            # }
 
             response = connect_to_subnet_18({
                     "messages": messages

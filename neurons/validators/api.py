@@ -19,7 +19,7 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
-VALIDATOR_ACCESS_KEY = os.environ.get('VALIDATOR_ACCESS_KEY')
+EXPECTED_ACCESS_KEY = os.environ.get('EXPECTED_ACCESS_KEY', 'hello')
 
 neu = neuron()
 
@@ -74,7 +74,7 @@ async def response_stream_event(data):
 async def process_twitter_validatordator(request: Request, data: dict):
     # Check access key
     access_key = request.headers.get("access-key")
-    if access_key != VALIDATOR_ACCESS_KEY:
+    if access_key != EXPECTED_ACCESS_KEY:
         raise HTTPException(status_code=401, detail="Invalid access key")
     return StreamingResponse(response_stream(data))
 
@@ -82,7 +82,7 @@ async def process_twitter_validatordator(request: Request, data: dict):
 async def process_twitter_validatordator(request: Request, data: dict):
     # Check access key
     # access_key = request.headers.get("access-key")
-    # if access_key != VALIDATOR_ACCESS_KEY:
+    # if access_key != EXPECTED_ACCESS_KEY:
     #     raise HTTPException(status_code=401, detail="Invalid access key")
     return StreamingResponse(response_stream_event(data))
 
