@@ -85,38 +85,40 @@ class BaseRewardModel:
         # Get the number of rewards (successful responses).
         new_count = rewards.numel()
 
-        # Update stats only if there are new rewards.
-        if 0 < new_count and 0 < self.count + new_count:
-            # Calculate the mean and standard deviation of the new rewards.
-            new_mean = rewards.mean()
-            new_var = rewards.var(dim=0)
+        # # Update stats only if there are new rewards.
+        # if 0 < new_count and 0 < self.count + new_count:
+        #     # Calculate the mean and standard deviation of the new rewards.
+        #     new_mean = rewards.mean()
+        #     new_var = rewards.var(dim=0)
 
-            # Compute the weights for the new and old rewards.
-            new_weight = new_count / (self.count + new_count)
-            old_weight = self.count / (self.count + new_count)
+        #     # Compute the weights for the new and old rewards.
+        #     new_weight = new_count / (self.count + new_count)
+        #     old_weight = self.count / (self.count + new_count)
 
-            # Save the difference in means before updating the old mean.
-            diff = new_mean - self.mean
+        #     # Save the difference in means before updating the old mean.
+        #     diff = new_mean - self.mean
 
-            # Update the old mean with the new mean and weights.
-            self.mean = new_weight * new_mean + old_weight * self.mean
-            # Update the old variance with the new variance and weights, and adjusting for the difference in means.
-            self.var = (
-                (new_weight * new_var)
-                + (old_weight * self.var)
-                + (new_weight * old_weight) * diff * diff
-            )
-            # Update the old count with the new count, but don't exceed the limit.
-            self.count = min(self.count_limit, self.count + new_count)
+        #     # Update the old mean with the new mean and weights.
+        #     self.mean = new_weight * new_mean + old_weight * self.mean
+        #     # Update the old variance with the new variance and weights, and adjusting for the difference in means.
+        #     self.var = (
+        #         (new_weight * new_var)
+        #         + (old_weight * self.var)
+        #         + (new_weight * old_weight) * diff * diff
+        #     )
+        #     # Update the old count with the new count, but don't exceed the limit.
+        #     self.count = min(self.count_limit, self.count + new_count)
 
         # Standardize the rewards using the updated mean and variance.
-        rewards = rewards - self.mean
+        # rewards = rewards - self.mean
         if self.var > 0:
             rewards /= torch.sqrt(self.var)
         # Scale the standardized rewards to the range [0, 1] using the error function as a cumulative distribution function (CDF).
-        rewards = 0.5 * (
-            1 + torch.erf(rewards / torch.sqrt(torch.tensor([2.0])).to(rewards.device))
-        )
+        # rewards = 0.5 * (
+        #     1 + torch.erf(rewards / torch.sqrt(torch.tensor([2.0])).to(rewards.device))
+        # )
+        common_formula = torch.erf(rewards / torch.sqrt(torch.tensor([2.0])).to(rewards.device))
+        rewards = torch.where(rewards == 0, 0, 0.5 * (1 + common_formula))
 
         return rewards
     
@@ -124,18 +126,19 @@ class BaseRewardModel:
         successful_completions_indices: List[int] = [
             idx
             for idx, resp in enumerate(responses)
-            if resp.dendrite.status_code == 200
+            if resp.dendrite.status_code == 200 and resp.links_content
         ]
 
         # Get all completions from responding calls.
         successful_completions: List[str] = [
             responses[idx].completion.strip() for idx in successful_completions_indices
         ]
+
         return successful_completions
     
     def get_successful_completion(self, response: bt.Synapse):
         # Check if the response is successful.
-        if response.dendrite.status_code == 200:
+        if response.dendrite.status_code == 200 and response.links_content:
             # Get the completion from the successful response.
             successful_completion = response.completion.strip()
             return successful_completion
@@ -150,13 +153,14 @@ class BaseRewardModel:
         successful_completions_indices: List[int] = [
             idx
             for idx, resp in enumerate(responses)
-            if resp.dendrite.status_code == 200
+            if resp.dendrite.status_code == 200 and resp.links_content
         ]
 
         # Reward each completion.
         reward_events = BaseRewardEvent.parse_reward_events(
             self.get_rewards(prompt, responses, name)
         )
+        successful_rewards = reward_events
         successful_rewards = torch.tensor(
             reward_events.pop("reward"), dtype=torch.float32
         )
@@ -169,13 +173,16 @@ class BaseRewardModel:
         filled_rewards_normalized = torch.zeros(len(responses), dtype=torch.float32)
 
         # Fill reward tensor.
-        for idx, reward, reward_normalized in zip(
-            successful_completions_indices,
-            successful_rewards,
-            successful_rewards_normalized,
-        ):
-            filled_rewards[idx] = reward
-            filled_rewards_normalized[idx] = reward_normalized
+        # for idx, reward, reward_normalized in zip(
+        #     successful_completions_indices,
+        #     successful_rewards,
+        #     successful_rewards_normalized,
+        # ):
+        #     filled_rewards[idx] = reward
+        #     filled_rewards_normalized[idx] = reward_normalized
+        for idx in successful_completions_indices:
+            filled_rewards[idx] = successful_rewards[idx]
+            filled_rewards_normalized[idx] = successful_rewards_normalized[idx]
 
         # Fill every item of the reward_events
         for name, reward_values in reward_events.items():

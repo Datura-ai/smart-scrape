@@ -1,0 +1,68 @@
+name: Deploy to AWS CloudFront
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      REACT_APP_BACKEND_HOST: ${{ secrets.BACKEND_API_URL }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 18
+
+      - name: Setup yarn
+        run: npm install -g yarn
+
+      - name: Print BACKEND_API_URL
+        run: echo "BACKEND_API_URL is ${{ secrets.BACKEND_API_URL }}"
+
+      - name: Print AWS_ACCESS_KEY_ID
+        run: echo "AWS_ACCESS_KEY_ID is ${{ secrets.AWS_ACCESS_KEY_ID }}"
+
+      # Get yarn cache directory path
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+        working-directory: ui
+
+      # Cache yarn dependencies using the determined directory path
+      - uses: actions/cache@v2
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('ui/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install dependencies
+        run: yarn install
+        working-directory: ui
+
+      - name: Build 
+        env:
+          NODE_OPTIONS: '--max_old_space_size=4096'
+        run: yarn run build
+        working-directory: ui
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} #todo move env variables on github
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} #todo move env variables on github
+          aws-region:  ${{ secrets.AWS_REGION }}
+
+      - name: Upload to S3
+        run: |
+          aws s3 sync ./ui/build s3://smart-scrape-ui --delete
+
+      - name: Invalidate CloudFront Distribution
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_DISTRIBUTION }} --paths "/*"

@@ -8,14 +8,20 @@ import base64
 import random
 import asyncio
 import template
+import copy
+import torch
 import requests
 import traceback
 import bittensor as bt
+import threading
+import multiprocessing
 from . import client
 from collections import deque
 from template.protocol import TwitterPromptAnalysisResult
 from datetime import datetime
-from .dataset import tweet_prompts
+from template.misc import ttl_get_block
+from typing import Any, Dict, Optional
+
 
 list_update_lock = asyncio.Lock()
 _text_questions_buffer = deque()
@@ -34,13 +40,11 @@ def load_state_from_file(filename="validators/state.json"):
 
 state = load_state_from_file()
 
-
 def get_state():
     global state
     if state is None:
         load_state_from_file()
     return state
-
 
 def save_state_to_file(state, filename="state.json"):
     with open(filename, "w") as file:
@@ -162,10 +166,9 @@ def extract_python_list(text: str):
 
     return None
 
-
 async def call_openai(messages, temperature, model, seed=1234, response_format=None):
     for attempt in range(2):
-        bt.logging.debug(f"Calling Openai. Temperature = {temperature}, Model = {model}, Seed = {seed},  Messages = {messages}")
+        bt.logging.trace(f"Calling Openai. Temperature = {temperature}, Model = {model}, Seed = {seed},  Messages = {messages}")
         try:
             response = await client.chat.completions.create(
                 model=model,
@@ -175,7 +178,7 @@ async def call_openai(messages, temperature, model, seed=1234, response_format=N
                 response_format=response_format
             )
             response = response.choices[0].message.content
-            bt.logging.debug(f"validator response is {response}")
+            bt.logging.trace(f"validator response is {response}")
             return response
 
         except Exception as e:
@@ -183,8 +186,6 @@ async def call_openai(messages, temperature, model, seed=1234, response_format=N
             await asyncio.sleep(0.5) 
     
     return None
-
-
 
 # Github unauthorized rate limit of requests per hour is 60. Authorized is 5000.
 def get_version(line_number = 22):
@@ -222,19 +223,19 @@ def send_discord_alert(message, webhook_url):
     except Exception as e:
         print(f"Failed to send Discord alert: {e}", exc_info=True)
 
-
-def get_random_tweet_prompts(num_questions_needed):
-    if num_questions_needed > len(tweet_prompts):
-        raise ValueError("Requested more prompts than available")
-
-    random.shuffle(tweet_prompts)
-    return tweet_prompts[:num_questions_needed]
-
+def should_checkpoint(self):
+    # Check if enough epoch blocks have elapsed since the last checkpoint.
+    return (
+        ttl_get_block(self) % self.config.neuron.checkpoint_block_length
+        < self.prev_block % self.config.neuron.checkpoint_block_length
+    )
 
 
-import os
-from typing import Any, Dict, Optional
-
+def checkpoint(self):
+    """Checkpoints the training process."""
+    bt.logging.info("checkpoint()")
+    resync_metagraph(self)
+    # save_state(self)
 
 def get_from_dict_or_env(
     data: Dict[str, Any], key: str, env_key: str, default: Optional[str] = None
@@ -244,8 +245,7 @@ def get_from_dict_or_env(
         return data[key]
     else:
         return get_from_env(key, env_key, default=default)
-
-
+    
 def get_from_env(key: str, env_key: str, default: Optional[str] = None) -> str:
     """Get a value from a dictionary or an environment variable."""
     if env_key in os.environ and os.environ[env_key]:
@@ -258,3 +258,54 @@ def get_from_env(key: str, env_key: str, default: Optional[str] = None) -> str:
             f" `{env_key}` which contains it, or pass"
             f"  `{key}` as a named parameter."
         )
+def sync_metagraph(config):
+    subtensor = bt.subtensor(config=config)
+    metagraph = subtensor.metagraph(config.netuid)
+    metagraph.save()
+
+def resync_metagraph(self: "validators.neuron.neuron"):
+    """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
+    bt.logging.info("resync_metagraph()")
+
+    # Copies state of metagraph before syncing.
+    previous_metagraph = copy.deepcopy(self.metagraph)
+
+    process = multiprocessing.Process(
+        target=sync_metagraph, args=(self.config,)
+    )
+    process.start()
+    ttl = 60
+    process.join(timeout=ttl)
+    if process.is_alive():
+        process.terminate()
+        process.join()
+        bt.logging.error(f"Failed to sync metagraph after {ttl} seconds")
+        return
+
+    bt.logging.info("Synced metagraph")
+    self.metagraph.load()
+    
+    # Check if the metagraph axon info has changed.
+    metagraph_axon_info_updated = previous_metagraph.axons != self.metagraph.axons
+
+    if metagraph_axon_info_updated:
+        bt.logging.info(
+            "resync_metagraph: Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
+        )
+
+        # Zero out all hotkeys that have been replaced.
+        for uid, hotkey in enumerate(self.hotkeys):
+            if hotkey != self.metagraph.hotkeys[uid]:
+                self.moving_averaged_scores[uid] = 0  # hotkey has been replaced
+
+        # Check to see if the metagraph has changed size.
+        # If so, we need to add new hotkeys and moving averages.
+        if len(self.hotkeys) < len(self.metagraph.hotkeys):
+            # Update the size of the moving average scores.
+            new_moving_average = torch.zeros((self.metagraph.n)).to(self.device)
+            min_len = min(len(self.hotkeys), len(self.moving_averaged_scores))
+            new_moving_average[:min_len] = self.moving_averaged_scores[:min_len]
+            self.moving_averaged_scores = new_moving_average
+
+        # Update the hotkeys.
+        self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)

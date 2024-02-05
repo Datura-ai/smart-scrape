@@ -35,7 +35,11 @@ mg.run("openai trandes research 2024")
 
 OpenAI.api_key = os.environ.get('OPENAI_API_KEY')
 if not OpenAI.api_key:
-    raise ValueError("Please set the OPENAI_API_KEY environment variable.")
+    raise ValueError("Please set the OPENAI_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md")
+
+TWITTER_BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TOKEN')
+if not TWITTER_BEARER_TOKEN:
+    raise ValueError("Please set the TWITTER_BEARER_TOKEN environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md")
 
 netrc_path = pathlib.Path.home() / '.netrc'
 wandb_api_key = os.getenv('WANDB_API_KEY')
@@ -48,7 +52,6 @@ if not wandb_api_key and not netrc_path.exists():
 
 client = AsyncOpenAI(timeout=60.0)
 valid_hotkeys = []
-
 
 class StreamMiner(ABC):
     def __init__(self, config=None, axon=None, wallet=None, subtensor=None):

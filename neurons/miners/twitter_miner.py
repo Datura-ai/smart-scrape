@@ -41,12 +41,16 @@ class TwitterScrapperMiner:
     def __init__(self, miner: any):
         self.miner = miner
 
-    async def intro_text(self, model, prompt, send):
-        bt.logging.info("miner.intro_text => ", self.miner.config.miner.intro_text)
+    async def intro_text(self, model, prompt, send, is_intro_text):
+        bt.logging.trace("miner.intro_text => ", self.miner.config.miner.intro_text)
+        bt.logging.trace("Synapse.is_intro_text => ", is_intro_text)
         if not self.miner.config.miner.intro_text:
             return
         
-        bt.logging.info(f"Run intro text")
+        if not is_intro_text:
+            return
+        
+        bt.logging.trace(f"Run intro text")
 
         content = f"""
         Generate introduction for that prompt: "{prompt}",
@@ -77,33 +81,21 @@ class TwitterScrapperMiner:
             buffer.append(token)
             if len(buffer) == N:
                 joined_buffer = "".join(buffer)
-                response_body = {
-                    "tokens": joined_buffer,
-                    "prompt_analysis": '{}',
-                    "tweets": "{}"
+                text_response_body = {
+                    "type": "text",
+                    "content": joined_buffer
                 }
                 await send(
                     {
                         "type": "http.response.body",
-                        "body": json.dumps(response_body).encode("utf-8"),
+                        "body": joined_buffer.encode("utf-8"),
                         "more_body": True,
                     }
                 )
                 await asyncio.sleep(0.1)  # Wait for 100 milliseconds
-                bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                bt.logging.trace(f"Streamed tokens: {joined_buffer}")
                 buffer = []
 
-        await send(
-            {
-                "type": "http.response.body",
-                "body": json.dumps({
-                    "tokens": "\n\n",
-                    "prompt_analysis": '{}',
-                    "tweets": "{}"
-                }).encode("utf-8"),
-                "more_body": True,
-            }
-        )
         return buffer
 
     async def fetch_tweets(self, prompt):
@@ -113,36 +105,55 @@ class TwitterScrapperMiner:
             #todo we can find tweets based on twitter_query
             filtered_tweets = get_random_tweets(15)
         else:
-            tw_client  = TwitterAPIClient()
+            openai_query_model = self.miner.config.miner.openai_query_model
+            openai_fix_query_model = self.miner.config.miner.openai_fix_query_model
+            tw_client  = TwitterAPIClient(
+                openai_query_model=openai_query_model,
+                openai_fix_query_model=openai_fix_query_model
+            )
             filtered_tweets, prompt_analysis = await tw_client.analyse_prompt_and_fetch_tweets(prompt)
         return filtered_tweets, prompt_analysis
 
     async def finalize_data(self, prompt, model, filtered_tweets, prompt_analysis):
             content =F"""
                 User Prompt Analysis and Twitter Data Integration
+                In <UserPrompt> provided User's prompt (Question).
+                In <PromptAnalysis> I anaysis that prompts and generate query for API, keywords, hashtags, user_mentions.
+                In <TwitterData>, Provided Twitter API fetched data.
+                
+                <UserPrompt>
+                {prompt}
+                </UserPrompt>
 
-                User Prompt: "{prompt}"
+                <TwitterData>
+                {filtered_tweets}
+                </TwitterData>
 
-                Twitter Data: "{filtered_tweets}"
-
-                Analysis of User's Prompt: "{prompt_analysis}"
-
+                <PromptAnalysis>
+                {prompt_analysis}
+                </PromptAnalysis>
+                
                 Tasks:
-                1. Create a Response: Analyze the user's prompt and the provided Twitter data to generate a meaningful and relevant response.
-                2. Share Relevant Twitter Links: Include links to several pertinent tweets. These links will enable users to view tweet details directly.
+                1. Create a Response: Analyze UserPrompt and the provided TwitterData to generate a meaningful and relevant response.
+                2. Share Relevant Twitter Links: Include Twitter links to several pertinent tweets from provided TwitterData. These links will enable users to view tweet details directly. But only use Twitter links in your response and must return valid links.
                 3. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
-                4. You would explain how you did retrieve data based on Analysis of User's Prompt.
+                4. You would explain how you did retrieve data based on Analysis of UserPrompt.
 
                 Output Guidelines:
-                1. Comprehensive Analysis: Synthesize insights from both the user's prompt and the Twitter data to formulate a well-rounded response.
+                1. Comprehensive Analysis: Synthesize insights from both the UserPrompt and the TwitterData to formulate a well-rounded response.
 
                 Operational Rules:
-                1. No Twitter Data Scenario: If no Twitter data is provided, inform the user that current Twitter insights related to their topic are unavailable.
+                1. No TwitterData Scenario: If no TwitterData is provided, inform the user that current Twitter insights related to their topic are unavailable.
                 3. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
-                4. Seamless Integration: Avoid explicitly stating "Based on the provided Twitter data" in responses. Assume user awareness of the data integration process.
+                4. Seamless Integration: Avoid explicitly stating "Based on the provided TwitterData" in responses. Assume user awareness of the data integration process.
                 5. Please separate your responses into sections for easy reading.
+                6. TwitterData.id you can use generate tweet link, example: https://twitter.com/twitter/statuses/<Id>
+                7. Not return text like UserPrompt, PromptAnalysis, PromptAnalysis to your response, make response easy to understand to any user.
             """
-            messages = [{'role': 'user', 'content': content}]
+
+            system = "You are Twitter data analyst, and you have to give great summary to users based on provided Twitter data and user's prompt"
+            messages = [{'role': 'system', 'content': system}, 
+                        {'role': 'user', 'content': content}]
             return await client.chat.completions.create(
                 model= model,
                 messages= messages,
@@ -159,78 +170,114 @@ class TwitterScrapperMiner:
             model = synapse.model
             prompt = synapse.messages
             seed = synapse.seed
-            bt.logging.info(synapse)
-            bt.logging.info(f"question is {prompt} with model {model}, seed: {seed}")
+            is_intro_text = synapse.is_intro_text
+            bt.logging.trace(synapse)
+            
+            bt.logging.info("================================== Prompt ===================================")
+            bt.logging.info(prompt)
+            bt.logging.info("================================== Prompt ====================================")
 
             # buffer.append('Test 2')
             intro_response, (tweets, prompt_analysis) = await asyncio.gather(
-                self.intro_text(model="gpt-3.5-turbo", prompt=prompt, send=send),
+                self.intro_text(model="gpt-3.5-turbo", prompt=prompt, send=send, is_intro_text=is_intro_text),
                 self.fetch_tweets(prompt)
             )
             
-            bt.logging.info("Prompt analysis ===============================================")
+            bt.logging.info("================================== Prompt analysis ===================================")
             bt.logging.info(prompt_analysis)
-            bt.logging.info("Prompt analysis ===============================================")
-            if prompt_analysis:
-                synapse.set_prompt_analysis(prompt_analysis)
+            bt.logging.info("================================== Prompt analysis ====================================")
+            # if prompt_analysis:
+            #     synapse.set_prompt_analysis(prompt_analysis)
             
-            if not isinstance(tweets, str):
-                tweets_json = json.dumps(tweets)
-                synapse.set_tweets(tweets_json)
-            else:
-                synapse.set_tweets(tweets)
+            # if not isinstance(tweets, str):
+            #     tweets_json = json.dumps(tweets)
+            #     synapse.set_tweets(tweets_json)
+            # else:
+            #     synapse.set_tweets(tweets)
 
-            response = await self.finalize_data(prompt=prompt, model=model, filtered_tweets=tweets, prompt_analysis=prompt_analysis)
+            openai_summary_model = self.miner.config.miner.openai_summary_model
+            response = await self.finalize_data(prompt=prompt, model=openai_summary_model, filtered_tweets=tweets, prompt_analysis=prompt_analysis)
 
-            # Reset buffer for finalaze_data responses
+            # Reset buffer for finalizing data responses
             buffer = []
             N = 1
+            full_text = []  # Initialize a list to store all chunks of text
+            more_body = True
             async for chunk in response:
                 token = chunk.choices[0].delta.content or ""
                 buffer.append(token)
+                full_text.append(token)  # Append the token to the full_text list
                 if len(buffer) == N:
                     joined_buffer = "".join(buffer)
-                    # Serialize the prompt_analysis to JSON
-                    # prompt_analysis_json = json.dumps(synapse.prompt_analysis.dict())
-                    # Prepare the response body with both the tokens and the prompt_analysis
-                    response_body = {
-                        "tokens": joined_buffer,
-                        "prompt_analysis": "{}",
-                        "tweets": "{}"
+                    # Stream the text
+                    text_response_body = {
+                        "type": "text",
+                        "content": joined_buffer
                     }
-                    # Send the response body as JSON
                     await send(
                         {
                             "type": "http.response.body",
-                            "body": json.dumps(response_body).encode("utf-8"),
+                            "body": joined_buffer.encode("utf-8"),
                             "more_body": True,
                         }
                     )
-                    bt.logging.info(f"Streamed tokens: {joined_buffer}")
-                    # bt.logging.info(f"Prompt Analysis: {prompt_analysis_json}")
-                    buffer = []
+                    bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+                    buffer = []  # Clear the buffer for the next set of tokens
 
-            # Send any remaining data in the buffer
-            if synapse.prompt_analysis or synapse.tweets:
-                joined_buffer = "".join(buffer)
-                # Serialize the prompt_analysis to JSON
-                prompt_analysis_json = json.dumps(synapse.prompt_analysis.dict())
-                # Prepare the response body with both the tokens and the prompt_analysis
-                response_body = {
-                    "tokens": joined_buffer,
-                    "prompt_analysis": prompt_analysis_json,
-                    "tweets": synapse.tweets
-                }
-                # Send the response body as JSON
+            joined_full_text = "".join(full_text)  # Join all text chunks
+            bt.logging.info(f"================================== Completion Responsed ===================================") 
+            bt.logging.info(f"{joined_full_text}")  # Print the full text at the end
+            bt.logging.info(f"================================== Completion Responsed ===================================") 
+            
+            # # Send prompt_analysis
+            # if prompt_analysis:
+            #     prompt_analysis_json = json.dumps(prompt_analysis.dict())
+            #     prompt_analysis_response_body = {
+            #         "type": "prompt_analysis",
+            #         "content": prompt_analysis_json
+            #     }
+            #     await send(
+            #         {
+            #             "type": "http.response.body",
+            #             "body": json.dumps(prompt_analysis_response_body).encode("utf-8"),
+            #             "more_body": True,
+            #         }
+            #     )
+            #     bt.logging.info(f"Prompt Analysis sent")
+
+            # # Send tweets
+            # if tweets: 
+            #     result = json.loads(tweets)
+            #     if 'data' in result:
+            #         tweets_data = result['data']
+            #     else:
+            #         tweets_data = []
+            #     tweets_json = json.dumps(tweets_data)
+            #     tweets_response_body = {
+            #         "type": "tweets",
+            #         "content": tweets_json
+            #     }
+            #     print(tweets_json)
+            #     more_body = False
+            #     await send(
+            #         {
+            #             "type": "http.response.body",
+            #             "body": json.dumps(tweets_response_body).encode("utf-8"),
+            #             "more_body": False,
+            #         }
+            #     )
+            #     bt.logging.info(f"Tweet data sent. Number of tweets: {len(tweets_data)}")
+            
+            if more_body:
                 await send(
                     {
                         "type": "http.response.body",
-                        "body": json.dumps(response_body).encode("utf-8"),
+                        "body": b"",
                         "more_body": False,
                     }
-                )
-                bt.logging.info(f"Streamed tokens: {joined_buffer}")
-                bt.logging.info(f"Prompt Analysis: {prompt_analysis_json}")
-                bt.logging.info(f"response is {response}")
+                )            
+
+            bt.logging.info(f"End of Streaming")
+
         except Exception as e:
             bt.logging.error(f"error in twitter scraper {e}\n{traceback.format_exc()}")

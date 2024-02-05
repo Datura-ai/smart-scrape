@@ -64,7 +64,7 @@ def check_config(cls, config: "bt.Config"):
 
 def add_args(cls, parser):
     parser.add_argument(
-        "--netuid", type=int, help="Prompting network netuid", default=1
+        "--netuid", type=int, help="Prompting network netuid", default=22
     )
 
     parser.add_argument('--wandb.off', action='store_false', dest='wandb_on')
@@ -101,20 +101,6 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
-        "--reward.dpo_weight",
-        type=float,
-        help="Weight for the dpo reward model",
-        default=DefaultRewardFrameworkConfig.dpo_model_weight,
-    )
-
-    parser.add_argument(
-        "--reward.rlhf_weight",
-        type=float,
-        help="Weight for the rlhf reward model",
-        default=DefaultRewardFrameworkConfig.rlhf_model_weight,
-    )
-
-    parser.add_argument(
         "--reward.prompt_based_weight",
         type=float,
         help="adjusts the influence of a scoring model that evaluates the accuracy and relevance of a node's responses to given prompts.",
@@ -139,7 +125,7 @@ def add_args(cls, parser):
         "--neuron.run_all_miner_syn_qs_interval",
         type=int,
         help="Sets the interval, in seconds, for querying all miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.",
-        default=600,
+        default=1800,
     )
 
     parser.add_argument(
@@ -161,6 +147,19 @@ def add_args(cls, parser):
         type=lambda x: x.split(','),
         help="A list of miner identifiers, hotkey",
         default=[],
+    )
+    parser.add_argument(
+        "--neuron.checkpoint_block_length",
+        type=int,
+        help="Blocks before a checkpoint is saved.",
+        default=100,
+    )
+
+    parser.add_argument(
+        "--neuron.is_disable_tokenizer_reward",
+        action="store_true",
+        help="If enabled, activates a mock reward system for testing and development purposes without affecting the live reward mechanisms.",
+        default=False,
     )
 
 

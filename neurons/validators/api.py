@@ -35,17 +35,34 @@ async def response_stream(data):
 async def response_stream_event(data):
     try:
         last_message = data['messages'][-1]
-        merged_chunks = ""
-        async for response in neu.twitter_validator.organic(last_message):
-            # Decode the chunk if necessary and merge
-            chunk = str(response)  # Assuming response is already a string
-            merged_chunks += chunk
-            lines = chunk.split("\n")
-            sse_data = "\n".join(
-                f"data: {line if line else ' '}" for line in lines
-            )
-            print("sse_data: ", sse_data)
-            yield f"{sse_data}\n\n"
+        uids = None
+        if 'uids' in data:
+            uids = [uid for uid in data['uids'] if uid is not None]
+        if uids:
+            uids = [uid for uid in data['uids'] if uid is not None]
+            print(F"Check uids, {uids}")
+            merged_chunks = ""
+            async for response in neu.twitter_validator.organic_specified(last_message, uids):
+                chunk = str(response)  # Assuming response is already a string
+                merged_chunks += chunk
+                lines = chunk.split("\n")
+                sse_data = "\n".join(
+                    f"data: {line if line else ' '}" for line in lines
+                )
+                yield f"{sse_data}\n\n"
+        else:
+            uids = None
+            merged_chunks = ""
+            async for response in neu.twitter_validator.organic(last_message):
+                # Decode the chunk if necessary and merge
+                chunk = str(response)  # Assuming response is already a string
+                merged_chunks += chunk
+                lines = chunk.split("\n")
+                sse_data = "\n".join(
+                    f"data: {line if line else ' '}" for line in lines
+                )
+                # print("sse_data: ", sse_data)
+                yield f"{sse_data}\n\n"
         # Here you might want to do something with merged_chunks
         # after the loop has finished
     except Exception as e:

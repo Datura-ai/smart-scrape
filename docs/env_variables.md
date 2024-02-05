@@ -1,5 +1,7 @@
 # Enhanced Guide for Setting Up Environment Variables in Smart-Scrape System
 
+This comprehensive guide is designed to assist you in configuring the environment variables critical for the Smart-Scrape system. It highlights the specific variables required for Validators and Miners, ensuring they understand their roles and the importance of each key.
+
 ## Detailed Steps for Environment Variable Configuration
 
 ### Prerequisites
@@ -7,27 +9,46 @@
 - Accounts on OpenAI, Weights & Biases, and Twitter Developer Portal.
 
 ### Setting Up Variables
+Here's a breakdown of the environment variables necessary for the Smart-Scrape system, with detailed information on their significance for Validators and Miners:
+
 1. **OPENAI_API_KEY**
    - **Usage**: Authenticates with the OpenAI API.
-   - **How to obtain**: Visit [OpenAI API](https://beta.openai.com/signup/), sign up or log in, navigate to the API section, and generate a key.
+   - **How to Obtain**: Sign up or log in at [OpenAI API](https://beta.openai.com/signup/), navigate to the API section, and generate a key.
+   - **Required for**: Validator and Miners.
 
-2. **WANDB_API_KEY**
+2. **TWITTER_BEARER_TOKEN**
+   - **Usage**: Grants access to the Twitter API.
+   - **How to Obtain**: Create a Twitter Developer account, create an app at [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard), and generate a token.
+   - **Required for**: Miners exclusively.
+
+3. **WANDB_API_KEY**
    - **Usage**: For experiment tracking with Weights & Biases.
-   - **How to obtain**: Sign up or log in at [Weights & Biases](https://wandb.ai/), and generate a key in the API keys section of your account settings.
-
-3. **TWITTER_BEARER_TOKEN**
-   - **Usage**: Accesses the Twitter API.
-   - **How to obtain**: Create a Twitter Developer account, create an app at [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard), and generate a token in the "Keys and Tokens" section.
+   - **How to Obtain**: Sign up or log in at [Weights & Biases](https://wandb.ai/), and generate a key in your account settings.
+   - **Required for**: Validator and Miners.
 
 4. **VALIDATOR_ACCESS_KEY**
-   - **Usage**: Allows service access to the validator.
-   - **Note**: This can be any unique, strong, and random string for security.
+   - **Usage**: Secures access to the validator service.
+   - **How to Create**: Generate a unique, strong, and random string.
+   - **Required for**: Validators exclusively.
 
-### Executing Commands
-Open a terminal and run the following commands. Replace the placeholders with your actual keys.
+### Executing Commands for Setting Environment Variables
+To set the environment variables, open a terminal and replace `<your_key_here>` with your actual keys. For Validators, secure and authenticated access is crucial:
 
 ```bash
-export OPENAI_API_KEY="<your_openai_api_key>"
-export WANDB_API_KEY="<your_wandb_api_key>"
-export TWITTER_BEARER_TOKEN="<your_twitter_bearer_token>"
-export VALIDATOR_ACCESS_KEY="<your_validator_access_key>"
+export OPENAI_API_KEY=<your_openai_api_key_here>
+export TWITTER_BEARER_TOKEN=<your_twitter_bearer_token_here>  # Only for Miners
+export VALIDATOR_ACCESS_KEY=<your_validator_access_key_here>  # Only for Validators
+export WANDB_API_KEY=<your_wandb_api_key_here>
+```
+
+### Setting Environment Variables Using `.bashrc`
+If you prefer to use `.bashrc` for setting up environment variables, execute these commands:
+
+```bash
+echo 'export OPENAI_API_KEY="<your_openai_api_key>"' >> ~/.bashrc
+echo 'export TWITTER_BEARER_TOKEN="<your_twitter_bearer_token>"' >> ~/.bashrc  # Only for Miners
+echo 'export VALIDATOR_ACCESS_KEY="<your_validator_access_key>"' >> ~/.bashrc  # Only for Validators
+echo 'export WANDB_API_KEY="<your_wandb_api_key>"' >> ~/.bashrc
+
+source ~/.bashrc
+```

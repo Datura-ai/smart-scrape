@@ -3,14 +3,17 @@ import os
 import json
 import asyncio
 import re
+import random
 from datetime import datetime
-from template.utils import call_openai, tweet_prompts
+from template.utils import call_openai
 from template.protocol import TwitterPromptAnalysisResult
 import bittensor as bt
-from typing import List
+from typing import List, Dict, Any
 from urllib.parse import urlparse
+from template.dataset import MockTwitterQuestionsDataset
 
 BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TOKEN')
+
 VALID_DOMAINS = ["twitter.com", "x.com"]
 twitter_api_query_example = {
     'query': '(from:twitterdev -is:retweet) OR #twitterdev',
@@ -64,6 +67,11 @@ bad_query_examples = [
 
 ]
 
+# - media.fields allowed values: "duration_ms,height,media_key,preview_image_url,type,url,width"
+# - max_results only between 10 - 100
+# - user.fields only allowed: "created_at,description,entities,id,location,name,pinned_tweet_id,profile_image_url,protected,url,username,verified,withheld"
+# - tweet.fields only allowed: "attachments,author_id,context_annotations,conversation_id,created_at,entities,geo,id,in_reply_to_user_id,lang,possibly_sensitive,referenced_tweets,reply_settings,source,text,withheld,edit_history_tweet_ids"
+
 def get_query_gen_prompt(prompt, is_accuracy=True):
     accuracy_text = ""
     if is_accuracy:
@@ -74,7 +82,7 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
     else:
         accuracy_text = f"""   
         RULES:
-            1. Generate keywords, hashtags, and mentions that are closely related to the user's prompt and after generate Twitter API query
+            1. Similiar Generate keywords, hashtags, and mentions that are closely related to the user's prompt and after generate Twitter API query
         """
     content = f"""
         Given the specific User's prompt: '{prompt}', please perform the following tasks and provide the results in a JSON object format:
@@ -93,10 +101,12 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - If a query.word consists of two or more words, enclose them in quotation marks, i.e "Coca cola"
             - Don't use "since:" and "until:" for date filter
             - end_time must be on or after start_date
-            - media.fields allowed values: "duration_ms,height,media_key,preview_image_url,type,url,width"
+            - use lang filter in query, and filter based on user's language, default lang.en
+            - media.fields allowed values: "preview_image_url,type,url,width"
             - max_results only between 10 - 100
-            - user.fields only allowed: "created_at,description,entities,id,location,name,pinned_tweet_id,profile_image_url,protected,url,username,verified,withheld"
-            - tweet.fields only allowed: "attachments,author_id,context_annotations,conversation_id,created_at,entities,geo,id,in_reply_to_user_id,lang,possibly_sensitive,referenced_tweets,reply_settings,source,text,withheld,edit_history_tweet_ids"
+            - user.fields only allowed: "created_at,description,id,location,name,profile_image_url,url,username,verified"
+            - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text"
+
 
         Output example:
         {{
@@ -111,27 +121,52 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             }}
         }}"
     """
-    bt.logging.info("get_query_gen_prompt Start   ============================")
-    bt.logging.info(content)
-    bt.logging.info("get_query_gen_prompt End   ==============================")
+    bt.logging.trace("get_query_gen_prompt Start   ============================")
+    bt.logging.trace(content)
+    bt.logging.trace("get_query_gen_prompt End   ==============================")
     return content
 
-def get_fix_query_prompt(prompt, prompt_analysis, error):
-    task = get_query_gen_prompt(prompt=prompt, is_accuracy=False)
-    content = F"""That was my task for you: "{task}",
-    That was your result: {prompt_analysis}
-    That was Twitter API's error: "{error}"
+def get_fix_query_prompt(prompt, old_query, error, is_accuracy= True):
+    task = get_query_gen_prompt(prompt=prompt, is_accuracy=is_accuracy)
+        
+    old_query_text = ""
+    if old_query:
+        old_query_text = f"""Your previous query was: 
+        <OLD_QUERY>
+        {old_query}
+        </OLD_QUERY>
+        which did not return any results, Please analyse it and make better query."""
+    content = F"""That was task for you: 
+    <TASK>
+    {task}
+    <Task>,
+    That was user's promot: 
+    <PROMPT>
+    {prompt}
+    </PROMPT>
 
-    Please, make a new better output to get better result from Twitter API.
-    Output must be as Output example.
+    {old_query_text}
+
+    That was Twitter API's result: "{error}"
+
+    Please, make a new better Output to get better result from Twitter API.
+    Output must be as Output example as described in <TASK>.
     """
     return content
 
 class TwitterAPIClient:
-    def __init__(self):
+    def __init__(self, 
+                 openai_query_model = 'gpt-3.5-turbo-1106',
+                 openai_fix_query_model = 'gpt-4-1106-preview'
+                 ):
         # self.bearer_token = os.environ.get("BEARER_TOKEN")
         self.bearer_token = BEARER_TOKEN
-        self.twitter_link_regex = re.compile(r'https?://(?:' + '|'.join(re.escape(domain) for domain in VALID_DOMAINS) + r')/[\w/:%#\$&\?\(\)~\.=\+\-]+', re.IGNORECASE)
+        self.twitter_link_regex = re.compile(
+            r'https?://(?:' + '|'.join(re.escape(domain) for domain in VALID_DOMAINS) +
+            r')/[\w/:%#\$&\?\(\)~\.=\+\-]+(?<![\.\)])', re.IGNORECASE)
+        self.openai_query_model = openai_query_model
+        self.openai_fix_query_model = openai_fix_query_model
+
 
     def bearer_oauth(self, r):
         """
@@ -143,29 +178,34 @@ class TwitterAPIClient:
 
     def connect_to_endpoint(self, url, params):
         response = requests.get(url, auth=self.bearer_oauth, params=params)
-        print(response.status_code)
-        if response.status_code != 200:
-            raise Exception(response.status_code, response.text)
-        return response.json()
-    
+
+        if response.status_code in [401, 403]:
+            bt.logging.error(f"Critical Twitter API Ruquest error occurred: {response.text}")
+            os._exit(1)
+
+        return response
+
     def get_tweet_by_id(self, tweet_id):
         tweet_url = f"https://api.twitter.com/2/tweets/{tweet_id}"
-        json_response = self.connect_to_endpoint(tweet_url, {})
-        return json_response
+        response = self.connect_to_endpoint(tweet_url, {})
+        if response.status_code != 200:
+            return None
+        return response.json()
 
     
     def get_tweets_by_ids(self, tweet_ids):
         ids = ','.join(tweet_ids)  # Combine all tweet IDs into a comma-separated string
         tweets_url = f"https://api.twitter.com/2/tweets?ids={ids}"
-        json_response = self.connect_to_endpoint(tweets_url, {})
-        return json_response
+        response = self.connect_to_endpoint(tweets_url, {})
+        if response.status_code != 200:
+            return []
+        return response.json()
 
     def get_recent_tweets(self, query_params):
         search_url = "https://api.twitter.com/2/tweets/search/recent"
-        json_response = self.connect_to_endpoint(search_url, query_params)
-        return json.dumps(json_response, indent=4, sort_keys=True)
-
-
+        response = self.connect_to_endpoint(search_url, query_params)
+        return response
+    
     async def generate_query_params_from_prompt(self, prompt, is_accuracy = True):
         """
         This function utilizes OpenAI's API to analyze the user's query and extract relevant information such 
@@ -173,13 +213,17 @@ class TwitterAPIClient:
         """
         content  = get_query_gen_prompt(prompt, is_accuracy)
         messages = [{'role': 'user', 'content': content }]
-        bt.logging.info(content)
-        res = await call_openai(messages, 0.2, "gpt-4-1106-preview", None,  {"type": "json_object"})
+        bt.logging.trace(content)
+        res = await call_openai(messages=messages, 
+                                temperature=0.2, 
+                                model=self.openai_query_model, 
+                                seed=None, 
+                                response_format={"type": "json_object"})
         response_dict = json.loads(res)
-        bt.logging.info("generate_query_params_from_prompt Content: ", response_dict)
+        bt.logging.trace("generate_query_params_from_prompt Content: ", response_dict)
         return response_dict
-    
-    async def fix_twitter_query(self, prompt, query, error):
+
+    async def fix_twitter_query(self, prompt, query, error, is_accuracy = True):
         """
         This method refines the user's initial query by leveraging OpenAI's API 
         to parse and enhance the query with more precise keywords, hashtags, and user mentions, 
@@ -187,13 +231,18 @@ class TwitterAPIClient:
         """
         try:
             content  = get_fix_query_prompt(prompt=prompt,
-                                            prompt_analysis=query,
-                                            error=error)
+                                            old_query=query,
+                                            error=error,
+                                            is_accuracy=is_accuracy)
             messages = [{'role': 'user', 'content': content }]
-            bt.logging.info(content)
-            res = await call_openai(messages, 0.2, "gpt-4-1106-preview", None,  {"type": "json_object"})
+            bt.logging.trace(content)
+            res = await call_openai(messages=messages, 
+                                    temperature=0.5, 
+                                    model=self.openai_fix_query_model, 
+                                    seed=None, 
+                                    response_format={"type": "json_object"})
             response_dict = json.loads(res)
-            bt.logging.info("generate_query_params_from_prompt Content: ", response_dict)
+            bt.logging.trace("fix_twitter_query Content: ", response_dict)
             return response_dict
         except Exception as e:
             bt.logging.info(e)
@@ -201,19 +250,41 @@ class TwitterAPIClient:
 
     async def analyse_prompt_and_fetch_tweets(self, prompt):
         try:
+            result = {}
             query, prompt_analysis = await self.generate_and_analyze_query(prompt)
-            result = self.get_recent_tweets(prompt_analysis.api_params)
+            response = self.get_recent_tweets(prompt_analysis.api_params)
+
+            if response.status_code in [429, 502, 503, 504]:
+                bt.logging.warning(f"analyse_prompt_and_fetch_tweets status_code: {response.status_code} ===========, {response.text}")
+                await asyncio.sleep(random.randint(15, 30))  # Wait for a random time between 15 to 25 seconds before retrying
+                response = self.get_recent_tweets(prompt_analysis.api_params)  # Retry fetching tweets
             
-            result_json = json.loads(result)  # Parse the JSON response
-            if result_json.get('meta', {}).get('result_count', 0) == 0:
-                result, prompt_analysis = await self.retry_with_fixed_query(prompt, query)
+            if response.status_code == 400:
+                bt.logging.warning(f"analyse_prompt_and_fetch_tweets: Try to fix bad tweets Query ============, {response.text}")
+                response, prompt_analysis = await self.retry_with_fixed_query(prompt=prompt, old_query=prompt_analysis, error=response.text)
 
-            self.log_fetched_tweets(result)
-            return result, prompt_analysis
+            if response.status_code != 200:
+                bt.logging.error(f"Tweets Query ===================================================, {response.text}")
+                raise Exception(F"analyse_prompt_and_fetch_tweets: {response.text}")
+            
+            result_json = response.json()
+            tweets_amount = result_json.get('meta', {}).get('result_count', 0)
+            if tweets_amount == 0:
+                bt.logging.info("analyse_prompt_and_fetch_tweets: No tweets found, attempting next query.")
+                response, prompt_analysis = await self.retry_with_fixed_query(prompt, old_query=prompt_analysis, is_accuracy=False)
+                result_json = response.json() 
+            
+            bt.logging.trace("Tweets fetched ===================================================")
+            bt.logging.trace(result)
+            bt.logging.trace("================================================================")
 
+            bt.logging.info(f"Tweets fetched amount ============= {tweets_amount}")
+
+            return result_json, prompt_analysis
         except Exception as e:
-            return await self.handle_exceptions(e, prompt, query)
-
+            bt.logging.error(f"analyse_prompt_and_fetch_tweets, {e}")
+            raise e
+        
     async def generate_and_analyze_query(self, prompt):
         query = await self.generate_query_params_from_prompt(prompt)
         prompt_analysis = TwitterPromptAnalysisResult()
@@ -227,37 +298,14 @@ class TwitterAPIClient:
     def set_max_results(self, api_params, max_results=10):
         api_params['max_results'] = max_results
 
-    async def retry_with_fixed_query(self, prompt, query, error= None):
-        if not error:
-            new_query = await self.generate_query_params_from_prompt(prompt, is_accuracy=False)
-        else:
-            new_query = await self.fix_twitter_query(prompt=prompt, query=query, error=error)
+    async def retry_with_fixed_query(self, prompt, old_query, error= None, is_accuracy=True):
+        new_query = await self.fix_twitter_query(prompt=prompt, query=old_query, error=error, is_accuracy=is_accuracy)
         prompt_analysis = TwitterPromptAnalysisResult()
         prompt_analysis.fill(new_query)
         self.set_max_results(prompt_analysis.api_params)
         result = self.get_recent_tweets(prompt_analysis.api_params)
         return result, prompt_analysis
 
-    def log_fetched_tweets(self, result):
-        bt.logging.info("Tweets fetched ===================================================")
-        bt.logging.info(result)
-        bt.logging.info("================================================================")
-
-    async def handle_exceptions(self, e, prompt, query):
-        if hasattr(e, 'status') and e.status == 401:
-            bt.logging.info("Unauthorized access, check API credentials.")
-        else:
-            bt.logging.info(e)
-            return await self.attempt_fix_and_fetch(prompt=prompt, query=query, error=e)
-        return [], None
-
-    async def attempt_fix_and_fetch(self, prompt, query, error):
-        try:
-            return await self.retry_with_fixed_query(prompt, query, error)
-        except Exception as e:
-            bt.logging.info(e)
-            return [], None
-        
     @staticmethod
     def extract_tweet_id(url: str) -> str:
         """
@@ -269,7 +317,7 @@ class TwitterAPIClient:
         Returns:
             The extracted tweet ID.
         """
-        match = re.search(r'/status/(\d+)', url)
+        match = re.search(r'/status(?:es)?/(\d+)', url)
         return match.group(1) if match else None
 
     def fetch_twitter_data_for_links(self, links: List[str]) -> List[dict]:
@@ -305,30 +353,23 @@ class TwitterAPIClient:
 if __name__ == "__main__":
     client = TwitterAPIClient()
     # result = asyncio.run(client.analyse_prompt_and_fetch_tweets("Get tweets from user @gigch_eth"))
-    result = asyncio.run(client.analyse_prompt_and_fetch_tweets("xxxssszzz"))
-    print(result)
-    # result = asyncio.run(client.analyse_prompt_and_fetch_tweets("bittensor"))
-    # print(result)
 
-    # query_params = {
-    #   'query': "(OpenAI OR GPT-3 OR DALL-E OR ChatGPT OR artificial intelligence OR machine learning OR #OpenAI OR #ArtificialIntelligence OR #MachineLearning OR #GPT3 OR #DALLE OR #ChatGPT OR #AITrends OR #TechTrends) -is:retweet"
-    #   'query': '(OpenAI OR GPT-3) (#OpenAI OR #ArtificialIntelligence)'
-    # 'query': '(x1 OR x3) (#x2 OR #x4) (x1 OR x3) (#x2 OR #x4)'
-        # 'tweet.fields': 'author_id'
-        # 'query': "#nowplaying (horrible OR worst OR sucks OR bad OR disappointing) (place_country:US OR place_country:MX OR place_country:CA) -happy -exciting -excited -favorite -fav -amazing -lovely -incredible"
+    dt = MockTwitterQuestionsDataset()
+    questions = []
+    for topic in dt.topics:
+        questions = []
+        for template in dt.question_templates:
+            question = template.format(topic)
+            questions.append(question)
 
-
-    #     'query': '(OpenAI OR GPT-3 OR DALL-E OR ChatGPT OR AI OR artificial intelligence OR machine learning OR technology OR trends) (#OpenAI OR #AI OR #ArtificialIntelligence OR #MachineLearning OR #GPT3 OR #DALLE OR #ChatGPT OR #TechTrends) -is:retweet since:2022-01-01T00:00:00Z until:2022-12-31T23:59:59Z'
-    # }
-    # # result = client.get_recent_tweets(query_params=query_params)
-    # print(result)
-
-    # # Run the async function using asyncio
-    # for i in tweet_prompts:
-    #     result = asyncio.run(client.analyse_prompt_and_fetch_tweets(i))
-        
-    #     print(len(result))
-    #     # if len(result) > 0
-        #    print(result)
-    
-    # client.get_recent_tweets(query_params)
+        results = asyncio.run(asyncio.gather(*(client.analyse_prompt_and_fetch_tweets(question) for question in questions)))
+        for (result_json, prompt_analysis), qs in zip(results, questions):
+            tweets_amount = result_json.get('meta', {}).get('result_count', 0)
+            if tweets_amount <= 0:
+                print("=====================START result_json=======================================")
+                print(tweets_amount, "     ===  ", question)
+                print("   ")
+                print("=====================START prompt_analysis =======================================")
+                print(prompt_analysis.api_params)
+                print("=====================END prompt_analysis =======================================")
+                print("=====================END result_json=======================================")

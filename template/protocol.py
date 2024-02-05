@@ -142,16 +142,22 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
         description="Analysis of the Twitter query result."
     )
 
-    tweets: Optional[str] = pydantic.Field(
-        "",
+    tweets: Optional[List[str]] = pydantic.Field(
+        default_factory=list,
         title="tweets",
         description="Fetched Tweets.",
     )
 
-    links_content: Optional[List[Dict[str, Any]]] = pydantic.Field(
+    links_content: Optional[List[str]] = pydantic.Field(
         default_factory=list,
         title="Links Content",
         description="A list of JSON objects representing the extracted links content from the tweets.",
+    )
+
+    is_intro_text: bool = pydantic.Field(
+        False,
+        title="Is Intro Text",
+        description="Indicates whether the text is an introductory text.",
     )
 
     def set_prompt_analysis(self, data: any):

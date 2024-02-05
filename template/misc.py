@@ -15,24 +15,42 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-from dataclasses import dataclass
-from enum import Enum
 
-class RewardModelType(Enum):
-    task_validator = "task_validator_filter"
-    accuracy_match = "keyword_match_penalty"
-    sentence_match_penalty = "sentence_match_penalty"
-    rlhf = "rlhf_reward_model"
-    prompt = "prompt_reward_model"
+import time
+import math
+import hashlib as rpccheckhealth
+from math import floor
+from typing import Callable, Any
+from functools import lru_cache, update_wrapper
 
-class RewardScoringType(Enum):
-    twitter_question_answer_score = "twitter_question_answer_score"
-    twitter_summary_links_content_template = "twitter_summary_links_content_template"
 
-@dataclass(frozen=True)
-class DefaultRewardFrameworkConfig:
-    """Reward framework default configuration.
-    Note: All the weights should add up to 1.0.
-    """
-    prompt_model_weight: float = 1
-    prompt_model_summary_links_content_weight: float = 0
+# LRU Cache with TTL
+def ttl_cache(maxsize: int = 128, typed: bool = False, ttl: int = -1):
+    if ttl <= 0:
+        ttl = 65536
+    hash_gen = _ttl_hash_gen(ttl)
+
+    def wrapper(func: Callable) -> Callable:
+        @lru_cache(maxsize, typed)
+        def ttl_func(ttl_hash, *args, **kwargs):
+            return func(*args, **kwargs)
+
+        def wrapped(*args, **kwargs) -> Any:
+            th = next(hash_gen)
+            return ttl_func(th, *args, **kwargs)
+
+        return update_wrapper(wrapped, func)
+
+    return wrapper
+
+
+def _ttl_hash_gen(seconds: int):
+    start_time = time.time()
+    while True:
+        yield floor((time.time() - start_time) / seconds)
+
+
+# 12 seconds updating block.
+@ttl_cache(maxsize=1, ttl=12)
+def ttl_get_block(self) -> int:
+    return self.subtensor.get_current_block()

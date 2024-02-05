@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import asyncio
 import random
 import json
-from template.utils import get_random_tweet_prompts
+from template.dataset import  MockTwitterQuestionsDataset
 from template.protocol import TwitterPromptAnalysisResult
 
 ELASTIC_HOST = 'localhost'
