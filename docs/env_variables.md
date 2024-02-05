@@ -31,6 +31,11 @@ Here's a breakdown of the environment variables necessary for the Smart-Scrape s
    - **How to Create**: Generate a unique, strong, and random string.
    - **Required for**: Validators exclusively.
 
+5. **URL_SUBNET_18**
+   - **Usage**: URL for Subnet 18, utilized for scoring the relevance of summaries.
+   - **How to Create**: Generate a unique, strong, and random string.
+   - **Required for**: Validators exclusively.
+
 ### Executing Commands for Setting Environment Variables
 To set the environment variables, open a terminal and replace `<your_key_here>` with your actual keys. For Validators, secure and authenticated access is crucial:
 
@@ -39,6 +44,7 @@ export OPENAI_API_KEY=<your_openai_api_key_here>
 export TWITTER_BEARER_TOKEN=<your_twitter_bearer_token_here>  # Only for Miners
 export EXPECTED_ACCESS_KEY=<your_EXPECTED_ACCESS_KEY_here>  # Only for Validators
 export WANDB_API_KEY=<your_wandb_api_key_here>
+export URL_SUBNET_18=<your_url_subent_18>
 ```
 
 ### Setting Environment Variables Using `.bashrc`
@@ -49,6 +55,7 @@ echo 'export OPENAI_API_KEY="<your_openai_api_key>"' >> ~/.bashrc
 echo 'export TWITTER_BEARER_TOKEN="<your_twitter_bearer_token>"' >> ~/.bashrc  # Only for Miners
 echo 'export EXPECTED_ACCESS_KEY="<your_EXPECTED_ACCESS_KEY>"' >> ~/.bashrc  # Only for Validators
 echo 'export WANDB_API_KEY="<your_wandb_api_key>"' >> ~/.bashrc
+echo 'export URL_SUBNET_18="<your_url_subent_18>"' >> ~/.bashrc
 
 source ~/.bashrc
 ```
