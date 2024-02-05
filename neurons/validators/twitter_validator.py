@@ -158,42 +158,24 @@ class TwitterScraperValidator:
     def process_content_links(self, responses):
         try:
             for response in responses:
-                if self.neuron.config.neuron.disable_twitter_links_content_fetch:
-                    com_links = self.twitter_api.find_twitter_links(response.completion)
-                    response.links_content = com_links
-                else:
-                    time.sleep(10)
-                    completion = response.completion
-                    bt.logging.trace(
-                        f"process_content_links completion: {completion}"
-                    )
-                    twitter_links = self.twitter_api.find_twitter_links(completion)
-                    bt.logging.trace(
-                        f"process_content_links twitter_links: {twitter_links}"
-                    )
-                    if len(twitter_links) > 0:
-                        json_response = self.twitter_api.fetch_twitter_data_for_links(twitter_links)
-                        bt.logging.trace(
-                            f"process_content_links fetch_twitter_data_for_links: {json_response}"
-                        )
-                        if 'data' in json_response:
-                            links_content =  json_response['data']
-                            response.links_content = links_content
-                        elif 'errors' in json_response:
-                            errors = json_response['errors']
-                            bt.logging.info(f"Process cotent links: {errors}")
+                com_links = self.twitter_api.find_twitter_links(response.completion)
+                response.links_content = com_links
         except Exception as e:
             bt.logging.error(f"Error in process_content_links: {e}")
             return
         
     async def process_tweets(self, responses):
         try:
+            start_time = time.time()
+            all_links = [random.choice(response.links_content) for response in responses if response.links_content]
+            unique_links = list(set(all_links))  # Remove duplicates to avoid redundant tasks
+            tweets_list = await TwitterScraperActor().get_tweets(urls=unique_links)
+            link_to_tweets = dict(zip(unique_links, tweets_list))
             for response in responses:
-                if response.links_content is not None:
-                    random_link = random.choice(response.links_content)
-                    
-                    tweets = await TwitterScraperActor().get_tweets(urls=[random_link])
-                    response.tweets = tweets
+                if response.links_content:
+                    response.tweets = [link_to_tweets[link] for link in response.links_content if link in link_to_tweets]
+            end_time = time.time()
+            bt.logging.info(f"Fetched Twitter links method took {end_time - start_time} seconds")
         except Exception as e:
             bt.logging.error(f"Error in process_tweets: {e}")
             return

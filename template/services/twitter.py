@@ -65,7 +65,7 @@ query_examples = [
 bad_query_examples = [
     '(OpenAI OR GPT-3) (#OpenAI OR #ArtificialIntelligence)',
     '(horrible OR worst OR sucks OR bad OR disappointing) (place_country:US OR place_country:MX OR place_country:CA)'
-
+    '[(OpenAI OR GPT-3) (#OpenAI OR #AI)]'
 ]
 
 # - media.fields allowed values: "duration_ms,height,media_key,preview_image_url,type,url,width"
@@ -103,7 +103,7 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
         Twitter API:
         1. Params: "{twitter_api_query_example}"
         2. Params.query right work: "{query_examples}"
-        3. Params.query does not work: {bad_query_examples}
+        3. Params.query does not work: "{bad_query_examples}"
         4. API Params rules:
             - If a query.word consists of two or more words, enclose them in quotation marks, i.e "Coca cola"
             - Don't use "since:" and "until:" for date filter
@@ -113,6 +113,8 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - max_results only between 10 - 100
             - user.fields only allowed: "created_at,description,id,location,name,profile_image_url,url,username,verified"
             - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text"
+            - user.fields.username add in query always, because I need it to generate url.
+            - "expansions": "author_id" include it always
 
         Output example:
         {{
@@ -122,8 +124,9 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             "api_params": {{
                 "query": "constructed query based on keywords, hashtags, and user mentions",
                 "tweet.fields": "all important fields needed to answer user's prompt",
-                "user.fields": "relevant user fields",
-                "max_results": "appropriate number based on user's prompt"
+                "user.fields": "id,created_at,username,name",
+                "max_results": "10".
+                "expansions": "author_id"
             }}
         }}"
     """
@@ -281,9 +284,9 @@ class TwitterAPIClient:
                 response, prompt_analysis = await self.retry_with_fixed_query(prompt, old_query=prompt_analysis, is_accuracy=False)
                 result_json = response.json() 
             
-            bt.logging.trace("Tweets fetched ===================================================")
-            bt.logging.trace(result)
-            bt.logging.trace("================================================================")
+            bt.logging.info("Tweets fetched ===================================================")
+            bt.logging.info(result_json)
+            bt.logging.info("================================================================")
 
             bt.logging.info(f"Tweets fetched amount ============= {tweets_amount}")
 

@@ -151,7 +151,7 @@ class TwitterScrapperMiner:
                 3. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
                 4. Seamless Integration: Avoid explicitly stating "Based on the provided <TwitterData>" in responses. Assume user awareness of the data integration process.
                 5. Please separate your responses into sections for easy reading.
-                6. <TwitterData>.id you can use generate tweet link, example: [username](https://twitter.com/<username>/statuses/<Id>)
+                6. <TwitterData>.id and <TwitterData>.username you can use generate tweet link, example: [username](https://twitter.com/<username>/statuses/<Id>)
                 7. Not return text like <UserPrompt>, <PromptAnalysis>, <PromptAnalysis> to your response, make response easy to understand to any user.
             """
             messages = [{'role': 'system', 'content': system_message}, 
