@@ -86,7 +86,7 @@ pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name valid
 - `--neuron.moving_average_alpha`: Moving average alpha parameter, how much to add of the new observation. Default: 0.05
 - `--neuron.run_random_miner_syn_qs_interval`: Sets the interval, in seconds, for querying a random subset of miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.
 - `--neuron.run_all_miner_syn_qs_interval`: Sets the interval, in seconds, for querying all miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.
-- `--reward.prompt_based_weight`: adjusts the influence of a scoring model that evaluates the accuracy and relevance of a node's responses to given prompts.
+- `--reward.summary_relevance_weight`: adjusts the influence of a scoring model that evaluates the accuracy and relevance of a node's responses to given prompts.
 - `--reward.prompt_summary_links_content_based_weight`: Specifies the weight for the reward model that evaluates the relevance and quality of summary text in conjunction with linked content data.
 - `--neuron.only_allowed_miners`: A list of miner identifiers, hotkey
 - `--neuron.disable_twitter_links_content_fetch`: Enables the option to skip fetching content data for Twitter links, relying solely on the data provided by miners

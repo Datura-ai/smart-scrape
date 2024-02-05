@@ -19,7 +19,7 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
-EXPECTED_ACCESS_KEY = os.environ.get('VALIDATOR_ACCESS_KEY')
+EXPECTED_ACCESS_KEY = os.environ.get('EXPECTED_ACCESS_KEY', 'hello')
 
 neu = neuron()
 

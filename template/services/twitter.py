@@ -86,19 +86,25 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             1. Similiar Generate keywords, hashtags, and mentions that are closely related to the user's prompt and after generate Twitter API query
         """
     content = f"""
-        Given the specific User's prompt: '{prompt}', please perform the following tasks and provide the results in a JSON object format:
+        Given the specific User's prompt: 
+        <UserPrompt>
+        '{prompt}'
+        </UserPromot>
+        
+        , please perform the following tasks and provide the results in a JSON object format:
 
-        1. Identify and list the key keywords which is related to User's prompt.
-        2. Determine and list relevant hashtags which is related to User's prompt.
-        3. Identify and list any significant user mentions frequently associated with User's prompt, but don't create if users has not mentioned any user
-        4. Generate Twitter API query params based on examples and your knowledge below, user keywords, mentions, hashtags for query which is related to User's Prompt.
+        1. Identify and list the key keywords which is related to <UserPrompt>.
+        2. Determine and list relevant hashtags which is related to <UserPrompt>.
+        3. Identify and list any significant user mentions frequently associated with <UserPrompt>, but don't create if users has not mentioned any user
+        4. Generate Twitter API query params based on examples and your knowledge below, user keywords, mentions, hashtags for query which is related to <UserPrompt>.
 
         {accuracy_text}
 
-        Twitter API Params: "{twitter_api_query_example}"
-        Twitter API Params.query right work: "{query_examples}"
-        Twitter API Params.query does not work: {bad_query_examples}
-        Twitter API Params rules:
+        Twitter API:
+        1. Params: "{twitter_api_query_example}"
+        2. Params.query right work: "{query_examples}"
+        3. Params.query does not work: {bad_query_examples}
+        4. API Params rules:
             - If a query.word consists of two or more words, enclose them in quotation marks, i.e "Coca cola"
             - Don't use "since:" and "until:" for date filter
             - end_time must be on or after start_date
@@ -108,12 +114,11 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - user.fields only allowed: "created_at,description,id,location,name,profile_image_url,url,username,verified"
             - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text"
 
-
         Output example:
         {{
             "keywords": ["list of identified keywords based on the prompt"],
-            "hashtags": ["#relevantHashtag1", "..."],
-            "user_mentions": ["@significantUser1", "..."],
+            "hashtags": ["#relevant1", "..."],
+            "user_mentions": ["@User1", "..."],
             "api_params": {{
                 "query": "constructed query based on keywords, hashtags, and user mentions",
                 "tweet.fields": "all important fields needed to answer user's prompt",
@@ -141,6 +146,7 @@ def get_fix_query_prompt(prompt, old_query, error, is_accuracy= True):
     <TASK>
     {task}
     <Task>,
+    
     That was user's promot: 
     <PROMPT>
     {prompt}

@@ -19,7 +19,7 @@ from neurons.validators.penalty import (
     AccuracyPenaltyModel,
     LinkValidationPenaltyModel
 )
-from reward.prompt import PromptRewardModel, init_tokenizer
+from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
 from neurons.validators.utils.tasks import TwitterTask
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from template.dataset import  MockTwitterQuestionsDataset
@@ -43,7 +43,7 @@ class TwitterScraperValidator:
 
         self.reward_weights = torch.tensor(
             [
-                self.neuron.config.reward.prompt_based_weight,
+                self.neuron.config.reward.summary_relevance_weight,
                 # self.neuron.config.reward.prompt_summary_links_content_based_weight,
             ],
             dtype=torch.float32,
@@ -60,19 +60,22 @@ class TwitterScraperValidator:
     
         tokenizer = None
         model = None
-        if (self.neuron.config.reward.prompt_based_weight > 0 or \
-           self.neuron.config.reward.prompt_summary_links_content_based_weight > 0) and \
-           not self.neuron.config.neuron.is_disable_tokenizer_reward:
-            tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
+        # if (self.neuron.config.reward.summary_relevance_weight > 0 or \
+        #    self.neuron.config.reward.prompt_summary_links_content_based_weight > 0) and \
+        #    not self.neuron.config.neuron.is_disable_tokenizer_reward:
+        #     tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
            
         self.reward_functions = [ 
-            PromptRewardModel(device=self.neuron.config.neuron.device, 
-                              scoring_type=RewardScoringType.twitter_question_answer_score,
-                              tokenizer=tokenizer,
-                              model=model,
-                              is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward
+            # SummaryRelevanceRewardModel(device=self.neuron.config.neuron.device, 
+            #                   scoring_type=RewardScoringType.twitter_question_answer_score,
+            #                   tokenizer=tokenizer,
+            #                   model=model,
+            #                   is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward
+            #                   )
+            SummaryRelevanceRewardModel(device=self.neuron.config.neuron.device, 
+                              scoring_type=RewardScoringType.twitter_question_answer_score
                               )
-            if self.neuron.config.reward.prompt_based_weight > 0
+            if self.neuron.config.reward.summary_relevance_weight > 0
             else MockRewardModel(RewardModelType.prompt.value),              
         ]
 
@@ -196,7 +199,7 @@ class TwitterScraperValidator:
 
             rewards = torch.zeros(len(responses), dtype=torch.float32).to(self.neuron.config.neuron.device)
             for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
-                reward_i_normalized, reward_event = reward_fn_i.apply(task.base_text, responses, task.task_name)
+                reward_i_normalized, reward_event = reward_fn_i.apply(task.base_text, responses, task.task_name, uids)
                 rewards += weight_i * reward_i_normalized.to(self.neuron.config.neuron.device)
                 if not self.neuron.config.neuron.disable_log_rewards:
                     event = {**event, **reward_event}
@@ -233,6 +236,9 @@ class TwitterScraperValidator:
                 links_content_length = len(response.links_content) if response.links_content is not None else 0
                 tweets_length = len(response.tweets) if response.tweets is not None else 0
                 bt.logging.info(f"uid: {uid};  score: {reward};  completion length: {completion_length};  links_content length: {links_content_length}; tweets length: {tweets_length};")
+                bt.logging.trace(f"{response.completion}")
+                bt.logging.info(f"uid: {uid} Completion: ---------------------")
+                bt.logging.info(f"-----------------------------")
             bt.logging.info(f"======================== Reward ===========================")
 
             for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):

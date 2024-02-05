@@ -26,7 +26,7 @@ Here's a breakdown of the environment variables necessary for the Smart-Scrape s
    - **How to Obtain**: Sign up or log in at [Weights & Biases](https://wandb.ai/), and generate a key in your account settings.
    - **Required for**: Validator and Miners.
 
-4. **VALIDATOR_ACCESS_KEY**
+4. **EXPECTED_ACCESS_KEY**
    - **Usage**: Secures access to the validator service.
    - **How to Create**: Generate a unique, strong, and random string.
    - **Required for**: Validators exclusively.
@@ -34,6 +34,9 @@ Here's a breakdown of the environment variables necessary for the Smart-Scrape s
 5. **APIFY_API_KEY**
    - **Usage**: Used for Apify actors
    - **How to Create**: Sign up or log in at [Apify](https://apify.com/), and generate a key in your account settings.
+5. **URL_SUBNET_18**
+   - **Usage**: URL for Subnet 18, utilized for scoring the relevance of summaries.
+   - **How to Create**: Generate a unique, strong, and random string.
    - **Required for**: Validators exclusively.
 
 ### Executing Commands for Setting Environment Variables
@@ -42,9 +45,10 @@ To set the environment variables, open a terminal and replace `<your_key_here>` 
 ```bash
 export OPENAI_API_KEY=<your_openai_api_key_here>
 export TWITTER_BEARER_TOKEN=<your_twitter_bearer_token_here>  # Only for Miners
-export VALIDATOR_ACCESS_KEY=<your_validator_access_key_here>  # Only for Validators
+export EXPECTED_ACCESS_KEY=<your_EXPECTED_ACCESS_KEY_here>  # Only for Validators
 export WANDB_API_KEY=<your_wandb_api_key_here>
 export APIFY_API_KEY=<your_apify_api_key_here>  # Only for Validators
+export URL_SUBNET_18=<your_url_subent_18>
 ```
 
 ### Setting Environment Variables Using `.bashrc`
@@ -53,9 +57,10 @@ If you prefer to use `.bashrc` for setting up environment variables, execute the
 ```bash
 echo 'export OPENAI_API_KEY="<your_openai_api_key>"' >> ~/.bashrc
 echo 'export TWITTER_BEARER_TOKEN="<your_twitter_bearer_token>"' >> ~/.bashrc  # Only for Miners
-echo 'export VALIDATOR_ACCESS_KEY="<your_validator_access_key>"' >> ~/.bashrc  # Only for Validators
+echo 'export EXPECTED_ACCESS_KEY="<your_EXPECTED_ACCESS_KEY>"' >> ~/.bashrc  # Only for Validators
 echo 'export WANDB_API_KEY="<your_wandb_api_key>"' >> ~/.bashrc
 echo 'export APIFY_API_KEY="<your_apify_api_key>"' >> ~/.bashrc
+echo 'export URL_SUBNET_18="<your_url_subent_18>"' >> ~/.bashrc
 
 source ~/.bashrc
 ```
