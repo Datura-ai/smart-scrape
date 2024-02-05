@@ -157,12 +157,7 @@ class TwitterScraperValidator:
             for response in responses:
                 if self.neuron.config.neuron.disable_twitter_links_content_fetch:
                     com_links = self.twitter_api.find_twitter_links(response.completion)
-
-                    random_link = random.choice(com_links)
-                    tweets = TwitterScraperActor().get_tweets(urls=[random_link])
-
                     response.links_content = com_links
-                    response.tweets = tweets
                 else:
                     time.sleep(10)
                     completion = response.completion
@@ -187,12 +182,25 @@ class TwitterScraperValidator:
         except Exception as e:
             bt.logging.error(f"Error in process_content_links: {e}")
             return
+        
+    async def process_tweets(self, responses):
+        try:
+            for response in responses:
+                if response.links_content is not None:
+                    random_link = random.choice(response.links_content)
+                    
+                    tweets = await TwitterScraperActor().get_tweets(urls=[random_link])
+                    response.tweets = tweets
+        except Exception as e:
+            bt.logging.error(f"Error in process_tweets: {e}")
+            return
 
     async def compute_rewards_and_penalties(self, event, prompt, task, responses, uids, start_time):
         try:
             bt.logging.info("Computing rewards and penalties")
 
             self.process_content_links(responses)
+            await self.process_tweets(responses)
 
             rewards = torch.zeros(len(responses), dtype=torch.float32).to(self.neuron.config.neuron.device)
             for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
