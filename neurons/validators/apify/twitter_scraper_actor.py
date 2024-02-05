@@ -1,6 +1,6 @@
 import os
 from typing import List
-from apify_client import ApifyClient
+from apify_client import ApifyClientAsync
 from template.protocol import TwitterScraperTweet
 
 APIFY_API_KEY = os.environ.get("APIFY_API_KEY")
@@ -13,21 +13,24 @@ if not APIFY_API_KEY:
 
 class TwitterScraperActor:
     def __init__(self) -> None:
+        # Actor: https://apify.com/quacker/twitter-url-scraper
         self.actor_id = "KVJr35xjTw2XyvMeK"
-        self.client = ApifyClient(token=APIFY_API_KEY)
+        self.client = ApifyClientAsync(token=APIFY_API_KEY)
 
-    def get_tweets(self, urls: List[str], add_user_info: bool = True):
+    async def get_tweets(
+        self, urls: List[str], add_user_info: bool = True
+    ) -> List[TwitterScraperTweet]:
         run_input = {
             "startUrls": [{"url": url} for url in urls],
             "proxyConfig": {"useApifyProxy": True},
             "addUserInfo": add_user_info,
         }
 
-        run = self.client.actor(self.actor_id).call(run_input=run_input)
+        run = await self.client.actor(self.actor_id).call(run_input=run_input)
 
-        tweets = []
+        tweets: List[TwitterScraperTweet] = []
 
-        for item in self.client.dataset(run["defaultDatasetId"]).iterate_items():
+        async for item in self.client.dataset(run["defaultDatasetId"]).iterate_items():
             tweet = TwitterScraperTweet(**item)
             tweets.append(tweet)
 
