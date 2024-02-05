@@ -116,7 +116,6 @@ class TwitterScrapperMiner:
 
     async def finalize_data(self, prompt, model, filtered_tweets, prompt_analysis):
             content =F"""
-                User Prompt Analysis and Twitter Data Integration
                 In <UserPrompt> provided User's prompt (Question).
                 In <PromptAnalysis> I anaysis that prompts and generate query for API, keywords, hashtags, user_mentions.
                 In <TwitterData>, Provided Twitter API fetched data.
@@ -132,27 +131,30 @@ class TwitterScrapperMiner:
                 <PromptAnalysis>
                 {prompt_analysis}
                 </PromptAnalysis>
-                
-                Tasks:
-                1. Create a Response: Analyze UserPrompt and the provided TwitterData to generate a meaningful and relevant response.
-                2. Share Relevant Twitter Links: Include Twitter links to several pertinent tweets from provided TwitterData. These links will enable users to view tweet details directly. But only use Twitter links in your response and must return valid links.
-                3. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
-                4. You would explain how you did retrieve data based on Analysis of UserPrompt.
-
-                Output Guidelines:
-                1. Comprehensive Analysis: Synthesize insights from both the UserPrompt and the TwitterData to formulate a well-rounded response.
-
-                Operational Rules:
-                1. No TwitterData Scenario: If no TwitterData is provided, inform the user that current Twitter insights related to their topic are unavailable.
-                3. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
-                4. Seamless Integration: Avoid explicitly stating "Based on the provided TwitterData" in responses. Assume user awareness of the data integration process.
-                5. Please separate your responses into sections for easy reading.
-                6. TwitterData.id you can use generate tweet link, example: https://twitter.com/twitter/statuses/<Id>
-                7. Not return text like UserPrompt, PromptAnalysis, PromptAnalysis to your response, make response easy to understand to any user.
             """
 
-            system = "You are Twitter data analyst, and you have to give great summary to users based on provided Twitter data and user's prompt"
-            messages = [{'role': 'system', 'content': system}, 
+            system_message = f"""As a Twitter data analyst, your task is to provide users with a clear and concise summary derived from the given Twitter data and the user's query.
+            
+               Tasks:
+                3. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
+                4. You would explain how you did retrieve data based on Analysis of <UserPrompt>.
+
+                Output Guidelines (Tasks):
+                1. Summary: Conduct a thorough analysis of <TwitterData> in relation to <UserPrompt> and generate a comprehensive summary.
+                2. Relevant Links: Provide a selection of Twitter links that directly correspond to the <UserPrompt>. For each link, include a concise explanation that connects its relevance to the user's question.
+                Synthesize insights from both the <UserPrompt> and the <TwitterData> to formulate a well-rounded response.
+                3. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
+                4. You would explain how you did retrieve data based on <PromptAnalysis>.
+
+                Operational Rules:
+                1. No <TwitterData> Scenario: If no TwitterData is provided, inform the user that current Twitter insights related to their topic are unavailable.
+                3. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
+                4. Seamless Integration: Avoid explicitly stating "Based on the provided <TwitterData>" in responses. Assume user awareness of the data integration process.
+                5. Please separate your responses into sections for easy reading.
+                6. <TwitterData>.id you can use generate tweet link, example: [username](https://twitter.com/<username>/statuses/<Id>)
+                7. Not return text like <UserPrompt>, <PromptAnalysis>, <PromptAnalysis> to your response, make response easy to understand to any user.
+            """
+            messages = [{'role': 'system', 'content': system_message}, 
                         {'role': 'user', 'content': content}]
             return await client.chat.completions.create(
                 model= model,
