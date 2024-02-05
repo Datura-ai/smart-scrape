@@ -194,7 +194,7 @@ class TwitterScraperValidator:
 
             rewards = torch.zeros(len(responses), dtype=torch.float32).to(self.neuron.config.neuron.device)
             for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
-                reward_i_normalized, reward_event = reward_fn_i.apply(task.base_text, responses, task.task_name)
+                reward_i_normalized, reward_event = reward_fn_i.apply(task.base_text, responses, task.task_name, uids)
                 rewards += weight_i * reward_i_normalized.to(self.neuron.config.neuron.device)
                 if not self.neuron.config.neuron.disable_log_rewards:
                     event = {**event, **reward_event}

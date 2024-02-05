@@ -20,31 +20,14 @@ import time
 import torch
 import bittensor as bt
 import random
-import requests
-import os
+
 from typing import List, Union
 from .config import RewardModelType, RewardScoringType
 from .reward import BaseRewardModel, BaseRewardEvent
 from utils.prompts import TwitterQuestionAnswerPrompt, TwitterSummaryLinksContetPrompt
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from neurons.validators.utils import call_to_subnet_18_scoring
 
-EXPECTED_ACCESS_KEY = os.environ.get('EXPECTED_ACCESS_KEY', 'hello')
-URL_SUBNET_18 = os.environ.get('URL_SUBNET_18')
-
-def connect_to_subnet_18(data):
-    headers = {
-        "access-key": EXPECTED_ACCESS_KEY,
-        "Content-Type": "application/json"
-    }
-    response = requests.post(url=f"{URL_SUBNET_18}/scoring/", 
-                             headers=headers, 
-                             json=data)  # Using json parameter to automatically set the content-type to application/json
-
-    if response.status_code in [401, 403]:
-        bt.logging.error(f"Connection issue with Subnet 18: {response.text}")
-        # os._exit(1)
-    return response
-    
 
 class SummaryRelevanceRewardModel(BaseRewardModel):
     reward_model_name: str = "GTP-4"
@@ -90,7 +73,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             return None
             
     def get_rewards(
-        self, prompt: str, responses: List[bt.Synapse], name: str, scoring_type: RewardScoringType = None
+        self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
             completions: List[str] = self.get_successful_completions(responses)
@@ -111,9 +94,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             messages = [{str(index): item[1]} for index, item in enumerate(scoring_messages) if item is not None]
 
             scores = {}
+            score_text = {}
             if messages:
-                response = connect_to_subnet_18({
-                        "messages": messages
+                response = call_to_subnet_18_scoring({
+                    "messages": messages
                 })
                 if response.status_code != 200:
                     bt.logging.error(f"ERROR connect to Subnet 18: {e}")
@@ -127,14 +111,21 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     # Scale 0-10 score to 0-1 range.
                     score /= 10.0
                     scores[key] = score
+                    score_text[key] = score_result
             
             # Iterate over responses and assign rewards based on scores
             reward_events = []
-            for index, response in enumerate(responses):
+            bt.logging.info(f"==================================Scoring Explanation Begins==================================")
+            for (index, response), uid_tensor in zip(enumerate(responses), uids):
+                uid = uid_tensor.item()
                 score = scores.get(str(index), 0)
+                score_explain = score_text.get(str(index), '')
                 reward_event = BaseRewardEvent()
                 reward_event.reward = score
                 reward_events.append(reward_event)
+                bt.logging.info(f"UID: {uid} | Score: {score:.2f} | Explanation: {score_explain.strip()}")
+                bt.logging.info(f"----------------------------------------------------------------------")
+            bt.logging.info(f"==================================Scoring Explanation Ends==================================")
 
             return reward_events
         except Exception as e:

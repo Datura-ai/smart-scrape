@@ -93,10 +93,21 @@ def set_weights(self):
         metagraph=self.metagraph,
     )
 
+
+
     weights_dict = {str(uid.item()): weight.item() for uid, weight in zip(processed_weight_uids, processed_weights)}
 
     # Log the weights dictionary
     bt.logging.info(f"Attempting to set weights action for {weights_dict}")
+
+    bt.logging.info(f"Attempting to set weights details begins: ================")
+    uids_weights = [
+        f"UID - {uid.item()} = Weight - {weight.item()}"
+        for uid, weight in zip(processed_weight_uids, processed_weights)
+    ]
+    for i in range(0, len(uids_weights), 4):
+        bt.logging.info(" | ".join(uids_weights[i:i+4]))
+    bt.logging.info(f"Attempting to set weights details ends: ================")
 
     # Start the process with a timeout
     ttl = 60  # Time-to-live in seconds

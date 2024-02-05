@@ -57,7 +57,7 @@ class BaseRewardModel:
 
     @abstractmethod
     def get_rewards(
-        self, prompt: str, responses: List[bt.Synapse], name: str
+        self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]:
         ...
 
@@ -145,7 +145,7 @@ class BaseRewardModel:
         return None
 
     def apply(
-        self, prompt: str, responses: List[bt.Synapse], name: str
+        self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]:
         """Applies the reward model across each call. Unsuccessful responses are zeroed."""
         # Get indices of correctly responding calls.
@@ -158,7 +158,7 @@ class BaseRewardModel:
 
         # Reward each completion.
         reward_events = BaseRewardEvent.parse_reward_events(
-            self.get_rewards(prompt, responses, name)
+            self.get_rewards(prompt, responses, name, uids)
         )
         successful_rewards = reward_events
         successful_rewards = torch.tensor(
