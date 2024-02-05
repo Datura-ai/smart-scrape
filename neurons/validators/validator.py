@@ -22,8 +22,6 @@ from template.utils import (
     checkpoint,
 )
 
-VALIDATOR_ACCESS_KEY = os.environ.get('VALIDATOR_ACCESS_KEY')
-
 class neuron(AbstractNeuron):
     @classmethod
     def check_config(cls, config: "bt.Config"):
