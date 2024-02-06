@@ -126,7 +126,7 @@ class BaseRewardModel:
         successful_completions_indices: List[int] = [
             idx
             for idx, resp in enumerate(responses)
-            if resp.dendrite.status_code == 200 and resp.links_content
+            if resp.dendrite.status_code == 200 and resp.completion_links
         ]
 
         # Get all completions from responding calls.
@@ -138,7 +138,7 @@ class BaseRewardModel:
     
     def get_successful_completion(self, response: bt.Synapse):
         # Check if the response is successful.
-        if response.dendrite.status_code == 200 and response.links_content:
+        if response.dendrite.status_code == 200 and response.completion_links:
             # Get the completion from the successful response.
             successful_completion = response.completion.strip()
             return successful_completion
@@ -153,7 +153,7 @@ class BaseRewardModel:
         successful_completions_indices: List[int] = [
             idx
             for idx, resp in enumerate(responses)
-            if resp.dendrite.status_code == 200 and resp.links_content
+            if resp.dendrite.status_code == 200 and resp.completion_links
         ]
 
         # Reward each completion.

@@ -76,7 +76,7 @@ class LinkValidationPenaltyModelTestCase(unittest.TestCase):
                                     messages='', 
                                     model='', 
                                     seed=1,
-                                    links_content=[
+                                    completion_links=[
                                         'https://twitter.com/XtalksFood/status/1743286252969828589',
                                         'https://twitter.com/XtalksFood/status/1743286252969828589'
                                     ]),

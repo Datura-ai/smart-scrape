@@ -54,13 +54,13 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             scoring_prompt_text = None
             if self.scoring_type.value == RewardScoringType.twitter_question_answer_score.value:
                 scoring_prompt = TwitterQuestionAnswerPrompt()
-            elif self.scoring_type.value == RewardScoringType.twitter_summary_links_content_template.value:
+            elif self.scoring_type.value == RewardScoringType.twitter_summary_completion_links_template.value:
                 scoring_prompt = TwitterSummaryLinksContetPrompt()
                 # Convert list of links content to string before passing to the prompt
-                links_content_str = str(response.links_content)
-                scoring_prompt_text = scoring_prompt.text(completion, links_content_str)
+                completion_links_str = str(response.completion_links)
+                scoring_prompt_text = scoring_prompt.text(completion, completion_links_str)
 
-            if scoring_prompt is None or not response.links_content:
+            if scoring_prompt is None or not response.completion_links:
                 return None
 
             if not scoring_prompt_text:

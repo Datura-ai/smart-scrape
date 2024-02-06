@@ -159,7 +159,7 @@ class TwitterScraperValidator:
         try:
             for response in responses:
                 com_links = self.twitter_api.find_twitter_links(response.completion)
-                response.links_content = com_links
+                response.completion_links = com_links
         except Exception as e:
             bt.logging.error(f"Error in process_content_links: {e}")
             return
@@ -167,13 +167,13 @@ class TwitterScraperValidator:
     async def process_tweets(self, responses):
         try:
             start_time = time.time()
-            all_links = [random.choice(response.links_content) for response in responses if response.links_content]
+            all_links = [random.choice(response.completion_links) for response in responses if response.completion_links]
             unique_links = list(set(all_links))  # Remove duplicates to avoid redundant tasks
             tweets_list = await TwitterScraperActor().get_tweets(urls=unique_links)
             link_to_tweets = dict(zip(unique_links, tweets_list))
             for response in responses:
-                if response.links_content:
-                    response.tweets = [link_to_tweets[link] for link in response.links_content if link in link_to_tweets]
+                if response.completion_links:
+                    response.tweets = [link_to_tweets[link] for link in response.completion_links if link in link_to_tweets]
             end_time = time.time()
             bt.logging.info(f"Fetched Twitter links method took {end_time - start_time} seconds")
         except Exception as e:
@@ -223,9 +223,9 @@ class TwitterScraperValidator:
             for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
                 uid = uid_tensor.item()
                 completion_length = len(response.completion) if response.completion is not None else 0
-                links_content_length = len(response.links_content) if response.links_content is not None else 0
+                completion_links_length = len(response.completion_links) if response.completion_links is not None else 0
                 tweets_length = len(response.tweets) if response.tweets is not None else 0
-                bt.logging.info(f"uid: {uid};  score: {reward};  completion length: {completion_length};  links_content length: {links_content_length}; tweets length: {tweets_length};")
+                bt.logging.info(f"uid: {uid};  score: {reward};  completion length: {completion_length};  completion_links length: {completion_links_length}; tweets length: {tweets_length};")
                 bt.logging.trace(f"{response.completion}")
                 bt.logging.info(f"uid: {uid} Completion: ---------------------")
                 bt.logging.info(f"-----------------------------")

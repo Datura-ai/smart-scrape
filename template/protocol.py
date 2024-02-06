@@ -226,7 +226,7 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
         description="Optional JSON object containing tweets data from the miner.",
     )
 
-    links_content: Optional[List[str]] = pydantic.Field(
+    completion_links: Optional[List[str]] = pydantic.Field(
         default_factory=list,
         title="Links Content",
         description="A list of JSON objects representing the extracted links content from the tweets.",
