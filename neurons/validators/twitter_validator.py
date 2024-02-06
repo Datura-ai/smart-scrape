@@ -185,7 +185,7 @@ class TwitterScraperValidator:
             bt.logging.info("Computing rewards and penalties")
 
             self.process_content_links(responses)
-            await self.process_tweets(responses)
+            # await self.process_tweets(responses)
 
             rewards = torch.zeros(len(responses), dtype=torch.float32).to(self.neuron.config.neuron.device)
             for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):

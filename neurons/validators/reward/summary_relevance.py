@@ -100,7 +100,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     "messages": messages
                 })
                 if response.status_code != 200:
-                    bt.logging.error(f"ERROR connect to Subnet 18: {e}")
+                    bt.logging.error(f"ERROR connect to Subnet 18: {response.text}")
                     raise Exception(response.text)
                 
                 score_responses = response.json()

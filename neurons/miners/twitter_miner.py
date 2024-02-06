@@ -211,15 +211,12 @@ class TwitterScrapperMiner:
                 full_text.append(token)  # Append the token to the full_text list
                 if len(buffer) == N:
                     joined_buffer = "".join(buffer)
+                    text_data_json = json.dumps({"type": "text", "content": joined_buffer})
                     # Stream the text
-                    text_response_body = {
-                        "type": "text",
-                        "content": joined_buffer
-                    }
                     await send(
                         {
                             "type": "http.response.body",
-                            "body": joined_buffer.encode("utf-8"),
+                            "body": text_data_json.encode("utf-8"),
                             "more_body": True,
                         }
                     )
@@ -231,44 +228,37 @@ class TwitterScrapperMiner:
             bt.logging.info(f"{joined_full_text}")  # Print the full text at the end
             bt.logging.info(f"================================== Completion Responsed ===================================") 
             
-            # # Send prompt_analysis
-            # if prompt_analysis:
-            #     prompt_analysis_json = json.dumps(prompt_analysis.dict())
-            #     prompt_analysis_response_body = {
-            #         "type": "prompt_analysis",
-            #         "content": prompt_analysis_json
-            #     }
-            #     await send(
-            #         {
-            #             "type": "http.response.body",
-            #             "body": json.dumps(prompt_analysis_response_body).encode("utf-8"),
-            #             "more_body": True,
-            #         }
-            #     )
-            #     bt.logging.info(f"Prompt Analysis sent")
+            # Send prompt_analysis
+            if prompt_analysis:
+                prompt_analysis_response_body = {
+                    "type": "prompt_analysis",
+                    "content": prompt_analysis.dict()
+                }
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": json.dumps(prompt_analysis_response_body).encode("utf-8"),
+                        "more_body": True,
+                    }
+                )
+                bt.logging.info(f"Prompt Analysis sent")
 
-            # # Send tweets
-            # if tweets: 
-            #     result = json.loads(tweets)
-            #     if 'data' in result:
-            #         tweets_data = result['data']
-            #     else:
-            #         tweets_data = []
-            #     tweets_json = json.dumps(tweets_data)
-            #     tweets_response_body = {
-            #         "type": "tweets",
-            #         "content": tweets_json
-            #     }
-            #     print(tweets_json)
-            #     more_body = False
-            #     await send(
-            #         {
-            #             "type": "http.response.body",
-            #             "body": json.dumps(tweets_response_body).encode("utf-8"),
-            #             "more_body": False,
-            #         }
-            #     )
-            #     bt.logging.info(f"Tweet data sent. Number of tweets: {len(tweets_data)}")
+            # Send tweets
+            tweets_amount = tweets.get('meta', {}).get('result_count', 0)
+            if tweets: 
+                tweets_response_body = {
+                    "type": "tweets",
+                    "content": tweets
+                }
+                more_body = False
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": json.dumps(tweets_response_body).encode("utf-8"),
+                        "more_body": False,
+                    }
+                )
+                bt.logging.info(f"Tweet data sent. Number of tweets: {tweets_amount}")
             
             if more_body:
                 await send(

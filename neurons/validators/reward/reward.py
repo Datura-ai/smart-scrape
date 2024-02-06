@@ -172,14 +172,6 @@ class BaseRewardModel:
         filled_rewards = torch.ones(len(responses), dtype=torch.float32) * torch.nan
         filled_rewards_normalized = torch.zeros(len(responses), dtype=torch.float32)
 
-        # Fill reward tensor.
-        # for idx, reward, reward_normalized in zip(
-        #     successful_completions_indices,
-        #     successful_rewards,
-        #     successful_rewards_normalized,
-        # ):
-        #     filled_rewards[idx] = reward
-        #     filled_rewards_normalized[idx] = reward_normalized
         for idx in successful_completions_indices:
             filled_rewards[idx] = successful_rewards[idx]
             filled_rewards_normalized[idx] = successful_rewards_normalized[idx]

@@ -1,6 +1,7 @@
 import pydantic
 import bittensor as bt
 import typing
+import json
 from abc import ABC, abstractmethod
 from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
 from starlette.responses import StreamingResponse
@@ -219,6 +220,12 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
         description="Fetched Tweets Data.",
     )
 
+    miner_tweets: Optional[Dict[str, Any]] = pydantic.Field(
+        default_factory=dict,
+        title="Miner Tweets",
+        description="Optional JSON object containing tweets data from the miner.",
+    )
+
     links_content: Optional[List[str]] = pydantic.Field(
         default_factory=list,
         title="Links Content",
@@ -237,15 +244,65 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
     def set_tweets(self, data: any):
         self.tweets = data
 
+    def extract_json_chunk(self, chunk):
+        stack = []
+        start_index = None
+        json_objects = []
+
+        for i, char in enumerate(chunk):
+            if char == '{':
+                if not stack:
+                    start_index = i
+                stack.append(char)
+            elif char == '}':
+                stack.pop()
+                if not stack and start_index is not None:
+                    json_str = chunk[start_index:i+1]
+                    try:
+                        json_obj = json.loads(json_str)
+                        json_objects.append(json_obj)
+                        start_index = None
+                    except json.JSONDecodeError as e:
+                        # Handle the case where json_str is not a valid JSON object
+                        continue
+
+        remaining_chunk = chunk[i+1:] if start_index is None else chunk[start_index:]
+
+        return json_objects, remaining_chunk
+    
     async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:
             self.completion = ""
-        async for chunk in response.content.iter_any():
-            tokens = chunk.decode("utf-8")
-            for token in tokens:
-                if token:
-                    self.completion += token
-            yield tokens
+
+        try:
+            async for chunk in response.content.iter_any():
+                # Decode the chunk from bytes to a string
+                chunk_str = chunk.decode("utf-8")
+                # Attempt to parse the chunk as JSON
+                try:
+                    json_objects, remaining_chunk = self.extract_json_chunk(chunk_str)
+                    for json_data in json_objects:
+                        content_type = json_data.get("type")
+
+                        if content_type == "text":
+                            text_content = json_data.get("content", "")
+                            self.completion += text_content
+                            yield text_content
+
+                        elif content_type == "prompt_analysis":
+                            prompt_analysis_json = json_data.get("content", "{}")
+                            prompt_analysis = TwitterPromptAnalysisResult()
+                            prompt_analysis.fill(prompt_analysis_json)
+                            self.set_prompt_analysis(prompt_analysis)
+
+                        elif content_type == "tweets":
+                            tweets_json = json_data.get("content", "[]")
+                            self.miner_tweets = tweets_json
+                except json.JSONDecodeError as e:
+                    print(f"process_streaming_response json.JSONDecodeError: {e}")      
+        except Exception as e:
+            bt.logging.trace(f"process_streaming_response: {e}")
+            
 
     def deserialize(self) -> str:
         return self.completion
@@ -272,6 +329,8 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
             "axon": extract_info("bt_header_axon"),
             "messages": self.messages,
             "completion": self.completion,
+            "miner_tweets": self.miner_tweets,
+            "prompt_analysis": self.prompt_analysis.dict()
         }
 
     class Config:
