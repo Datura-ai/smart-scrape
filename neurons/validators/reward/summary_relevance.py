@@ -78,10 +78,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         try:
             completions: List[str] = self.get_successful_completions(responses)
             bt.logging.debug(
-                f"PromptRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
+                f"SummaryRelevanceRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
             )
             bt.logging.trace(
-                f"PromptRewardModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
+                f"SummaryRelevanceRewardModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
             )
             scoring_messages = [
                 self.get_scoring_text(prompt, response) for response in responses

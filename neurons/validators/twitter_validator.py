@@ -44,7 +44,7 @@ class TwitterScraperValidator:
         self.reward_weights = torch.tensor(
             [
                 self.neuron.config.reward.summary_relevance_weight,
-                # self.neuron.config.reward.prompt_summary_links_content_based_weight,
+                # self.neuron.config.reward.link_content_based_weight,
             ],
             dtype=torch.float32,
         ).to(self.neuron.config.neuron.device)
@@ -61,7 +61,7 @@ class TwitterScraperValidator:
         tokenizer = None
         model = None
         # if (self.neuron.config.reward.summary_relevance_weight > 0 or \
-        #    self.neuron.config.reward.prompt_summary_links_content_based_weight > 0) and \
+        #    self.neuron.config.reward.link_content_based_weight > 0) and \
         #    not self.neuron.config.neuron.is_disable_tokenizer_reward:
         #     tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
            

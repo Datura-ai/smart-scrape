@@ -108,7 +108,7 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
-        "--reward.prompt_summary_links_content_based_weight",
+        "--reward.link_content_based_weight",
         type=float,
         help="Specifies the weight for the reward model that evaluates the relevance and quality of summary text in conjunction with linked content data.",
         default=DefaultRewardFrameworkConfig.prompt_model_summary_links_content_weight,
