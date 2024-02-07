@@ -4,7 +4,8 @@ import os
 from langchain import hub
 from langchain.agents import create_react_agent, AgentExecutor
 from langchain_openai import ChatOpenAI
-from .serp.serp_google_search_toolkit import SerpGoogleSearchToolkit
+from template.tools.serp.serp_google_search_toolkit import SerpGoogleSearchToolkit
+from template.tools.twitter.twitter_toolkit import TwitterToolkit
 from template.tools.base import BaseTool
 from template.tools.get_tools import get_all_tools
 
@@ -20,7 +21,7 @@ class ToolManager:
     agent_executor: AgentExecutor
 
     def __init__(self):
-        tools = SerpGoogleSearchToolkit().get_tools()
+        tools = TwitterToolkit().get_tools()
 
         agent = create_react_agent(
             llm=ChatOpenAI(model_name="gpt-4"), tools=tools, prompt=prompt
@@ -33,9 +34,9 @@ class ToolManager:
     # def set_tools(self, tools):
     #     self.tools = tools
 
-    def _run(self, prompt: str):
+    async def run(self, prompt: str):
         print("Running prompt")
-        res = self.agent_executor.invoke({"input": prompt, "chat_history": ""})
+        res = await self.agent_executor.ainvoke({"input": prompt, "chat_history": ""})
         print(res)
 
     # def run(self, content, tool_choice="auto"):
@@ -85,7 +86,9 @@ class ToolManager:
 
 
 if __name__ == "__main__":
-    print("Running main")
-    cl = ToolManager()
-    cl._run("What are the latest trends in OpenAI?")
-    # cl.run("Last OpenAI trends")
+
+    async def run_tool_manager():
+        mg = ToolManager()
+        await mg.run("What are the latest AI trends on Twitter?")
+
+    run_tool_manager()

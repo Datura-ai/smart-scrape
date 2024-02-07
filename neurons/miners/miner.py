@@ -27,10 +27,7 @@ from template.protocol import StreamPrompting, IsAlive, TwitterScraperStreaming
 # from template.services.twitter import TwitterAPIClient
 # from template.db import DBClient, get_random_tweets
 from neurons.miners.scraper_miner import ScraperMiner
-from template.tools.tool_manager import ToolManager
 
-mg = ToolManager()
-mg._run("What are the latest trends in OpenAI?")
 
 OpenAI.api_key = os.environ.get('OPENAI_API_KEY')
 if not OpenAI.api_key:
