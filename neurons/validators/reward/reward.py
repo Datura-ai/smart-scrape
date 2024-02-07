@@ -57,7 +57,7 @@ class BaseRewardModel:
 
     @abstractmethod
     def get_rewards(
-        self, prompt: str, responses: List[bt.Synapse], name: str
+        self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]:
         ...
 
@@ -126,7 +126,7 @@ class BaseRewardModel:
         successful_completions_indices: List[int] = [
             idx
             for idx, resp in enumerate(responses)
-            if resp.dendrite.status_code == 200 and resp.links_content
+            if resp.dendrite.status_code == 200 and resp.completion_links
         ]
 
         # Get all completions from responding calls.
@@ -138,14 +138,14 @@ class BaseRewardModel:
     
     def get_successful_completion(self, response: bt.Synapse):
         # Check if the response is successful.
-        if response.dendrite.status_code == 200 and response.links_content:
+        if response.dendrite.status_code == 200 and response.completion_links:
             # Get the completion from the successful response.
             successful_completion = response.completion.strip()
             return successful_completion
         return None
 
     def apply(
-        self, prompt: str, responses: List[bt.Synapse], name: str
+        self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]:
         """Applies the reward model across each call. Unsuccessful responses are zeroed."""
         # Get indices of correctly responding calls.
@@ -153,12 +153,12 @@ class BaseRewardModel:
         successful_completions_indices: List[int] = [
             idx
             for idx, resp in enumerate(responses)
-            if resp.dendrite.status_code == 200 and resp.links_content
+            if resp.dendrite.status_code == 200 and resp.completion_links
         ]
 
         # Reward each completion.
         reward_events = BaseRewardEvent.parse_reward_events(
-            self.get_rewards(prompt, responses, name)
+            self.get_rewards(prompt, responses, name, uids)
         )
         successful_rewards = reward_events
         successful_rewards = torch.tensor(
@@ -172,14 +172,6 @@ class BaseRewardModel:
         filled_rewards = torch.ones(len(responses), dtype=torch.float32) * torch.nan
         filled_rewards_normalized = torch.zeros(len(responses), dtype=torch.float32)
 
-        # Fill reward tensor.
-        # for idx, reward, reward_normalized in zip(
-        #     successful_completions_indices,
-        #     successful_rewards,
-        #     successful_rewards_normalized,
-        # ):
-        #     filled_rewards[idx] = reward
-        #     filled_rewards_normalized[idx] = reward_normalized
         for idx in successful_completions_indices:
             filled_rewards[idx] = successful_rewards[idx]
             filled_rewards_normalized[idx] = successful_rewards_normalized[idx]

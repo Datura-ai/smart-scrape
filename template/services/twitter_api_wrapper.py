@@ -64,7 +64,7 @@ query_examples = [
 bad_query_examples = [
     '(OpenAI OR GPT-3) (#OpenAI OR #ArtificialIntelligence)',
     '(horrible OR worst OR sucks OR bad OR disappointing) (place_country:US OR place_country:MX OR place_country:CA)'
-
+    '[(OpenAI OR GPT-3) (#OpenAI OR #AI)]'
 ]
 
 # - media.fields allowed values: "duration_ms,height,media_key,preview_image_url,type,url,width"
@@ -85,19 +85,25 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             1. Similiar Generate keywords, hashtags, and mentions that are closely related to the user's prompt and after generate Twitter API query
         """
     content = f"""
-        Given the specific User's prompt: '{prompt}', please perform the following tasks and provide the results in a JSON object format:
+        Given the specific User's prompt: 
+        <UserPrompt>
+        '{prompt}'
+        </UserPromot>
+        
+        , please perform the following tasks and provide the results in a JSON object format:
 
-        1. Identify and list the key keywords which is related to User's prompt.
-        2. Determine and list relevant hashtags which is related to User's prompt.
-        3. Identify and list any significant user mentions frequently associated with User's prompt, but don't create if users has not mentioned any user
-        4. Generate Twitter API query params based on examples and your knowledge below, user keywords, mentions, hashtags for query which is related to User's Prompt.
+        1. Identify and list the key keywords which is related to <UserPrompt>.
+        2. Determine and list relevant hashtags which is related to <UserPrompt>.
+        3. Identify and list any significant user mentions frequently associated with <UserPrompt>, but don't create if users has not mentioned any user
+        4. Generate Twitter API query params based on examples and your knowledge below, user keywords, mentions, hashtags for query which is related to <UserPrompt>.
 
         {accuracy_text}
 
-        Twitter API Params: "{twitter_api_query_example}"
-        Twitter API Params.query right work: "{query_examples}"
-        Twitter API Params.query does not work: {bad_query_examples}
-        Twitter API Params rules:
+        Twitter API:
+        1. Params: "{twitter_api_query_example}"
+        2. Params.query right work: "{query_examples}"
+        3. Params.query does not work: "{bad_query_examples}"
+        4. API Params rules:
             - If a query.word consists of two or more words, enclose them in quotation marks, i.e "Coca cola"
             - Don't use "since:" and "until:" for date filter
             - end_time must be on or after start_date
@@ -106,18 +112,20 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - max_results only between 10 - 100
             - user.fields only allowed: "created_at,description,id,location,name,profile_image_url,url,username,verified"
             - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text"
-
+            - user.fields.username add in query always, because I need it to generate url.
+            - "expansions": "author_id" include it always
 
         Output example:
         {{
             "keywords": ["list of identified keywords based on the prompt"],
-            "hashtags": ["#relevantHashtag1", "..."],
-            "user_mentions": ["@significantUser1", "..."],
+            "hashtags": ["#relevant1", "..."],
+            "user_mentions": ["@User1", "..."],
             "api_params": {{
                 "query": "constructed query based on keywords, hashtags, and user mentions",
                 "tweet.fields": "all important fields needed to answer user's prompt",
-                "user.fields": "relevant user fields",
-                "max_results": "appropriate number based on user's prompt"
+                "user.fields": "id,created_at,username,name",
+                "max_results": "10".
+                "expansions": "author_id"
             }}
         }}"
     """
@@ -140,6 +148,7 @@ def get_fix_query_prompt(prompt, old_query, error, is_accuracy= True):
     <TASK>
     {task}
     <Task>,
+    
     That was user's promot: 
     <PROMPT>
     {prompt}
@@ -203,6 +212,11 @@ class TwitterAPIClient:
 
     def get_recent_tweets(self, query_params):
         search_url = "https://api.twitter.com/2/tweets/search/recent"
+        response = self.connect_to_endpoint(search_url, query_params)
+        return response
+    
+    def get_full_archive_tweets(self, query_params):
+        search_url = "https://api.twitter.com/2/tweets/search/all"
         response = self.connect_to_endpoint(search_url, query_params)
         return response
     
@@ -274,9 +288,9 @@ class TwitterAPIClient:
                 response, prompt_analysis = await self.retry_with_fixed_query(prompt, old_query=prompt_analysis, is_accuracy=False)
                 result_json = response.json() 
             
-            bt.logging.trace("Tweets fetched ===================================================")
-            bt.logging.trace(result)
-            bt.logging.trace("================================================================")
+            bt.logging.info("Tweets fetched ===================================================")
+            bt.logging.info(result_json)
+            bt.logging.info("================================================================")
 
             bt.logging.info(f"Tweets fetched amount ============= {tweets_amount}")
 

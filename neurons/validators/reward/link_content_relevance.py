@@ -30,7 +30,7 @@ def init_tokenizer(device):
     # https://huggingface.co/VMware/open-llama-7b-open-instruct
     # Fast tokenizer results in incorrect encoding, set the use_fast = False parameter.
     tokenizer = AutoTokenizer.from_pretrained(
-        PromptRewardModel.reward_model_name, use_fast=False
+        LinkContentRelevanceModel.reward_model_name, use_fast=False
     )
     # Generative default expects most recent token on right-hand side with padding on left.
     # https://github.com/huggingface/transformers/pull/10552
@@ -40,11 +40,11 @@ def init_tokenizer(device):
     torch_dtype = torch.float32 if device == 'cpu' else torch.float16
 
     model = AutoModelForCausalLM.from_pretrained(
-        PromptRewardModel.reward_model_name, torch_dtype=torch_dtype
+        LinkContentRelevanceModel.reward_model_name, torch_dtype=torch_dtype
     ).to(device)
     return tokenizer, model
 
-class PromptRewardModel(BaseRewardModel):
+class LinkContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
 
     @property
@@ -84,13 +84,13 @@ class PromptRewardModel(BaseRewardModel):
                 scoring_prompt_text = None
                 if scoring_type == RewardScoringType.twitter_question_answer_score:
                     scoring_prompt = TwitterQuestionAnswerPrompt()
-                elif scoring_type == RewardScoringType.twitter_summary_links_content_template:
+                elif scoring_type == RewardScoringType.twitter_summary_completion_links_template:
                     scoring_prompt = TwitterSummaryLinksContetPrompt()
                     # Convert list of links content to string before passing to the prompt
-                    links_content_str = str(response.links_content)
-                    scoring_prompt_text = scoring_prompt.text(completion, links_content_str)
+                    completion_links_str = str(response.completion_links)
+                    scoring_prompt_text = scoring_prompt.text(completion, completion_links_str)
 
-                if scoring_prompt is None or not response.links_content:
+                if scoring_prompt is None or not response.completion_links:
                     reward_event.reward = 0
                     return reward_event
 
@@ -99,7 +99,7 @@ class PromptRewardModel(BaseRewardModel):
                     scoring_prompt_text = scoring_prompt.text(prompt, completion)
 
                 if self.is_disable_tokenizer_reward:
-                    length = len(response.links_content) * 2 
+                    length = len(response.completion_links) * 2 
                     score = length if length < 10 else 9
                     # Scale 0-10 score to 0-1 range.
                     score /= 10.0
@@ -129,11 +129,11 @@ class PromptRewardModel(BaseRewardModel):
                 score_text = generated_text[0][len(scoring_prompt_text) :]
                 score = scoring_prompt.extract_score(score_text)
                 bt.logging.trace(
-                    f"PromptRewardModel | {name} score: {score} | {repr(score_text)} | "
+                    f"LinkContentRelevanceModel | {name} score: {score} | {repr(score_text)} | "
                     f"{duration:.2f}s | {repr(completion[:70])}"
                 )
                 if score == 0:
-                    length = len(response.links_content) * 2 
+                    length = len(response.completion_links) * 2 
                     score = length if length < 10 else 9
                 # Scale 0-10 score to 0-1 range.
                 score /= 10.0
@@ -151,10 +151,10 @@ class PromptRewardModel(BaseRewardModel):
     ) -> List[BaseRewardEvent]:
         completions: List[str] = self.get_successful_completions(responses)
         bt.logging.debug(
-            f"PromptRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
+            f"LinkContentRelevanceModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
         )
         bt.logging.trace(
-            f"PromptRewardModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
+            f"LinkContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
         )
         # Get all the reward results.
         reward_events = [

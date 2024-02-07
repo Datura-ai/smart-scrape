@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from neurons.validators.utils.tasks import TwitterTask
 from neurons.validators.penalty import BasePenaltyModel, PenaltyModelType
 from template.protocol import TwitterScraperStreaming
-from template.services.twitter import TwitterAPIClient, VALID_DOMAINS
+from template.services.twitter_api_wrapper import TwitterAPIClient, VALID_DOMAINS
 
 
 class LinkValidationPenaltyModel(BasePenaltyModel):
@@ -85,7 +85,7 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
             completion = response.completion
             twitter_links = self.client.find_twitter_links(completion)
             if twitter_links and all(self.is_valid_twitter_link(link) for link in twitter_links):
-                valid_links = response.links_content
+                valid_links = response.completion_links
                 
                 # response.tweets = json.dumps(valid_links, indent=4, sort_keys=True)
                 penalty = self.max_penalty * len(valid_links) / len(twitter_links)

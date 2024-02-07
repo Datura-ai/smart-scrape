@@ -19,10 +19,11 @@ from neurons.validators.penalty import (
     AccuracyPenaltyModel,
     LinkValidationPenaltyModel
 )
-from reward.prompt import PromptRewardModel, init_tokenizer
+from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
 from neurons.validators.utils.tasks import TwitterTask
+from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from template.dataset import  MockTwitterQuestionsDataset
-from template.services.twitter import TwitterAPIClient
+from template.services.twitter_api_wrapper import TwitterAPIClient
 from template import QUERY_MINERS
 import asyncio
 
@@ -42,8 +43,8 @@ class TwitterScraperValidator:
 
         self.reward_weights = torch.tensor(
             [
-                self.neuron.config.reward.prompt_based_weight,
-                # self.neuron.config.reward.prompt_summary_links_content_based_weight,
+                self.neuron.config.reward.summary_relevance_weight,
+                # self.neuron.config.reward.link_content_based_weight,
             ],
             dtype=torch.float32,
         ).to(self.neuron.config.neuron.device)
@@ -59,19 +60,22 @@ class TwitterScraperValidator:
     
         tokenizer = None
         model = None
-        if (self.neuron.config.reward.prompt_based_weight > 0 or \
-           self.neuron.config.reward.prompt_summary_links_content_based_weight > 0) and \
-           not self.neuron.config.neuron.is_disable_tokenizer_reward:
-            tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
+        # if (self.neuron.config.reward.summary_relevance_weight > 0 or \
+        #    self.neuron.config.reward.link_content_based_weight > 0) and \
+        #    not self.neuron.config.neuron.is_disable_tokenizer_reward:
+        #     tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
            
         self.reward_functions = [ 
-            PromptRewardModel(device=self.neuron.config.neuron.device, 
-                              scoring_type=RewardScoringType.twitter_question_answer_score,
-                              tokenizer=tokenizer,
-                              model=model,
-                              is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward
+            # SummaryRelevanceRewardModel(device=self.neuron.config.neuron.device, 
+            #                   scoring_type=RewardScoringType.twitter_question_answer_score,
+            #                   tokenizer=tokenizer,
+            #                   model=model,
+            #                   is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward
+            #                   )
+            SummaryRelevanceRewardModel(device=self.neuron.config.neuron.device, 
+                              scoring_type=RewardScoringType.twitter_question_answer_score
                               )
-            if self.neuron.config.reward.prompt_based_weight > 0
+            if self.neuron.config.reward.summary_relevance_weight > 0
             else MockRewardModel(RewardModelType.prompt.value),              
         ]
 
@@ -154,33 +158,26 @@ class TwitterScraperValidator:
     def process_content_links(self, responses):
         try:
             for response in responses:
-                if self.neuron.config.neuron.disable_twitter_links_content_fetch:
-                    com_links = self.twitter_api.find_twitter_links(response.completion)
-                    response.links_content = com_links
-                    response.tweets = com_links
-                else:
-                    time.sleep(10)
-                    completion = response.completion
-                    bt.logging.trace(
-                        f"process_content_links completion: {completion}"
-                    )
-                    twitter_links = self.twitter_api.find_twitter_links(completion)
-                    bt.logging.trace(
-                        f"process_content_links twitter_links: {twitter_links}"
-                    )
-                    if len(twitter_links) > 0:
-                        json_response = self.twitter_api.fetch_twitter_data_for_links(twitter_links)
-                        bt.logging.trace(
-                            f"process_content_links fetch_twitter_data_for_links: {json_response}"
-                        )
-                        if 'data' in json_response:
-                            links_content =  json_response['data']
-                            response.links_content = links_content
-                        elif 'errors' in json_response:
-                            errors = json_response['errors']
-                            bt.logging.info(f"Process cotent links: {errors}")
+                com_links = self.twitter_api.find_twitter_links(response.completion)
+                response.completion_links = com_links
         except Exception as e:
             bt.logging.error(f"Error in process_content_links: {e}")
+            return
+        
+    async def process_tweets(self, responses):
+        try:
+            start_time = time.time()
+            all_links = [random.choice(response.completion_links) for response in responses if response.completion_links]
+            unique_links = list(set(all_links))  # Remove duplicates to avoid redundant tasks
+            tweets_list = await TwitterScraperActor().get_tweets(urls=unique_links)
+            link_to_tweets = dict(zip(unique_links, tweets_list))
+            for response in responses:
+                if response.completion_links:
+                    response.tweets = [link_to_tweets[link] for link in response.completion_links if link in link_to_tweets]
+            end_time = time.time()
+            bt.logging.info(f"Fetched Twitter links method took {end_time - start_time} seconds")
+        except Exception as e:
+            bt.logging.error(f"Error in process_tweets: {e}")
             return
 
     async def compute_rewards_and_penalties(self, event, prompt, task, responses, uids, start_time):
@@ -188,10 +185,11 @@ class TwitterScraperValidator:
             bt.logging.info("Computing rewards and penalties")
 
             self.process_content_links(responses)
+            # await self.process_tweets(responses)
 
             rewards = torch.zeros(len(responses), dtype=torch.float32).to(self.neuron.config.neuron.device)
             for weight_i, reward_fn_i in zip(self.reward_weights, self.reward_functions):
-                reward_i_normalized, reward_event = reward_fn_i.apply(task.base_text, responses, task.task_name)
+                reward_i_normalized, reward_event = reward_fn_i.apply(task.base_text, responses, task.task_name, uids)
                 rewards += weight_i * reward_i_normalized.to(self.neuron.config.neuron.device)
                 if not self.neuron.config.neuron.disable_log_rewards:
                     event = {**event, **reward_event}
@@ -225,9 +223,9 @@ class TwitterScraperValidator:
             for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
                 uid = uid_tensor.item()
                 completion_length = len(response.completion) if response.completion is not None else 0
-                links_content_length = len(response.links_content) if response.links_content is not None else 0
+                completion_links_length = len(response.completion_links) if response.completion_links is not None else 0
                 tweets_length = len(response.tweets) if response.tweets is not None else 0
-                bt.logging.info(f"uid: {uid};  score: {reward};  completion length: {completion_length};  links_content length: {links_content_length}; tweets length: {tweets_length};")
+                bt.logging.info(f"uid: {uid};  score: {reward};  completion length: {completion_length};  completion_links length: {completion_links_length}; tweets length: {tweets_length};")
                 bt.logging.trace(f"{response.completion}")
                 bt.logging.info(f"uid: {uid} Completion: ---------------------")
                 bt.logging.info(f"-----------------------------")

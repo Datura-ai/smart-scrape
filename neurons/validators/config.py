@@ -101,17 +101,17 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
-        "--reward.prompt_based_weight",
+        "--reward.summary_relevance_weight",
         type=float,
         help="adjusts the influence of a scoring model that evaluates the accuracy and relevance of a node's responses to given prompts.",
-        default=DefaultRewardFrameworkConfig.prompt_model_weight,
+        default=DefaultRewardFrameworkConfig.summary_relevance_weight,
     )
 
     parser.add_argument(
-        "--reward.prompt_summary_links_content_based_weight",
+        "--reward.prompt_summary_completion_links_based_weight",
         type=float,
         help="Specifies the weight for the reward model that evaluates the relevance and quality of summary text in conjunction with linked content data.",
-        default=DefaultRewardFrameworkConfig.prompt_model_summary_links_content_weight,
+        default=DefaultRewardFrameworkConfig.prompt_model_summary_completion_links_weight,
     )
 
     parser.add_argument(
@@ -136,7 +136,7 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
-        "--neuron.disable_twitter_links_content_fetch",
+        "--neuron.disable_twitter_completion_links_fetch",
         action="store_true",
         help="Enables the option to skip fetching content data for Twitter links, relying solely on the data provided by miners.",
         default=True,
