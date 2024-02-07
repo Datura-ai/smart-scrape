@@ -1,7 +1,7 @@
 from typing import Type
 from pydantic import BaseModel, Field
 from langchain_community.utilities.serpapi import SerpAPIWrapper
-from template.tools.base import ToolEnvKeyException, BaseTool
+from template.tools.base import BaseTool
 import os
 
 
@@ -23,7 +23,7 @@ class SerpGoogleSearchSchema(BaseModel):
 class SerpGoogleSearchTool(BaseTool):
     name = "Serp Google Search"
 
-    slug = "serp_google_seach"
+    slug = "serp_google_search"
 
     description = (
         "This tool performs Google searches and extracts relevant snippets and webpages. "
@@ -46,8 +46,6 @@ class SerpGoogleSearchTool(BaseTool):
             return search.run(query)
         except Exception as err:
             if "Invalid API key" in str(err):
-                raise ToolEnvKeyException(
-                    f"Serp API Key is not valid. Please check in the [Google SERP Search Toolkit](/toolkits/{self.toolkit_slug})"
-                )
+                return "Serp API Key is invalid"
 
             return "Could not search Google. Please try again later."
