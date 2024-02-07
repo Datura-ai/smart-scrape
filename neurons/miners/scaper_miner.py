@@ -27,7 +27,7 @@ from typing import List, Dict, Tuple, Union, Callable, Awaitable
 
 from template.utils import get_version
 from template.protocol import StreamPrompting, IsAlive, TwitterScraperStreaming, TwitterPromptAnalysisResult
-from template.services.twitter import TwitterAPIClient
+from template.services.twitter_api_wrapper import TwitterAPIClient
 from template.db import DBClient, get_random_tweets
 
 OpenAI.api_key = os.environ.get('OPENAI_API_KEY')

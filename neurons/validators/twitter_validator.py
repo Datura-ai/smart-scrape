@@ -23,7 +23,7 @@ from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardMo
 from neurons.validators.utils.tasks import TwitterTask
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from template.dataset import  MockTwitterQuestionsDataset
-from template.services.twitter import TwitterAPIClient
+from template.services.twitter_api_wrapper import TwitterAPIClient
 from template import QUERY_MINERS
 import asyncio
 

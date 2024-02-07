@@ -24,7 +24,7 @@ from typing import List, Dict, Tuple
 
 from template.utils import get_version
 from template.protocol import StreamPrompting, IsAlive, TwitterScraperStreaming
-from template.services.twitter import TwitterAPIClient
+from template.services.twitter_api_wrapper import TwitterAPIClient
 from template.db import DBClient, get_random_tweets
 from neurons.miners.scaper_miner import ScraperMiner
 
