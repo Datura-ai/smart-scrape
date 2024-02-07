@@ -37,7 +37,7 @@ if not OpenAI.api_key:
 client = AsyncOpenAI(timeout=60.0)
 
 
-class TwitterScrapperMiner:
+class ScraperMiner:
     def __init__(self, miner: any):
         self.miner = miner
 
@@ -164,7 +164,7 @@ class TwitterScrapperMiner:
                 # seed=seed,
             )
 
-    async def twitter_scraper(self, synapse: TwitterScraperStreaming, send: Send):
+    async def smart_scraper(self, synapse: TwitterScraperStreaming, send: Send):
         try:
             buffer = []
             # buffer.append('Tests 1')
@@ -179,6 +179,7 @@ class TwitterScrapperMiner:
             bt.logging.info(prompt)
             bt.logging.info("================================== Prompt ====================================")
 
+            ToolManger('prompt')
             # buffer.append('Test 2')
             intro_response, (tweets, prompt_analysis) = await asyncio.gather(
                 self.intro_text(model="gpt-3.5-turbo", prompt=prompt, send=send, is_intro_text=is_intro_text),

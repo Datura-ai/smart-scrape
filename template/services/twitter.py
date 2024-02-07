@@ -216,6 +216,11 @@ class TwitterAPIClient:
         response = self.connect_to_endpoint(search_url, query_params)
         return response
     
+    def get_full_archive_tweets(self, query_params):
+        search_url = "https://api.twitter.com/2/tweets/search/all"
+        response = self.connect_to_endpoint(search_url, query_params)
+        return response
+    
     async def generate_query_params_from_prompt(self, prompt, is_accuracy = True):
         """
         This function utilizes OpenAI's API to analyze the user's query and extract relevant information such 

@@ -26,7 +26,7 @@ from template.utils import get_version
 from template.protocol import StreamPrompting, IsAlive, TwitterScraperStreaming
 from template.services.twitter import TwitterAPIClient
 from template.db import DBClient, get_random_tweets
-from twitter_miner import TwitterScrapperMiner
+from neurons.miners.scaper_miner import ScraperMiner
 
 OpenAI.api_key = os.environ.get('OPENAI_API_KEY')
 if not OpenAI.api_key:
@@ -99,8 +99,8 @@ class StreamMiner(ABC):
             forward_fn=self._is_alive,
             blacklist_fn=self.blacklist_is_alive,
         ).attach(
-            forward_fn=self._twitter_scraper,
-            blacklist_fn=self.blacklist_twitter_scraper,
+            forward_fn=self._smart_scraper,
+            blacklist_fn=self.blacklist_smart_scraper,
         )
         bt.logging.info(f"Axon created: {self.axon}")
 
@@ -117,8 +117,8 @@ class StreamMiner(ABC):
     def config(self) -> "bt.Config":
         ...
     
-    def _twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
-        return self.twitter_scraper(synapse)
+    def _smart_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
+        return self.smart_scraper(synapse)
 
     def base_blacklist(self, synapse, blacklist_amt = 20000) -> Tuple[bool, str]:
         try:
@@ -177,7 +177,7 @@ class StreamMiner(ABC):
         bt.logging.debug(blacklist[1])
         return blacklist
         
-    def blacklist_twitter_scraper( self, synapse: TwitterScraperStreaming ) -> Tuple[bool, str]:
+    def blacklist_smart_scraper( self, synapse: TwitterScraperStreaming ) -> Tuple[bool, str]:
         blacklist = self.base_blacklist(synapse, template.TWITTER_SCRAPPER_BLACKLIST_STAKE)
         bt.logging.info(blacklist[1])
         return blacklist
@@ -187,8 +187,8 @@ class StreamMiner(ABC):
     def add_args(cls, parser: argparse.ArgumentParser):
         ...
     
-    async def _twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
-        return self.twitter_scraper(synapse)
+    async def _smart_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
+        return self.smart_scraper(synapse)
 
     def _is_alive(self, synapse: IsAlive) -> IsAlive:
         bt.logging.info("answered to be active")
@@ -196,7 +196,7 @@ class StreamMiner(ABC):
         return synapse
 
     @abstractmethod
-    def twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
+    def smart_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
         ...
 
     def run(self):
@@ -299,10 +299,10 @@ class StreamingTemplateMiner(StreamMiner):
     def add_args(cls, parser: argparse.ArgumentParser):
         pass
 
-    def twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
+    def smart_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
         bt.logging.info(f"started processing for synapse {synapse}")
-        tw_miner = TwitterScrapperMiner(self)
-        token_streamer = partial(tw_miner.twitter_scraper, synapse)
+        tw_miner = ScraperMiner(self)
+        token_streamer = partial(tw_miner.smart_scraper, synapse)
         return synapse.create_streaming_response(token_streamer)
 
 def get_valid_hotkeys(config):
