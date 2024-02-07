@@ -9,7 +9,7 @@ import template.utils as utils
 import os
 from typing import List
 from template.protocol import IsAlive
-from twitter_validator import TwitterScraperValidator
+from neurons.validators.scraper_validator import ScraperValidator
 from config import add_args, check_config, config
 from weights import init_wandb, update_weights, set_weights
 from traceback import print_exception
@@ -40,7 +40,7 @@ class neuron(AbstractNeuron):
     metagraph: "bt.metagraph"
     dendrite: "bt.dendrite"
 
-    twitter_validator: "TwitterScraperValidator"
+    scraper_validator: "ScraperValidator"
     moving_average_scores: torch.Tensor = None
     my_uuid: int = None  
     shutdown_event: asyncio.Event()
@@ -57,7 +57,7 @@ class neuron(AbstractNeuron):
 
         init_wandb(self)
 
-        self.twitter_validator = TwitterScraperValidator(neuron=self)
+        self.scraper_validator = ScraperValidator(neuron=self)
         bt.logging.info("initialized_validators")
 
         # Init the event loop.
@@ -209,7 +209,7 @@ class neuron(AbstractNeuron):
     async def query_synapse(self, strategy=QUERY_MINERS.RANDOM):
         try:
             self.metagraph = self.subtensor.metagraph( netuid = self.config.netuid )
-            await self.twitter_validator.query_and_score(strategy)
+            await self.scraper_validator.query_and_score(strategy)
         except Exception as e:
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(100)

@@ -27,7 +27,7 @@ from template.services.twitter_api_wrapper import TwitterAPIClient
 from template import QUERY_MINERS
 import asyncio
 
-class TwitterScraperValidator:
+class ScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
         self.streaming = True
         self.query_type = "text"

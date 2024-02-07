@@ -26,7 +26,7 @@ neu = neuron()
 async def response_stream(data):
     try:
         last_message = data['messages'][-1]
-        async for response in neu.twitter_validator.organic(last_message):
+        async for response in neu.scraper_validator.organic(last_message):
             yield f"{response}"
 
     except Exception as e:
@@ -42,7 +42,7 @@ async def response_stream_event(data):
             uids = [uid for uid in data['uids'] if uid is not None]
             print(F"Check uids, {uids}")
             merged_chunks = ""
-            async for response in neu.twitter_validator.organic_specified(last_message, uids):
+            async for response in neu.scraper_validator.organic_specified(last_message, uids):
                 chunk = str(response)  # Assuming response is already a string
                 merged_chunks += chunk
                 lines = chunk.split("\n")
@@ -53,7 +53,7 @@ async def response_stream_event(data):
         else:
             uids = None
             merged_chunks = ""
-            async for response in neu.twitter_validator.organic(last_message):
+            async for response in neu.scraper_validator.organic(last_message):
                 # Decode the chunk if necessary and merge
                 chunk = str(response)  # Assuming response is already a string
                 merged_chunks += chunk
@@ -71,7 +71,7 @@ async def response_stream_event(data):
 
 
 @app.post("/analyse-tweets")
-async def process_twitter_validatordator(request: Request, data: dict):
+async def process_scraper_validator(request: Request, data: dict):
     # Check access key
     access_key = request.headers.get("access-key")
     if access_key != EXPECTED_ACCESS_KEY:
@@ -79,7 +79,7 @@ async def process_twitter_validatordator(request: Request, data: dict):
     return StreamingResponse(response_stream(data))
 
 @app.post("/analyse-tweets-event")
-async def process_twitter_validatordator(request: Request, data: dict):
+async def process_scraper_validator(request: Request, data: dict):
     # Check access key
     # access_key = request.headers.get("access-key")
     # if access_key != EXPECTED_ACCESS_KEY:
