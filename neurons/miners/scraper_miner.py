@@ -111,7 +111,7 @@ class ScraperMiner:
                 openai_query_model=openai_query_model,
                 openai_fix_query_model=openai_fix_query_model
             )
-            filtered_tweets, prompt_analysis = await tw_client.analyse_prompt_and_fetch_tweets(prompt)
+            filtered_tweets, prompt_analysis = await tw_client.analyse_prompt_and_fetch_tweets(prompt, is_recent_tweets=True)
         return filtered_tweets, prompt_analysis
 
     async def finalize_data(self, prompt, model, filtered_tweets, prompt_analysis):

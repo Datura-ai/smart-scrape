@@ -262,16 +262,23 @@ class TwitterAPIClient:
             bt.logging.info(e)
             return [], None
 
-    async def analyse_prompt_and_fetch_tweets(self, prompt):
+    async def analyse_prompt_and_fetch_tweets(self, prompt, is_recent_tweets=True):
+        def get_tweets(prompt_analysis: TwitterPromptAnalysisResult):
+            if is_recent_tweets:
+                return self.get_recent_tweets(prompt_analysis.api_params)
+            else:
+                return self.get_full_archive_tweets(prompt_analysis.api_params)
+
         try:
             result = {}
             query, prompt_analysis = await self.generate_and_analyze_query(prompt)
-            response = self.get_recent_tweets(prompt_analysis.api_params)
+            
+            response = get_tweets(prompt_analysis)
 
             if response.status_code in [429, 502, 503, 504]:
                 bt.logging.warning(f"analyse_prompt_and_fetch_tweets status_code: {response.status_code} ===========, {response.text}")
                 await asyncio.sleep(random.randint(15, 30))  # Wait for a random time between 15 to 25 seconds before retrying
-                response = self.get_recent_tweets(prompt_analysis.api_params)  # Retry fetching tweets
+                response = get_tweets(prompt_analysis.api_params)  # Retry fetching tweets
             
             if response.status_code == 400:
                 bt.logging.warning(f"analyse_prompt_and_fetch_tweets: Try to fix bad tweets Query ============, {response.text}")

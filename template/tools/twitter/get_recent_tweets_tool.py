@@ -36,5 +36,7 @@ class GetRecentTweetsTool(BaseTool):
     ) -> str:
         """Tweet message and return."""
         client = TwitterAPIClient()
-        result = await client.analyse_prompt_and_fetch_tweets(query)
+        result = await client.analyse_prompt_and_fetch_tweets(
+            query, is_recent_tweets=True
+        )
         return result
