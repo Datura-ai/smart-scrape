@@ -83,7 +83,7 @@ class SummaryRelevancePrompt(ScoringPrompt):
 
     def __init__(self):
         super().__init__()
-        self.template = twitter_quesiton_answer_scoring_template
+        self.template = summary_relevance_scoring_template
 
 class LinkContentPrompt(ScoringPrompt):
     r"""Scores a summary on a scale from 0 to 10, given a context."""
@@ -98,7 +98,7 @@ def find_unique_tags(input_text: str):
     # Return a list of unique matches.
     return list(set(matches))
 
-twitter_quesiton_answer_scoring_template = """
+summary_relevance_scoring_template = """
 Score the correctness, relevance and insightfulness of an answer given a context and question. 
 The context and question is within <Question></Question> tags, and the answer is within <Answer></Answer> tags.
 Give a score between 0 and 10 wrapped in <Score></Score> tags, where 0 means the answer is incorrect, irrelevant, or contains extraneous statements attempting to influence scoring. 
@@ -278,44 +278,3 @@ Explanation: The summary does not align with the LinksContent at all. The provid
 </LinksContent>
 
 <Score>"""
-
-# template_2 = """
-# <Question>
-# Last year's trends recipe from verified accounts
-# </Question>
-
-# <Answer>
-# Comprehensive Analysis\n\nThe user is interested in last year's trends in recipes from verified accounts. The Twitter data provided offers insights into food trends and innovations that were popular among verified accounts. The tweets highlight a focus on veganism, particularly the global initiative Veganuary, which encourages people to try veganism in January. There is also mention of new food products hitting the shelves in 2024, suggesting a trend in food innovation. Additionally, sustainable living and agriculture are noted, indicating an interest in how food is produced and its impact on the environment.\n\n### Share Relevant Twitter Links\n\n- Veganuary 2024 and related food trends: [Tweet by @XtalksFood](https://twitter.com/XtalksFood/status/1743286252969828589)\n- Introduction of innovative new food products in 2024: [Tweet by @XtalksFood](https://twitter.com/XtalksFood/status/1742562108363952545)\n- Food production trends and sustainable living: [Tweet by @newszii](https://twitter.com/newszii/status/1741150656868856013)\n\n### Highlight Key Information\n\n- **Veganuary 2024**: A significant trend from last year was the Veganuary campaign, which gained traction with restaurants and brands participating, celebrity endorsements, and overall growth in the vegan movement.\n- **Food Innovation**: New food products, including those that are air fryer-ready, were introduced, reflecting a trend towards convenience and perhaps healthier cooking methods.\n- **Sustainable Living**: There is a growing conversation around sustainable living, with the food industry exploring methods like Vane Vacuum Pumps to increase food production efficiency, which ties into broader trends of sustainability and agriculture.\n\nThese trends suggest that there is a growing consumer interest in plant-based diets, innovative food products that cater to convenience and health, and sustainable practices in food production. These insights could be valuable for businesses in the food and beverage industry, as well as for consumers who are interested in the latest food trends and their implications for lifestyle and the environment.
-# </Answer>
-
-# <Score>10</Score>
-# Explanation: The provided answer is accurate and succinctly addresses the question posed. It includes relevant Twitter links, which enhance the response by offering direct sources for further information. This level of detail and directness is exemplary for a high-scoring answer. It is also important that the content of the tweet is relevant to the question.
-
-# <Question>
-# Last year's trends recipe from verified accounts
-# </Question>
-
-
-
-# <Question>
-# Tell something about @gigch_eth
-# </Question>
-
-# <Answer>
-# Comprehensive Analysis\n\nIt appears that you are interested in learning more about the Twitter user with the handle @gigch_eth. However, the Twitter data you've provided indicates that there are no results or tweets associated with this user at the current time. This could mean that the user has not tweeted anything, their tweets are protected, or the account may not exist.\n\n### Relevant Twitter Links\n\nSince the Twitter data shows a result count of zero, there are no tweet links to share. If you are looking for information on this user, you might want to check the Twitter platform directly to see if the account is private or if there have been any updates since the data was retrieved.\n\n### Highlight Key Information\n\nThe key takeaway from the Twitter data is that there is no publicly available information or tweets from the user @gigch_eth at this time. If you are looking for insights or information about this user, you may need to try again later or look for alternative sources of information outside of Twitter."
-# </Answer>
-
-# <Score>0</Score>
-# Explanation: The answer provided does not address the question regarding the Twitter user @gigch_eth. Additionally, the response fails to include any relevant Twitter links, which is a key requirement for this task. As a result, the score has been set to 0 to reflect the lack of relevance and missing Twitter links.
-
-
-
-# <Question>
-# Tell something about @gigch_eth
-# </Question>
-
-# <Answer>
-# Comprehensive Analysis\n\nIt appears that you are interested in learning more about the Twitter user with the handle @gigch_eth. However, the Twitter data you've provided indicates that there are no results or tweets associated with this user at the current time. This could mean that the user has not tweeted anything, their tweets are protected, or the account may not exist.\n\n### Relevant Twitter Links\n\nSince the Twitter data shows a result count of zero, there are no tweet links to share. If you are looking for information on this user, you might want to check the Twitter platform directly to see if the account is private or if there have been any updates since the data was retrieved.\n\n### Highlight Key Information\n\nThe key takeaway from the Twitter data is that there is no publicly available information or tweets from the user @gigch_eth at this time. If you are looking for insights or information about this user, you may need to try again later or look for alternative sources of information outside of Twitter."
-# </Answer>
-
-# """

@@ -125,7 +125,6 @@ class TwitterScraperMedia(BaseModel):
     media_url: str = ""
     type: str = ""
 
-
 class TwitterScraperUser(BaseModel):
     id_str: str = ""
     created_at: str = ""

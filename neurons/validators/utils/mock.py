@@ -43,7 +43,7 @@ class MockRewardModel(BaseRewardModel):
     def set_counter_to_half(self):
         pass
 
-    def apply(self, prompt: str, completion: List[str], name: str) -> torch.FloatTensor:
+    def apply(self, prompt: str, completion: List[str], name: str, uids) -> torch.FloatTensor:
         mock_reward = torch.tensor([1 for _ in completion], dtype=torch.float32)
         return mock_reward, {}
 
