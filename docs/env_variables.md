@@ -34,10 +34,16 @@ Here's a breakdown of the environment variables necessary for the Smart-Scrape s
 5. **APIFY_API_KEY**
    - **Usage**: Used for Apify actors
    - **How to Create**: Sign up or log in at [Apify](https://apify.com/), and generate a key in your account settings.
+
 5. **URL_SUBNET_18**
    - **Usage**: URL for Subnet 18, utilized for scoring the relevance of summaries.
    - **How to Create**: Generate a unique, strong, and random string.
    - **Required for**: Validators exclusively.
+
+6. **SERPAPI_API_KEY**
+   - **Usage**: Used to search web using Serp API
+   - **How to Create**: Sign up or log in at [Serp API](https://serpapi.com/), and generate a key in your account settings.
+   - **Required for**: Miners exclusively.
 
 ### Executing Commands for Setting Environment Variables
 To set the environment variables, open a terminal and replace `<your_key_here>` with your actual keys. For Validators, secure and authenticated access is crucial:
