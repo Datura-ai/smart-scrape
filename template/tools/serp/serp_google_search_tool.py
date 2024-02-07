@@ -1,8 +1,15 @@
-from typing import Optional, Type, Dict, Any
-from .serp_api_wrapper import SerpAPIWrapper
+from typing import Type
 from pydantic import BaseModel, Field
-
+from langchain_community.utilities.serpapi import SerpAPIWrapper
 from template.tools.base import ToolEnvKeyException, BaseTool
+import os
+
+
+SERPAPI_API_KEY = os.environ.get("SERPAPI_API_KEY")
+
+if not SERPAPI_API_KEY:
+    raise Exception("No SERPAPI_API_KEY key found")
+
 
 class SerpGoogleSearchSchema(BaseModel):
     query: str = Field(
@@ -14,11 +21,10 @@ class SerpGoogleSearchSchema(BaseModel):
 class SerpGoogleSearchTool(BaseTool):
     name = "Serp Google Search"
 
-    slug = "ser_google_seach"
+    slug = "serp_google_seach"
 
     description = (
         "This tool performs Google searches and extracts relevant snippets and webpages. "
-        
         "It's particularly useful for staying updated with current events and finding quick answers to your queries."
     )
 
@@ -26,34 +32,13 @@ class SerpGoogleSearchTool(BaseTool):
 
     tool_id = "a66b3b20-d0a2-4b53-a775-197bc492e816"
 
-    def get_params(self) -> Dict[str, Any]:
-        """Get parameters."""
-        params =  {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "The city and state, e.g. San Francisco, CA",
-                },
-                "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
-            },
-            "required": ["location"],
-        },
-        return params
-    
-
     def _run(
-        self, query: str, # run_manager: Optional[CallbackManagerForToolRun] = None
+        self,
+        query: str,
     ) -> str:
         """Search Google and return the results."""
-        serpapi_api_key = self.get_env_key("SERP_API_KEY")
 
-        if not serpapi_api_key:
-            raise ToolEnvKeyException(
-                f"Please fill Serp API Key in the [Google SERP Search Toolkit](/toolkits/{self.toolkit_slug})"
-            )
-
-        search = SerpAPIWrapper(serpapi_api_key=serpapi_api_key)
+        search = SerpAPIWrapper(serpapi_api_key=SERPAPI_API_KEY)
 
         try:
             return search.run(query)

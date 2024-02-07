@@ -1,8 +1,9 @@
 from abc import abstractmethod
 from enum import Enum
 from typing import Dict, List, Optional
-
 from pydantic import BaseModel, Field, validator
+from langchain.tools import BaseTool as LangChainBaseTool
+
 
 class ToolEnvKeyType(Enum):
     STRING = "string"
@@ -11,6 +12,7 @@ class ToolEnvKeyType(Enum):
 
     def __str__(self):
         return self.value
+
 
 class ToolEnvKey(BaseModel):
     label: str = Field()
@@ -40,7 +42,7 @@ class ToolEnvKey(BaseModel):
             raise ValueError("key_type should be string/file/integer")
 
 
-class BaseTool():
+class BaseTool(LangChainBaseTool):
     tool_id: str
     configs: Dict[str, str] = {}
     slug: Optional[str] = None
@@ -49,11 +51,6 @@ class BaseTool():
 
     def get_env_key(self, key: str):
         return self.configs.get(key)
-    
-    @abstractmethod
-    def get_params(self) -> List[ToolEnvKey]:
-        # Add file related config keys here
-        pass
 
 
 class BaseToolkit(BaseModel):

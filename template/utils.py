@@ -17,7 +17,6 @@ import threading
 import multiprocessing
 from . import client
 from collections import deque
-from template.protocol import TwitterPromptAnalysisResult
 from datetime import datetime
 from template.misc import ttl_get_block
 from typing import Any, Dict, Optional

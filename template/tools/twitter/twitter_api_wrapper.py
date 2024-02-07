@@ -4,7 +4,7 @@ import json
 import asyncio
 import re
 from datetime import datetime
-from template.utils import call_openai, tweet_prompts
+from template.utils import call_openai
 from template.protocol import TwitterPromptAnalysisResult
 import bittensor as bt
 from typing import List
