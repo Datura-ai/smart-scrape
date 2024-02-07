@@ -20,6 +20,7 @@ from neurons.validators.penalty import (
     LinkValidationPenaltyModel
 )
 from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
+from neurons.validators.reward.link_content_relevance import LinkContentRelevanceModel, init_tokenizer
 from neurons.validators.utils.tasks import TwitterTask
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from template.dataset import  MockTwitterQuestionsDataset
@@ -44,7 +45,7 @@ class ScraperValidator:
         self.reward_weights = torch.tensor(
             [
                 self.neuron.config.reward.summary_relevance_weight,
-                # self.neuron.config.reward.link_content_based_weight,
+                self.neuron.config.reward.link_content_weight,
             ],
             dtype=torch.float32,
         ).to(self.neuron.config.neuron.device)
@@ -60,22 +61,25 @@ class ScraperValidator:
     
         tokenizer = None
         model = None
-        # if (self.neuron.config.reward.summary_relevance_weight > 0 or \
-        #    self.neuron.config.reward.link_content_based_weight > 0) and \
-        #    not self.neuron.config.neuron.is_disable_tokenizer_reward:
-        #     tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
+        if self.neuron.config.reward.link_content_weight > 0 and \
+           not self.neuron.config.neuron.is_disable_tokenizer_reward:
+            tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
            
         self.reward_functions = [ 
-            # SummaryRelevanceRewardModel(device=self.neuron.config.neuron.device, 
-            #                   scoring_type=RewardScoringType.twitter_question_answer_score,
-            #                   tokenizer=tokenizer,
-            #                   model=model,
-            #                   is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward
-            #                   )
             SummaryRelevanceRewardModel(device=self.neuron.config.neuron.device, 
-                              scoring_type=RewardScoringType.twitter_question_answer_score
+                              scoring_type=RewardScoringType.summary_relevance_score_template
                               )
             if self.neuron.config.reward.summary_relevance_weight > 0
+            else MockRewardModel(RewardModelType.prompt.value),       
+
+            LinkContentRelevanceModel(device=self.neuron.config.neuron.device, 
+                              scoring_type=RewardScoringType.summary_relevance_score_template,
+                              tokenizer=tokenizer,
+                              model=model,
+                              is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward
+                              )
+            if self.neuron.config.reward.summary_relevance_weight > 0
+
             else MockRewardModel(RewardModelType.prompt.value),              
         ]
 
@@ -173,7 +177,7 @@ class ScraperValidator:
             link_to_tweets = dict(zip(unique_links, tweets_list))
             for response in responses:
                 if response.completion_links:
-                    response.tweets = [link_to_tweets[link] for link in response.completion_links if link in link_to_tweets]
+                    response.validator_tweets = [link_to_tweets[link] for link in response.completion_links if link in link_to_tweets]
             end_time = time.time()
             bt.logging.info(f"Fetched Twitter links method took {end_time - start_time} seconds")
         except Exception as e:

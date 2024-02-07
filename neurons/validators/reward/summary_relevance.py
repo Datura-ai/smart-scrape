@@ -24,7 +24,7 @@ import random
 from typing import List, Union
 from .config import RewardModelType, RewardScoringType
 from .reward import BaseRewardModel, BaseRewardEvent
-from utils.prompts import TwitterQuestionAnswerPrompt, TwitterSummaryLinksContetPrompt
+from utils.prompts import SummaryRelevancePrompt, LinkContentPrompt
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from neurons.validators.utils import call_to_subnet_18_scoring
 
@@ -52,10 +52,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             scoring_prompt = None
 
             scoring_prompt_text = None
-            if self.scoring_type.value == RewardScoringType.twitter_question_answer_score.value:
-                scoring_prompt = TwitterQuestionAnswerPrompt()
-            elif self.scoring_type.value == RewardScoringType.twitter_summary_completion_links_template.value:
-                scoring_prompt = TwitterSummaryLinksContetPrompt()
+            if self.scoring_type.value == RewardScoringType.summary_relevance_score_template.value:
+                scoring_prompt = SummaryRelevancePrompt()
+            elif self.scoring_type.value == RewardScoringType.link_content_relevance_template.value:
+                scoring_prompt = LinkContentPrompt()
                 # Convert list of links content to string before passing to the prompt
                 completion_links_str = str(response.completion_links)
                 scoring_prompt_text = scoring_prompt.text(completion, completion_links_str)

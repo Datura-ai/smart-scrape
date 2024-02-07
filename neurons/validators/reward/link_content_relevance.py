@@ -22,8 +22,9 @@ import bittensor as bt
 from typing import List, Union
 from .config import RewardModelType, RewardScoringType
 from .reward import BaseRewardModel, BaseRewardEvent
-from utils.prompts import TwitterQuestionAnswerPrompt, TwitterSummaryLinksContetPrompt
+from utils.prompts import SummaryRelevancePrompt, LinkContentPrompt
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from template.protocol import TwitterScraperStreaming
 import random
 
 def init_tokenizer(device):
@@ -67,10 +68,20 @@ class LinkContentRelevanceModel(BaseRewardModel):
         self.scoring_type = scoring_type
         self.is_disable_tokenizer_reward = is_disable_tokenizer_reward
 
-    def reward(self, prompt: str, response: bt.Synapse, name: str) -> BaseRewardEvent:
+
+    def check_responses_links(prompt: str, response: TwitterScraperStreaming):
+        miner_tweets = response.miner_tweets
+        completion_links = response.completion_links
+
+    def reward(self, prompt: str, response: TwitterScraperStreaming, name: str) -> BaseRewardEvent:
         try:
             completion = self.get_successful_completion(response=response)
             reward_event = BaseRewardEvent()
+
+
+
+
+            
 
             with torch.no_grad():
                 # Choose correct scoring prompt for request type.
@@ -82,10 +93,10 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     scoring_type = name
 
                 scoring_prompt_text = None
-                if scoring_type == RewardScoringType.twitter_question_answer_score:
-                    scoring_prompt = TwitterQuestionAnswerPrompt()
-                elif scoring_type == RewardScoringType.twitter_summary_completion_links_template:
-                    scoring_prompt = TwitterSummaryLinksContetPrompt()
+                if scoring_type == RewardScoringType.summary_relevance_score_template:
+                    scoring_prompt = SummaryRelevancePrompt()
+                elif scoring_type == RewardScoringType.link_content_relevance_template:
+                    scoring_prompt = LinkContentPrompt()
                     # Convert list of links content to string before passing to the prompt
                     completion_links_str = str(response.completion_links)
                     scoring_prompt_text = scoring_prompt.text(completion, completion_links_str)

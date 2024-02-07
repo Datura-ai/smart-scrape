@@ -214,7 +214,7 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
         description="Analysis of the Twitter query result.",
     )
 
-    tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+    validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
         default_factory=list,
         title="tweets",
         description="Fetched Tweets Data.",

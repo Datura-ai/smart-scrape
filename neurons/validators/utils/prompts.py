@@ -78,19 +78,19 @@ class ScoringPrompt(BasePrompt):
         )[0]
 
 
-class TwitterQuestionAnswerPrompt(ScoringPrompt):
+class SummaryRelevancePrompt(ScoringPrompt):
     r"""Scores a summary on a scale from 0 to 10, given a context."""
 
     def __init__(self):
         super().__init__()
         self.template = twitter_quesiton_answer_scoring_template
 
-class TwitterSummaryLinksContetPrompt(ScoringPrompt):
+class LinkContentPrompt(ScoringPrompt):
     r"""Scores a summary on a scale from 0 to 10, given a context."""
 
     def __init__(self):
         super().__init__()
-        self.template = twitter_summary_completion_links_template
+        self.template = link_content_relevance_template
 
 def find_unique_tags(input_text: str):
     r"""Find all substrings that match the pattern '<...>'."""
@@ -167,7 +167,7 @@ Explanation: The answer does not contain any Twitter links. Additionally, the an
 
 <Score>"""
 
-twitter_summary_completion_links_template = """
+link_content_relevance_template = """
 Score the relevance, succinctness, and quality of a summary given a LinksContent. 
 The context is within <LinksContent></LinksContent> tags 
 and the summary is within <Summary></Summary> tags. 
