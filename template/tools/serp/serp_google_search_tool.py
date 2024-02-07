@@ -34,16 +34,19 @@ class SerpGoogleSearchTool(BaseTool):
 
     tool_id = "a66b3b20-d0a2-4b53-a775-197bc492e816"
 
-    def _run(
+    def _run():
+        pass
+
+    async def _arun(
         self,
         query: str,
-    ) -> str:
+    ):
         """Search Google and return the results."""
 
         search = SerpAPIWrapper(serpapi_api_key=SERPAPI_API_KEY)
 
         try:
-            return search.run(query)
+            return await search.arun(query)
         except Exception as err:
             if "Invalid API key" in str(err):
                 return "Serp API Key is invalid"
