@@ -274,9 +274,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
                         miner_tweet = next((tweet for tweet in miner_tweets_data if tweet['id'] == tweet_id), None)
                         if miner_tweet:
                             miner_tweet_text = miner_tweet['text']
-                            reward = self.reward(prompt, miner_tweet_text)
-                            links_scores.append(reward)
-                            bt.logging.info(f"Tweet ID {tweet_id} yielded a reward of {reward}.")
+                            # reward = self.reward(prompt, miner_tweet_text, name)
+                            links_scores.append(1)
+                            bt.logging.info(f"Tweet ID {tweet_id} yielded a reward of {1}.")
                         else:
                             bt.logging.warning(f"No matching tweet found for ID {tweet_id}.")
                     if links_scores:
@@ -285,6 +285,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                         bt.logging.info(f"Average score calculated: {average_score}")
                     else:
                         bt.logging.warning("No link scores to average, reward remains 0.")
+                reward_events.append(reward_event)
 
             return reward_events
         except Exception as e:
