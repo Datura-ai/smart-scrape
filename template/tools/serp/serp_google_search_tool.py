@@ -8,7 +8,9 @@ import os
 SERPAPI_API_KEY = os.environ.get("SERPAPI_API_KEY")
 
 if not SERPAPI_API_KEY:
-    raise Exception("No SERPAPI_API_KEY key found")
+    raise ValueError(
+        "Please set the SERPAPI_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md"
+    )
 
 
 class SerpGoogleSearchSchema(BaseModel):
