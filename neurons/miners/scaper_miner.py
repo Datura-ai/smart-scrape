@@ -179,7 +179,6 @@ class ScraperMiner:
             bt.logging.info(prompt)
             bt.logging.info("================================== Prompt ====================================")
 
-            ToolManger('prompt')
             # buffer.append('Test 2')
             intro_response, (tweets, prompt_analysis) = await asyncio.gather(
                 self.intro_text(model="gpt-3.5-turbo", prompt=prompt, send=send, is_intro_text=is_intro_text),
