@@ -275,7 +275,7 @@ class TwitterAPIClient:
                 response = self.get_recent_tweets(prompt_analysis.api_params)  # Retry fetching tweets
             
             if response.status_code == 400:
-                bt.logging.warning(f"analyse_prompt_and_fetch_tweets: Try to fix bad tweets Query ============, {response.text}")
+                bt.logging.info(f"analyse_prompt_and_fetch_tweets: Try to fix bad tweets Query ============, {response.text}")
                 response, prompt_analysis = await self.retry_with_fixed_query(prompt=prompt, old_query=prompt_analysis, error=response.text)
 
             if response.status_code != 200:
