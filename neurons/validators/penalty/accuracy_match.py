@@ -64,7 +64,6 @@ class AccuracyPenaltyModel(BasePenaltyModel):
         Returns:
             A tensor of penalties for each completion.
         """
-        prompt = task.base_text
         penalties = []
         for response in responses:
             completion = response.completion

@@ -33,7 +33,6 @@ import re
 import html
 import random
 
-
 def init_tokenizer(device):
     # https://huggingface.co/VMware/open-llama-7b-open-instruct
     # Fast tokenizer results in incorrect encoding, set the use_fast = False parameter.
@@ -274,8 +273,8 @@ class LinkContentRelevanceModel(BaseRewardModel):
                         miner_tweet = next((tweet for tweet in miner_tweets_data if tweet['id'] == tweet_id), None)
                         if miner_tweet:
                             miner_tweet_text = miner_tweet['text']
-                            # reward = self.reward(prompt, miner_tweet_text, name)
-                            links_scores.append(1)
+                            reward = self.reward(prompt, miner_tweet_text, name)
+                            links_scores.append(reward)
                             bt.logging.info(f"Tweet ID {tweet_id} yielded a reward of {1}.")
                         else:
                             bt.logging.warning(f"No matching tweet found for ID {tweet_id}.")

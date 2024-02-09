@@ -28,7 +28,7 @@ from utils.prompts import SummaryRelevancePrompt, LinkContentPrompt
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from neurons.validators.utils import call_to_subnet_18_scoring
 from template.utils import call_openai
-
+from template.protocol import TwitterScraperStreaming, TwitterScraperTweet
 
 
 class SummaryRelevanceRewardModel(BaseRewardModel):
@@ -38,11 +38,16 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
     def name(self) -> str:
         return RewardModelType.prompt.value
 
-    def __init__(self, device: str, scoring_type: None):
+    def __init__(self, device: str, scoring_type: None, tokenizer= None, model = None, is_disable_tokenizer_reward=False):
         super().__init__()
         self.device = device
 
         self.scoring_type = scoring_type
+        self.is_disable_tokenizer_reward = is_disable_tokenizer_reward
+        if not is_disable_tokenizer_reward and tokenizer:
+            self.tokenizer = tokenizer
+            self.model = model
+            
 
     def get_scoring_text(self, prompt: str, response: bt.Synapse) -> BaseRewardEvent:
         try:
@@ -74,7 +79,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             bt.logging.error(f"Error in Prompt reward method: {e}")
             return None
         
-    async def send_messages_to_openai(self, messages):
+    async def get_score_by_openai(self, messages):
         query_tasks = []
         for message_dict in messages:  # Iterate over each dictionary in the list
             (key, message_list), = message_dict.items()
@@ -104,6 +109,40 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             result[key] = response
         return result
             
+    def get_score_by_llm(self, messages):
+        result = {}
+        for message_dict in messages:  # Iterate over each dictionary in the list
+            (key, message_list), = message_dict.items()
+        
+            with torch.no_grad():
+                # Choose correct scoring prompt for request type.
+                # Determine the scoring prompt based on the provided name or the default scoring type.
+                scoring_prompt_text = message_list[-1]['content']
+
+                # Tokenize formatted scoring prompt.
+                encodings_dict = self.tokenizer(
+                    scoring_prompt_text,
+                    truncation=True,
+                    padding="max_length",
+                    return_tensors="pt",
+                )
+                input_ids = encodings_dict["input_ids"].to(self.device)
+
+                # Prompt local reward model.
+                start_time = time.time()
+                generated_tokens = self.model.generate(
+                    input_ids, max_new_tokens=2, max_time=1
+                )
+                duration = time.time() - start_time
+                generated_text = self.tokenizer.batch_decode(
+                    generated_tokens, skip_special_tokens=True
+                )
+
+                # Extract score from generated text.
+                score_text = generated_text[0][len(scoring_prompt_text) :]
+                result[key] = score_text
+        return result
+
     def get_rewards(
         self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> List[BaseRewardEvent]:
@@ -131,19 +170,25 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 response = call_to_subnet_18_scoring({
                     "messages": messages
                 })
+                score_responses = None
                 if response.status_code != 200:
                     bt.logging.error(f"ERROR connect to Subnet 18: {response.text}")
-                    loop = asyncio.get_event_loop_policy().get_event_loop()
-                    score_responses = loop.run_until_complete(self.send_messages_to_openai(messages=messages))
+
+                    if not self.is_disable_tokenizer_reward:
+                        score_responses = self.get_score_by_llm(messages=messages)
+                    else:
+                        loop = asyncio.get_event_loop_policy().get_event_loop()
+                        score_responses = loop.run_until_complete(self.get_score_by_openai(messages=messages))
                 else:
                     score_responses = response.json()
 
-                for (key, score_result), (scoring_prompt, _) in zip(score_responses.items(), filter_scoring_messages):
-                    score = scoring_prompt.extract_score(score_result)
-                    # Scale 0-10 score to 0-1 range.
-                    score /= 10.0
-                    scores[key] = score
-                    score_text[key] = score_result
+                if score_responses:
+                    for (key, score_result), (scoring_prompt, _) in zip(score_responses.items(), filter_scoring_messages):
+                        score = scoring_prompt.extract_score(score_result)
+                        # Scale 0-10 score to 0-1 range.
+                        score /= 10.0
+                        scores[key] = score
+                        score_text[key] = score_result
             
             # Iterate over responses and assign rewards based on scores
             reward_events = []

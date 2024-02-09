@@ -60,13 +60,17 @@ class ScraperValidator:
     
         tokenizer = None
         model = None
-        if self.neuron.config.reward.link_content_weight > 0 and \
-           not self.neuron.config.neuron.is_disable_tokenizer_reward:
+        if (self.neuron.config.reward.link_content_weight > 0 or \
+            self.neuron.config.reward.summary_relevance_weight) and \
+            not self.neuron.config.neuron.is_disable_tokenizer_reward:
             tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
            
         self.reward_functions = [ 
             SummaryRelevanceRewardModel(device=self.neuron.config.neuron.device, 
-                              scoring_type=RewardScoringType.summary_relevance_score_template
+                              scoring_type=RewardScoringType.summary_relevance_score_template,
+                              tokenizer=tokenizer, 
+                              model=model,
+                              is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward
                               )
             if self.neuron.config.reward.summary_relevance_weight > 0
             else MockRewardModel(RewardModelType.prompt.value),       
@@ -83,9 +87,8 @@ class ScraperValidator:
         ]
 
         self.penalty_functions = [
-            # TaskValidationPenaltyModel(max_penalty=0.6),
-            LinkValidationPenaltyModel(max_penalty=0.9),
-            # AccuracyPenaltyModel(max_penalty=1),
+            LinkValidationPenaltyModel(max_penalty=0.7),
+            AccuracyPenaltyModel(max_penalty=1),
         ]
         self.twitter_api = TwitterAPIClient()
 
