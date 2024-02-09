@@ -228,7 +228,8 @@ class LinkContentRelevanceModel(BaseRewardModel):
             scores = [self.check_response_random_tweet(response) for response in responses]
 
             reward_events = []
-            for score, response in zip(scores, responses):  # Fixed variable name from 'response' to 'responses'
+            for score, response, uid_tensor  in zip(scores, responses, uids):  # Fixed variable name from 'response' to 'responses'
+                uid = uid_tensor.item()
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
                 if score:
@@ -243,30 +244,24 @@ class LinkContentRelevanceModel(BaseRewardModel):
                             miner_tweet_text = miner_tweet['text']
                             reward = self.reward(prompt, miner_tweet_text, response)
                             links_scores.append(reward)
-                            bt.logging.info(f"Tweet ID {tweet_id} yielded a reward of {reward.reward}.")
+                            bt.logging.info(f"UID:{uid}, Tweet ID {tweet_id} yielded a reward of {reward.reward}.")
                         else:
-                            bt.logging.warning(f"No matching tweet found for ID {tweet_id}.")
+                            bt.logging.warning(f"UID:{uid}, No matching tweet found for ID {tweet_id}.")
                     if links_scores:
                         average_score = sum(link.reward for link in links_scores) / len(links_scores)
                         reward_event.reward = average_score
-                        bt.logging.info(f"Average score calculated: {average_score}, links_scores: {[link.reward for link in links_scores]}")
+                        bt.logging.info(f"UID:{uid}, Average score calculated: {average_score}, links_scores: {[link.reward for link in links_scores]}")
                     else:
-                        bt.logging.warning("No link scores to average, reward remains 0.")
+                        bt.logging.warning("UID:{uid}No link scores to average, reward remains 0.")
                 reward_events.append(reward_event)
 
             # Iterate over responses and assign rewards based on scores
-            reward_events = []
             bt.logging.info(f"==================================Links Content scoring Explanation Begins==================================")
             bt.logging.info(f"Prompt: {prompt}")
-            for (index, response), uid_tensor in zip(enumerate(responses), uids):
+            for (index, response), uid_tensor, reward_e in zip(enumerate(responses), uids, reward_events):
                 uid = uid_tensor.item()
-                score = scores.get(str(index), 0)
-                # score_explain = score_text.get(str(index), '')
-                reward_event = BaseRewardEvent()
-                reward_event.reward = score
-                reward_events.append(reward_event)
-                bt.logging.info(f"UID: {uid} | Score: {score:.2f}")
-                bt.logging.info(f"Compeltion: {response.completion}")
+                bt.logging.info(f"UID: {uid} | Score: {reward_e.reward:.2f}")
+                bt.logging.info(f"UID:{uid} Compeltion: {response.completion}")
                 bt.logging.info(f"----------------------------------------------------------------------")
             bt.logging.info(f"==================================Summary Relevance Scoring Explanation Ends==================================")
             return reward_events

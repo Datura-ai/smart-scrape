@@ -22,7 +22,6 @@ class RewardModelType(Enum):
     task_validator = "task_validator_filter"
     accuracy_match = "keyword_match_penalty"
     sentence_match_penalty = "sentence_match_penalty"
-    rlhf = "rlhf_reward_model"
     prompt = "prompt_reward_model"
 
 class RewardScoringType(Enum):
