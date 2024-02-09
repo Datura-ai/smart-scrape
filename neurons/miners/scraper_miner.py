@@ -58,16 +58,17 @@ class ScraperMiner:
         if not is_intro_text:
             return
 
-        bt.logging.trace(f"Run intro text")
+        bt.logging.trace("Run intro text")
 
         content = f"""
         Generate introduction for that prompt: "{prompt}",
 
-        Something like it: "To effectively address your query, my approach involves a comprehensive analysis and integration of relevant Twitter data. Here's how it works:
+        Something like it: "To effectively address your query, my approach involves a comprehensive analysis and integration of relevant Twitter and Google web search data. Here's how it works:
 
         Question or Topic Analysis: I start by thoroughly examining your question or topic to understand the core of your inquiry or the specific area you're interested in.
 
         Twitter Data Search: Next, I delve into Twitter, seeking out information, discussions, and insights that directly relate to your prompt.
+        Google search: Next, I search Google, seeking out information, discussions, and insights that directly relate to your prompt.
 
         Synthesis and Response: After gathering and analyzing this data, I compile my findings and craft a detailed response, which will be presented below"
 
@@ -82,26 +83,10 @@ class ScraperMiner:
             # seed=seed,
         )
 
-        N = 1
-        buffer = []
-        async for chunk in response:
-            token = chunk.choices[0].delta.content or ""
-            buffer.append(token)
-            if len(buffer) == N:
-                joined_buffer = "".join(buffer)
-                text_response_body = {"type": "text", "content": joined_buffer}
-                await send(
-                    {
-                        "type": "http.response.body",
-                        "body": joined_buffer.encode("utf-8"),
-                        "more_body": True,
-                    }
-                )
-                await asyncio.sleep(0.1)  # Wait for 100 milliseconds
-                bt.logging.trace(f"Streamed tokens: {joined_buffer}")
-                buffer = []
+        response_streamer = ResponseStreamer(send=send)
+        await response_streamer.stream_response(response=response, wait_time=0.1)
 
-        return buffer
+        return response_streamer.get_full_text()
 
     async def fetch_tweets(self, prompt):
         filtered_tweets = []
@@ -227,14 +212,14 @@ class ScraperMiner:
 
             response_streamer = ResponseStreamer(send=send)
 
-            await response_streamer.stream_response(twitter_response)
-            await response_streamer.stream_response(search_response)
+            await response_streamer.stream_response(response=twitter_response)
+            await response_streamer.stream_response(response=search_response)
 
             final_summary = await self.finalize_summary(
                 prompt, openai_summary_model, response_streamer.get_full_text()
             )
 
-            await response_streamer.stream_response(final_summary)
+            await response_streamer.stream_response(response=final_summary)
 
             bt.logging.info(
                 "================================== Completion Response ==================================="
@@ -300,7 +285,7 @@ class ResponseStreamer:
         self.more_body = True
         self.send = send
 
-    async def stream_response(self, response):
+    async def stream_response(self, response, wait_time=None):
         async for chunk in response:
             token = chunk.choices[0].delta.content or ""
             self.buffer.append(token)
@@ -317,6 +302,9 @@ class ResponseStreamer:
                         "more_body": True,
                     }
                 )
+
+                if wait_time is not None:
+                    await asyncio.sleep(wait_time)
 
                 bt.logging.trace(f"Streamed tokens: {joined_buffer}")
                 self.buffer = []  # Clear the buffer for the next set of tokens
