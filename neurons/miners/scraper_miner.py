@@ -167,9 +167,6 @@ class ScraperMiner:
 
     async def smart_scraper(self, synapse: TwitterScraperStreaming, send: Send):
         try:
-            buffer = []
-            # buffer.append('Tests 1')
-
             model = synapse.model
             prompt = synapse.messages
             seed = synapse.seed
@@ -184,7 +181,6 @@ class ScraperMiner:
                 "================================== Prompt ===================================="
             )
 
-            # buffer.append('Test 2')
             intro_response, (tweets, prompt_analysis), search_result = (
                 await asyncio.gather(
                     self.intro_text(
@@ -229,87 +225,25 @@ class ScraperMiner:
                 data=search_result,
             )
 
-            # TODO stream twitter and google search tokens. reuse code
+            response_streamer = ResponseStreamer(send=send)
 
-            # Reset buffer for finalizing data responses
-            buffer = []
-            N = 1
-            full_text = []  # Initialize a list to store all chunks of text
-            more_body = True
-            async for chunk in twitter_response:
-                token = chunk.choices[0].delta.content or ""
-                buffer.append(token)
-                full_text.append(token)  # Append the token to the full_text list
-                if len(buffer) == N:
-                    joined_buffer = "".join(buffer)
-                    text_data_json = json.dumps(
-                        {"type": "text", "content": joined_buffer}
-                    )
-                    # Stream the text
-                    await send(
-                        {
-                            "type": "http.response.body",
-                            "body": text_data_json.encode("utf-8"),
-                            "more_body": True,
-                        }
-                    )
-                    bt.logging.trace(f"Streamed tokens: {joined_buffer}")
-                    buffer = []  # Clear the buffer for the next set of tokens
-
-            async for chunk in search_response:
-                token = chunk.choices[0].delta.content or ""
-                buffer.append(token)
-                full_text.append(token)  # Append the token to the full_text list
-                if len(buffer) == N:
-                    joined_buffer = "".join(buffer)
-                    text_data_json = json.dumps(
-                        {"type": "text", "content": joined_buffer}
-                    )
-                    # Stream the text
-                    await send(
-                        {
-                            "type": "http.response.body",
-                            "body": text_data_json.encode("utf-8"),
-                            "more_body": True,
-                        }
-                    )
-                    bt.logging.trace(f"Streamed tokens: {joined_buffer}")
-                    buffer = []  # Clear the buffer for the next set of tokens
-
-            joined_full_text = "".join(full_text)  # Join all text chunks
+            await response_streamer.stream_response(twitter_response)
+            await response_streamer.stream_response(search_response)
 
             final_summary = await self.finalize_summary(
-                prompt, openai_summary_model, joined_full_text
+                prompt, openai_summary_model, response_streamer.get_full_text()
             )
 
-            async for chunk in final_summary:
-                token = chunk.choices[0].delta.content or ""
-                buffer.append(token)
-                full_text.append(token)  # Append the token to the full_text list
-                if len(buffer) == N:
-                    joined_buffer = "".join(buffer)
-                    text_data_json = json.dumps(
-                        {"type": "text", "content": joined_buffer}
-                    )
-                    # Stream the text
-                    await send(
-                        {
-                            "type": "http.response.body",
-                            "body": text_data_json.encode("utf-8"),
-                            "more_body": True,
-                        }
-                    )
-                    bt.logging.trace(f"Streamed tokens: {joined_buffer}")
-                    buffer = []  # Clear the buffer for the next set of tokens
-
-            joined_full_text = "".join(full_text)  # Join all text chunks
+            await response_streamer.stream_response(final_summary)
 
             bt.logging.info(
-                f"================================== Completion Responsed ==================================="
+                "================================== Completion Response ==================================="
             )
-            bt.logging.info(f"{joined_full_text}")  # Print the full text at the end
             bt.logging.info(
-                f"================================== Completion Responsed ==================================="
+                f"{response_streamer.get_full_text()}"
+            )  # Print the full text at the end
+            bt.logging.info(
+                "================================== Completion Response ==================================="
             )
 
             # Send prompt_analysis
@@ -327,7 +261,7 @@ class ScraperMiner:
                         "more_body": True,
                     }
                 )
-                bt.logging.info(f"Prompt Analysis sent")
+                bt.logging.info("Prompt Analysis sent")
 
             # Send tweets
             tweets_amount = tweets.get("meta", {}).get("result_count", 0)
@@ -352,7 +286,40 @@ class ScraperMiner:
                     }
                 )
 
-            bt.logging.info(f"End of Streaming")
+            bt.logging.info("End of Streaming")
 
         except Exception as e:
             bt.logging.error(f"error in twitter scraper {e}\n{traceback.format_exc()}")
+
+
+class ResponseStreamer:
+    def __init__(self, send: Send) -> None:
+        self.buffer = []  # Reset buffer for finalizing data responses
+        self.N = 1
+        self.full_text = []  # Initialize a list to store all chunks of text
+        self.more_body = True
+        self.send = send
+
+    async def stream_response(self, response):
+        async for chunk in response:
+            token = chunk.choices[0].delta.content or ""
+            self.buffer.append(token)
+            self.full_text.append(token)  # Append the token to the full_text list
+
+            if len(self.buffer) == self.N:
+                joined_buffer = "".join(self.buffer)
+                text_data_json = json.dumps({"type": "text", "content": joined_buffer})
+
+                await self.send(
+                    {
+                        "type": "http.response.body",
+                        "body": text_data_json.encode("utf-8"),
+                        "more_body": True,
+                    }
+                )
+
+                bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+                self.buffer = []  # Clear the buffer for the next set of tokens
+
+    def get_full_text(self):
+        return "".join(self.full_text)

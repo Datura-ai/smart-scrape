@@ -25,7 +25,7 @@ Operational Rules:
 """
 
 
-async def summarize_serp_google_search_data(self, prompt: str, model: str, data):
+async def summarize_serp_google_search_data(prompt: str, model: str, data):
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
     In <GoogleSearch> I fetch data from Google search API.
