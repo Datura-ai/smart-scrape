@@ -61,7 +61,7 @@ class ScraperValidator:
         tokenizer = None
         model = None
         if (self.neuron.config.reward.link_content_weight > 0 or \
-            self.neuron.config.reward.summary_relevance_weight) and \
+            self.neuron.config.reward.summary_relevance_weight > 0) and \
             not self.neuron.config.neuron.is_disable_tokenizer_reward:
             tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
            

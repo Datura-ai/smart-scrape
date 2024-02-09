@@ -109,7 +109,6 @@ class LinkContentRelevanceModel(BaseRewardModel):
         text = text[:280]
         return text
 
-    
     def check_response_random_tweet(self, response: TwitterScraperStreaming):
         try:
             tweet_score = 0
@@ -127,8 +126,6 @@ class LinkContentRelevanceModel(BaseRewardModel):
             # Check if there are no completion links, no miner tweets, or no validator tweets
             if not completion_links or miner_tweets_amount == 0 or not response.validator_tweets:
                 return 0
-
-
 
             # Select a random tweet from the validator's tweets
             val_tweet = random.choice(response.validator_tweets)
@@ -230,9 +227,6 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     f"LinkContentRelevanceModel | {name} score: {score} | {repr(score_text)} | "
                     f"{duration:.2f}s | {repr(completion[:70])}"
                 )
-                if score == 0:
-                    length = len(response.completion_links) * 2 
-                    score = length if length < 10 else 9
                 # Scale 0-10 score to 0-1 range.
                 score /= 10.0
 
@@ -275,17 +269,32 @@ class LinkContentRelevanceModel(BaseRewardModel):
                             miner_tweet_text = miner_tweet['text']
                             reward = self.reward(prompt, miner_tweet_text, name)
                             links_scores.append(reward)
-                            bt.logging.info(f"Tweet ID {tweet_id} yielded a reward of {1}.")
+                            bt.logging.info(f"Tweet ID {tweet_id} yielded a reward of {reward}.")
                         else:
                             bt.logging.warning(f"No matching tweet found for ID {tweet_id}.")
                     if links_scores:
                         average_score = sum(links_scores) / len(links_scores)
                         reward_event.reward = average_score
-                        bt.logging.info(f"Average score calculated: {average_score}")
+                        bt.logging.info(f"Average score calculated: {average_score}, links_scores:{links_scores}")
                     else:
                         bt.logging.warning("No link scores to average, reward remains 0.")
                 reward_events.append(reward_event)
 
+            # Iterate over responses and assign rewards based on scores
+            reward_events = []
+            bt.logging.info(f"==================================Links Content scoring Explanation Begins==================================")
+            bt.logging.info(f"Prompt: {prompt}")
+            for (index, response), uid_tensor in zip(enumerate(responses), uids):
+                uid = uid_tensor.item()
+                score = scores.get(str(index), 0)
+                # score_explain = score_text.get(str(index), '')
+                reward_event = BaseRewardEvent()
+                reward_event.reward = score
+                reward_events.append(reward_event)
+                bt.logging.info(f"UID: {uid} | Score: {score:.2f}")
+                bt.logging.info(f"Compeltion: {response.completion}")
+                bt.logging.info(f"----------------------------------------------------------------------")
+            bt.logging.info(f"==================================Summary Relevance Scoring Explanation Ends==================================")
             return reward_events
         except Exception as e:
             bt.logging.error(f"Reward model issue: {e}")
