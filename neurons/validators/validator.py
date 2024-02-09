@@ -94,7 +94,7 @@ class neuron(AbstractNeuron):
             if self.config.neuron.only_allowed_miners and axon.coldkey not in self.config.neuron.only_allowed_miners and is_only_allowed_miner and not specified_uids:
                 raise Exception(f"Not allowed")
                 
-            response = await self.dendrite(axon, IsAlive(), deserialize=False, timeout=4)
+            response = await self.dendrite(axon, IsAlive(), deserialize=False, timeout=15)
             if response.is_success:
                 bt.logging.trace(f"UID {uid} is active")
                 return axon  # Return the axon info instead of the UID
