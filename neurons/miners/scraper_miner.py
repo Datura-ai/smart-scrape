@@ -34,6 +34,8 @@ from template.protocol import (
 )
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from template.db import DBClient, get_random_tweets
+from template.tools.serp.serp_google_search_tool import SerpGoogleSearchTool
+from template.tools.twitter.twitter_summary import summarize_twitter_data
 
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
 if not OpenAI.api_key:
@@ -120,46 +122,45 @@ class ScraperMiner:
             )
         return filtered_tweets, prompt_analysis
 
-    async def finalize_data(self, prompt, model, filtered_tweets, prompt_analysis):
+    async def fetch_google_search(self, prompt):
+        result = await SerpGoogleSearchTool().arun(prompt)
+        return result
+
+    # TODO handle if no links
+    async def finalize_google_search_data(self, prompt, model, results):
         content = f"""
-                In <UserPrompt> provided User's prompt (Question).
-                In <PromptAnalysis> I anaysis that prompts and generate query for API, keywords, hashtags, user_mentions.
-                In <TwitterData>, Provided Twitter API fetched data.
-                
-                <UserPrompt>
-                {prompt}
-                </UserPrompt>
+        In <UserPrompt> provided User's prompt (Question).
+        In <GoogleSearch> I fetch data from Google search API.
 
-                <TwitterData>
-                {filtered_tweets}
-                </TwitterData>
+        <UserPrompt>
+        {prompt}
+        </UserPrompt>
 
-                <PromptAnalysis>
-                {prompt_analysis}
-                </PromptAnalysis>
+        <GoogleSearch>
+        {results}
+        </GoogleSearch>
             """
 
-        system_message = f"""As a Twitter data analyst, your task is to provide users with a clear and concise summary derived from the given Twitter data and the user's query.
-            
-               Tasks:
-                3. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
-                4. You would explain how you did retrieve data based on Analysis of <UserPrompt>.
+        system_message = """As Google search data analyst, your task is to provide users with a clear and concise summary derived from the given Google search data and the user's query.
 
-                Output Guidelines (Tasks):
-                1. Summary: Conduct a thorough analysis of <TwitterData> in relation to <UserPrompt> and generate a comprehensive summary.
-                2. Relevant Links: Provide a selection of Twitter links that directly correspond to the <UserPrompt>. For each link, include a concise explanation that connects its relevance to the user's question.
-                Synthesize insights from both the <UserPrompt> and the <TwitterData> to formulate a well-rounded response.
-                3. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
-                4. You would explain how you did retrieve data based on <PromptAnalysis>.
+        Tasks:
+        1. Relevant Links: Provide a selection of Google search links that directly correspond to the <UserPrompt>. For each link, include a concise explanation that connects its relevance to the user's question.
+        Synthesize insights from both the <UserPrompt> and the <GoogleSearch> to formulate a well-rounded response.
+        2. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
 
-                Operational Rules:
-                1. No <TwitterData> Scenario: If no TwitterData is provided, inform the user that current Twitter insights related to their topic are unavailable.
-                3. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
-                4. Seamless Integration: Avoid explicitly stating "Based on the provided <TwitterData>" in responses. Assume user awareness of the data integration process.
-                5. Please separate your responses into sections for easy reading.
-                6. <TwitterData>.id and <TwitterData>.username you can use generate tweet link, example: [username](https://twitter.com/<username>/statuses/<Id>)
-                7. Not return text like <UserPrompt>, <PromptAnalysis>, <PromptAnalysis> to your response, make response easy to understand to any user.
-            """
+        Output Guidelines (Tasks):
+        1. Relevant Links: Provide a selection of Google links that directly correspond to the <UserPrompt>. For each link, include a concise explanation that connects its relevance to the user's question.
+        Synthesize insights from both the <UserPrompt> and the <GoogleSearch> to formulate a well-rounded response.
+        2. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
+        
+        Operational Rules:
+        1. No <GoogleSearch> Scenario: If no GoogleSearch is provided, inform the user that current Google insights related to their topic are unavailable.
+        2. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
+        3. Seamless Integration: Avoid explicitly stating "Based on the provided <GoogleSearch>" in responses. Assume user awareness of the data integration process.
+        4. Please separate your responses into sections for easy reading.
+        5. Not return text like <UserPrompt> to your response, make response easy to understand to any user.
+        """
+
         messages = [
             {"role": "system", "content": system_message},
             {"role": "user", "content": content},
@@ -170,6 +171,44 @@ class ScraperMiner:
             temperature=0.1,
             stream=True,
             # seed=seed,
+        )
+
+    async def finalize_summary(self, prompt, model, information):
+        content = f"""
+            In <UserPrompt> provided User's prompt (Question).
+            In <Information>, provided highlighted key information and relevant links from Twitter and Google Search.
+            
+            <UserPrompt>
+            {prompt}
+            </UserPrompt>
+
+
+            <Information>
+            {information}
+            </Information>
+        """
+
+        system_message = """As a summary analyst, your task is to provide users with a clear and concise summary derived from the given information and the user's query.
+
+        Output Guidelines (Tasks):
+        1. Summary: Conduct a thorough analysis of <Information> in relation to <UserPrompt> and generate a comprehensive summary.
+
+        Operational Rules:
+        1. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
+        2. Seamless Integration: Avoid explicitly stating "Based on the provided <Information>" in responses. Assume user awareness of the data integration process.
+        3. Not return text like <UserPrompt> to your response, make response easy to understand to any user.
+        """
+
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": content},
+        ]
+
+        return await client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.1,
+            stream=True,
         )
 
     async def smart_scraper(self, synapse: TwitterScraperStreaming, send: Send):
@@ -192,14 +231,17 @@ class ScraperMiner:
             )
 
             # buffer.append('Test 2')
-            intro_response, (tweets, prompt_analysis) = await asyncio.gather(
-                self.intro_text(
-                    model="gpt-3.5-turbo",
-                    prompt=prompt,
-                    send=send,
-                    is_intro_text=is_intro_text,
-                ),
-                self.fetch_tweets(prompt),
+            intro_response, (tweets, prompt_analysis), search_result = (
+                await asyncio.gather(
+                    self.intro_text(
+                        model="gpt-3.5-turbo",
+                        prompt=prompt,
+                        send=send,
+                        is_intro_text=is_intro_text,
+                    ),
+                    self.fetch_tweets(prompt),
+                    self.fetch_google_search(prompt),
+                )
             )
 
             bt.logging.info(
@@ -219,19 +261,48 @@ class ScraperMiner:
             #     synapse.set_tweets(tweets)
 
             openai_summary_model = self.miner.config.miner.openai_summary_model
-            response = await self.finalize_data(
+
+            twitter_response = await summarize_twitter_data(
                 prompt=prompt,
                 model=openai_summary_model,
                 filtered_tweets=tweets,
                 prompt_analysis=prompt_analysis,
             )
 
+            search_response = await self.finalize_google_search_data(
+                prompt=prompt,
+                model=openai_summary_model,
+                results=search_result,
+            )
+
+            # TODO stream twitter and google search tokens. reuse code
+
             # Reset buffer for finalizing data responses
             buffer = []
             N = 1
             full_text = []  # Initialize a list to store all chunks of text
             more_body = True
-            async for chunk in response:
+            async for chunk in twitter_response:
+                token = chunk.choices[0].delta.content or ""
+                buffer.append(token)
+                full_text.append(token)  # Append the token to the full_text list
+                if len(buffer) == N:
+                    joined_buffer = "".join(buffer)
+                    text_data_json = json.dumps(
+                        {"type": "text", "content": joined_buffer}
+                    )
+                    # Stream the text
+                    await send(
+                        {
+                            "type": "http.response.body",
+                            "body": text_data_json.encode("utf-8"),
+                            "more_body": True,
+                        }
+                    )
+                    bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+                    buffer = []  # Clear the buffer for the next set of tokens
+
+            async for chunk in search_response:
                 token = chunk.choices[0].delta.content or ""
                 buffer.append(token)
                 full_text.append(token)  # Append the token to the full_text list
@@ -252,6 +323,33 @@ class ScraperMiner:
                     buffer = []  # Clear the buffer for the next set of tokens
 
             joined_full_text = "".join(full_text)  # Join all text chunks
+
+            final_summary = await self.finalize_summary(
+                prompt, openai_summary_model, joined_full_text
+            )
+
+            async for chunk in final_summary:
+                token = chunk.choices[0].delta.content or ""
+                buffer.append(token)
+                full_text.append(token)  # Append the token to the full_text list
+                if len(buffer) == N:
+                    joined_buffer = "".join(buffer)
+                    text_data_json = json.dumps(
+                        {"type": "text", "content": joined_buffer}
+                    )
+                    # Stream the text
+                    await send(
+                        {
+                            "type": "http.response.body",
+                            "body": text_data_json.encode("utf-8"),
+                            "more_body": True,
+                        }
+                    )
+                    bt.logging.trace(f"Streamed tokens: {joined_buffer}")
+                    buffer = []  # Clear the buffer for the next set of tokens
+
+            joined_full_text = "".join(full_text)  # Join all text chunks
+
             bt.logging.info(
                 f"================================== Completion Responsed ==================================="
             )
