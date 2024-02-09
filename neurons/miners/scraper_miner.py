@@ -267,7 +267,7 @@ class ScraperMiner:
             tweets_amount = tweets.get("meta", {}).get("result_count", 0)
             if tweets:
                 tweets_response_body = {"type": "tweets", "content": tweets}
-                more_body = False
+                response_streamer.more_body = False
                 await send(
                     {
                         "type": "http.response.body",
@@ -277,7 +277,7 @@ class ScraperMiner:
                 )
                 bt.logging.info(f"Tweet data sent. Number of tweets: {tweets_amount}")
 
-            if more_body:
+            if response_streamer.more_body:
                 await send(
                     {
                         "type": "http.response.body",
