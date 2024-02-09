@@ -20,13 +20,15 @@ import time
 import torch
 import bittensor as bt
 import random
-
+import asyncio
 from typing import List, Union
 from .config import RewardModelType, RewardScoringType
 from .reward import BaseRewardModel, BaseRewardEvent
 from utils.prompts import SummaryRelevancePrompt, LinkContentPrompt
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from neurons.validators.utils import call_to_subnet_18_scoring
+from template.utils import call_openai
+
 
 
 class SummaryRelevanceRewardModel(BaseRewardModel):
@@ -71,6 +73,36 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         except Exception as e:
             bt.logging.error(f"Error in Prompt reward method: {e}")
             return None
+        
+    async def send_messages_to_openai(self, messages):
+        query_tasks = []
+        for message_dict in messages:  # Iterate over each dictionary in the list
+            (key, message_list), = message_dict.items()
+            
+            async def query_openai(message):
+                try:
+                    return await call_openai(
+                        messages=message, 
+                        temperature=0.2,
+                        model='gpt-3.5-turbo-16k',
+                    )
+                except Exception as e:
+                    print(f"Error sending message to OpenAI: {e}")
+                    return ""  # Return an empty string to indicate failure
+
+            task = query_openai(message_list)
+            query_tasks.append(task)
+
+        query_responses = await asyncio.gather(*query_tasks, return_exceptions=True)
+
+        result = {}
+        for response, message_dict in zip(query_responses, messages):
+            if isinstance(response, Exception):
+                print(f"Query failed with exception: {response}")
+                response = ""  # Replace the exception with an empty string in the result
+            (key, message_list), = message_dict.items()
+            result[key] = response
+        return result
             
     def get_rewards(
         self, prompt: str, responses: List[bt.Synapse], name: str, uids
@@ -101,11 +133,11 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 })
                 if response.status_code != 200:
                     bt.logging.error(f"ERROR connect to Subnet 18: {response.text}")
-                    raise Exception(response.text)
-                
-                score_responses = response.json()
+                    loop = asyncio.get_event_loop_policy().get_event_loop()
+                    score_responses = loop.run_until_complete(self.send_messages_to_openai(messages=messages))
+                else:
+                    score_responses = response.json()
 
-                
                 for (key, score_result), (scoring_prompt, _) in zip(score_responses.items(), filter_scoring_messages):
                     score = scoring_prompt.extract_score(score_result)
                     # Scale 0-10 score to 0-1 range.
