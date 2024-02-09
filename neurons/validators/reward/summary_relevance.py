@@ -172,7 +172,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 })
                 score_responses = None
                 if response.status_code != 200:
-                    bt.logging.error(f"ERROR connect to Subnet 18: {response.text}")
+                    bt.logging.error(f"ERROR connect to Subnet 18: Status code: {response.status_code}")
 
                     if not self.is_disable_tokenizer_reward:
                         score_responses = self.get_score_by_llm(messages=messages)

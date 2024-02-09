@@ -162,37 +162,17 @@ class LinkContentRelevanceModel(BaseRewardModel):
             bt.logging.error(f"check_response_random_tweet: {e}")
             return 0
 
-    def reward(self, prompt: str, response: TwitterScraperStreaming, name: str) -> BaseRewardEvent:
+    def reward(self, prompt: str, content: str, response: TwitterScraperStreaming) -> BaseRewardEvent:
         try:
-            completion = self.get_successful_completion(response=response)
             reward_event = BaseRewardEvent()
 
             with torch.no_grad():
                 # Choose correct scoring prompt for request type.
                 # Determine the scoring prompt based on the provided name or the default scoring type.
-                scoring_prompt = None
-                if self.scoring_type:
-                    scoring_type = self.scoring_type
-                else:
-                    scoring_type = name
-
-                scoring_prompt_text = None
-                if scoring_type == RewardScoringType.summary_relevance_score_template:
-                    scoring_prompt = SummaryRelevancePrompt()
-                elif scoring_type == RewardScoringType.link_content_relevance_template:
-                    scoring_prompt = LinkContentPrompt()
-                    # Convert list of links content to string before passing to the prompt
-                    completion_links_str = str(response.completion_links)
-                    scoring_prompt_text = scoring_prompt.text(completion, completion_links_str)
-
-                if scoring_prompt is None or not response.completion_links:
-                    reward_event.reward = 0
-                    return reward_event
-
-                if not scoring_prompt_text:
-                    # Format scoring prompt for this completion.
-                    scoring_prompt_text = scoring_prompt.text(prompt, completion)
-
+                scoring_prompt = LinkContentPrompt()
+                 # Format scoring prompt for this completion.
+                scoring_prompt_text = scoring_prompt.text(prompt, content)
+                
                 if self.is_disable_tokenizer_reward:
                     length = len(response.completion_links) * 2 
                     score = length if length < 10 else 9
@@ -215,18 +195,12 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 generated_tokens = self.model.generate(
                     input_ids, max_new_tokens=2, max_time=1
                 )
-                duration = time.time() - start_time
                 generated_text = self.tokenizer.batch_decode(
                     generated_tokens, skip_special_tokens=True
                 )
-
                 # Extract score from generated text.
                 score_text = generated_text[0][len(scoring_prompt_text) :]
                 score = scoring_prompt.extract_score(score_text)
-                bt.logging.trace(
-                    f"LinkContentRelevanceModel | {name} score: {score} | {repr(score_text)} | "
-                    f"{duration:.2f}s | {repr(completion[:70])}"
-                )
                 # Scale 0-10 score to 0-1 range.
                 score /= 10.0
 
@@ -267,15 +241,15 @@ class LinkContentRelevanceModel(BaseRewardModel):
                         miner_tweet = next((tweet for tweet in miner_tweets_data if tweet['id'] == tweet_id), None)
                         if miner_tweet:
                             miner_tweet_text = miner_tweet['text']
-                            reward = self.reward(prompt, miner_tweet_text, name)
+                            reward = self.reward(prompt, miner_tweet_text, response)
                             links_scores.append(reward)
-                            bt.logging.info(f"Tweet ID {tweet_id} yielded a reward of {reward}.")
+                            bt.logging.info(f"Tweet ID {tweet_id} yielded a reward of {reward.reward}.")
                         else:
                             bt.logging.warning(f"No matching tweet found for ID {tweet_id}.")
                     if links_scores:
-                        average_score = sum(links_scores) / len(links_scores)
+                        average_score = sum(link.reward for link in links_scores) / len(links_scores)
                         reward_event.reward = average_score
-                        bt.logging.info(f"Average score calculated: {average_score}, links_scores:{links_scores}")
+                        bt.logging.info(f"Average score calculated: {average_score}, links_scores: {[link.reward for link in links_scores]}")
                     else:
                         bt.logging.warning("No link scores to average, reward remains 0.")
                 reward_events.append(reward_event)
