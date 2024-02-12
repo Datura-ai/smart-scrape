@@ -11,7 +11,7 @@ def get_all_tools():
     result = []
 
     for toolkit in TOOLKITS:
-        tools = [tool for tool in toolkit.get_tools()]
+        tools = toolkit.get_tools()
         result.extend(tools)
 
     return result

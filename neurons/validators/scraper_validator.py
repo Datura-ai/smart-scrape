@@ -302,6 +302,7 @@ class ScraperValidator:
                                 synapse_object = chunk
 
                                 yield json.dumps({"type": "tweets", "content": synapse_object.miner_tweets})
+                                yield json.dumps({"type": "search", "content": synapse_object.search_results})
 
                     except Exception as e:
                         bt.logging.trace(f"Organic Async Response: {e}")

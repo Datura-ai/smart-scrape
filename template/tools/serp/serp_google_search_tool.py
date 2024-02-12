@@ -1,8 +1,8 @@
+import os
 from typing import Type
 from pydantic import BaseModel, Field
-from langchain_community.utilities.serpapi import SerpAPIWrapper
 from template.tools.base import BaseTool
-import os
+from .serp_api_wrapper import SerpAPIWrapper
 
 
 SERPAPI_API_KEY = os.environ.get("SERPAPI_API_KEY")

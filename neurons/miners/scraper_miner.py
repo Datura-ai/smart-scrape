@@ -38,6 +38,8 @@ from template.tools.serp.serp_google_search_tool import SerpGoogleSearchTool
 from template.tools.twitter.twitter_summary import summarize_twitter_data
 from template.tools.serp.serp_summary import summarize_serp_google_search_data
 
+# from template.tools.tool_manager import ToolManager
+
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
 if not OpenAI.api_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable.")
@@ -108,10 +110,6 @@ class ScraperMiner:
             )
         return filtered_tweets, prompt_analysis
 
-    async def fetch_google_search(self, prompt):
-        result = await SerpGoogleSearchTool().arun(prompt)
-        return result
-
     async def finalize_summary(self, prompt, model, information):
         content = f"""
             In <UserPrompt> provided User's prompt (Question).
@@ -166,7 +164,12 @@ class ScraperMiner:
                 "================================== Prompt ===================================="
             )
 
-            intro_response, (tweets, prompt_analysis), search_result = (
+            # tool_manager = ToolManager()
+            # res = await tool_manager.run(prompt)
+            # res = await tool_manager.run_old(prompt)
+            # print(res)
+
+            intro_response, (tweets, prompt_analysis), search_results = (
                 await asyncio.gather(
                     self.intro_text(
                         model="gpt-3.5-turbo",
@@ -175,7 +178,7 @@ class ScraperMiner:
                         is_intro_text=is_intro_text,
                     ),
                     self.fetch_tweets(prompt),
-                    self.fetch_google_search(prompt),
+                    SerpGoogleSearchTool().arun(prompt),
                 )
             )
 
@@ -207,7 +210,7 @@ class ScraperMiner:
             search_response = await summarize_serp_google_search_data(
                 prompt=prompt,
                 model=openai_summary_model,
-                data=search_result,
+                data=search_results,
             )
 
             response_streamer = ResponseStreamer(send=send)
@@ -261,6 +264,23 @@ class ScraperMiner:
                     }
                 )
                 bt.logging.info(f"Tweet data sent. Number of tweets: {tweets_amount}")
+
+            if search_results:
+                search_results_response_body = {
+                    "type": "search",
+                    "content": search_results,
+                }
+                response_streamer.more_body = False
+                await send(
+                    {
+                        "type": "http.response.body",
+                        "body": json.dumps(search_results_response_body).encode(
+                            "utf-8"
+                        ),
+                        "more_body": False,
+                    }
+                )
+                bt.logging.info("Search results data sent")
 
             if response_streamer.more_body:
                 await send(

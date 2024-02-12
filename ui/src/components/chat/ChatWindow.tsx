@@ -80,7 +80,9 @@ const ChatWindow: React.FC = () => {
           },
         ]);
       } else if (data.type === "tweets") {
-        console.log(data);
+        console.log("Tweets: ", data);
+      } else if (data.type === "search") {
+        console.log("Search results: ", data);
       }
     };
 
