@@ -295,11 +295,13 @@ class ScraperValidator:
                         async for chunk in resp:
                             if isinstance(chunk, str):
                                 full_response += chunk
-                                yield chunk
+                                yield json.dumps({"type": "text", "content": chunk})
                             elif isinstance(chunk, bt.Synapse):
                                 if chunk.is_failure:
                                     raise Exception("Dendrite's status code indicates failure")
                                 synapse_object = chunk
+
+                                yield json.dumps({"type": "tweets", "content": synapse_object.miner_tweets})
 
                     except Exception as e:
                         bt.logging.trace(f"Organic Async Response: {e}")

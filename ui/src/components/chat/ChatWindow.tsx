@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import MessagesContainer from "./MessagesContainer";
 import InputBar from "./InputBar";
-import { fetchAnalyseTweetsSummaryMessage} from "../../services/api";
+import { fetchAnalyseTweetsSummaryMessage } from "../../services/api";
 import { EventSourceMessage } from "@microsoft/fetch-event-source";
 import { Message } from "../../types/Message";
 
@@ -63,13 +63,25 @@ const ChatWindow: React.FC = () => {
     };
 
     const onmessage = (event: EventSourceMessage) => {
-      setMessages((prevState) => [
-        ...prevState.slice(0, -1),
-        {
-          ...prevState[prevState.length - 1],
-          text: prevState[prevState.length - 1].text + event.data,
-        },
-      ]);
+      let data: { type: string; content: string };
+      try {
+        data = JSON.parse(event.data);
+      } catch (error) {
+        console.log(`Error parsing event to JSON`, event);
+        return;
+      }
+
+      if (data.type === "text") {
+        setMessages((prevState) => [
+          ...prevState.slice(0, -1),
+          {
+            ...prevState[prevState.length - 1],
+            text: prevState[prevState.length - 1].text + data.content,
+          },
+        ]);
+      } else if (data.type === "tweets") {
+        console.log(data);
+      }
     };
 
     const onerror = (err: any) => {
@@ -112,7 +124,7 @@ const ChatWindow: React.FC = () => {
     ) {
       let messagesToSend = [];
       messagesToSend.push({
-        role: 'user',
+        role: "user",
         content: messages[messages.length - 2].text,
       });
 
@@ -130,7 +142,10 @@ const ChatWindow: React.FC = () => {
 
   return (
     <div className="flex-1 p:2 mr-2 sm:p-6 justify-between flex flex-col h-full w-full relative">
-      <MessagesContainer messages={messages} onSendMessage={handleSendMessage} />
+      <MessagesContainer
+        messages={messages}
+        onSendMessage={handleSendMessage}
+      />
       <InputBar
         onSendMessage={handleSendMessage}
         enabled={inputEnabled}
