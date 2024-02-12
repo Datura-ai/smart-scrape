@@ -20,14 +20,15 @@ from neurons.validators.penalty import (
     LinkValidationPenaltyModel
 )
 from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
+from neurons.validators.reward.link_content_relevance import LinkContentRelevanceModel, init_tokenizer
 from neurons.validators.utils.tasks import TwitterTask
-from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
+
 from template.dataset import  MockTwitterQuestionsDataset
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from template import QUERY_MINERS
 import asyncio
 
-class TwitterScraperValidator:
+class ScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
         self.streaming = True
         self.query_type = "text"
@@ -44,11 +45,10 @@ class TwitterScraperValidator:
         self.reward_weights = torch.tensor(
             [
                 self.neuron.config.reward.summary_relevance_weight,
-                # self.neuron.config.reward.link_content_based_weight,
+                self.neuron.config.reward.link_content_weight,
             ],
             dtype=torch.float32,
         ).to(self.neuron.config.neuron.device)
-
 
         if self.reward_weights.sum() != 1:
             message = (
@@ -60,29 +60,35 @@ class TwitterScraperValidator:
     
         tokenizer = None
         model = None
-        # if (self.neuron.config.reward.summary_relevance_weight > 0 or \
-        #    self.neuron.config.reward.link_content_based_weight > 0) and \
-        #    not self.neuron.config.neuron.is_disable_tokenizer_reward:
-        #     tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
+        if (self.neuron.config.reward.link_content_weight > 0 or \
+            self.neuron.config.reward.summary_relevance_weight > 0) and \
+            not self.neuron.config.neuron.is_disable_tokenizer_reward:
+            tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
            
         self.reward_functions = [ 
-            # SummaryRelevanceRewardModel(device=self.neuron.config.neuron.device, 
-            #                   scoring_type=RewardScoringType.twitter_question_answer_score,
-            #                   tokenizer=tokenizer,
-            #                   model=model,
-            #                   is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward
-            #                   )
             SummaryRelevanceRewardModel(device=self.neuron.config.neuron.device, 
-                              scoring_type=RewardScoringType.twitter_question_answer_score
+                              scoring_type=RewardScoringType.summary_relevance_score_template,
+                              tokenizer=tokenizer, 
+                              model=model,
+                              is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward
                               )
             if self.neuron.config.reward.summary_relevance_weight > 0
+            else MockRewardModel(RewardModelType.prompt.value),       
+
+            LinkContentRelevanceModel(device=self.neuron.config.neuron.device, 
+                              scoring_type=RewardScoringType.summary_relevance_score_template,
+                              tokenizer=tokenizer,
+                              model=model,
+                              is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward
+                              )
+            if self.neuron.config.reward.link_content_weight > 0
+
             else MockRewardModel(RewardModelType.prompt.value),              
         ]
 
         self.penalty_functions = [
-            # TaskValidationPenaltyModel(max_penalty=0.6),
-            LinkValidationPenaltyModel(max_penalty=0.9),
-            # AccuracyPenaltyModel(max_penalty=1),
+            LinkValidationPenaltyModel(max_penalty=0.7),
+            AccuracyPenaltyModel(max_penalty=1),
         ]
         self.twitter_api = TwitterAPIClient()
 
@@ -163,22 +169,6 @@ class TwitterScraperValidator:
         except Exception as e:
             bt.logging.error(f"Error in process_content_links: {e}")
             return
-        
-    async def process_tweets(self, responses):
-        try:
-            start_time = time.time()
-            all_links = [random.choice(response.completion_links) for response in responses if response.completion_links]
-            unique_links = list(set(all_links))  # Remove duplicates to avoid redundant tasks
-            tweets_list = await TwitterScraperActor().get_tweets(urls=unique_links)
-            link_to_tweets = dict(zip(unique_links, tweets_list))
-            for response in responses:
-                if response.completion_links:
-                    response.tweets = [link_to_tweets[link] for link in response.completion_links if link in link_to_tweets]
-            end_time = time.time()
-            bt.logging.info(f"Fetched Twitter links method took {end_time - start_time} seconds")
-        except Exception as e:
-            bt.logging.error(f"Error in process_tweets: {e}")
-            return
 
     async def compute_rewards_and_penalties(self, event, prompt, task, responses, uids, start_time):
         try:
@@ -224,8 +214,7 @@ class TwitterScraperValidator:
                 uid = uid_tensor.item()
                 completion_length = len(response.completion) if response.completion is not None else 0
                 completion_links_length = len(response.completion_links) if response.completion_links is not None else 0
-                tweets_length = len(response.tweets) if response.tweets is not None else 0
-                bt.logging.info(f"uid: {uid};  score: {reward};  completion length: {completion_length};  completion_links length: {completion_links_length}; tweets length: {tweets_length};")
+                bt.logging.info(f"uid: {uid};  score: {reward};  completion length: {completion_length};  completion_links length: {completion_links_length};")
                 bt.logging.trace(f"{response.completion}")
                 bt.logging.info(f"uid: {uid} Completion: ---------------------")
                 bt.logging.info(f"-----------------------------")

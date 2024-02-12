@@ -10,6 +10,10 @@ EXPECTED_ACCESS_KEY = os.environ.get('EXPECTED_ACCESS_KEY', 'hello')
 URL_SUBNET_18 = os.environ.get('URL_SUBNET_18')
 
 def call_to_subnet_18_scoring(data):
+    if not URL_SUBNET_18:
+        bt.logging.error("Please set the URL_SUBNET_18 environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md")
+        return None
+    
     headers = {
         "access-key": EXPECTED_ACCESS_KEY,
         "Content-Type": "application/json"

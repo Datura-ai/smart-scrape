@@ -125,7 +125,6 @@ class TwitterScraperMedia(BaseModel):
     media_url: str = ""
     type: str = ""
 
-
 class TwitterScraperUser(BaseModel):
     id_str: str = ""
     created_at: str = ""
@@ -214,7 +213,7 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
         description="Analysis of the Twitter query result.",
     )
 
-    tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+    validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
         default_factory=list,
         title="tweets",
         description="Fetched Tweets Data.",

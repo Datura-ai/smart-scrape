@@ -14,7 +14,7 @@ if not APIFY_API_KEY:
 class TwitterScraperActor:
     def __init__(self) -> None:
         # Actor: https://apify.com/quacker/twitter-url-scraper
-        self.actor_id = "KVJr35xjTw2XyvMeK"
+        self.actor_id = "u6ppkMWAx2E2MpEuF"
         self.client = ApifyClientAsync(token=APIFY_API_KEY)
 
     async def get_tweets(

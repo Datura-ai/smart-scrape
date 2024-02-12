@@ -22,17 +22,16 @@ class RewardModelType(Enum):
     task_validator = "task_validator_filter"
     accuracy_match = "keyword_match_penalty"
     sentence_match_penalty = "sentence_match_penalty"
-    rlhf = "rlhf_reward_model"
     prompt = "prompt_reward_model"
 
 class RewardScoringType(Enum):
-    twitter_question_answer_score = "twitter_question_answer_score"
-    twitter_summary_completion_links_template = "twitter_summary_completion_links_template"
+    summary_relevance_score_template = "summary_relevance_score_template"
+    link_content_relevance_template = "link_content_relevance_template"
 
 @dataclass(frozen=True)
 class DefaultRewardFrameworkConfig:
     """Reward framework default configuration.
     Note: All the weights should add up to 1.0.
     """
-    summary_relevance_weight: float = 1
-    prompt_model_summary_completion_links_weight: float = 0
+    summary_relevance_weight: float = 0.5
+    link_content_weight: float = 0.5
