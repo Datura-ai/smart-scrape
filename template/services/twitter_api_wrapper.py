@@ -219,7 +219,7 @@ class TwitterAPIClient:
         search_url = "https://api.twitter.com/2/tweets/search/all"
         response = self.connect_to_endpoint(search_url, query_params)
         return response
-    
+
     async def generate_query_params_from_prompt(self, prompt, is_accuracy = True):
         """
         This function utilizes OpenAI's API to analyze the user's query and extract relevant information such 
@@ -262,27 +262,28 @@ class TwitterAPIClient:
             bt.logging.info(e)
             return [], None
 
-    async def analyse_prompt_and_fetch_tweets(self, prompt, is_recent_tweets=True):
-        def get_tweets(prompt_analysis: TwitterPromptAnalysisResult):
-            if is_recent_tweets:
-                return self.get_recent_tweets(prompt_analysis.api_params)
-            else:
-                return self.get_full_archive_tweets(prompt_analysis.api_params)
 
+    def get_tweets(self, prompt_analysis: TwitterPromptAnalysisResult, is_recent_tweets=True):
+        if is_recent_tweets:
+            return self.get_recent_tweets(prompt_analysis.api_params)
+        else:
+            return self.get_full_archive_tweets(prompt_analysis.api_params)
+
+    async def analyse_prompt_and_fetch_tweets(self, prompt, is_recent_tweets=True):
         try:
             result = {}
             query, prompt_analysis = await self.generate_and_analyze_query(prompt)
             
-            response = get_tweets(prompt_analysis)
+            response = self.get_tweets(prompt_analysis, is_recent_tweets)
 
             if response.status_code in [429, 502, 503, 504]:
                 bt.logging.warning(f"analyse_prompt_and_fetch_tweets status_code: {response.status_code} ===========, {response.text}")
                 await asyncio.sleep(random.randint(15, 30))  # Wait for a random time between 15 to 25 seconds before retrying
-                response = get_tweets(prompt_analysis.api_params)  # Retry fetching tweets
+                response = self.get_tweets(prompt_analysis, is_recent_tweets)  # Retry fetching tweets
             
             if response.status_code == 400:
                 bt.logging.warning(f"analyse_prompt_and_fetch_tweets: Try to fix bad tweets Query ============, {response.text}")
-                response, prompt_analysis = await self.retry_with_fixed_query(prompt=prompt, old_query=prompt_analysis, error=response.text)
+                response, prompt_analysis = await self.retry_with_fixed_query(prompt=prompt, old_query=prompt_analysis, error=response.text, is_recent_tweets=is_recent_tweets)
 
             if response.status_code != 200:
                 bt.logging.error(f"Tweets Query ===================================================, {response.text}")
@@ -292,7 +293,7 @@ class TwitterAPIClient:
             tweets_amount = result_json.get('meta', {}).get('result_count', 0)
             if tweets_amount == 0:
                 bt.logging.info("analyse_prompt_and_fetch_tweets: No tweets found, attempting next query.")
-                response, prompt_analysis = await self.retry_with_fixed_query(prompt, old_query=prompt_analysis, is_accuracy=False)
+                response, prompt_analysis = await self.retry_with_fixed_query(prompt, old_query=prompt_analysis, is_accuracy=False, is_recent_tweets=is_recent_tweets)
                 result_json = response.json() 
             
             bt.logging.info("Tweets fetched ===================================================")
@@ -319,12 +320,12 @@ class TwitterAPIClient:
     def set_max_results(self, api_params, max_results=10):
         api_params['max_results'] = max_results
 
-    async def retry_with_fixed_query(self, prompt, old_query, error= None, is_accuracy=True):
+    async def retry_with_fixed_query(self, prompt, old_query, error= None, is_accuracy=True, is_recent_tweets=True):
         new_query = await self.fix_twitter_query(prompt=prompt, query=old_query, error=error, is_accuracy=is_accuracy)
         prompt_analysis = TwitterPromptAnalysisResult()
         prompt_analysis.fill(new_query)
         self.set_max_results(prompt_analysis.api_params)
-        result = self.get_recent_tweets(prompt_analysis.api_params)
+        result = self.get_tweets(prompt_analysis, is_recent_tweets)
         return result, prompt_analysis
 
     @staticmethod
