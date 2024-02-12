@@ -81,14 +81,11 @@ class ScraperMiner:
             buffer.append(token)
             if len(buffer) == N:
                 joined_buffer = "".join(buffer)
-                text_response_body = {
-                    "type": "text",
-                    "content": joined_buffer
-                }
+                text_data_json = json.dumps({"type": "text", "content": joined_buffer})
                 await send(
                     {
                         "type": "http.response.body",
-                        "body": joined_buffer.encode("utf-8"),
+                        "body": text_data_json.encode("utf-8"),
                         "more_body": True,
                     }
                 )
