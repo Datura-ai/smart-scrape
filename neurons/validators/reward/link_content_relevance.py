@@ -112,6 +112,11 @@ class LinkContentRelevanceModel(BaseRewardModel):
     def check_response_random_tweet(self, response: TwitterScraperStreaming):
         try:
             tweet_score = 0
+
+            completion = self.get_successful_completion(response=response)
+            if not completion:
+                return 0
+            
             miner_tweets = response.miner_tweets
 
             miner_tweets_data = miner_tweets.get('data', [])
@@ -273,4 +278,5 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 reward_event.reward = 0
                 reward_events.append(reward_event)
             return reward_events
+
 

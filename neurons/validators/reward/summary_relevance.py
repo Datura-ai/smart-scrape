@@ -52,6 +52,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
     def get_scoring_text(self, prompt: str, response: bt.Synapse) -> BaseRewardEvent:
         try:
             completion = self.get_successful_completion(response=response)
+
+            if not completion:
+                return None
+            
             if not self.scoring_type:
                 return None
             # Choose correct scoring prompt for request type.
