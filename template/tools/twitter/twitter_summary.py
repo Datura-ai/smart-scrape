@@ -24,6 +24,8 @@ Operational Rules:
 4. Please separate your responses into sections for easy reading.
 5. <TwitterData>.id and <TwitterData>.username you can use generate tweet link, example: [username](https://twitter.com/<username>/statuses/<Id>)
 6. Not return text like <UserPrompt>, <PromptAnalysis>, <PromptAnalysis> to your response, make response easy to understand to any user.
+7. Make headers bold using Markdown.
+8. Start text with bold text "Twitter Summary:".
 """
 
 

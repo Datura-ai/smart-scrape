@@ -22,6 +22,8 @@ Operational Rules:
 3. Seamless Integration: Avoid explicitly stating "Based on the provided <GoogleSearch>" in responses. Assume user awareness of the data integration process.
 4. Please separate your responses into sections for easy reading.
 5. Not return text like <UserPrompt> to your response, make response easy to understand to any user.
+6. Make headers bold using Markdown.
+7. Start text with bold text "Search Summary:".
 """
 
 

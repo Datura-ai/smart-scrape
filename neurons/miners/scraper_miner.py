@@ -134,6 +134,7 @@ class ScraperMiner:
         1. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
         2. Seamless Integration: Avoid explicitly stating "Based on the provided <Information>" in responses. Assume user awareness of the data integration process.
         3. Not return text like <UserPrompt> to your response, make response easy to understand to any user.
+        4. Start text with bold text "Summary:".
         """
 
         messages = [
@@ -305,7 +306,20 @@ class ResponseStreamer:
         self.more_body = True
         self.send = send
 
+    async def send_text_event(self, text: str):
+        text_data_json = json.dumps({"type": "text", "content": text})
+
+        await self.send(
+            {
+                "type": "http.response.body",
+                "body": text_data_json.encode("utf-8"),
+                "more_body": True,
+            }
+        )
+
     async def stream_response(self, response, wait_time=None):
+        await self.send_text_event("\n\n")
+
         async for chunk in response:
             token = chunk.choices[0].delta.content or ""
             self.buffer.append(token)
@@ -313,15 +327,7 @@ class ResponseStreamer:
 
             if len(self.buffer) == self.N:
                 joined_buffer = "".join(self.buffer)
-                text_data_json = json.dumps({"type": "text", "content": joined_buffer})
-
-                await self.send(
-                    {
-                        "type": "http.response.body",
-                        "body": text_data_json.encode("utf-8"),
-                        "more_body": True,
-                    }
-                )
+                await self.send_text_event(joined_buffer)
 
                 if wait_time is not None:
                     await asyncio.sleep(wait_time)
