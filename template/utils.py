@@ -17,10 +17,8 @@ import threading
 import multiprocessing
 from . import client
 from collections import deque
-from template.protocol import TwitterPromptAnalysisResult
 from datetime import datetime
 from template.misc import ttl_get_block
-
 
 
 list_update_lock = asyncio.Lock()
@@ -40,13 +38,11 @@ def load_state_from_file(filename="validators/state.json"):
 
 state = load_state_from_file()
 
-
 def get_state():
     global state
     if state is None:
         load_state_from_file()
     return state
-
 
 def save_state_to_file(state, filename="state.json"):
     with open(filename, "w") as file:
@@ -168,7 +164,6 @@ def extract_python_list(text: str):
 
     return None
 
-
 async def call_openai(messages, temperature, model, seed=1234, response_format=None):
     for attempt in range(2):
         bt.logging.trace(f"Calling Openai. Temperature = {temperature}, Model = {model}, Seed = {seed},  Messages = {messages}")
@@ -189,8 +184,6 @@ async def call_openai(messages, temperature, model, seed=1234, response_format=N
             await asyncio.sleep(0.5) 
     
     return None
-
-
 
 # Github unauthorized rate limit of requests per hour is 60. Authorized is 5000.
 def get_version(line_number = 22):
