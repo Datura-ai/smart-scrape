@@ -108,12 +108,12 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - Don't use "since:" and "until:" for date filter
             - end_time must be on or after start_date
             - use lang filter in query, and filter based on user's language, default lang.en
-            - media.fields allowed values: "preview_image_url,type,url,width"
             - max_results only between 10 - 100
+            - media.fields allowed values: "preview_image_url,type,url,width"
             - user.fields only allowed: "created_at,description,id,location,name,profile_image_url,url,username,verified"
-            - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text"
+            - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text,attachments"
             - user.fields.username add in query always, because I need it to generate url.
-            - "expansions": "author_id" include it always
+            - "expansions": "author_id,attachments.media_keys" include it always
 
         Output example:
         {{
@@ -124,8 +124,9 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
                 "query": "constructed query based on keywords, hashtags, and user mentions",
                 "tweet.fields": "all important fields needed to answer user's prompt",
                 "user.fields": "id,created_at,username,name",
+                "media.fields": "preview_image_url,type,url,width",
                 "max_results": "10".
-                "expansions": "author_id"
+                "expansions": "author_id,attachments.media_keys"
             }}
         }}"
     """

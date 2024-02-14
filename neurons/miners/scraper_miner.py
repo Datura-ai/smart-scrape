@@ -141,6 +141,7 @@ class ScraperMiner:
             {"role": "system", "content": system_message},
             {"role": "user", "content": content},
         ]
+
         return await client.chat.completions.create(
             model=model,
             messages=messages,
@@ -200,14 +201,14 @@ class ScraperMiner:
 
             openai_summary_model = self.miner.config.miner.openai_summary_model
 
-            twitter_response = await summarize_twitter_data(
+            twitter_task = summarize_twitter_data(
                 prompt=prompt,
                 model=openai_summary_model,
                 filtered_tweets=tweets,
                 prompt_analysis=prompt_analysis,
             )
 
-            search_response = await summarize_serp_google_search_data(
+            search_task = summarize_serp_google_search_data(
                 prompt=prompt,
                 model=openai_summary_model,
                 data=search_results,
@@ -215,8 +216,9 @@ class ScraperMiner:
 
             response_streamer = ResponseStreamer(send=send)
 
-            await response_streamer.stream_response(response=twitter_response)
-            await response_streamer.stream_response(response=search_response)
+            for completed_task in asyncio.as_completed([twitter_task, search_task]):
+                response = await completed_task
+                await response_streamer.stream_response(response=response)
 
             final_summary = await self.finalize_summary(
                 prompt, openai_summary_model, response_streamer.get_full_text()
