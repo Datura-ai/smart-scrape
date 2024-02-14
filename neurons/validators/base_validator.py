@@ -1,30 +1,31 @@
 from abc import ABC, abstractmethod
 import asyncio
-import torch 
+import torch
 import bittensor as bt
 import argparse
+
 
 class AbstractNeuron(ABC):
     @abstractmethod
     def __init__(self):
-        self.subtensor: 'bt.subtensor' = None
-        self.wallet: 'bt.wallet' = None
-        self.metagraph: 'bt.metagraph' = None
-        self.dendrite: 'bt.dendrite' = None
+        self.subtensor: "bt.subtensor" = None
+        self.wallet: "bt.wallet" = None
+        self.metagraph: "bt.metagraph" = None
+        self.dendrite: "bt.dendrite" = None
 
     @classmethod
     @abstractmethod
-    def check_config(cls, config: 'bt.config'):
+    def check_config(cls, config: "bt.config"):
         pass
 
     @classmethod
     @abstractmethod
-    def add_args(cls, parser: 'argparse.ArgumentParser'):
+    def add_args(cls, parser: "argparse.ArgumentParser"):
         pass
 
     @classmethod
     @abstractmethod
-    def config(cls) -> 'bt.config':
+    def config(cls) -> "bt.config":
         pass
 
     @abstractmethod
@@ -37,10 +38,6 @@ class AbstractNeuron(ABC):
 
     @abstractmethod
     async def get_uids(self, axon, uid: int):
-        pass
-
-    @abstractmethod
-    async def get_available_uids(self) -> dict:
         pass
 
     @abstractmethod

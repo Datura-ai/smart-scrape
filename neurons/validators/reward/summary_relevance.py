@@ -28,7 +28,7 @@ from utils.prompts import SummaryRelevancePrompt, LinkContentPrompt
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from neurons.validators.utils import call_to_subnet_18_scoring
 from template.utils import call_openai
-from template.protocol import TwitterScraperStreaming, TwitterScraperTweet
+from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
 
 
 class SummaryRelevanceRewardModel(BaseRewardModel):
@@ -38,7 +38,14 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
     def name(self) -> str:
         return RewardModelType.prompt.value
 
-    def __init__(self, device: str, scoring_type: None, tokenizer= None, model = None, is_disable_tokenizer_reward=False):
+    def __init__(
+        self,
+        device: str,
+        scoring_type: None,
+        tokenizer=None,
+        model=None,
+        is_disable_tokenizer_reward=False,
+    ):
         super().__init__()
         self.device = device
 
@@ -47,7 +54,6 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         if not is_disable_tokenizer_reward and tokenizer:
             self.tokenizer = tokenizer
             self.model = model
-            
 
     def get_scoring_text(self, prompt: str, response: bt.Synapse) -> BaseRewardEvent:
         try:
@@ -55,7 +61,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
             if not completion:
                 return None
-            
+
             if not self.scoring_type:
                 return None
             # Choose correct scoring prompt for request type.
@@ -63,13 +69,21 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             scoring_prompt = None
 
             scoring_prompt_text = None
-            if self.scoring_type.value == RewardScoringType.summary_relevance_score_template.value:
+            if (
+                self.scoring_type.value
+                == RewardScoringType.summary_relevance_score_template.value
+            ):
                 scoring_prompt = SummaryRelevancePrompt()
-            elif self.scoring_type.value == RewardScoringType.link_content_relevance_template.value:
+            elif (
+                self.scoring_type.value
+                == RewardScoringType.link_content_relevance_template.value
+            ):
                 scoring_prompt = LinkContentPrompt()
                 # Convert list of links content to string before passing to the prompt
                 completion_links_str = str(response.completion_links)
-                scoring_prompt_text = scoring_prompt.text(completion, completion_links_str)
+                scoring_prompt_text = scoring_prompt.text(
+                    completion, completion_links_str
+                )
 
             if scoring_prompt is None or not response.completion_links:
                 return None
@@ -82,18 +96,18 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         except Exception as e:
             bt.logging.error(f"Error in Prompt reward method: {e}")
             return None
-        
+
     async def get_score_by_openai(self, messages):
         query_tasks = []
         for message_dict in messages:  # Iterate over each dictionary in the list
-            (key, message_list), = message_dict.items()
-            
+            ((key, message_list),) = message_dict.items()
+
             async def query_openai(message):
                 try:
                     return await call_openai(
-                        messages=message, 
+                        messages=message,
                         temperature=0.2,
-                        model='gpt-3.5-turbo-16k',
+                        model="gpt-3.5-turbo-16k",
                     )
                 except Exception as e:
                     print(f"Error sending message to OpenAI: {e}")
@@ -108,20 +122,22 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         for response, message_dict in zip(query_responses, messages):
             if isinstance(response, Exception):
                 print(f"Query failed with exception: {response}")
-                response = ""  # Replace the exception with an empty string in the result
-            (key, message_list), = message_dict.items()
+                response = (
+                    ""  # Replace the exception with an empty string in the result
+                )
+            ((key, message_list),) = message_dict.items()
             result[key] = response
         return result
-            
+
     def get_score_by_llm(self, messages):
         result = {}
         for message_dict in messages:  # Iterate over each dictionary in the list
-            (key, message_list), = message_dict.items()
-        
+            ((key, message_list),) = message_dict.items()
+
             with torch.no_grad():
                 # Choose correct scoring prompt for request type.
                 # Determine the scoring prompt based on the provided name or the default scoring type.
-                scoring_prompt_text = message_list[-1]['content']
+                scoring_prompt_text = message_list[-1]["content"]
 
                 # Tokenize formatted scoring prompt.
                 encodings_dict = self.tokenizer(
@@ -161,53 +177,71 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             scoring_messages = [
                 self.get_scoring_text(prompt, response) for response in responses
             ]
-            filter_scoring_messages = [msg for msg in scoring_messages if msg is not None]
+            filter_scoring_messages = [
+                msg for msg in scoring_messages if msg is not None
+            ]
             # # Filter out None items from scoring_messages
             # messages = []
             # messages.extend({index: msg_content} for index, (_, msg_content) in enumerate(scoring_messages) if msg_content)
             # messages = [{str(index): msg_content} for index, (_, msg_content) in enumerate(filter_scoring_messages)]
-            messages = [{str(index): item[1]} for index, item in enumerate(scoring_messages) if item is not None]
+            messages = [
+                {str(index): item[1]}
+                for index, item in enumerate(scoring_messages)
+                if item is not None
+            ]
 
             scores = {}
             score_text = {}
             if messages:
-                response = call_to_subnet_18_scoring({
-                    "messages": messages
-                })
+                response = call_to_subnet_18_scoring({"messages": messages})
                 score_responses = None
                 if not response or response.status_code != 200:
                     if response:
-                        bt.logging.error(f"ERROR connect to Subnet 18: Status code: {response.status_code}")
+                        bt.logging.error(
+                            f"ERROR connect to Subnet 18: Status code: {response.status_code}"
+                        )
 
                     if not self.is_disable_tokenizer_reward:
                         score_responses = self.get_score_by_llm(messages=messages)
                     else:
                         loop = asyncio.get_event_loop_policy().get_event_loop()
-                        score_responses = loop.run_until_complete(self.get_score_by_openai(messages=messages))
+                        score_responses = loop.run_until_complete(
+                            self.get_score_by_openai(messages=messages)
+                        )
                 else:
                     score_responses = response.json()
 
                 if score_responses:
-                    for (key, score_result), (scoring_prompt, _) in zip(score_responses.items(), filter_scoring_messages):
+                    for (key, score_result), (scoring_prompt, _) in zip(
+                        score_responses.items(), filter_scoring_messages
+                    ):
                         score = scoring_prompt.extract_score(score_result)
                         # Scale 0-10 score to 0-1 range.
                         score /= 10.0
                         scores[key] = score
                         score_text[key] = score_result
-            
+
             # Iterate over responses and assign rewards based on scores
             reward_events = []
-            bt.logging.info(f"==================================Summary Relevance scoring Explanation Begins==================================")
+            bt.logging.info(
+                f"==================================Summary Relevance scoring Explanation Begins=================================="
+            )
             for (index, response), uid_tensor in zip(enumerate(responses), uids):
                 uid = uid_tensor.item()
                 score = scores.get(str(index), 0)
-                score_explain = score_text.get(str(index), '')
+                score_explain = score_text.get(str(index), "")
                 reward_event = BaseRewardEvent()
                 reward_event.reward = score
                 reward_events.append(reward_event)
-                bt.logging.info(f"UID: {uid} | Score: {score:.2f} | Explanation: {score_explain.strip()}")
-                bt.logging.info(f"----------------------------------------------------------------------")
-            bt.logging.info(f"==================================Summary Relevance Scoring Explanation Ends==================================")
+                bt.logging.info(
+                    f"UID: {uid} | Score: {score:.2f} | Explanation: {score_explain.strip()}"
+                )
+                bt.logging.info(
+                    f"----------------------------------------------------------------------"
+                )
+            bt.logging.info(
+                f"==================================Summary Relevance Scoring Explanation Ends=================================="
+            )
 
             return reward_events
         except Exception as e:

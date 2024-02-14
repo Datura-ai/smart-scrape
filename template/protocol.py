@@ -175,7 +175,7 @@ class TwitterScraperTweet(BaseModel):
     media: List[TwitterScraperMedia] = []
 
 
-class TwitterScraperStreaming(bt.StreamingSynapse):
+class ScraperStreamingSynapse(bt.StreamingSynapse):
     messages: str = pydantic.Field(
         ...,
         title="Messages",
