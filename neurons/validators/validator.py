@@ -71,7 +71,7 @@ class neuron(AbstractNeuron):
         # Init Weights.
         bt.logging.debug("loading", "moving_averaged_scores")
         self.moving_averaged_scores = torch.zeros((self.metagraph.n)).to(
-            self.config.neuron.devicep
+            self.config.neuron.device
         )
         bt.logging.debug(str(self.moving_averaged_scores))
         self.prev_block = ttl_get_block(self)
