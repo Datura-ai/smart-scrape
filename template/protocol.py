@@ -125,6 +125,7 @@ class TwitterScraperMedia(BaseModel):
     media_url: str = ""
     type: str = ""
 
+
 class TwitterScraperUser(BaseModel):
     id_str: str = ""
     created_at: str = ""
@@ -174,7 +175,7 @@ class TwitterScraperTweet(BaseModel):
     media: List[TwitterScraperMedia] = []
 
 
-class TwitterScraperStreaming(bt.StreamingSynapse):
+class ScraperStreamingSynapse(bt.StreamingSynapse):
     messages: str = pydantic.Field(
         ...,
         title="Messages",
@@ -249,14 +250,14 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
         json_objects = []
 
         for i, char in enumerate(chunk):
-            if char == '{':
+            if char == "{":
                 if not stack:
                     start_index = i
                 stack.append(char)
-            elif char == '}':
+            elif char == "}":
                 stack.pop()
                 if not stack and start_index is not None:
-                    json_str = chunk[start_index:i+1]
+                    json_str = chunk[start_index : i + 1]
                     try:
                         json_obj = json.loads(json_str)
                         json_objects.append(json_obj)
@@ -265,10 +266,10 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
                         # Handle the case where json_str is not a valid JSON object
                         continue
 
-        remaining_chunk = chunk[i+1:] if start_index is None else chunk[start_index:]
+        remaining_chunk = chunk[i + 1 :] if start_index is None else chunk[start_index:]
 
         return json_objects, remaining_chunk
-    
+
     async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:
             self.completion = ""
@@ -298,10 +299,9 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
                             tweets_json = json_data.get("content", "[]")
                             self.miner_tweets = tweets_json
                 except json.JSONDecodeError as e:
-                    print(f"process_streaming_response json.JSONDecodeError: {e}")      
+                    print(f"process_streaming_response json.JSONDecodeError: {e}")
         except Exception as e:
             bt.logging.trace(f"process_streaming_response: {e}")
-            
 
     def deserialize(self) -> str:
         return self.completion
@@ -329,7 +329,7 @@ class TwitterScraperStreaming(bt.StreamingSynapse):
             "messages": self.messages,
             "completion": self.completion,
             "miner_tweets": self.miner_tweets,
-            "prompt_analysis": self.prompt_analysis.dict()
+            "prompt_analysis": self.prompt_analysis.dict(),
         }
 
     class Config:

@@ -26,11 +26,16 @@ from config import get_config, check_config
 from typing import List, Dict, Tuple, Union, Callable, Awaitable
 
 from template.utils import get_version
-from template.protocol import StreamPrompting, IsAlive, TwitterScraperStreaming, TwitterPromptAnalysisResult
+from template.protocol import (
+    StreamPrompting,
+    IsAlive,
+    ScraperStreamingSynapse,
+    TwitterPromptAnalysisResult,
+)
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from template.db import DBClient, get_random_tweets
 
-OpenAI.api_key = os.environ.get('OPENAI_API_KEY')
+OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
 if not OpenAI.api_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable.")
 
@@ -46,10 +51,10 @@ class ScraperMiner:
         bt.logging.trace("Synapse.is_intro_text => ", is_intro_text)
         if not self.miner.config.miner.intro_text:
             return
-        
+
         if not is_intro_text:
             return
-        
+
         bt.logging.trace(f"Run intro text")
 
         content = f"""
@@ -65,7 +70,7 @@ class ScraperMiner:
 
         Output: Just return only introduction text without your comment
         """
-        messages = [{'role': 'user', 'content': content}]
+        messages = [{"role": "user", "content": content}]
         response = await client.chat.completions.create(
             model=model,
             messages=messages,
@@ -81,10 +86,7 @@ class ScraperMiner:
             buffer.append(token)
             if len(buffer) == N:
                 joined_buffer = "".join(buffer)
-                text_response_body = {
-                    "type": "text",
-                    "content": joined_buffer
-                }
+                text_response_body = {"type": "text", "content": joined_buffer}
                 await send(
                     {
                         "type": "http.response.body",
@@ -102,20 +104,22 @@ class ScraperMiner:
         filtered_tweets = []
         prompt_analysis = None
         if self.miner.config.miner.mock_dataset:
-            #todo we can find tweets based on twitter_query
+            # todo we can find tweets based on twitter_query
             filtered_tweets = get_random_tweets(15)
         else:
             openai_query_model = self.miner.config.miner.openai_query_model
             openai_fix_query_model = self.miner.config.miner.openai_fix_query_model
-            tw_client  = TwitterAPIClient(
+            tw_client = TwitterAPIClient(
                 openai_query_model=openai_query_model,
-                openai_fix_query_model=openai_fix_query_model
+                openai_fix_query_model=openai_fix_query_model,
             )
-            filtered_tweets, prompt_analysis = await tw_client.analyse_prompt_and_fetch_tweets(prompt)
+            filtered_tweets, prompt_analysis = (
+                await tw_client.analyse_prompt_and_fetch_tweets(prompt)
+            )
         return filtered_tweets, prompt_analysis
 
     async def finalize_data(self, prompt, model, filtered_tweets, prompt_analysis):
-            content =F"""
+        content = f"""
                 In <UserPrompt> provided User's prompt (Question).
                 In <PromptAnalysis> I anaysis that prompts and generate query for API, keywords, hashtags, user_mentions.
                 In <TwitterData>, Provided Twitter API fetched data.
@@ -133,7 +137,7 @@ class ScraperMiner:
                 </PromptAnalysis>
             """
 
-            system_message = f"""As a Twitter data analyst, your task is to provide users with a clear and concise summary derived from the given Twitter data and the user's query.
+        system_message = f"""As a Twitter data analyst, your task is to provide users with a clear and concise summary derived from the given Twitter data and the user's query.
             
                Tasks:
                 3. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
@@ -154,43 +158,58 @@ class ScraperMiner:
                 6. <TwitterData>.id and <TwitterData>.username you can use generate tweet link, example: [username](https://twitter.com/<username>/statuses/<Id>)
                 7. Not return text like <UserPrompt>, <PromptAnalysis>, <PromptAnalysis> to your response, make response easy to understand to any user.
             """
-            messages = [{'role': 'system', 'content': system_message}, 
-                        {'role': 'user', 'content': content}]
-            return await client.chat.completions.create(
-                model= model,
-                messages= messages,
-                temperature= 0.1,
-                stream= True,
-                # seed=seed,
-            )
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": content},
+        ]
+        return await client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.1,
+            stream=True,
+            # seed=seed,
+        )
 
-    async def smart_scraper(self, synapse: TwitterScraperStreaming, send: Send):
+    async def smart_scraper(self, synapse: ScraperStreamingSynapse, send: Send):
         try:
             buffer = []
             # buffer.append('Tests 1')
-            
+
             model = synapse.model
             prompt = synapse.messages
             seed = synapse.seed
             is_intro_text = synapse.is_intro_text
             bt.logging.trace(synapse)
-            
-            bt.logging.info("================================== Prompt ===================================")
+
+            bt.logging.info(
+                "================================== Prompt ==================================="
+            )
             bt.logging.info(prompt)
-            bt.logging.info("================================== Prompt ====================================")
+            bt.logging.info(
+                "================================== Prompt ===================================="
+            )
 
             # buffer.append('Test 2')
             intro_response, (tweets, prompt_analysis) = await asyncio.gather(
-                self.intro_text(model="gpt-3.5-turbo", prompt=prompt, send=send, is_intro_text=is_intro_text),
-                self.fetch_tweets(prompt)
+                self.intro_text(
+                    model="gpt-3.5-turbo",
+                    prompt=prompt,
+                    send=send,
+                    is_intro_text=is_intro_text,
+                ),
+                self.fetch_tweets(prompt),
             )
-            
-            bt.logging.info("================================== Prompt analysis ===================================")
+
+            bt.logging.info(
+                "================================== Prompt analysis ==================================="
+            )
             bt.logging.info(prompt_analysis)
-            bt.logging.info("================================== Prompt analysis ====================================")
+            bt.logging.info(
+                "================================== Prompt analysis ===================================="
+            )
             # if prompt_analysis:
             #     synapse.set_prompt_analysis(prompt_analysis)
-            
+
             # if not isinstance(tweets, str):
             #     tweets_json = json.dumps(tweets)
             #     synapse.set_tweets(tweets_json)
@@ -198,7 +217,12 @@ class ScraperMiner:
             #     synapse.set_tweets(tweets)
 
             openai_summary_model = self.miner.config.miner.openai_summary_model
-            response = await self.finalize_data(prompt=prompt, model=openai_summary_model, filtered_tweets=tweets, prompt_analysis=prompt_analysis)
+            response = await self.finalize_data(
+                prompt=prompt,
+                model=openai_summary_model,
+                filtered_tweets=tweets,
+                prompt_analysis=prompt_analysis,
+            )
 
             # Reset buffer for finalizing data responses
             buffer = []
@@ -211,7 +235,9 @@ class ScraperMiner:
                 full_text.append(token)  # Append the token to the full_text list
                 if len(buffer) == N:
                     joined_buffer = "".join(buffer)
-                    text_data_json = json.dumps({"type": "text", "content": joined_buffer})
+                    text_data_json = json.dumps(
+                        {"type": "text", "content": joined_buffer}
+                    )
                     # Stream the text
                     await send(
                         {
@@ -224,32 +250,35 @@ class ScraperMiner:
                     buffer = []  # Clear the buffer for the next set of tokens
 
             joined_full_text = "".join(full_text)  # Join all text chunks
-            bt.logging.info(f"================================== Completion Responsed ===================================") 
+            bt.logging.info(
+                f"================================== Completion Responsed ==================================="
+            )
             bt.logging.info(f"{joined_full_text}")  # Print the full text at the end
-            bt.logging.info(f"================================== Completion Responsed ===================================") 
-            
+            bt.logging.info(
+                f"================================== Completion Responsed ==================================="
+            )
+
             # Send prompt_analysis
             if prompt_analysis:
                 prompt_analysis_response_body = {
                     "type": "prompt_analysis",
-                    "content": prompt_analysis.dict()
+                    "content": prompt_analysis.dict(),
                 }
                 await send(
                     {
                         "type": "http.response.body",
-                        "body": json.dumps(prompt_analysis_response_body).encode("utf-8"),
+                        "body": json.dumps(prompt_analysis_response_body).encode(
+                            "utf-8"
+                        ),
                         "more_body": True,
                     }
                 )
                 bt.logging.info(f"Prompt Analysis sent")
 
             # Send tweets
-            tweets_amount = tweets.get('meta', {}).get('result_count', 0)
-            if tweets: 
-                tweets_response_body = {
-                    "type": "tweets",
-                    "content": tweets
-                }
+            tweets_amount = tweets.get("meta", {}).get("result_count", 0)
+            if tweets:
+                tweets_response_body = {"type": "tweets", "content": tweets}
                 more_body = False
                 await send(
                     {
@@ -259,7 +288,7 @@ class ScraperMiner:
                     }
                 )
                 bt.logging.info(f"Tweet data sent. Number of tweets: {tweets_amount}")
-            
+
             if more_body:
                 await send(
                     {
@@ -267,7 +296,7 @@ class ScraperMiner:
                         "body": b"",
                         "more_body": False,
                     }
-                )            
+                )
 
             bt.logging.info(f"End of Streaming")
 
