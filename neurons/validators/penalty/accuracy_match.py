@@ -4,7 +4,8 @@ from typing import List
 from template.protocol import TwitterPromptAnalysisResult
 from neurons.validators.utils.tasks import TwitterTask
 from neurons.validators.penalty import PenaltyModelType, BasePenaltyModel
-from template.protocol import TwitterScraperStreaming
+from template.protocol import ScraperStreamingSynapse
+
 
 class AccuracyPenaltyModel(BasePenaltyModel):
     """
@@ -14,6 +15,7 @@ class AccuracyPenaltyModel(BasePenaltyModel):
     Attributes:
         max_penalty: The maximum penalty that can be applied to a completion.
     """
+
     def __init__(self, max_penalty: float):
         """
         Initializes the AccuracyPenaltyModel with a specified maximum penalty.
@@ -42,17 +44,41 @@ class AccuracyPenaltyModel(BasePenaltyModel):
             prompt_analysis: The TwitterPromptAnalysisResult containing the query criteria.
         """
         if prompt_analysis is not None:
-            keyword_pattern = '|'.join(re.escape(keyword) for keyword in prompt_analysis.keywords) if prompt_analysis.keywords else ''
-            hashtag_pattern = '|'.join(re.escape('#' + hashtag) for hashtag in prompt_analysis.hashtags) if prompt_analysis.hashtags else ''
-            user_pattern = '|'.join(re.escape('@' + user) for user in prompt_analysis.user_mentions) if prompt_analysis.user_mentions else ''
+            keyword_pattern = (
+                "|".join(re.escape(keyword) for keyword in prompt_analysis.keywords)
+                if prompt_analysis.keywords
+                else ""
+            )
+            hashtag_pattern = (
+                "|".join(
+                    re.escape("#" + hashtag) for hashtag in prompt_analysis.hashtags
+                )
+                if prompt_analysis.hashtags
+                else ""
+            )
+            user_pattern = (
+                "|".join(
+                    re.escape("@" + user) for user in prompt_analysis.user_mentions
+                )
+                if prompt_analysis.user_mentions
+                else ""
+            )
         else:
-            keyword_pattern = hashtag_pattern = user_pattern = ''
+            keyword_pattern = hashtag_pattern = user_pattern = ""
 
-        self.keyword_regex = re.compile(keyword_pattern, re.IGNORECASE) if keyword_pattern else None
-        self.hashtag_regex = re.compile(hashtag_pattern, re.IGNORECASE) if hashtag_pattern else None
-        self.user_regex = re.compile(user_pattern, re.IGNORECASE) if user_pattern else None
+        self.keyword_regex = (
+            re.compile(keyword_pattern, re.IGNORECASE) if keyword_pattern else None
+        )
+        self.hashtag_regex = (
+            re.compile(hashtag_pattern, re.IGNORECASE) if hashtag_pattern else None
+        )
+        self.user_regex = (
+            re.compile(user_pattern, re.IGNORECASE) if user_pattern else None
+        )
 
-    def calculate_penalties(self, task: TwitterTask, responses: List[TwitterScraperStreaming]) -> torch.FloatTensor:
+    def calculate_penalties(
+        self, task: TwitterTask, responses: List[ScraperStreamingSynapse]
+    ) -> torch.FloatTensor:
         """
         Calculates the penalties for each completion based on the absence of
         keywords, hashtags, or user mentions as defined in the task's query result.
@@ -77,4 +103,3 @@ class AccuracyPenaltyModel(BasePenaltyModel):
                 penalty += self.max_penalty / 3
             penalties.append(penalty)
         return torch.tensor(penalties, dtype=torch.float32)
-
