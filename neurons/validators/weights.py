@@ -25,16 +25,17 @@ import template
 import multiprocessing
 import time
 import torch
-   
+
+
 def init_wandb(self):
     try:
         if self.config.wandb_on:
-            run_name = f'validator-{self.my_uuid}-{template.__version__}'
+            run_name = f"validator-{self.my_uuid}-{template.__version__}"
             self.config.uid = self.my_uuid
             self.config.hotkey = self.wallet.hotkey.ss58_address
             self.config.run_name = run_name
             self.config.version = template.__version__
-            self.config.type = 'validator'
+            self.config.type = "validator"
 
             # Initialize the wandb run for the single project
             run = wandb.init(
@@ -43,18 +44,21 @@ def init_wandb(self):
                 entity=template.ENTITY,
                 config=self.config,
                 dir=self.config.full_path,
-                reinit=True
+                reinit=True,
             )
 
             # Sign the run to ensure it's from the correct hotkey
             signature = self.wallet.hotkey.sign(run.id.encode()).hex()
-            self.config.signature = signature 
+            self.config.signature = signature
             wandb.config.update(self.config, allow_val_change=True)
 
-            bt.logging.success(f"Started wandb run for project '{template.PROJECT_NAME}'")
+            bt.logging.success(
+                f"Started wandb run for project '{template.PROJECT_NAME}'"
+            )
     except Exception as e:
         bt.logging.error(f"Error in init_wandb: {e}")
         raise
+
 
 def set_weights_process(wallet, netuid, uids, weights, config, version_key):
     subtensor = bt.subtensor(config=config)
@@ -69,6 +73,7 @@ def set_weights_process(wallet, netuid, uids, weights, config, version_key):
     )
 
     return success
+
 
 def set_weights(self):
     if torch.all(self.moving_averaged_scores == 0):
@@ -93,9 +98,10 @@ def set_weights(self):
         metagraph=self.metagraph,
     )
 
-
-
-    weights_dict = {str(uid.item()): weight.item() for uid, weight in zip(processed_weight_uids, processed_weights)}
+    weights_dict = {
+        str(uid.item()): weight.item()
+        for uid, weight in zip(processed_weight_uids, processed_weights)
+    }
 
     # Log the weights dictionary
     bt.logging.info(f"Attempting to set weights action for {weights_dict}")
@@ -106,7 +112,7 @@ def set_weights(self):
         for uid, weight in zip(processed_weight_uids, processed_weights)
     ]
     for i in range(0, len(uids_weights), 4):
-        bt.logging.info(" | ".join(uids_weights[i:i+4]))
+        bt.logging.info(" | ".join(uids_weights[i : i + 4]))
     bt.logging.info(f"Attempting to set weights details ends: ================")
 
     # Start the process with a timeout
@@ -128,7 +134,9 @@ def set_weights(self):
     if process.is_alive():
         process.terminate()
         process.join()
-        bt.logging.error("Failed to complete set weights action after multiple attempts.")
+        bt.logging.error(
+            "Failed to complete set weights action after multiple attempts."
+        )
         return False
 
     bt.logging.success("Completed set weights action successfully.")
@@ -137,13 +145,13 @@ def set_weights(self):
 
 def update_weights(self, total_scores, steps_passed):
     try:
-        """ Update weights based on total scores, using min-max normalization for display"""
+        """Update weights based on total scores, using min-max normalization for display"""
         avg_scores = total_scores / (steps_passed + 1)
 
         # Normalize avg_scores to a range of 0 to 1
         min_score = torch.min(avg_scores)
         max_score = torch.max(avg_scores)
-        
+
         if max_score - min_score != 0:
             normalized_scores = (avg_scores - min_score) / (max_score - min_score)
         else:
