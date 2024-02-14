@@ -158,25 +158,9 @@ class neuron(AbstractNeuron):
 
             await asyncio.sleep(self.config.neuron.update_available_uids_interval)
 
-    async def check_uid(
-        self,
-        axon,
-        uid,
-        # , is_only_allowed_miner=False, specified_uids=None
-    ):
+    async def check_uid(self, axon, uid):
         """Asynchronously check if a UID is available."""
         try:
-            # if specified_uids and uid not in specified_uids:
-            #     raise Exception(f"Not allowed in Specified Uids")
-
-            # if (
-            #     self.config.neuron.only_allowed_miners
-            #     and axon.coldkey not in self.config.neuron.only_allowed_miners
-            #     and is_only_allowed_miner
-            #     and not specified_uids
-            # ):
-            #     raise Exception(f"Not allowed")
-
             response = await self.dendrite(
                 axon, IsAlive(), deserialize=False, timeout=15
             )
@@ -189,17 +173,12 @@ class neuron(AbstractNeuron):
             bt.logging.trace(f"Checking UID {uid}: {e}\n{traceback.format_exc()}")
             raise e
 
-    async def get_available_uids_is_alive(
-        self,
-        # is_only_allowed_miner=False, specified_uids=None
-    ):
+    async def get_available_uids_is_alive(self):
         """Get a dictionary of available UIDs and their axons asynchronously."""
         tasks = {
             uid.item(): self.check_uid(
                 self.metagraph.axons[uid.item()],
                 uid.item(),
-                # is_only_allowed_miner,
-                # specified_uids,
             )
             for uid in self.metagraph.uids
         }
@@ -252,17 +231,6 @@ class neuron(AbstractNeuron):
         try:
             if self.config.wandb_on:
                 wandb.log(wandb_data)
-
-            # iterations_per_set_weights = 2
-            # iterations_until_update = iterations_per_set_weights - (
-            #     (self.steps_passed + 1) % iterations_per_set_weights
-            # )
-            # bt.logging.info(
-            #     f"Updating weights in {iterations_until_update} iterations."
-            # )
-
-            # if iterations_until_update == 1:
-            #     set_weights(self)
 
             self.steps_passed += 1
         except Exception as e:
