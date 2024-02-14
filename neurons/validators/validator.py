@@ -64,9 +64,9 @@ class neuron(AbstractNeuron):
 
         # Init the event loop.
         self.loop = asyncio.get_event_loop()
-        self.step = 0
-        self.steps_passed = 0
-        self.exclude = []
+        # self.step = 0
+        # self.steps_passed = 0
+        # self.exclude = []
 
         # Init Weights.
         bt.logging.debug("loading", "moving_averaged_scores")
@@ -79,6 +79,7 @@ class neuron(AbstractNeuron):
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(
             thread_name_prefix="asyncio"
         )
+        checkpoint(self)
         self.loop.create_task(self.update_available_uids_periodically())
         self.loop.create_task(self.update_weights_periodically())
 
@@ -113,6 +114,13 @@ class neuron(AbstractNeuron):
 
                 # await self.update_weights(self.steps_passed)
                 await set_weights(self)
+
+                # Resync the network state
+                if should_checkpoint(self):
+                    checkpoint(self)
+
+                self.prev_block = ttl_get_block(self)
+                # self.step += 1
             except Exception as e:
                 # Log the exception or handle it as needed
                 bt.logging.error(
@@ -128,11 +136,11 @@ class neuron(AbstractNeuron):
         while True:
             start_time = time.time()
             try:
-                # It's assumed run_sync_in_async is a method that correctly handles running synchronous code in async.
-                # If not, ensure it's properly implemented to avoid blocking the event loop.
-                self.metagraph = await self.run_sync_in_async(
-                    lambda: self.subtensor.metagraph(self.config.netuid)
-                )
+                # # It's assumed run_sync_in_async is a method that correctly handles running synchronous code in async.
+                # # If not, ensure it's properly implemented to avoid blocking the event loop.
+                # self.metagraph = await self.run_sync_in_async(
+                #     lambda: self.subtensor.metagraph(self.config.netuid)
+                # )
 
                 # Directly await the asynchronous method without intermediate assignment to self.available_uids,
                 # unless it's used elsewhere.
@@ -232,7 +240,7 @@ class neuron(AbstractNeuron):
             if self.config.wandb_on:
                 wandb.log(wandb_data)
 
-            self.steps_passed += 1
+            # self.steps_passed += 1
         except Exception as e:
             bt.logging.error(f"Error in update_scores: {e}")
             raise e
@@ -269,7 +277,7 @@ class neuron(AbstractNeuron):
 
     def run(self, interval=300, strategy=QUERY_MINERS.RANDOM):
         bt.logging.info(f"run: interval={interval}; strategy={strategy}")
-        checkpoint(self)
+        # checkpoint(self)
         try:
             while True:
                 # Run multiple forwards.
@@ -282,12 +290,12 @@ class neuron(AbstractNeuron):
 
                 self.loop.run_until_complete(run_forward())
 
-                # Resync the network state
-                if should_checkpoint(self):
-                    checkpoint(self)
+                # # Resync the network state
+                # if should_checkpoint(self):
+                #     checkpoint(self)
 
-                self.prev_block = ttl_get_block(self)
-                self.step += 1
+                # self.prev_block = ttl_get_block(self)
+                # self.step += 1
         except Exception as err:
             bt.logging.error("Error in training loop", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
