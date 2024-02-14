@@ -34,7 +34,7 @@ class neuron(AbstractNeuron):
     @classmethod
     def config(cls):
         return config(cls)
-    
+
     subtensor: "bt.subtensor"
     wallet: "bt.wallet"
     metagraph: "bt.metagraph"
@@ -42,9 +42,8 @@ class neuron(AbstractNeuron):
 
     twitter_validator: "TwitterScraperValidator"
     moving_average_scores: torch.Tensor = None
-    my_uuid: int = None  
+    my_uuid: int = None
     shutdown_event: asyncio.Event()
-
 
     def __init__(self):
         self.config = neuron.config()
@@ -68,13 +67,17 @@ class neuron(AbstractNeuron):
 
         # Init Weights.
         bt.logging.debug("loading", "moving_averaged_scores")
-        self.moving_averaged_scores = torch.zeros((self.metagraph.n)).to(self.config.neuron.device)
+        self.moving_averaged_scores = torch.zeros((self.metagraph.n)).to(
+            self.config.neuron.device
+        )
         bt.logging.debug(str(self.moving_averaged_scores))
         self.prev_block = ttl_get_block(self)
 
     def initialize_components(self):
         bt.logging(config=self.config, logging_dir=self.config.full_path)
-        bt.logging.info(f"Running validator for subnet: {self.config.netuid} on network: {self.config.subtensor.chain_endpoint}")
+        bt.logging.info(
+            f"Running validator for subnet: {self.config.netuid} on network: {self.config.subtensor.chain_endpoint}"
+        )
         self.wallet = bt.wallet(config=self.config)
         self.subtensor = bt.subtensor(config=self.config)
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
@@ -82,19 +85,30 @@ class neuron(AbstractNeuron):
         self.dendrite = bt.dendrite(wallet=self.wallet)
         self.my_uuid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
         if self.wallet.hotkey.ss58_address not in self.metagraph.hotkeys:
-            bt.logging.error(f"Your validator: {self.wallet} is not registered to chain connection: {self.subtensor}. Run btcli register --netuid 18 and try again.")
+            bt.logging.error(
+                f"Your validator: {self.wallet} is not registered to chain connection: {self.subtensor}. Run btcli register --netuid 18 and try again."
+            )
             exit()
-    
-    async def check_uid(self, axon, uid, is_only_allowed_miner = False, specified_uids=None):
+
+    async def check_uid(
+        self, axon, uid, is_only_allowed_miner=False, specified_uids=None
+    ):
         """Asynchronously check if a UID is available."""
         try:
             if specified_uids and uid not in specified_uids:
                 raise Exception(f"Not allowed in Specified Uids")
-            
-            if self.config.neuron.only_allowed_miners and axon.coldkey not in self.config.neuron.only_allowed_miners and is_only_allowed_miner and not specified_uids:
+
+            if (
+                self.config.neuron.only_allowed_miners
+                and axon.coldkey not in self.config.neuron.only_allowed_miners
+                and is_only_allowed_miner
+                and not specified_uids
+            ):
                 raise Exception(f"Not allowed")
-                
-            response = await self.dendrite(axon, IsAlive(), deserialize=False, timeout=4)
+
+            response = await self.dendrite(
+                axon, IsAlive(), deserialize=False, timeout=10
+            )
             if response.is_success:
                 bt.logging.trace(f"UID {uid} is active")
                 return axon  # Return the axon info instead of the UID
@@ -104,18 +118,35 @@ class neuron(AbstractNeuron):
             bt.logging.trace(f"Checking UID {uid}: {e}\n{traceback.format_exc()}")
             raise e
 
-    async def get_available_uids_is_alive(self, is_only_allowed_miner=False, specified_uids=None):
+    async def get_available_uids_is_alive(
+        self, is_only_allowed_miner=False, specified_uids=None
+    ):
         """Get a dictionary of available UIDs and their axons asynchronously."""
-        tasks = {uid.item(): self.check_uid(self.metagraph.axons[uid.item()], uid.item(), is_only_allowed_miner, specified_uids) for uid in self.metagraph.uids}
+        tasks = {
+            uid.item(): self.check_uid(
+                self.metagraph.axons[uid.item()],
+                uid.item(),
+                is_only_allowed_miner,
+                specified_uids,
+            )
+            for uid in self.metagraph.uids
+        }
         results = await asyncio.gather(*tasks.values(), return_exceptions=True)
 
         # Filter out the exceptions and keep the successful results
-        available_uids = [uid for uid, result in zip(tasks.keys(), results) if not isinstance(result, Exception)]
+        available_uids = [
+            uid
+            for uid, result in zip(tasks.keys(), results)
+            if not isinstance(result, Exception)
+        ]
 
         return available_uids
 
     def check_uid_availability(
-        self, metagraph: "bt.metagraph.Metagraph", uid: int, vpermit_tao_limit: int = 4096
+        self,
+        metagraph: "bt.metagraph.Metagraph",
+        uid: int,
+        vpermit_tao_limit: int = 4096,
     ) -> bool:
         """Check if uid is available. The UID should be available if it is serving and has less than vpermit_tao_limit stake
         Args:
@@ -131,12 +162,14 @@ class neuron(AbstractNeuron):
         # Filter validator permit > 1024 stake.
         if metagraph.validator_permit[uid]:
             if metagraph.S[uid] > vpermit_tao_limit:
-                
+
                 return False
         # Available otherwise.
         return True
 
-    async def get_available_uids(self, k: int = None, exclude: List[int] = None) -> torch.LongTensor:
+    async def get_available_uids(
+        self, k: int = None, exclude: List[int] = None
+    ) -> torch.LongTensor:
         """Returns k available random uids from the metagraph.
         Args:
             k (int): Number of uids to return.
@@ -163,12 +196,23 @@ class neuron(AbstractNeuron):
         # Check if candidate_uids contain enough for querying, if not grab all avaliable uids
         available_uids = candidate_uids
         return available_uids
-        
-    async def get_uids(self, strategy=QUERY_MINERS.RANDOM, is_only_allowed_miner=False, specified_uids=None):
+
+    async def get_uids(
+        self,
+        strategy=QUERY_MINERS.RANDOM,
+        is_only_allowed_miner=False,
+        specified_uids=None,
+    ):
         # uid_list = await self.get_available_uids()
-        uid_list =  await self.get_available_uids_is_alive(is_only_allowed_miner, specified_uids) #uid_list_is_live =
+        uid_list = await self.get_available_uids_is_alive(
+            is_only_allowed_miner, specified_uids
+        )  # uid_list_is_live =
         if strategy == QUERY_MINERS.RANDOM:
-            uids = torch.tensor([random.choice(uid_list)]) if uid_list else torch.tensor([])
+            uids = (
+                torch.tensor([random.choice(uid_list)])
+                if uid_list
+                else torch.tensor([])
+            )
         elif strategy == QUERY_MINERS.ALL:
             uids = torch.tensor(uid_list) if uid_list else torch.tensor([])
         bt.logging.info("Run uids ---------- ", uids)
@@ -179,10 +223,14 @@ class neuron(AbstractNeuron):
         try:
             if self.config.wandb_on:
                 wandb.log(wandb_data)
-           
+
             iterations_per_set_weights = 2
-            iterations_until_update = iterations_per_set_weights - ((self.steps_passed + 1) % iterations_per_set_weights)
-            bt.logging.info(f"Updating weights in {iterations_until_update} iterations.")
+            iterations_until_update = iterations_per_set_weights - (
+                (self.steps_passed + 1) % iterations_per_set_weights
+            )
+            bt.logging.info(
+                f"Updating weights in {iterations_until_update} iterations."
+            )
 
             if iterations_until_update == 1:
                 set_weights(self)
@@ -194,13 +242,21 @@ class neuron(AbstractNeuron):
 
     def update_moving_averaged_scores(self, uids, rewards):
         try:
-            scattered_rewards = self.moving_averaged_scores.scatter(0, uids, rewards).to(self.config.neuron.device)
+            scattered_rewards = self.moving_averaged_scores.scatter(
+                0, uids, rewards
+            ).to(self.config.neuron.device)
             average_reward = torch.mean(scattered_rewards)
-            bt.logging.info(f"Scattered reward: {average_reward:.6f}")  # Rounds to 6 decimal places for logging
+            bt.logging.info(
+                f"Scattered reward: {average_reward:.6f}"
+            )  # Rounds to 6 decimal places for logging
 
             alpha = self.config.neuron.moving_average_alpha
-            self.moving_averaged_scores = alpha * scattered_rewards + (1 - alpha) * self.moving_averaged_scores.to(self.config.neuron.device)
-            bt.logging.info(f"Moving averaged scores: {torch.mean(self.moving_averaged_scores):.6f}")  # Rounds to 6 decimal places for logging
+            self.moving_averaged_scores = alpha * scattered_rewards + (
+                1 - alpha
+            ) * self.moving_averaged_scores.to(self.config.neuron.device)
+            bt.logging.info(
+                f"Moving averaged scores: {torch.mean(self.moving_averaged_scores):.6f}"
+            )  # Rounds to 6 decimal places for logging
             return scattered_rewards
         except Exception as e:
             bt.logging.error(f"Error in update_moving_averaged_scores: {e}")
@@ -208,12 +264,12 @@ class neuron(AbstractNeuron):
 
     async def query_synapse(self, strategy=QUERY_MINERS.RANDOM):
         try:
-            self.metagraph = self.subtensor.metagraph( netuid = self.config.netuid )
+            self.metagraph = self.subtensor.metagraph(netuid=self.config.netuid)
             await self.twitter_validator.query_and_score(strategy)
         except Exception as e:
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(100)
-    
+
     def run(self, interval=300, strategy=QUERY_MINERS.RANDOM):
         bt.logging.info(f"run: interval={interval}; strategy={strategy}")
         checkpoint(self)
@@ -221,12 +277,11 @@ class neuron(AbstractNeuron):
             while True:
                 # Run multiple forwards.
                 async def run_forward():
-                    coroutines = [
-                        self.query_synapse(strategy)
-                        for _ in range(1)
-                    ]
+                    coroutines = [self.query_synapse(strategy) for _ in range(1)]
                     await asyncio.gather(*coroutines)
-                    await asyncio.sleep(interval)  # This line introduces a five-minute delay
+                    await asyncio.sleep(
+                        interval
+                    )  # This line introduces a five-minute delay
 
                 self.loop.run_until_complete(run_forward())
 
@@ -243,20 +298,22 @@ class neuron(AbstractNeuron):
         except Exception as err:
             bt.logging.error("Error in training loop", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
-    
+
     async def run_syn_qs(self):
         if self.config.neuron.run_random_miner_syn_qs_interval > 0:
             await asyncio.sleep(5)
-            self.run(self.config.neuron.run_random_miner_syn_qs_interval, QUERY_MINERS.RANDOM)
+            self.run(
+                self.config.neuron.run_random_miner_syn_qs_interval, QUERY_MINERS.RANDOM
+            )
 
         if self.config.neuron.run_all_miner_syn_qs_interval > 0:
             await asyncio.sleep(20)
             self.run(self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.ALL)
 
 
-
 def main():
     asyncio.run(neuron().run_syn_qs())
+
 
 if __name__ == "__main__":
     main()
