@@ -141,6 +141,7 @@ class ScraperMiner:
             {"role": "system", "content": system_message},
             {"role": "user", "content": content},
         ]
+
         return await client.chat.completions.create(
             model=model,
             messages=messages,
