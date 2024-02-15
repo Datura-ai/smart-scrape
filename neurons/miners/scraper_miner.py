@@ -29,7 +29,7 @@ from template.utils import get_version
 from template.protocol import (
     StreamPrompting,
     IsAlive,
-    TwitterScraperStreaming,
+    ScraperStreamingSynapse,
     TwitterPromptAnalysisResult,
 )
 from template.services.twitter_api_wrapper import TwitterAPIClient
@@ -149,7 +149,7 @@ class ScraperMiner:
             stream=True,
         )
 
-    async def smart_scraper(self, synapse: TwitterScraperStreaming, send: Send):
+    async def smart_scraper(self, synapse: ScraperStreamingSynapse, send: Send):
         try:
             model = synapse.model
             prompt = synapse.messages

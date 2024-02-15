@@ -86,6 +86,10 @@ async def process_scraper_validator(request: Request, data: dict):
     #     raise HTTPException(status_code=401, detail="Invalid access key")
     return StreamingResponse(response_stream_event(data))
 
+@app.get("/")
+async def health_check():
+    return {"status": "healthy"}
+
 def run_fastapi():
     uvicorn.run(app, host="0.0.0.0", port=8005)
 
