@@ -69,6 +69,7 @@ bad_query_examples = [
     "has:polls",
     "is:polls",
     """(humorous AND (film OR movies OR cinema OR "film industry" OR directors)) -is:retweet lang:en""",
+    """pepsi OR cola OR 'coca cola'""",
 ]
 
 # - media.fields allowed values: "duration_ms,height,media_key,preview_image_url,type,url,width"
@@ -109,7 +110,7 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
         2. Params.query right work: "{query_examples}"
         3. Params.query does not work: "{bad_query_examples}"
         4. API Params rules:
-            - If a query.word consists of two or more words, enclose them in quotation marks, i.e., "Coca Cola". Replace single quotes (') around your phrases with double quotes (") to ensure compatibility with the Twitter API syntax.
+            - If a query.word consists of two or more words, enclose them in quotation marks, Don't use single quotes (') (i.e. 'Coca Cola' is wrong), Use only ("), i.e (i.e., "Coca Cola". is correct)
             - Don't use "since:" and "until:" for date filter
             - end_time must be on or after start_date
             - use lang filter in query, and filter based on user's language, default lang.en
