@@ -19,7 +19,7 @@
 
 
 # version must stay on line 22
-__version__ = "0.0.34"
+__version__ = "0.0.35"
 version_split = __version__.split(".")
 __spec_version__ = (
     (1000 * int(version_split[0]))
@@ -71,6 +71,7 @@ valid_validators = [
     "5FKstHjZkh4v3qAMSBa1oJcHCLjxYZ8SNTSz1opTv4hR7gVB",
     "5DXTJSPVvf1sow1MU4npJPewEAwhPRb6CWsk4RX9RFt2PRbj",
     "5EsrMfo7UcPs6AqAotU47VmYGfLHntS9JzhEwbY2EJMcWQxQ",  # server
+    "5Dd8gaRNdhm1YP7G1hcB1N842ecAUQmbLjCRLqH5ycaTGrWv",
 ]
 
 WHITELISTED_KEYS = testnet_key + test_key + valid_validators
