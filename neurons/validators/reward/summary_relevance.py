@@ -36,7 +36,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
     @property
     def name(self) -> str:
-        return RewardModelType.prompt.value
+        return RewardModelType.summary_relavance_match.value
 
     def __init__(
         self,

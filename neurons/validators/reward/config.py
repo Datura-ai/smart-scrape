@@ -23,6 +23,8 @@ class RewardModelType(Enum):
     task_validator = "task_validator_filter"
     accuracy_match = "keyword_match_penalty"
     sentence_match_penalty = "sentence_match_penalty"
+    summary_relavance_match = "summary_relavance_match"
+    link_content_match = "link_content_match"
 
 
 class RewardScoringType(Enum):

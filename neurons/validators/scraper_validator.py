@@ -288,9 +288,9 @@ class ScraperValidator:
             raise e
 
     def log_event(self, task, event, start_time, uids, rewards, prompt):
-        def log_event(event):
-            for key, value in event.items():
-                bt.logging.debug(f"{key}: {value}")
+        if not uids:
+            bt.logging.warning("No UIDs provided for logging event.")
+            return
 
         event.update(
             {
@@ -302,7 +302,6 @@ class ScraperValidator:
             }
         )
         bt.logging.debug("Run Task event:", str(event))
-        # log_event(event)
 
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
@@ -348,6 +347,10 @@ class ScraperValidator:
                 task_type="twitter_scraper",
                 criteria=[],
             )
+
+            if self.neuron.available_uids == 0:
+                bt.logging.info("Not available uids")
+                raise StopAsyncIteration("Not available uids")
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
@@ -418,6 +421,10 @@ class ScraperValidator:
                 task_type="twitter_scraper",
                 criteria=[],
             )
+
+            if self.neuron.available_uids == 0:
+                bt.logging.info("Not available uids")
+                raise StopAsyncIteration("Not available uids")
 
             yield f"Contacting miner IDs: {'; '.join(map(str, specified_uids))} \n\n\n"
             async_responses, uids, event, start_time = await self.run_task_and_score(

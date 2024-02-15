@@ -59,7 +59,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
 
     @property
     def name(self) -> str:
-        return RewardModelType.prompt.value
+        return RewardModelType.link_content_match.value
 
     def __init__(
         self,
@@ -96,6 +96,10 @@ class LinkContentRelevanceModel(BaseRewardModel):
             unique_links = list(
                 set(all_links)
             )  # Remove duplicates to avoid redundant tasks
+
+            if len(unique_links) == 0:
+                bt.logging.info("No unique links found to process.")
+                return
             tweets_list = await TwitterScraperActor().get_tweets(urls=unique_links)
             for response in responses:
                 ids = [

@@ -143,7 +143,7 @@ class neuron(AbstractNeuron):
                 # unless it's used elsewhere.
                 self.available_uids = await self.get_available_uids_is_alive()
                 bt.logging.info(
-                    f"update_available_uids_periodically Number of available UIDs for periodic update: {len(self.available_uids)}, UIDs: {self.available_uids}"
+                    f"Number of available UIDs for periodic update: Amount: {len(self.available_uids)}, UIDs: {self.available_uids}"
                 )
             except Exception as e:
                 bt.logging.error(
@@ -224,7 +224,7 @@ class neuron(AbstractNeuron):
             )
         elif strategy == QUERY_MINERS.ALL:
             uids = torch.tensor(uid_list) if uid_list else torch.tensor([])
-        bt.logging.info("Run uids ---------- ", uids)
+        bt.logging.info(f"Run uids ---------- Amount: {len(uids)} | {uids}")
         # uid_list = list(available_uids.keys())
         return uids.to(self.config.neuron.device)
 
