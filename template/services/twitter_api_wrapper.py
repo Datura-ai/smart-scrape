@@ -118,8 +118,8 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - user.fields only allowed: "created_at,description,id,location,name,profile_image_url,url,username,verified"
             - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text"
             - - "expansions": "author_id" include it always
-            - "has:" options include "hashtags", "links", "mentions", "media", "images", "videos", "geo", "cashtags"
-            - "is:" options include "retweet", "nullcast", "verified"
+            - "has:" options include "hashtags", "links", "mentions", "media", "images", "videos", "geo", "cashtags", i.e. has:hashtags
+            - "is:" options include "retweet", "nullcast", "verified", i.e. is:retweet
             - To construct effective queries, combine search terms using spaces for an implicit 'AND' relationship. Use 'OR' to expand your search to include various terms, and group complex combinations with parentheses. Avoid using 'AND' explicitly. Instead, rely on spacing and grouping to define your search logic. For exclusions, use the '-' operator.
 
             
