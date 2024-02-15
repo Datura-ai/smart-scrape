@@ -59,7 +59,7 @@ query_examples = [
     "(happy OR happiness) lang:en -birthday -is:retweet",
     "(happy OR happiness OR excited OR elated) lang:en -birthday -is:retweet -holidays",
     "has:geo (from:NWSNHC OR from:NHC_Atlantic OR from:NWSHouston OR from:NWSSanAntonio OR from:USGS_TexasRain OR from:USGS_TexasFlood OR from:JeffLindner1) -is:retweet",
-    "(humorous (film OR movies OR cinema OR "film industry" OR directors)) -is:retweet lang:en"
+    """(humorous (film OR movies OR cinema OR "film industry" OR directors)) -is:retweet lang:en""",
 ]
 
 bad_query_examples = [
@@ -68,7 +68,7 @@ bad_query_examples = [
     "[(OpenAI OR GPT-3) (#OpenAI OR #AI)]",
     "has:polls",
     "is:polls",
-    "(humorous AND (film OR movies OR cinema OR "film industry" OR directors)) -is:retweet lang:en"
+    """(humorous AND (film OR movies OR cinema OR "film industry" OR directors)) -is:retweet lang:en""",
 ]
 
 # - media.fields allowed values: "duration_ms,height,media_key,preview_image_url,type,url,width"
