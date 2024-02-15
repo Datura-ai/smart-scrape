@@ -26,51 +26,62 @@ twitter_api_query_example = {
     # 'since_id': "Returns results with a Tweet ID greater than (that is, more recent than) the specified ID. The ID specified is exclusive and responses will not include it.",
     # 'unit_id': "Returns results with a Tweet ID less than (that is, older than) the specified ID. The ID specified is exclusive and responses will not include it."s
 }
+query_examples = """
+    pepsi OR cola OR "coca cola"
+    ("Twitter API" OR #v2) -"recent search"
+    thankunext #fanart OR @arianagrande
+    to:twitterdev OR to:twitterapi -to:twitter
+    from:TwitterDev url:"https://t.co"
+    retweets_of:twitterdev OR retweets_of:twitterapi
+    place_country:US OR place_country:MX OR place_country:CA
+    data @twitterdev -is:retweet
+    "mobile games" -is:nullcast
+    from:twitterdev -has:hashtags
+    from:twitterdev announcement has:links
+    #meme has:images
+    : #icebucketchallenge has:video_link
+    recommend #paris has:geo -bakery
+    recommend #paris lang:en
+    (kittens OR puppies) has:media
+    #nowplaying has:mentions
+    #stonks has:cashtags
+    #nowplaying is:verified
+    place:"new york city" OR place:seattle OR place:fd70c22040963ac7
+    conversation_id:1334987486343299072 (from:twitterdev OR from:twitterapi)
+    context:domain_id.entity_id
+    has:media
+    has:links OR is:retweet
+    "twitter data" has:mentions (has:media OR has:links)
+    (grumpy cat) OR (#meme has:images)
+    skiing -snow -day -noschool
+    (happy OR happiness) place_country:GB -birthday -is:retweet
+    (happy OR happiness) lang:en -birthday -is:retweet
+    (happy OR happiness OR excited OR elated) lang:en -birthday -is:retweet -holidays
+    has:geo (from:NWSNHC OR from:NHC_Atlantic OR from:NWSHouston OR from:NWSSanAntonio OR from:USGS_TexasRain OR from:USGS_TexasFlood OR from:JeffLindner1) -is:retweet
+    ("artificial intelligence" OR "machine learning" OR "AI applications" OR "data science") (#AI OR #ArtificialIntelligence OR #MachineLearning OR #AIApplications OR #DataScience)
+"""
+bad_query_examples = f"""
+    (horrible OR worst OR sucks OR bad OR disappointing) (place_country:US OR place_country:MX OR place_country:CA
+    # There were errors processing your request: missing EOF at ')' (at position 51)
 
-query_examples = [
-    'pepsi OR cola OR "coca cola"',
-    '("Twitter API" OR #v2) -"recent search"',
-    "thankunext #fanart OR @arianagrande",
-    "to:twitterdev OR to:twitterapi -to:twitter",
-    'from:TwitterDev url:"https://t.co"',
-    "retweets_of:twitterdev OR retweets_of:twitterapi",
-    "place_country:US OR place_country:MX OR place_country:CA",
-    "data @twitterdev -is:retweet",
-    '"mobile games" -is:nullcast',
-    "from:twitterdev -has:hashtags",
-    "from:twitterdev announcement has:links",
-    "#meme has:images",
-    ": #icebucketchallenge has:video_link",
-    "recommend #paris has:geo -bakery",
-    "recommend #paris lang:en",
-    "(kittens OR puppies) has:media",
-    "#nowplaying has:mentions",
-    "#stonks has:cashtags",
-    "#nowplaying is:verified",
-    'place:"new york city" OR place:seattle OR place:fd70c22040963ac7',
-    "conversation_id:1334987486343299072 (from:twitterdev OR from:twitterapi)",
-    "context:domain_id.entity_id",
-    "has:media",
-    "has:links OR is:retweet",
-    '"twitter data" has:mentions (has:media OR has:links)',
-    "(grumpy cat) OR (#meme has:images)",
-    "skiing -snow -day -noschool",
-    "(happy OR happiness) place_country:GB -birthday -is:retweet",
-    "(happy OR happiness) lang:en -birthday -is:retweet",
-    "(happy OR happiness OR excited OR elated) lang:en -birthday -is:retweet -holidays",
-    "has:geo (from:NWSNHC OR from:NHC_Atlantic OR from:NWSHouston OR from:NWSSanAntonio OR from:USGS_TexasRain OR from:USGS_TexasFlood OR from:JeffLindner1) -is:retweet",
-    """(humorous (film OR movies OR cinema OR "film industry" OR directors)) -is:retweet lang:en""",
-]
+    [(OpenAI OR GPT-3) (#OpenAI OR #AI)]
+    # There were errors processing your request: no viable alternative at input '[' (at position 1).
 
-bad_query_examples = [
-    "(OpenAI OR GPT-3) (#OpenAI OR #ArtificialIntelligence)",
-    "(horrible OR worst OR sucks OR bad OR disappointing) (place_country:US OR place_country:MX OR place_country:CA)"
-    "[(OpenAI OR GPT-3) (#OpenAI OR #AI)]",
-    "has:polls",
-    "is:polls",
-    """(humorous AND (film OR movies OR cinema OR "film industry" OR directors)) -is:retweet lang:en""",
-    """pepsi OR cola OR 'coca cola'""",
-]
+    has:polls
+    # There were errors processing your request: is/has/lang cannot be used as a standalone operator (at position 1), Reference to invalid operator 'has:polls'. 
+
+    is:polls
+    # There were errors processing your request: is/has/lang cannot be used as a standalone operator (at position 1), Reference to invalid operator 'is:polls'.
+
+    (humorous AND (film OR movies OR cinema OR "film industry" OR directors)) -is:retweet lang:en
+    # There were errors processing your request: Ambiguous use of and as a keyword. Use a space to logically join two clauses, or \"and\" to find occurrences of and in text (at position 11)
+
+    (pepsi OR cola OR 'coca cola')
+    # There were errors processing your request: no viable alternative at character ''' (at position 19)
+    
+    (artificial intelligence OR machine learning OR 'AI applications' OR 'data science') (#AI OR #ArtificialIntelligence OR #MachineLearning OR #AIApplications OR #DataScience)
+    #There were errors processing your request: no viable alternative at character ''' (at position 49), no viable alternative at character ''' (at position 70)
+"""
 
 # - media.fields allowed values: "duration_ms,height,media_key,preview_image_url,type,url,width"
 # - max_results only between 10 - 100
@@ -107,10 +118,17 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
 
         Twitter API:
         1. Params: "{twitter_api_query_example}"
-        2. Params.query right work: "{query_examples}"
-        3. Params.query does not work: "{bad_query_examples}"
+        2. Params.query correct examples: 
+        <CORRECT_EXAMPLES>
+        {query_examples}
+        </CORRECT_EXAMPLES>
+
+        3. Params.query bad examples:
+        <BAD_QUERY_EXAMPES>
+           {bad_query_examples}
+        </BAD_QUERY_EXAMPES>
         4. API Params rules:
-            - If a query.word consists of two or more words, enclose them in quotation marks, Don't use single quotes (') (i.e. 'Coca Cola' is wrong), Use only ("), i.e (i.e., "Coca Cola". is correct)
+            - Enclose phrases consisting of two or more words in double quotes (e.g., "Coca Cola"). Do not use single quotes.
             - Don't use "since:" and "until:" for date filter
             - end_time must be on or after start_date
             - use lang filter in query, and filter based on user's language, default lang.en
@@ -122,9 +140,8 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - "has:" options include "hashtags", "links", "mentions", "media", "images", "videos", "geo", "cashtags", i.e. has:hashtags
             - "is:" options include "retweet", "nullcast", "verified", i.e. is:retweet
             - To construct effective queries, combine search terms using spaces for an implicit 'AND' relationship. Use 'OR' to expand your search to include various terms, and group complex combinations with parentheses. Avoid using 'AND' explicitly. Instead, rely on spacing and grouping to define your search logic. For exclusions, use the '-' operator.
+            - Construct queries by combining search terms with spaces for an implicit 'AND' relationship. Use 'OR' to include various terms, and group complex combinations with parentheses. Avoid using 'AND' explicitly. Use '-' for exclusions.
 
-            
-        
         Output example:
         {{
             "keywords": ["list of identified keywords based on the prompt"],

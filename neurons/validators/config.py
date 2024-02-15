@@ -132,7 +132,6 @@ def add_args(cls, parser):
     parser.add_argument(
         "--neuron.update_weight_interval",
         type=int,
-        help="",
         help="Defines the frequency (in seconds) at which the network's weight parameters are updated. The default interval is 1800 seconds (30 minutes).",
         default=1800,
     )
@@ -140,7 +139,6 @@ def add_args(cls, parser):
     parser.add_argument(
         "--neuron.update_available_uids_interval",
         type=int,
-        help="",
         help="Specifies the interval, in seconds, for updating the list of available UIDs. The default interval is 600 seconds (10 minutes).",
         default=600,
     )

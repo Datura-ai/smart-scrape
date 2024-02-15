@@ -79,9 +79,6 @@ class neuron(AbstractNeuron):
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(
             thread_name_prefix="asyncio"
         )
-        checkpoint(self)
-        self.loop.create_task(self.update_available_uids_periodically())
-        self.loop.create_task(self.update_weights_periodically())
 
     async def run_sync_in_async(self, fn):
         return await self.loop.run_in_executor(self.thread_executor, fn)
@@ -144,13 +141,9 @@ class neuron(AbstractNeuron):
 
                 # Directly await the asynchronous method without intermediate assignment to self.available_uids,
                 # unless it's used elsewhere.
-                available_uids = await self.get_available_uids_is_alive()
-                uid_list = self.shuffled(
-                    list(available_uids.keys())
-                )  # Ensure shuffled is properly defined to work with async.
-                self.available_uids = uid_list
+                self.available_uids = await self.get_available_uids_is_alive()
                 bt.logging.info(
-                    f"update_available_uids_periodically Number of available UIDs for periodic update: {len(uid_list)}, UIDs: {uid_list}"
+                    f"update_available_uids_periodically Number of available UIDs for periodic update: {len(self.available_uids)}, UIDs: {self.available_uids}"
                 )
             except Exception as e:
                 bt.logging.error(
@@ -275,11 +268,15 @@ class neuron(AbstractNeuron):
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(100)
 
-    def run(self, interval=300, strategy=QUERY_MINERS.RANDOM):
+    async def run_syntetic_queries(self, interval=300, strategy=QUERY_MINERS.RANDOM):
         bt.logging.info(f"run: interval={interval}; strategy={strategy}")
         # checkpoint(self)
         try:
             while True:
+                if len(self.available_uids) == 0:
+                    await asyncio.sleep(10)
+                    continue
+
                 # Run multiple forwards.
                 async def run_forward():
                     coroutines = [self.query_synapse(strategy) for _ in range(1)]
@@ -300,20 +297,29 @@ class neuron(AbstractNeuron):
             bt.logging.error("Error in training loop", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
 
-    async def run_syn_qs(self):
+    async def run(self):
+        await asyncio.sleep(10)
+        checkpoint(self)
+        self.loop.create_task(self.update_available_uids_periodically())
+        self.loop.create_task(self.update_weights_periodically())
         if self.config.neuron.run_random_miner_syn_qs_interval > 0:
-            await asyncio.sleep(5)
-            self.run(
-                self.config.neuron.run_random_miner_syn_qs_interval, QUERY_MINERS.RANDOM
+            self.loop.create_task(
+                self.run_syntetic_queries(
+                    self.config.neuron.run_random_miner_syn_qs_interval,
+                    QUERY_MINERS.RANDOM,
+                )
             )
 
         if self.config.neuron.run_all_miner_syn_qs_interval > 0:
-            await asyncio.sleep(20)
-            self.run(self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.ALL)
+            self.loop.create_task(
+                self.run_syntetic_queries(
+                    self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.ALL
+                )
+            )
 
 
 def main():
-    asyncio.run(neuron().run_syn_qs())
+    asyncio.run(neuron().run())
 
 
 if __name__ == "__main__":

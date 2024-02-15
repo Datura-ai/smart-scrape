@@ -317,6 +317,10 @@ class ScraperValidator:
                 criteria=[],
             )
 
+            if not len(self.neuron.available_uids):
+                bt.logging.info("No available UIDs, skipping task execution.")
+                return
+
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task, strategy=strategy, is_only_allowed_miner=False
             )
