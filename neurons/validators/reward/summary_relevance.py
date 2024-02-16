@@ -179,8 +179,8 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         scoring_sources = [
             ScoringSource.LocalLLM,  # Fallback to Local LLM if Subnet 18 fails or is disabled
             ScoringSource.LocalLLM,  # Fallback to Local LLM if Subnet 18 fails or is disabled
-            ScoringSource.Subnet18,  # First attempt with Subnet 18
             ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
+            ScoringSource.Subnet18,  # First attempt with Subnet 18
         ]
 
         # Attempt to score messages using the defined sources in order
@@ -195,7 +195,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
                 # Filter messages that still need scoring (i.e., messages that did not receive a score)
                 messages = [
-                    msg for msg, score in current_score_responses.items() if not score
+                    msg
+                    for msg, score in current_score_responses.items()
+                    if not any(char.isdigit() for char in score)
                 ]
 
                 # If all messages have been scored, break out of the loop
