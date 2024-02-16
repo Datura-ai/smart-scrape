@@ -25,7 +25,7 @@ import re
 from typing import List, Union
 from neurons.validators.reward.config import RewardModelType, RewardScoringType
 from neurons.validators.reward.reward import BaseRewardModel, BaseRewardEvent
-from neurons.validators.utils.prompts import SummaryRelevancePrompt, LinkContentPrompt
+from neurons.validators.utils.prompts import SummaryRelevancePrompt, LinkContentPrompt, extract_score_and_explanation
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from neurons.validators.utils import call_to_subnet_18_scoring
 from template.utils import call_openai
@@ -132,18 +132,6 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             result[key] = response
         return result
 
-    def extract_score_and_explanation(self, generated_text):
-        # Regular expression to find the last occurrence of "----\n<Score>"
-        # and capture everything after it.
-        explanation_match = re.search(r'----\n<Score>\n(.*)', generated_text, re.DOTALL | re.MULTILINE)
-
-        if explanation_match:
-            # Extract everything after the last "----\n<Score>".
-            result = explanation_match.group(1).strip()
-        else:
-            result = "Explanation not found"
-
-        return result
 
     def get_score_by_llm(self, messages):
         result = {}
@@ -179,11 +167,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 generated_text = self.tokenizer.decode(generated_tokens[0], skip_special_tokens=True)
 
              
-                explanation = self.extract_score_and_explanation(generated_text)
-                   # Extract score from generated text.
-                print(generated_text)
-                print("=============")
-                result[key] = explanation
+                score_text = extract_score_and_explanation(generated_text)
+                 # Extract score from generated text.
+                result[key] = score_text
         return result
 
     def get_rewards(

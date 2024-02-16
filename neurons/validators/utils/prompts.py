@@ -98,6 +98,21 @@ def find_unique_tags(input_text: str):
     # Return a list of unique matches.
     return list(set(matches))
 
+
+def extract_score_and_explanation(self, generated_text):
+    # Regular expression to find the last occurrence of "----\n<Score>"
+    # and capture everything after it.
+    explanation_match = re.search(r'----\n<Score>\n(.*)', generated_text, re.DOTALL | re.MULTILINE)
+
+    if explanation_match:
+        # Extract everything after the last "----\n<Score>".
+        result = explanation_match.group(1).strip()
+    else:
+        result = "Explanation not found"
+
+    return result
+
+
 # summary_relevance_scoring_template = """
 # Evaluate the correctness, relevance, and depth of an answer given a context and question, focusing on the inclusion of Twitter links as supporting evidence. 
 # Scores range from 0 to 10:
@@ -222,43 +237,6 @@ Scoring Guidelines:
 
 Scoring should be based on the directness of the relevance and the completeness of the Twitter content in addressing the prompt's topic. 
 
-Examples:
-
-<Prompt>
-Impact of social media on public opinion.
-</Prompt>
-
-<LinksContent>
-Tweets discussing studies on social media's influence on political decisions.
-</LinksContent>
-
-<Score>8</Score>
-Explanation: The content is highly relevant to the prompt, focusing on a specific aspect (political decisions) of the broader topic.
-
-<Prompt>
-Advancements in renewable energy.
-</Prompt>
-
-<LinksContent>
-Tweets about recent solar power breakthroughs and wind energy projects.
-</LinksContent>
-
-<Score>10</Score>
-Explanation: The Twitter content perfectly matches the prompt, covering advancements in renewable energy directly.
-
-<Prompt>
-Trends in global travel.
-</Prompt>
-
-<LinksContent>
-Tweets primarily discussing new tech gadgets.
-</LinksContent>
-
-<Score>0</Score>
-Explanation: The content of the tweets is unrelated to the prompt's focus on global travel, showing no relevance.
-
-Maintain objectivity and focus solely on the relevance of the Twitter link content to the prompt for accurate scoring.
-
 <Prompt>
 {}
 </Prompt>
@@ -267,4 +245,8 @@ Maintain objectivity and focus solely on the relevance of the Twitter link conte
 {}
 </LinksContent>
 
-<Score>"""
+Output:
+Generate Score number and explain with one sentence why assigned that score:
+----
+<Score>
+"""

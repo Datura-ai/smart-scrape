@@ -22,9 +22,9 @@ import bittensor as bt
 from typing import List, Union
 from .config import RewardModelType, RewardScoringType
 from .reward import BaseRewardModel, BaseRewardEvent
-from utils.prompts import SummaryRelevancePrompt, LinkContentPrompt
+from neurons.validators.utils.prompts import SummaryRelevancePrompt, LinkContentPrompt, extract_score_and_explanation
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
+from template.protocol import TwitterScraperStreaming, TwitterScraperTweet
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from template.services.twitter_api_wrapper import TwitterAPIClient
 import random
@@ -89,9 +89,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
         try:
             start_time = time.time()
             all_links = [
-                random.choice(response.completion_links)
+                random.choice(response.links_content)
                 for response in responses
-                if response.completion_links
+                if response.links_content
             ]
             unique_links = list(
                 set(all_links)
@@ -104,7 +104,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             for response in responses:
                 ids = [
                     self.tw_client.extract_tweet_id(link)
-                    for link in response.completion_links
+                    for link in response.links_content
                 ]
 
                 for tweet in tweets_list:
@@ -132,7 +132,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
         text = text[:280]
         return text
 
-    def check_response_random_tweet(self, response: ScraperStreamingSynapse):
+    def check_response_random_tweet(self, response: TwitterScraperStreaming):
         try:
             tweet_score = 0
 
@@ -148,12 +148,12 @@ class LinkContentRelevanceModel(BaseRewardModel):
             miner_tweets_amount = miner_tweets.get("meta", {}).get("result_count", 0)
 
             # Assign completion links and validator tweets from the response
-            completion_links = response.completion_links
+            links_content = response.links_content
             validator_tweets = response.validator_tweets
 
             # Check if there are no completion links, no miner tweets, or no validator tweets
             if (
-                not completion_links
+                not links_content
                 or miner_tweets_amount == 0
                 or not response.validator_tweets
             ):
@@ -207,7 +207,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             return 0
 
     def reward(
-        self, prompt: str, content: str, response: ScraperStreamingSynapse
+        self, prompt: str, content: str, response: TwitterScraperStreaming
     ) -> BaseRewardEvent:
         try:
             reward_event = BaseRewardEvent()
@@ -220,7 +220,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 scoring_prompt_text = scoring_prompt.text(prompt, content)
 
                 if self.is_disable_tokenizer_reward:
-                    length = len(response.completion_links) * 2
+                    length = len(response.links_content) * 2
                     score = length if length < 10 else 9
                     # Scale 0-10 score to 0-1 range.
                     score /= 10.0
@@ -239,13 +239,19 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 # Prompt local reward model.
                 start_time = time.time()
                 generated_tokens = self.model.generate(
-                    input_ids, max_new_tokens=2, max_time=1
+                    input_ids, max_new_tokens=500, max_time=5
                 )
+                duration = time.time() - start_time
                 generated_text = self.tokenizer.batch_decode(
                     generated_tokens, skip_special_tokens=True
                 )
+
+            
+                # Decode the new tokens to get the generated text
+                generated_text = self.tokenizer.decode(generated_tokens[0], skip_special_tokens=True)
+
                 # Extract score from generated text.
-                score_text = generated_text[0][len(scoring_prompt_text) :]
+                score_text = extract_score_and_explanation(generated_text)
                 score = scoring_prompt.extract_score(score_text)
                 # Scale 0-10 score to 0-1 range.
                 score /= 10.0
@@ -278,50 +284,52 @@ class LinkContentRelevanceModel(BaseRewardModel):
             ]
 
             reward_events = []
-            for score, response, uid_tensor in zip(
+            for apify_score, response, uid_tensor in zip(
                 scores, responses, uids
             ):  # Fixed variable name from 'response' to 'responses'
                 uid = uid_tensor.item()
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
-                if score:
-                    bt.logging.info(f"Processing score for response with miner tweets.")
-                    miner_tweets = response.miner_tweets
-                    miner_tweets_data = miner_tweets.get("data", [])
-                    links_scores = []
-                    for link in response.completion_links:
-                        tweet_id = self.tw_client.extract_tweet_id(link)
-                        miner_tweet = next(
-                            (
-                                tweet
-                                for tweet in miner_tweets_data
-                                if tweet["id"] == tweet_id
-                            ),
-                            None,
-                        )
-                        if miner_tweet:
-                            miner_tweet_text = miner_tweet["text"]
-                            reward = self.reward(prompt, miner_tweet_text, response)
-                            links_scores.append(reward)
-                            bt.logging.info(
-                                f"UID:{uid}, Tweet ID {tweet_id} yielded a reward of {reward.reward}."
-                            )
-                        else:
-                            bt.logging.warning(
-                                f"UID:{uid}, No matching tweet found for ID {tweet_id}."
-                            )
-                    if links_scores:
-                        average_score = sum(link.reward for link in links_scores) / len(
-                            links_scores
-                        )
-                        reward_event.reward = average_score
+                
+                bt.logging.info(f"Processing score for response with miner tweets.")
+                miner_tweets = response.miner_tweets
+                miner_tweets_data = miner_tweets.get("data", [])
+                links_scores = []
+                for link in response.links_content:
+                    tweet_id = self.tw_client.extract_tweet_id(link)
+                    miner_tweet = next(
+                        (
+                            tweet
+                            for tweet in miner_tweets_data
+                            if tweet["id"] == tweet_id
+                        ),
+                        None,
+                    )
+                    if miner_tweet:
+                        miner_tweet_text = miner_tweet["text"]
+                        reward = self.reward(prompt, miner_tweet_text, response)
+                        links_scores.append(reward)
                         bt.logging.info(
-                            f"UID:{uid}, Average score calculated: {average_score}, links_scores: {[link.reward for link in links_scores]}"
+                            f"UID:{uid}, Tweet ID {tweet_id} yielded a reward of {reward.reward}."
                         )
                     else:
                         bt.logging.warning(
-                            "UID:{uid}No link scores to average, reward remains 0."
+                            f"UID:{uid}, No matching tweet found for ID {tweet_id}."
                         )
+                if links_scores:
+                    average_score = sum(link.reward for link in links_scores) / len(
+                        links_scores
+                    )
+                    reward_event.reward = average_score
+                    bt.logging.info(
+                        f"UID:{uid}, Average score calculated: {average_score}, links_scores: {[link.reward for link in links_scores]}"
+                    )
+                else:
+                    bt.logging.warning(
+                        "UID:{uid}No link scores to average, reward remains 0."
+                    )
+                if apify_score:
+                    reward_event.reward *= reward_event.reward
                 reward_events.append(reward_event)
 
             # Iterate over responses and assign rewards based on scores
