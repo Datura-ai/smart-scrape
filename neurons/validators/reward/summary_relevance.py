@@ -21,15 +21,18 @@ import torch
 import bittensor as bt
 import random
 import asyncio
+import re
 from typing import List, Union
-from .config import RewardModelType, RewardScoringType
-from .reward import BaseRewardModel, BaseRewardEvent
-from utils.prompts import SummaryRelevancePrompt, LinkContentPrompt
+from neurons.validators.reward.config import RewardModelType, RewardScoringType
+from neurons.validators.reward.reward import BaseRewardModel, BaseRewardEvent
+from neurons.validators.utils.prompts import SummaryRelevancePrompt, LinkContentPrompt
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from neurons.validators.utils import call_to_subnet_18_scoring
 from template.utils import call_openai
-from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
-
+from template.protocol import TwitterScraperStreaming, TwitterScraperTweet
+from neurons.validators.reward.link_content_relevance import (
+    init_tokenizer,
+)
 
 class SummaryRelevanceRewardModel(BaseRewardModel):
     reward_model_name: str = "GTP-4"
@@ -80,12 +83,12 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             ):
                 scoring_prompt = LinkContentPrompt()
                 # Convert list of links content to string before passing to the prompt
-                completion_links_str = str(response.completion_links)
+                links_content_str = str(response.links_content)
                 scoring_prompt_text = scoring_prompt.text(
-                    completion, completion_links_str
+                    completion, links_content_str
                 )
 
-            if scoring_prompt is None or not response.completion_links:
+            if scoring_prompt is None or not response.links_content:
                 return None
 
             if not scoring_prompt_text:
@@ -129,6 +132,19 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             result[key] = response
         return result
 
+    def extract_score_and_explanation(self, generated_text):
+        # Regular expression to find the last occurrence of "----\n<Score>"
+        # and capture everything after it.
+        explanation_match = re.search(r'----\n<Score>\n(.*)', generated_text, re.DOTALL | re.MULTILINE)
+
+        if explanation_match:
+            # Extract everything after the last "----\n<Score>".
+            result = explanation_match.group(1).strip()
+        else:
+            result = "Explanation not found"
+
+        return result
+
     def get_score_by_llm(self, messages):
         result = {}
         for message_dict in messages:  # Iterate over each dictionary in the list
@@ -151,16 +167,23 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 # Prompt local reward model.
                 start_time = time.time()
                 generated_tokens = self.model.generate(
-                    input_ids, max_new_tokens=2, max_time=1
+                    input_ids, max_new_tokens=500, max_time=5
                 )
                 duration = time.time() - start_time
                 generated_text = self.tokenizer.batch_decode(
                     generated_tokens, skip_special_tokens=True
                 )
 
-                # Extract score from generated text.
-                score_text = generated_text[0][len(scoring_prompt_text) :]
-                result[key] = score_text
+            
+                # Decode the new tokens to get the generated text
+                generated_text = self.tokenizer.decode(generated_tokens[0], skip_special_tokens=True)
+
+             
+                explanation = self.extract_score_and_explanation(generated_text)
+                   # Extract score from generated text.
+                print(generated_text)
+                print("=============")
+                result[key] = explanation
         return result
 
     def get_rewards(
@@ -252,3 +275,57 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 reward_event.reward = 0
                 reward_events.append(reward_event)
             return reward_events
+
+from neurons.validators.reward.fail import completions_empty, prompt, completion_0
+
+
+if __name__ == "__main__":
+        tokenizer = None
+        model = None
+        device = 'cuda'
+        tokenizer, model = init_tokenizer(device)
+        summary = SummaryRelevanceRewardModel(
+                    device=device,
+                    scoring_type=RewardScoringType.summary_relevance_score_template,
+                    tokenizer=tokenizer,
+                    model=model,
+                    is_disable_tokenizer_reward=False,
+                )
+        wallet = bt.wallet(name="validator-prod", hotkey="default")
+        completions_empty
+        scoring_messages = []
+        completion_0.items()
+        # merged_completions = {**completions_empty, **completion_0}
+        for key, value in completions_empty.items():
+            # response = bt.dendrite(wallet=wallet)
+
+            response = TwitterScraperStreaming(
+                messages=prompt, model="", seed=1, is_intro_text=False
+            )
+            response.dendrite.status_code = 200
+            response.completion = value
+            response.links_content = [
+                "https://twitter.com/Carlossainz55/status/1753134900129956343",
+                "https://twitter.com/Carlossainz55/status/1753134900129956343",
+            ]
+            result = summary.get_scoring_text(prompt, response)    
+            scoring_messages.append(result)
+
+        messages = [
+            {str(index): item[1]}   
+            for index, item in enumerate(scoring_messages)
+            if item is not None
+        ]
+        score_responses_llm = summary.get_score_by_llm(messages=messages)
+        score_responses_openai = asyncio.run(summary.get_score_by_openai(messages=messages))
+        for key in score_responses_llm.keys():
+            llm_response = score_responses_llm.get(key, "No response").replace("\n", " ")
+            openai_response = score_responses_openai.get(key, "No response").replace("\n", " ")
+            print(f" KEY: {key} ===========================================")
+            print(f"{llm_response}")
+           
+            print(f"--------------------------------------------------------")
+
+            print(f"{openai_response}")
+            print(f"=============================================================")
+        print("Processing complete.")

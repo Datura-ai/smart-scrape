@@ -240,6 +240,14 @@ class neuron(AbstractNeuron):
 
     def update_moving_averaged_scores(self, uids, rewards):
         try:
+            # Ensure uids is a tensor
+            if not isinstance(uids, torch.Tensor):
+                uids = torch.tensor(uids, dtype=torch.long, device=self.config.neuron.device)
+            
+            # Ensure rewards is also a tensor and on the correct device
+            if not isinstance(rewards, torch.Tensor):
+                rewards = torch.tensor(rewards, device=self.config.neuron.device)
+
             scattered_rewards = self.moving_averaged_scores.scatter(
                 0, uids, rewards
             ).to(self.config.neuron.device)

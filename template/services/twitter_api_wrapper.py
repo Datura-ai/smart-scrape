@@ -269,6 +269,8 @@ class TwitterAPIClient:
             response_format={"type": "json_object"},
         )
         response_dict = json.loads(res)
+        if 'query' in response_dict:
+            response_dict['query'] = response_dict['query'].replace("'", '"').replace('has:polls', '')
         bt.logging.trace("generate_query_params_from_prompt Content: ", response_dict)
         return response_dict
 
@@ -292,6 +294,8 @@ class TwitterAPIClient:
                 response_format={"type": "json_object"},
             )
             response_dict = json.loads(res)
+            if 'query' in response_dict:
+                response_dict['query'] = response_dict['query'].replace("'", '"').replace('has:polls', '')
             bt.logging.trace("fix_twitter_query Content: ", response_dict)
             return response_dict
         except Exception as e:

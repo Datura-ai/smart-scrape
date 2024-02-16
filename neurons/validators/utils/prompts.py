@@ -98,6 +98,80 @@ def find_unique_tags(input_text: str):
     # Return a list of unique matches.
     return list(set(matches))
 
+# summary_relevance_scoring_template = """
+# Evaluate the correctness, relevance, and depth of an answer given a context and question, focusing on the inclusion of Twitter links as supporting evidence. 
+# Scores range from 0 to 10:
+# - 0 for answers completely unrelated or incorrect, especially those not addressing the question's topic.
+# - 2 for answers relevant to the question but lacking any Twitter links as evidence.
+# - 3-9 for answers that vary in correctness, relevance, and the inclusion of Twitter links, with higher scores reflecting better quality and more relevant evidence.
+# - 10 for answers that are not only accurate and relevant but also well-supported by Twitter links, fully addressing the question's demands.
+
+# Score Examples:
+# - Score 0: Answer discusses a completely different topic without any relation to the question.
+# - Score 2: Answer is on topic but does not provide any Twitter links to support its statements.
+# - Score 6: Provides a partially correct response with some Twitter links, but lacks comprehensive coverage or depth on the topic.
+# - Score 8: Offers a thorough answer with relevant Twitter links but misses minor details or broader implications.
+# - Score 10: Fully satisfies the question with accurate, relevant information and substantial evidence from Twitter links.
+
+# Additional Scoring Criteria:
+# - Accuracy and relevance to the question.
+# - Depth of insight and coverage of the topic.
+# - Presence and relevance of Twitter links as supporting evidence.
+
+# Example for Score 2:
+# <Question>
+# What are the latest innovations in electric vehicles according to Twitter discussions?
+# </Question>
+
+# <Answer>
+# Electric vehicles are seeing major advancements in battery technology and charging infrastructure, improving range and reducing charging times. However, no specific Twitter links are provided to support these claims.
+# </Answer>
+
+# <Score>2</Score>
+# Explanation: The answer is relevant but lacks Twitter links as evidence, thus earning a score of 2.
+
+# Example for Score 6:
+# <Question>
+# How is Twitter influencing political campaigns?
+# </Question>
+
+# <Answer>
+# Twitter significantly influences political campaigns by allowing direct communication between candidates and voters. Some examples include general observations of increased engagement rates, but specific influential tweets or campaigns are not cited.
+# - [General observation by @PoliticsToday](https://twitter.com/PoliticsToday/status/1234567890)
+# </Answer>
+
+# <Score>6</Score>
+# Explanation: The answer includes a Twitter link and covers the topic, yet it lacks depth and specific examples of influence, meriting a score of 6.
+
+# Example for Score 8:
+# <Question>
+# What are the key challenges facing remote work as shared on Twitter?
+# </Question>
+
+# <Answer>
+# Remote work challenges include maintaining productivity and managing team communication. Key discussions on Twitter highlight solutions and strategies:
+# - [Tweet by @RemoteWorkInsider](https://twitter.com/RemoteWorkInsider/status/1234567890) on communication tools.
+# - [Tweet by @ProductivityGuru](https://twitter.com/ProductivityGuru/status/0987654321) discussing time management techniques.
+# However, the answer does not address issues like cybersecurity and employee well-being.
+# </Answer>
+
+# <Score>8</Score>
+# Explanation: The answer provides relevant Twitter links and addresses key challenges but lacks completeness, scoring an 8.
+
+# Remember, the inclusion and relevance of Twitter links are essential for higher scores, as they serve as concrete evidence that strengthens the answer's credibility and depth.
+
+# <Question>
+# {}
+# </Question>
+
+# <Answer>
+# {}
+# </Answer>
+
+# ----
+# <Score>
+# """
+
 summary_relevance_scoring_template = """
 Evaluate the correctness, relevance, and depth of an answer given a context and question, focusing on the inclusion of Twitter links as supporting evidence. 
 Scores range from 0 to 10:
@@ -118,48 +192,6 @@ Additional Scoring Criteria:
 - Depth of insight and coverage of the topic.
 - Presence and relevance of Twitter links as supporting evidence.
 
-Example for Score 2:
-<Question>
-What are the latest innovations in electric vehicles according to Twitter discussions?
-</Question>
-
-<Answer>
-Electric vehicles are seeing major advancements in battery technology and charging infrastructure, improving range and reducing charging times. However, no specific Twitter links are provided to support these claims.
-</Answer>
-
-<Score>2</Score>
-Explanation: The answer is relevant but lacks Twitter links as evidence, thus earning a score of 2.
-
-Example for Score 6:
-<Question>
-How is Twitter influencing political campaigns?
-</Question>
-
-<Answer>
-Twitter significantly influences political campaigns by allowing direct communication between candidates and voters. Some examples include general observations of increased engagement rates, but specific influential tweets or campaigns are not cited.
-- [General observation by @PoliticsToday](https://twitter.com/PoliticsToday/status/1234567890)
-</Answer>
-
-<Score>6</Score>
-Explanation: The answer includes a Twitter link and covers the topic, yet it lacks depth and specific examples of influence, meriting a score of 6.
-
-Example for Score 8:
-<Question>
-What are the key challenges facing remote work as shared on Twitter?
-</Question>
-
-<Answer>
-Remote work challenges include maintaining productivity and managing team communication. Key discussions on Twitter highlight solutions and strategies:
-- [Tweet by @RemoteWorkInsider](https://twitter.com/RemoteWorkInsider/status/1234567890) on communication tools.
-- [Tweet by @ProductivityGuru](https://twitter.com/ProductivityGuru/status/0987654321) discussing time management techniques.
-However, the answer does not address issues like cybersecurity and employee well-being.
-</Answer>
-
-<Score>8</Score>
-Explanation: The answer provides relevant Twitter links and addresses key challenges but lacks completeness, scoring an 8.
-
-Remember, the inclusion and relevance of Twitter links are essential for higher scores, as they serve as concrete evidence that strengthens the answer's credibility and depth.
-
 <Question>
 {}
 </Question>
@@ -168,7 +200,14 @@ Remember, the inclusion and relevance of Twitter links are essential for higher 
 {}
 </Answer>
 
-<Score>"""
+Output:
+Generate Score number and explain with one sentence why assigned that score:
+----
+<Score>
+"""
+
+
+
 
 
 link_content_relevance_template = """

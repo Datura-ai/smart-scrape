@@ -18,7 +18,7 @@ def call_to_subnet_18_scoring(data):
         "access-key": EXPECTED_ACCESS_KEY,
         "Content-Type": "application/json"
     }
-    response = requests.post(url=f"{URL_SUBNET_18}/scoring/", 
+    response = requests.post(url=f"{URL_SUBNET_18}/text-validator/", 
                              headers=headers, 
                              json=data)  # Using json parameter to automatically set the content-type to application/json
 
