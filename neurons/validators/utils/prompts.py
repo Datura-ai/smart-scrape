@@ -99,7 +99,7 @@ def find_unique_tags(input_text: str):
     return list(set(matches))
 
 
-def extract_score_and_explanation(self, generated_text):
+def extract_score_and_explanation(generated_text):
     # Regular expression to find the last occurrence of "----\n<Score>"
     # and capture everything after it.
     explanation_match = re.search(r'----\n<Score>\n(.*)', generated_text, re.DOTALL | re.MULTILINE)

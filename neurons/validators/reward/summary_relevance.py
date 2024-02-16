@@ -27,13 +27,19 @@ from neurons.validators.reward.config import RewardModelType, RewardScoringType
 from neurons.validators.reward.reward import BaseRewardModel, BaseRewardEvent
 from neurons.validators.utils.prompts import SummaryRelevancePrompt, LinkContentPrompt, extract_score_and_explanation
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from neurons.validators.utils import call_to_subnet_18_scoring
-from template.utils import call_openai
+from neurons.validators.utils import call_to_subnet_18_scoring, get_score_by_openai
+
 from template.protocol import TwitterScraperStreaming, TwitterScraperTweet
 from neurons.validators.reward.link_content_relevance import (
     init_tokenizer,
 )
+from enum import Enum
 
+class ScoringSource(Enum):
+    Subnet18 = 1
+    OpenAI = 2
+    LocalLLM = 3
+        
 class SummaryRelevanceRewardModel(BaseRewardModel):
     reward_model_name: str = "GTP-4"
 
@@ -100,78 +106,88 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             bt.logging.error(f"Error in Prompt reward method: {e}")
             return None
 
-    async def get_score_by_openai(self, messages):
-        query_tasks = []
-        for message_dict in messages:  # Iterate over each dictionary in the list
-            ((key, message_list),) = message_dict.items()
-
-            async def query_openai(message):
-                try:
-                    return await call_openai(
-                        messages=message,
-                        temperature=0.2,
-                        model="gpt-3.5-turbo-16k",
-                    )
-                except Exception as e:
-                    print(f"Error sending message to OpenAI: {e}")
-                    return ""  # Return an empty string to indicate failure
-
-            task = query_openai(message_list)
-            query_tasks.append(task)
-
-        query_responses = await asyncio.gather(*query_tasks, return_exceptions=True)
-
-        result = {}
-        for response, message_dict in zip(query_responses, messages):
-            if isinstance(response, Exception):
-                print(f"Query failed with exception: {response}")
-                response = (
-                    ""  # Replace the exception with an empty string in the result
-                )
-            ((key, message_list),) = message_dict.items()
-            result[key] = response
-        return result
-
-
     def get_score_by_llm(self, messages):
         result = {}
-        for message_dict in messages:  # Iterate over each dictionary in the list
-            ((key, message_list),) = message_dict.items()
+        total_start_time = time.time()  # Start timing for total execution
+        try:
+            for message_dict in messages:  # Iterate over each dictionary in the list
+                ((key, message_list),) = message_dict.items()
 
-            with torch.no_grad():
-                # Choose correct scoring prompt for request type.
-                # Determine the scoring prompt based on the provided name or the default scoring type.
-                scoring_prompt_text = message_list[-1]["content"]
+                with torch.no_grad():
+                    # Choose correct scoring prompt for request type.
+                    scoring_prompt_text = message_list[-1]["content"]  # Determine the scoring prompt based on the provided name or the default scoring type.
 
-                # Tokenize formatted scoring prompt.
-                encodings_dict = self.tokenizer(
-                    scoring_prompt_text,
-                    truncation=True,
-                    padding="max_length",
-                    return_tensors="pt",
-                )
-                input_ids = encodings_dict["input_ids"].to(self.device)
+                    # Tokenize formatted scoring prompt.
+                    encodings_dict = self.tokenizer(
+                        scoring_prompt_text,
+                        truncation=True,
+                        padding="max_length",
+                        return_tensors="pt",
+                    )
+                    input_ids = encodings_dict["input_ids"].to(self.device)
 
-                # Prompt local reward model.
-                start_time = time.time()
-                generated_tokens = self.model.generate(
-                    input_ids, max_new_tokens=500, max_time=5
-                )
-                duration = time.time() - start_time
-                generated_text = self.tokenizer.batch_decode(
-                    generated_tokens, skip_special_tokens=True
-                )
+                    # Prompt local reward model.
+                    start_time = time.time()
+                    generated_tokens = self.model.generate(
+                        input_ids, max_new_tokens=500, max_time=5
+                    )
+                    duration = time.time() - start_time
 
-            
-                # Decode the new tokens to get the generated text
-                generated_text = self.tokenizer.decode(generated_tokens[0], skip_special_tokens=True)
+                    # Decode the new tokens to get the generated text
+                    generated_text = self.tokenizer.decode(generated_tokens[0], skip_special_tokens=True)
 
-             
-                score_text = extract_score_and_explanation(generated_text)
-                 # Extract score from generated text.
-                result[key] = score_text
+                    # Extract score from generated text.
+                    score_text = extract_score_and_explanation(generated_text)
+                    bt.logging.info(f"Score text: {score_text}")
+                    result[key] = score_text
+
+            total_duration = time.time() - total_start_time  # Calculate total execution time
+            bt.logging.info(f"Total execution time for get_score_by_llm: {total_duration} seconds")
+        except Exception as e:
+            bt.logging.error(f"Error in get_score_by_llm: {e}")
+            return None
         return result
 
+    def get_score_by_source(self, messages, source: ScoringSource):
+        if source == ScoringSource.Subnet18:
+            return call_to_subnet_18_scoring(messages)
+        elif source == ScoringSource.OpenAI:
+            loop = asyncio.get_event_loop_policy().get_event_loop()
+            return loop.run_until_complete(get_score_by_openai(messages=messages))
+        else:
+            return self.get_score_by_llm(messages=messages)
+
+    def llm_processing(self, messages):
+        # Initialize score_responses as an empty dictionary to hold the scoring results
+        score_responses = {}
+
+        # Define the order of scoring sources to be used
+        scoring_sources = [
+            ScoringSource.LocalLLM,  # Fallback to Local LLM if Subnet 18 fails or is disabled
+            ScoringSource.LocalLLM,  # Fallback to Local LLM if Subnet 18 fails or is disabled
+            ScoringSource.Subnet18,  # First attempt with Subnet 18
+            ScoringSource.OpenAI,    # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
+        ]
+
+        # Attempt to score messages using the defined sources in order
+        for source in scoring_sources:
+            # Attempt to score with the current source
+            current_score_responses = self.get_score_by_source(messages=messages, source=source)
+            if current_score_responses:
+                # Update the score_responses with the new scores
+                score_responses.update(current_score_responses)
+
+                # Filter messages that still need scoring (i.e., messages that did not receive a score)
+                messages = [msg for msg, score in current_score_responses.items() if not score]
+
+                # If all messages have been scored, break out of the loop
+                if not messages:
+                    break
+            else:
+                bt.logging.info(f"Scoring with {source} failed or returned no results. Attempting next source.")
+                
+        return score_responses
+    
     def get_rewards(
         self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> List[BaseRewardEvent]:
@@ -202,24 +218,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             scores = {}
             score_text = {}
             if messages:
-                response = call_to_subnet_18_scoring({"messages": messages})
-                score_responses = None
-                if not response or response.status_code != 200:
-                    if response:
-                        bt.logging.error(
-                            f"ERROR connect to Subnet 18: Status code: {response.status_code}"
-                        )
-
-                    if not self.is_disable_tokenizer_reward:
-                        score_responses = self.get_score_by_llm(messages=messages)
-                    else:
-                        loop = asyncio.get_event_loop_policy().get_event_loop()
-                        score_responses = loop.run_until_complete(
-                            self.get_score_by_openai(messages=messages)
-                        )
-                else:
-                    score_responses = response.json()
-
+                score_responses = self.llm_processing(messages)
                 if score_responses:
                     for (key, score_result), (scoring_prompt, _) in zip(
                         score_responses.items(), filter_scoring_messages
@@ -264,7 +263,6 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
 from neurons.validators.reward.fail import completions_empty, prompt, completion_0
 
-
 if __name__ == "__main__":
         tokenizer = None
         model = None
@@ -282,7 +280,7 @@ if __name__ == "__main__":
         scoring_messages = []
         completion_0.items()
         # merged_completions = {**completions_empty, **completion_0}
-        for key, value in completions_empty.items():
+        for key, value in completion_0.items():
             # response = bt.dendrite(wallet=wallet)
 
             response = TwitterScraperStreaming(
@@ -302,16 +300,12 @@ if __name__ == "__main__":
             for index, item in enumerate(scoring_messages)
             if item is not None
         ]
-        score_responses_llm = summary.get_score_by_llm(messages=messages)
-        score_responses_openai = asyncio.run(summary.get_score_by_openai(messages=messages))
-        for key in score_responses_llm.keys():
-            llm_response = score_responses_llm.get(key, "No response").replace("\n", " ")
-            openai_response = score_responses_openai.get(key, "No response").replace("\n", " ")
+        score_responses = summary.llm_processing(messages=messages)
+        for key in score_responses.keys():
+            llm_response = score_responses.get(key, "No response").replace("\n", " ")
             print(f" KEY: {key} ===========================================")
             print(f"{llm_response}")
            
             print(f"--------------------------------------------------------")
 
-            print(f"{openai_response}")
-            print(f"=============================================================")
         print("Processing complete.")
