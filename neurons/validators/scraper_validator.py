@@ -5,7 +5,7 @@ import random
 import json
 import bittensor as bt
 from base_validator import AbstractNeuron
-from template.protocol import TwitterScraperStreaming, TwitterPromptAnalysisResult
+from template.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult
 from reward import RewardModelType, RewardScoringType
 from typing import List
 from utils.mock import MockRewardModel
@@ -100,7 +100,7 @@ class ScraperValidator:
         self.twitter_api = TwitterAPIClient()
 
     async def process_single_response(self, resp, prompt):
-        default = TwitterScraperStreaming(
+        default = ScraperStreamingSynapse(
             messages=prompt, model=self.model, seed=self.seed
         )
         full_response = ""
@@ -166,7 +166,7 @@ class ScraperValidator:
         )
 
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
-        synapse = TwitterScraperStreaming(
+        synapse = ScraperStreamingSynapse(
             messages=prompt,
             model=self.model,
             seed=self.seed,
@@ -188,7 +188,7 @@ class ScraperValidator:
         try:
             for response in responses:
                 com_links = self.twitter_api.find_twitter_links(response.completion)
-                response.links_content = com_links
+                response.completion_links = com_links
         except Exception as e:
             bt.logging.error(f"Error in process_content_links: {e}")
             return
@@ -200,7 +200,7 @@ class ScraperValidator:
             if not len(uids):
                 bt.logging.warning("No UIDs provided for logging event.")
                 return
-            
+
             bt.logging.info("Computing rewards and penalties")
 
             self.process_content_links(responses)
@@ -261,13 +261,13 @@ class ScraperValidator:
                 completion_length = (
                     len(response.completion) if response.completion is not None else 0
                 )
-                links_content_length = (
-                    len(response.links_content)
-                    if response.links_content is not None
+                completion_links_length = (
+                    len(response.completion_links)
+                    if response.completion_links is not None
                     else 0
                 )
                 bt.logging.info(
-                    f"uid: {uid};  score: {reward};  completion length: {completion_length};  links_content length: {links_content_length};"
+                    f"uid: {uid};  score: {reward};  completion length: {completion_length};  completion_links length: {completion_links_length};"
                 )
                 bt.logging.trace(f"{response.completion}")
                 bt.logging.info(f"uid: {uid} Completion: ---------------------")
@@ -378,7 +378,7 @@ class ScraperValidator:
                     except Exception as e:
                         bt.logging.trace(f"Organic Async Response: {e}")
                         responses.append(
-                            TwitterScraperStreaming(
+                            ScraperStreamingSynapse(
                                 messages=prompt, model=self.model, seed=self.seed
                             )
                         )
@@ -390,7 +390,7 @@ class ScraperValidator:
                 except Exception as e:
                     bt.logging.trace(f"Error for resp in async_responses: {e}")
                     responses.append(
-                        TwitterScraperStreaming(
+                        ScraperStreamingSynapse(
                             messages=prompt, model=self.model, seed=self.seed
                         )
                     )

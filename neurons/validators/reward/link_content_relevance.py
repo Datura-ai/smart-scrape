@@ -22,9 +22,13 @@ import bittensor as bt
 from typing import List, Union
 from .config import RewardModelType, RewardScoringType
 from .reward import BaseRewardModel, BaseRewardEvent
-from neurons.validators.utils.prompts import SummaryRelevancePrompt, LinkContentPrompt, extract_score_and_explanation
+from neurons.validators.utils.prompts import (
+    SummaryRelevancePrompt,
+    LinkContentPrompt,
+    extract_score_and_explanation,
+)
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from template.protocol import TwitterScraperStreaming, TwitterScraperTweet
+from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from template.services.twitter_api_wrapper import TwitterAPIClient
 import random
@@ -89,9 +93,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
         try:
             start_time = time.time()
             all_links = [
-                random.choice(response.links_content)
+                random.choice(response.completion_links)
                 for response in responses
-                if response.links_content
+                if response.completion_links
             ]
             unique_links = list(
                 set(all_links)
@@ -104,7 +108,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             for response in responses:
                 ids = [
                     self.tw_client.extract_tweet_id(link)
-                    for link in response.links_content
+                    for link in response.completion_links
                 ]
 
                 for tweet in tweets_list:
@@ -132,7 +136,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
         text = text[:280]
         return text
 
-    def check_response_random_tweet(self, response: TwitterScraperStreaming):
+    def check_response_random_tweet(self, response: ScraperStreamingSynapse):
         try:
             tweet_score = 0
 
@@ -148,12 +152,12 @@ class LinkContentRelevanceModel(BaseRewardModel):
             miner_tweets_amount = miner_tweets.get("meta", {}).get("result_count", 0)
 
             # Assign completion links and validator tweets from the response
-            links_content = response.links_content
+            completion_links = response.completion_links
             validator_tweets = response.validator_tweets
 
             # Check if there are no completion links, no miner tweets, or no validator tweets
             if (
-                not links_content
+                not completion_links
                 or miner_tweets_amount == 0
                 or not response.validator_tweets
             ):
@@ -207,7 +211,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             return 0
 
     def reward(
-        self, prompt: str, content: str, response: TwitterScraperStreaming
+        self, prompt: str, content: str, response: ScraperStreamingSynapse
     ) -> BaseRewardEvent:
         try:
             reward_event = BaseRewardEvent()
@@ -220,7 +224,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 scoring_prompt_text = scoring_prompt.text(prompt, content)
 
                 if self.is_disable_tokenizer_reward:
-                    length = len(response.links_content) * 2
+                    length = len(response.completion_links) * 2
                     score = length if length < 10 else 9
                     # Scale 0-10 score to 0-1 range.
                     score /= 10.0
@@ -246,9 +250,10 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     generated_tokens, skip_special_tokens=True
                 )
 
-            
                 # Decode the new tokens to get the generated text
-                generated_text = self.tokenizer.decode(generated_tokens[0], skip_special_tokens=True)
+                generated_text = self.tokenizer.decode(
+                    generated_tokens[0], skip_special_tokens=True
+                )
 
                 # Extract score from generated text.
                 score_text = extract_score_and_explanation(generated_text)
@@ -290,12 +295,12 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 uid = uid_tensor.item()
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
-                
+
                 bt.logging.info(f"Processing score for response with miner tweets.")
                 miner_tweets = response.miner_tweets
                 miner_tweets_data = miner_tweets.get("data", [])
                 links_scores = []
-                for link in response.links_content:
+                for link in response.completion_links:
                     tweet_id = self.tw_client.extract_tweet_id(link)
                     miner_tweet = next(
                         (
