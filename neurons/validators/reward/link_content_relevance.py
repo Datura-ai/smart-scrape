@@ -271,12 +271,12 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 score /= 10.0
 
                 reward_event.reward = score
-                return reward_event
+                return reward_event, score_text
         except Exception as e:
             bt.logging.error(f"Error in Prompt reward method: {e}")
             reward_event = BaseRewardEvent()
             reward_event.reward = 0
-            return reward_event
+            return reward_event, ''
 
     def get_rewards(
         self, prompt: str, responses: List[bt.Synapse], name: str, uids
@@ -321,10 +321,10 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     )
                     if miner_tweet:
                         miner_tweet_text = miner_tweet["text"]
-                        reward = self.reward(prompt, miner_tweet_text, response)
+                        reward, score_text = self.reward(prompt, miner_tweet_text, response)
                         links_scores.append(reward)
                         bt.logging.info(
-                            f"UID:{uid}, Tweet ID {tweet_id} yielded a reward of {reward.reward}."
+                            f"UID:{uid}, Tweet ID {tweet_id} yielded a reward of {reward.reward}, Explanation: {score_text}"
                         )
                     else:
                         bt.logging.warning(
