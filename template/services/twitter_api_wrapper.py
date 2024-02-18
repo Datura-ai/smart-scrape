@@ -89,6 +89,11 @@ bad_query_examples = f"""
 # - tweet.fields only allowed: "attachments,author_id,context_annotations,conversation_id,created_at,entities,geo,id,in_reply_to_user_id,lang,possibly_sensitive,referenced_tweets,reply_settings,source,text,withheld,edit_history_tweet_ids"
 
 
+# 1. Identify and list the key keywords which is related to <UserPrompt>.
+# 2. Determine and list relevant hashtags which is related to <UserPrompt>.
+# 3. Identify and list any significant user mentions frequently associated with <UserPrompt>, but don't create if users has not mentioned any user
+# 4. Generate Twitter API query params based on examples and your knowledge below, user keywords, mentions, hashtags for query which is related to <UserPrompt>.
+
 def get_query_gen_prompt(prompt, is_accuracy=True):
     accuracy_text = ""
     if is_accuracy:
@@ -109,10 +114,13 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
         
         , please perform the following tasks and provide the results in a JSON object format:
 
-        1. Identify and list the key keywords which is related to <UserPrompt>.
-        2. Determine and list relevant hashtags which is related to <UserPrompt>.
-        3. Identify and list any significant user mentions frequently associated with <UserPrompt>, but don't create if users has not mentioned any user
-        4. Generate Twitter API query params based on examples and your knowledge below, user keywords, mentions, hashtags for query which is related to <UserPrompt>.
+        1. Identify and list the key keywords related to <UserPrompt>, focusing on specific subjects and relevant modifiers.
+
+        2. Determine and list relevant hashtags related to <UserPrompt>, prioritizing specificity and context over general terms. Avoid using generic modifiers as standalone hashtags unless they form part of a widely recognized hashtag combination.
+
+        3. Identify and list any significant user mentions frequently associated with <UserPrompt>, if explicitly mentioned. Otherwise, skip this step.
+
+        4. Generate Twitter API query params based on the refined keywords, mentions (if any), and hashtags for a query related to <UserPrompt>. Incorporate filters to ensure relevance and specificity.
 
         {accuracy_text}
 
