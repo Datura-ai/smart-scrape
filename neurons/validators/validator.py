@@ -295,12 +295,13 @@ class neuron(AbstractNeuron):
 
                 self.loop.run_until_complete(run_forward())
 
-                # # Resync the network state
-                # if should_checkpoint(self):
-                #     checkpoint(self)
+                await set_weights(self)
 
-                # self.prev_block = ttl_get_block(self)
-                # self.step += 1
+                # Resync the network state
+                if should_checkpoint(self):
+                    checkpoint(self)
+
+                self.prev_block = ttl_get_block(self)
         except Exception as err:
             bt.logging.error("Error in training loop", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
@@ -309,7 +310,7 @@ class neuron(AbstractNeuron):
         await asyncio.sleep(10)
         checkpoint(self)
         self.loop.create_task(self.update_available_uids_periodically())
-        self.loop.create_task(self.update_weights_periodically())
+        # self.loop.create_task(self.update_weights_periodically())
         if self.config.neuron.run_random_miner_syn_qs_interval > 0:
             self.loop.create_task(
                 self.run_syntetic_queries(

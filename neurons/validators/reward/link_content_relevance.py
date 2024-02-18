@@ -57,6 +57,18 @@ def init_tokenizer(device):
 
     return tokenizer, model
 
+def clean_text(text):
+    # Remove newline characters and replace with a space
+    text = text.replace("\n", " ")
+
+    # Remove URLs
+    text = re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', text)
+
+    # Keep hashtags, alphanumeric characters, and spaces
+    # Remove other special characters but ensure to keep structured elements like <Question>, <Answer>, etc., intact
+    text = re.sub(r'(?<![\w<>#])[^\w\s#<>]+', '', text)
+
+    return text
 
 class LinkContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
@@ -221,7 +233,8 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 # Determine the scoring prompt based on the provided name or the default scoring type.
                 scoring_prompt = LinkContentPrompt()
                 # Format scoring prompt for this completion.
-                scoring_prompt_text = scoring_prompt.text(prompt, content)
+                clean_content = clean_text(content)
+                scoring_prompt_text = scoring_prompt.text(prompt, clean_content)
 
                 if self.is_disable_tokenizer_reward:
                     length = len(response.completion_links) * 2
@@ -231,7 +244,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     reward_event.reward = score
                     return reward_event
 
-                # Tokenize formatted scoring prompt.
+            # Tokenize formatted scoring prompt.
                 encodings_dict = self.tokenizer(
                     scoring_prompt_text,
                     truncation=True,
@@ -243,13 +256,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 # Prompt local reward model.
                 start_time = time.time()
                 generated_tokens = self.model.generate(
-                    input_ids, max_new_tokens=500, max_time=5
+                    input_ids, max_new_tokens=2000, max_time=7
                 )
                 duration = time.time() - start_time
-                generated_text = self.tokenizer.batch_decode(
-                    generated_tokens, skip_special_tokens=True
-                )
-
                 # Decode the new tokens to get the generated text
                 generated_text = self.tokenizer.decode(
                     generated_tokens[0], skip_special_tokens=True
@@ -300,7 +309,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 miner_tweets = response.miner_tweets
                 miner_tweets_data = miner_tweets.get("data", [])
                 links_scores = []
-                for link in response.completion_links:
+                for link in random.sample(response.completion_links, 2 if len(response.completion_links) > 2 else len(response.completion_links)):
                     tweet_id = self.tw_client.extract_tweet_id(link)
                     miner_tweet = next(
                         (
@@ -334,7 +343,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
                         "UID:{uid}No link scores to average, reward remains 0."
                     )
                 if apify_score:
-                    reward_event.reward *= reward_event.reward
+                    reward_event.reward = min(reward_event.reward * 2, 1)
+                else:
+                    reward_event.reward /= 2
                 reward_events.append(reward_event)
 
             # Iterate over responses and assign rewards based on scores
