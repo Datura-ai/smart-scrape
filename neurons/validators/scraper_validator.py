@@ -18,15 +18,14 @@ from neurons.validators.penalty import (
 from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
 from neurons.validators.reward.link_content_relevance import (
     LinkContentRelevanceModel,
-    init_tokenizer,
 )
+from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask
 
 from template.dataset import MockTwitterQuestionsDataset
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from template import QUERY_MINERS
 import asyncio
-
 
 class ScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
@@ -62,20 +61,19 @@ class ScraperValidator:
 
         tokenizer = None
         model = None
+        self.reward_llm = RewardLLM()
         if (
             self.neuron.config.reward.link_content_weight > 0
             or self.neuron.config.reward.summary_relevance_weight > 0
         ) and not self.neuron.config.neuron.is_disable_tokenizer_reward:
-            tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
+            self.reward_llm.init_tokenizer(self.neuron.config.neuron.device, LinkContentRelevanceModel.reward_model_name)
 
         self.reward_functions = [
             (
                 SummaryRelevanceRewardModel(
                     device=self.neuron.config.neuron.device,
                     scoring_type=RewardScoringType.summary_relevance_score_template,
-                    tokenizer=tokenizer,
-                    model=model,
-                    is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward,
+                    llm_reward=self.reward_llm
                 )
                 if self.neuron.config.reward.summary_relevance_weight > 0
                 else MockRewardModel(RewardModelType.summary_relavance_match.value)
@@ -84,9 +82,7 @@ class ScraperValidator:
                 LinkContentRelevanceModel(
                     device=self.neuron.config.neuron.device,
                     scoring_type=RewardScoringType.summary_relevance_score_template,
-                    tokenizer=tokenizer,
-                    model=model,
-                    is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward,
+                    llm_reward=self.reward_llm
                 )
                 if self.neuron.config.reward.link_content_weight > 0
                 else MockRewardModel(RewardModelType.link_content_match.value)
