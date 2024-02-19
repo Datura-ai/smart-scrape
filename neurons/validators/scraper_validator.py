@@ -78,7 +78,7 @@ class ScraperValidator:
                     is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward,
                 )
                 if self.neuron.config.reward.summary_relevance_weight > 0
-                else MockRewardModel(RewardModelType.prompt.value)
+                else MockRewardModel(RewardModelType.summary_relavance_match.value)
             ),
             (
                 LinkContentRelevanceModel(
@@ -89,12 +89,12 @@ class ScraperValidator:
                     is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward,
                 )
                 if self.neuron.config.reward.link_content_weight > 0
-                else MockRewardModel(RewardModelType.prompt.value)
+                else MockRewardModel(RewardModelType.link_content_match.value)
             ),
         ]
 
         self.penalty_functions = [
-            LinkValidationPenaltyModel(max_penalty=0.7),
+            # LinkValidationPenaltyModel(max_penalty=0.7),
             AccuracyPenaltyModel(max_penalty=1),
         ]
         self.twitter_api = TwitterAPIClient()
@@ -197,6 +197,10 @@ class ScraperValidator:
         self, event, prompt, task, responses, uids, start_time
     ):
         try:
+            if not len(uids):
+                bt.logging.warning("No UIDs provided for logging event.")
+                return
+
             bt.logging.info("Computing rewards and penalties")
 
             self.process_content_links(responses)
@@ -288,10 +292,6 @@ class ScraperValidator:
             raise e
 
     def log_event(self, task, event, start_time, uids, rewards, prompt):
-        def log_event(event):
-            for key, value in event.items():
-                bt.logging.debug(f"{key}: {value}")
-
         event.update(
             {
                 "step_length": time.time() - start_time,
@@ -302,7 +302,6 @@ class ScraperValidator:
             }
         )
         bt.logging.debug("Run Task event:", str(event))
-        # log_event(event)
 
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
@@ -316,6 +315,10 @@ class ScraperValidator:
                 task_type="twitter_scraper",
                 criteria=[],
             )
+
+            if not len(self.neuron.available_uids):
+                bt.logging.info("No available UIDs, skipping task execution.")
+                return
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task, strategy=strategy, is_only_allowed_miner=False
@@ -344,6 +347,10 @@ class ScraperValidator:
                 task_type="twitter_scraper",
                 criteria=[],
             )
+
+            if self.neuron.available_uids == 0:
+                bt.logging.info("Not available uids")
+                raise StopAsyncIteration("Not available uids")
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
@@ -417,6 +424,10 @@ class ScraperValidator:
                 task_type="twitter_scraper",
                 criteria=[],
             )
+
+            if self.neuron.available_uids == 0:
+                bt.logging.info("Not available uids")
+                raise StopAsyncIteration("Not available uids")
 
             yield f"Contacting miner IDs: {'; '.join(map(str, specified_uids))} \n\n\n"
             async_responses, uids, event, start_time = await self.run_task_and_score(

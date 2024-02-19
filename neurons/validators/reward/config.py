@@ -18,20 +18,25 @@
 from dataclasses import dataclass
 from enum import Enum
 
+
 class RewardModelType(Enum):
     task_validator = "task_validator_filter"
     accuracy_match = "keyword_match_penalty"
     sentence_match_penalty = "sentence_match_penalty"
-    prompt = "prompt_reward_model"
+    summary_relavance_match = "summary_relavance_match"
+    link_content_match = "link_content_match"
+
 
 class RewardScoringType(Enum):
     summary_relevance_score_template = "summary_relevance_score_template"
     link_content_relevance_template = "link_content_relevance_template"
+
 
 @dataclass(frozen=True)
 class DefaultRewardFrameworkConfig:
     """Reward framework default configuration.
     Note: All the weights should add up to 1.0.
     """
+
     summary_relevance_weight: float = 0.5
     link_content_weight: float = 0.5

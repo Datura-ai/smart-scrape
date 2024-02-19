@@ -22,7 +22,11 @@ import bittensor as bt
 from typing import List, Union
 from .config import RewardModelType, RewardScoringType
 from .reward import BaseRewardModel, BaseRewardEvent
-from utils.prompts import SummaryRelevancePrompt, LinkContentPrompt
+from neurons.validators.utils.prompts import (
+    SummaryRelevancePrompt,
+    LinkContentPrompt,
+    extract_score_and_explanation,
+)
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
@@ -53,13 +57,25 @@ def init_tokenizer(device):
 
     return tokenizer, model
 
+def clean_text(text):
+    # Remove newline characters and replace with a space
+    text = text.replace("\n", " ")
+
+    # Remove URLs
+    text = re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', text)
+
+    # Keep hashtags, alphanumeric characters, and spaces
+    # Remove other special characters but ensure to keep structured elements like <Question>, <Answer>, etc., intact
+    text = re.sub(r'(?<![\w<>#])[^\w\s#<>]+', '', text)
+
+    return text
 
 class LinkContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
 
     @property
     def name(self) -> str:
-        return RewardModelType.prompt.value
+        return RewardModelType.link_content_match.value
 
     def __init__(
         self,
@@ -96,6 +112,10 @@ class LinkContentRelevanceModel(BaseRewardModel):
             unique_links = list(
                 set(all_links)
             )  # Remove duplicates to avoid redundant tasks
+
+            if len(unique_links) == 0:
+                bt.logging.info("No unique links found to process.")
+                return
             tweets_list = await TwitterScraperActor().get_tweets(urls=unique_links)
             for response in responses:
                 ids = [
@@ -213,7 +233,8 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 # Determine the scoring prompt based on the provided name or the default scoring type.
                 scoring_prompt = LinkContentPrompt()
                 # Format scoring prompt for this completion.
-                scoring_prompt_text = scoring_prompt.text(prompt, content)
+                clean_content = clean_text(content)
+                scoring_prompt_text = scoring_prompt.text(prompt, clean_content)
 
                 if self.is_disable_tokenizer_reward:
                     length = len(response.completion_links) * 2
@@ -223,7 +244,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     reward_event.reward = score
                     return reward_event
 
-                # Tokenize formatted scoring prompt.
+            # Tokenize formatted scoring prompt.
                 encodings_dict = self.tokenizer(
                     scoring_prompt_text,
                     truncation=True,
@@ -235,24 +256,27 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 # Prompt local reward model.
                 start_time = time.time()
                 generated_tokens = self.model.generate(
-                    input_ids, max_new_tokens=2, max_time=1
+                    input_ids, max_new_tokens=2000, max_time=7
                 )
-                generated_text = self.tokenizer.batch_decode(
-                    generated_tokens, skip_special_tokens=True
+                duration = time.time() - start_time
+                # Decode the new tokens to get the generated text
+                generated_text = self.tokenizer.decode(
+                    generated_tokens[0], skip_special_tokens=True
                 )
+
                 # Extract score from generated text.
-                score_text = generated_text[0][len(scoring_prompt_text) :]
+                score_text = extract_score_and_explanation(generated_text)
                 score = scoring_prompt.extract_score(score_text)
                 # Scale 0-10 score to 0-1 range.
                 score /= 10.0
 
                 reward_event.reward = score
-                return reward_event
+                return reward_event, score_text
         except Exception as e:
             bt.logging.error(f"Error in Prompt reward method: {e}")
             reward_event = BaseRewardEvent()
             reward_event.reward = 0
-            return reward_event
+            return reward_event, ''
 
     def get_rewards(
         self, prompt: str, responses: List[bt.Synapse], name: str, uids
@@ -274,50 +298,54 @@ class LinkContentRelevanceModel(BaseRewardModel):
             ]
 
             reward_events = []
-            for score, response, uid_tensor in zip(
+            for apify_score, response, uid_tensor in zip(
                 scores, responses, uids
             ):  # Fixed variable name from 'response' to 'responses'
                 uid = uid_tensor.item()
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
-                if score:
-                    bt.logging.info(f"Processing score for response with miner tweets.")
-                    miner_tweets = response.miner_tweets
-                    miner_tweets_data = miner_tweets.get("data", [])
-                    links_scores = []
-                    for link in response.completion_links:
-                        tweet_id = self.tw_client.extract_tweet_id(link)
-                        miner_tweet = next(
-                            (
-                                tweet
-                                for tweet in miner_tweets_data
-                                if tweet["id"] == tweet_id
-                            ),
-                            None,
-                        )
-                        if miner_tweet:
-                            miner_tweet_text = miner_tweet["text"]
-                            reward = self.reward(prompt, miner_tweet_text, response)
-                            links_scores.append(reward)
-                            bt.logging.info(
-                                f"UID:{uid}, Tweet ID {tweet_id} yielded a reward of {reward.reward}."
-                            )
-                        else:
-                            bt.logging.warning(
-                                f"UID:{uid}, No matching tweet found for ID {tweet_id}."
-                            )
-                    if links_scores:
-                        average_score = sum(link.reward for link in links_scores) / len(
-                            links_scores
-                        )
-                        reward_event.reward = average_score
+
+                bt.logging.info(f"Processing score for response with miner tweets.")
+                miner_tweets = response.miner_tweets
+                miner_tweets_data = miner_tweets.get("data", [])
+                links_scores = []
+                for link in random.sample(response.completion_links, 2 if len(response.completion_links) > 2 else len(response.completion_links)):
+                    tweet_id = self.tw_client.extract_tweet_id(link)
+                    miner_tweet = next(
+                        (
+                            tweet
+                            for tweet in miner_tweets_data
+                            if tweet["id"] == tweet_id
+                        ),
+                        None,
+                    )
+                    if miner_tweet:
+                        miner_tweet_text = miner_tweet["text"]
+                        reward, score_text = self.reward(prompt, miner_tweet_text, response)
+                        links_scores.append(reward)
                         bt.logging.info(
-                            f"UID:{uid}, Average score calculated: {average_score}, links_scores: {[link.reward for link in links_scores]}"
+                            f"UID:{uid}, Tweet ID {tweet_id} yielded a reward of {reward.reward}, Explanation: {score_text}"
                         )
                     else:
                         bt.logging.warning(
-                            "UID:{uid}No link scores to average, reward remains 0."
+                            f"UID:{uid}, No matching tweet found for ID {tweet_id}."
                         )
+                if links_scores:
+                    average_score = sum(link.reward for link in links_scores) / len(
+                        links_scores
+                    )
+                    reward_event.reward = average_score
+                    bt.logging.info(
+                        f"UID:{uid}, Average score calculated: {average_score}, links_scores: {[link.reward for link in links_scores]}"
+                    )
+                else:
+                    bt.logging.warning(
+                        "UID:{uid}No link scores to average, reward remains 0."
+                    )
+                if apify_score:
+                    reward_event.reward = min(reward_event.reward * 2, 1)
+                else:
+                    reward_event.reward /= 2
                 reward_events.append(reward_event)
 
             # Iterate over responses and assign rewards based on scores

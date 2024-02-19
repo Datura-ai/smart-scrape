@@ -98,6 +98,48 @@ def find_unique_tags(input_text: str):
     # Return a list of unique matches.
     return list(set(matches))
 
+
+def extract_score_and_explanation(generated_text):
+    # Regular expression to find the last occurrence of "----\n<Score>"
+    # and capture everything after it.
+    explanation_match = re.search(r'----\n<Score>\n(.*)', generated_text, re.DOTALL | re.MULTILINE)
+
+    if explanation_match:
+        # Extract everything after the last "----\n<Score>".
+        result = explanation_match.group(1).strip()
+    else:
+        result = "Explanation not found"
+
+    return result
+
+
+link_content_relevance_template = """
+Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the level of relevance the tweet content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
+
+Scores can be:
+- 0: The tweet content does not mention any of the keywords or topics related to the question, indicating no relevance.
+- 5: The tweet content mentions at least one keyword or topic related to the question but does not fully engage with the question's core topics or only does so tangentially.
+- 10: The tweet content is highly relevant, mentioning multiple keywords or topics related to the question and engaging with the core topics in a meaningful way.
+
+Instructions for Scoring:
+1. Identify keywords or topics from the question that are essential for the answer.
+2. Evaluate the tweet content to determine its level of engagement with these keywords or topics.
+3. Assign a score based on the criteria above.
+
+<Question>
+{}
+</Question>
+
+<Tweet Content>
+{}
+</Tweet Content>
+
+Output:
+Generate Score number (0, 5, or 10) based on relevance:
+----
+<Score>
+"""
+
 summary_relevance_scoring_template = """
 Evaluate the correctness, relevance, and depth of an answer given a context and question, focusing on the inclusion of Twitter links as supporting evidence. 
 Scores range from 0 to 10:
@@ -107,59 +149,17 @@ Scores range from 0 to 10:
 - 10 for answers that are not only accurate and relevant but also well-supported by Twitter links, fully addressing the question's demands.
 
 Score Examples:
-- Score 0: Answer discusses a completely different topic without any relation to the question.
-- Score 2: Answer is on topic but does not provide any Twitter links to support its statements.
-- Score 6: Provides a partially correct response with some Twitter links, but lacks comprehensive coverage or depth on the topic.
-- Score 8: Offers a thorough answer with relevant Twitter links but misses minor details or broader implications.
-- Score 10: Fully satisfies the question with accurate, relevant information and substantial evidence from Twitter links.
+- Assign a score of 0 if Answer discusses a completely different topic without any relation to the question.
+- Assign a score of 2 if Answer is on topic but does not provide any Twitter links to support its statements.
+- Assign a score of 6 if Provides a partially correct response with some Twitter links, but lacks comprehensive coverage or depth on the topic.
+- Assign a score of 3-9 if Offers a thorough answer with relevant Twitter links but misses minor details or broader implications.
+- Assign a score of 10 if Fully satisfies the question with accurate, relevant information and substantial evidence from Twitter links.
 
 Additional Scoring Criteria:
 - Accuracy and relevance to the question.
 - Depth of insight and coverage of the topic.
 - Presence and relevance of Twitter links as supporting evidence.
 
-Example for Score 2:
-<Question>
-What are the latest innovations in electric vehicles according to Twitter discussions?
-</Question>
-
-<Answer>
-Electric vehicles are seeing major advancements in battery technology and charging infrastructure, improving range and reducing charging times. However, no specific Twitter links are provided to support these claims.
-</Answer>
-
-<Score>2</Score>
-Explanation: The answer is relevant but lacks Twitter links as evidence, thus earning a score of 2.
-
-Example for Score 6:
-<Question>
-How is Twitter influencing political campaigns?
-</Question>
-
-<Answer>
-Twitter significantly influences political campaigns by allowing direct communication between candidates and voters. Some examples include general observations of increased engagement rates, but specific influential tweets or campaigns are not cited.
-- [General observation by @PoliticsToday](https://twitter.com/PoliticsToday/status/1234567890)
-</Answer>
-
-<Score>6</Score>
-Explanation: The answer includes a Twitter link and covers the topic, yet it lacks depth and specific examples of influence, meriting a score of 6.
-
-Example for Score 8:
-<Question>
-What are the key challenges facing remote work as shared on Twitter?
-</Question>
-
-<Answer>
-Remote work challenges include maintaining productivity and managing team communication. Key discussions on Twitter highlight solutions and strategies:
-- [Tweet by @RemoteWorkInsider](https://twitter.com/RemoteWorkInsider/status/1234567890) on communication tools.
-- [Tweet by @ProductivityGuru](https://twitter.com/ProductivityGuru/status/0987654321) discussing time management techniques.
-However, the answer does not address issues like cybersecurity and employee well-being.
-</Answer>
-
-<Score>8</Score>
-Explanation: The answer provides relevant Twitter links and addresses key challenges but lacks completeness, scoring an 8.
-
-Remember, the inclusion and relevance of Twitter links are essential for higher scores, as they serve as concrete evidence that strengthens the answer's credibility and depth.
-
 <Question>
 {}
 </Question>
@@ -168,64 +168,63 @@ Remember, the inclusion and relevance of Twitter links are essential for higher 
 {}
 </Answer>
 
-<Score>"""
+Output:
+Generate Score number and explain with one sentence why assigned that score:
+----
+<Score>
+"""
 
 
 link_content_relevance_template = """
-Evaluate the relevance of the content from Twitter links provided in <LinksContent></LinksContent> to the question or statement in <Prompt></Prompt>. Assign a score between 0 and 10 in <Score></Score> tags. A score of 0 indicates no relevance, while a score of 10 signifies perfect relevance.
+Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the level of relevance the tweet content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
 
-Scoring Guidelines:
-- 0: No relevance between Twitter content and the prompt.
-- 2: Minimal relevance; the content barely relates to the prompt.
-- 6: Moderate relevance; the content relates to the prompt but misses key aspects or details.
-- 8: High relevance; the content is closely related to the prompt, with minor details lacking.
-- 10: Perfect relevance; the Twitter content directly addresses the prompt comprehensively.
+Scores can be:
+- Assign a score of 0 if the tweet content fails to mention any keywords or topics related to the question, indicating a lack of relevance.
+- Assign a score of 5 if the tweet content mentions at least one keyword or topic from the question but either engages with the question's core topics superficially or only tangentially.
+- Assign a score of 10 if the tweet content is highly relevant, incorporating multiple keywords or topics from the question and engaging deeply and meaningfully with the question's core topics.
 
-Scoring should be based on the directness of the relevance and the completeness of the Twitter content in addressing the prompt's topic. 
+Instructions for Scoring:
+- Identify keywords or topics from the question that are essential for the answer.
+- Evaluate the tweet content to determine its level of engagement with these keywords or topics.
+- Assign a score based on the criteria above.
 
-Examples:
-
-<Prompt>
-Impact of social media on public opinion.
-</Prompt>
-
-<LinksContent>
-Tweets discussing studies on social media's influence on political decisions.
-</LinksContent>
-
-<Score>8</Score>
-Explanation: The content is highly relevant to the prompt, focusing on a specific aspect (political decisions) of the broader topic.
-
-<Prompt>
-Advancements in renewable energy.
-</Prompt>
-
-<LinksContent>
-Tweets about recent solar power breakthroughs and wind energy projects.
-</LinksContent>
-
-<Score>10</Score>
-Explanation: The Twitter content perfectly matches the prompt, covering advancements in renewable energy directly.
-
-<Prompt>
-Trends in global travel.
-</Prompt>
-
-<LinksContent>
-Tweets primarily discussing new tech gadgets.
-</LinksContent>
-
-<Score>0</Score>
-Explanation: The content of the tweets is unrelated to the prompt's focus on global travel, showing no relevance.
-
-Maintain objectivity and focus solely on the relevance of the Twitter link content to the prompt for accurate scoring.
-
-<Prompt>
+<Question>
 {}
-</Prompt>
+</Question>
 
-<LinksContent>
+<Tweet Content>
 {}
-</LinksContent>
+</Tweet Content>
 
-<Score>"""
+Output:
+Generate Score number and explain with one sentence why assigned that score:
+----
+<Score>
+"""
+
+
+# link_content_relevance_template = """
+# Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on whether the tweet content mentions at least one keyword or topic related to the question.
+
+# Scores are binary:
+# - 0: The tweet content does not mention any of the keywords or topics related to the question.
+# - 1: The tweet content mentions at least one keyword or topic related to the question.
+
+# Instructions for Scoring:
+# 1. Identify keywords or topics from the question that are essential for the answer.
+# 2. Check if the tweet content includes any of these keywords or topics.
+# 3. Assign a score based on the criteria above.
+
+# <Question>
+# {}
+# </Question>
+
+# <Tweet Content>
+# {}
+# </Tweet Content>
+
+# Output:
+# Generate Score number (0 or 1) based on relevance:
+# ----
+# <Score>
+# """

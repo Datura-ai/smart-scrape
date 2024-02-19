@@ -119,6 +119,12 @@ class ScraperMiner:
             {prompt}
             </UserPrompt>
 
+                Output Guidelines (Tasks):
+                1. Summary: Conduct a thorough analysis of <TwitterData> in relation to <UserPrompt> and generate a comprehensive summary.
+                2. Relevant Links: Provide a selection of Twitter links that directly correspond to the <UserPrompt>. For each link, include a concise explanation that connects its relevance to the user's question.
+                Synthesize insights from both the <UserPrompt> and the <TwitterData> to formulate a well-rounded response. But don't provide any twitter link, which is not related to <UserPrompt>.
+                3. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
+                4. You would explain how you did retrieve data based on <PromptAnalysis>.
 
             <Information>
             {information}
