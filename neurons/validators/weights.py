@@ -59,8 +59,14 @@ def init_wandb(self):
         bt.logging.error(f"Error in init_wandb: {e}")
         raise
 
+class RetryException(Exception):
+    pass
 
-def set_weights_process(wallet, netuid, uids, weights, config, version_key):
+def on_retry(exception, tries_remaining, delay):
+    attempt = 6 - tries_remaining  # Assuming 5 total tries
+    bt.logging.info(f"Retry attempt {attempt}, will retry in {delay} seconds...")
+
+def set_weights_subtensor(wallet, netuid, uids, weights, config, version_key, ttl = 100):
     subtensor = bt.subtensor(config=config)
     success = subtensor.set_weights(
         wallet=wallet,
@@ -70,9 +76,52 @@ def set_weights_process(wallet, netuid, uids, weights, config, version_key):
         wait_for_inclusion=False,
         wait_for_finalization=False,
         version_key=version_key,
+        ttl=ttl
     )
 
+    if not success:
+        raise RetryException("Failed to set weights, retrying...")
+
     return success
+
+def set_weights_with_retry(self, processed_weight_uids, processed_weights):
+    max_retries = 15  # Maximum number of retries
+    retry_delay = 45  # Delay between retries in seconds
+    ttl = 100  # Time-to-live for each process attempt in seconds
+    success = False
+
+    for attempt in range(max_retries):
+        process = multiprocessing.Process(
+            target=set_weights_subtensor,
+            args=(
+                self.wallet,
+                self.config.netuid,
+                processed_weight_uids,
+                processed_weights,
+                self.config,
+                template.__weights_version__,
+                ttl
+            ),
+        )
+        process.start()
+        process.join(timeout=ttl)
+
+        if not process.is_alive():
+            bt.logging.success("Completed set weights action successfully.")
+            success = True
+            break  # Exit the retry loop on success
+        else:
+            process.terminate()  # Ensure the process is terminated before retrying
+            process.join()  # Clean up the terminated process
+            bt.logging.info(f"Attempt {attempt + 1} failed, retrying in {retry_delay} seconds...")
+            time.sleep(retry_delay)  # Wait for the specified delay before retrying
+
+    if not success:
+        # If the loop completes without setting success to True, all retries have failed
+        bt.logging.error("Failed to complete set weights action after multiple attempts.")
+        return False
+
+    return True
 
 
 def set_weights(self):
@@ -115,32 +164,10 @@ def set_weights(self):
         bt.logging.info(" | ".join(uids_weights[i : i + 4]))
     bt.logging.info(f"Attempting to set weights details ends: ================")
 
-    # Start the process with a timeout
-    ttl = 60  # Time-to-live in seconds
-    process = multiprocessing.Process(
-        target=set_weights_process,
-        args=(
-            self.wallet,
-            self.config.netuid,
-            processed_weight_uids,
-            processed_weights,
-            self.config,
-            template.__weights_version__,
-        ),
-    )
-    process.start()
-    process.join(timeout=ttl)
+    # Call the new method to handle the process with retry logic
+    success = set_weights_with_retry(self, processed_weight_uids, processed_weights)
+    return success
 
-    if process.is_alive():
-        process.terminate()
-        process.join()
-        bt.logging.error(
-            "Failed to complete set weights action after multiple attempts."
-        )
-        return False
-
-    bt.logging.success("Completed set weights action successfully.")
-    return True
 
 
 def update_weights(self, total_scores, steps_passed):
