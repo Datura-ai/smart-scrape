@@ -195,9 +195,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
                 # Filter messages that still need scoring (i.e., messages that did not receive a score)
                 messages = [
-                    msg
-                    for msg, score in current_score_responses.items()
-                    if not any(char.isdigit() for char in score)
+                    message
+                    for (key, score_text), message in zip(current_score_responses.items(), messages)
+                    if not any(char.isdigit() for char in score_text)
                 ]
 
                 # If all messages have been scored, break out of the loop
