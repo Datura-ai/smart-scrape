@@ -24,6 +24,7 @@ from neurons.validators.utils.tasks import TwitterTask
 
 from template.dataset import MockTwitterQuestionsDataset
 from template.services.twitter_api_wrapper import TwitterAPIClient
+from template.services.logging import save_logs
 from template import QUERY_MINERS
 import asyncio
 
@@ -284,7 +285,15 @@ class ScraperValidator:
                 wandb_data["responses"][uid] = response.completion
                 wandb_data["prompts"][uid] = prompt
 
-            await self.neuron.update_scores(wandb_data)
+                if self.neuron.config.neuron.save_logs:
+                    await save_logs(
+                        prompt=prompt,
+                        response=response.completion,
+                        prompt_analysis=response.prompt_analysis,
+                        data=response.miner_tweets,
+                        miner_uid=uid,
+                        score=reward,
+                    )
 
             return rewards
         except Exception as e:

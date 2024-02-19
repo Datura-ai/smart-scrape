@@ -34,6 +34,7 @@ from template.protocol import (
 )
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from template.db import DBClient, get_random_tweets
+from template.services.logging import save_logs
 
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
 if not OpenAI.api_key:
@@ -296,6 +297,16 @@ class ScraperMiner:
                         "body": b"",
                         "more_body": False,
                     }
+                )
+
+            if self.miner.config.miner.save_logs:
+                await save_logs(
+                    prompt=prompt,
+                    response=joined_full_text,
+                    prompt_analysis=prompt_analysis,
+                    data=tweets,
+                    miner_uid=None,
+                    score=None,
                 )
 
             bt.logging.info(f"End of Streaming")
