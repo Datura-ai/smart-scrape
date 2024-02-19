@@ -348,7 +348,7 @@ class ScraperValidator:
                 criteria=[],
             )
 
-            if self.neuron.available_uids == 0:
+            if not len(self.neuron.available_uids):
                 bt.logging.info("Not available uids")
                 raise StopAsyncIteration("Not available uids")
 
@@ -425,7 +425,7 @@ class ScraperValidator:
                 criteria=[],
             )
 
-            if self.neuron.available_uids == 0:
+            if not len(self.neuron.available_uids):
                 bt.logging.info("Not available uids")
                 raise StopAsyncIteration("Not available uids")
 
