@@ -57,7 +57,7 @@ class RewardLLM:
         self.model = model
         self.device = device
 
-        return None, None
+        return tokenizer, model
     
     def init_pipe_zephyr(self):
         pipe = pipeline("text-generation", model="HuggingFaceH4/zephyr-7b-alpha", torch_dtype=torch.bfloat16, device_map="auto")
