@@ -117,14 +117,14 @@ link_content_relevance_template = """
 Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the level of relevance the tweet content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
 
 Scores can be:
-- 0: The tweet content does not mention any of the keywords or topics related to the question, indicating no relevance.
-- 5: The tweet content mentions at least one keyword or topic related to the question but does not fully engage with the question's core topics or only does so tangentially.
-- 10: The tweet content is highly relevant, mentioning multiple keywords or topics related to the question and engaging with the core topics in a meaningful way.
+- Assign a score of 0 if the tweet content fails to mention any keywords or topics related to the question, indicating a lack of relevance.
+- Assign a score of 5 if the tweet content mentions at least one keyword or topic from the question but either engages with the question's core topics superficially or only tangentially.
+- Assign a score of 10 if the tweet content is highly relevant, incorporating multiple keywords or topics from the question and engaging deeply and meaningfully with the question's core topics.
 
 Instructions for Scoring:
-1. Identify keywords or topics from the question that are essential for the answer.
-2. Evaluate the tweet content to determine its level of engagement with these keywords or topics.
-3. Assign a score based on the criteria above.
+- Identify keywords or topics from the question that are essential for the answer.
+- Evaluate the tweet content to determine its level of engagement with these keywords or topics.
+- Assign a score based on the criteria above.
 
 <Question>
 {}
@@ -135,10 +135,11 @@ Instructions for Scoring:
 </Tweet Content>
 
 Output:
-Generate Score number (0, 5, or 10) based on relevance:
+Generate Score number and explain with one sentence why assigned that score:
 ----
 <Score>
 """
+
 
 summary_relevance_scoring_template = """
 Evaluate the correctness, relevance, and depth of an answer given a context and question, focusing on the inclusion of Twitter links as supporting evidence. 
@@ -173,58 +174,3 @@ Generate Score number and explain with one sentence why assigned that score:
 ----
 <Score>
 """
-
-
-link_content_relevance_template = """
-Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the level of relevance the tweet content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
-
-Scores can be:
-- Assign a score of 0 if the tweet content fails to mention any keywords or topics related to the question, indicating a lack of relevance.
-- Assign a score of 5 if the tweet content mentions at least one keyword or topic from the question but either engages with the question's core topics superficially or only tangentially.
-- Assign a score of 10 if the tweet content is highly relevant, incorporating multiple keywords or topics from the question and engaging deeply and meaningfully with the question's core topics.
-
-Instructions for Scoring:
-- Identify keywords or topics from the question that are essential for the answer.
-- Evaluate the tweet content to determine its level of engagement with these keywords or topics.
-- Assign a score based on the criteria above.
-
-<Question>
-{}
-</Question>
-
-<Tweet Content>
-{}
-</Tweet Content>
-
-Output:
-Generate Score number and explain with one sentence why assigned that score:
-----
-<Score>
-"""
-
-
-# link_content_relevance_template = """
-# Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on whether the tweet content mentions at least one keyword or topic related to the question.
-
-# Scores are binary:
-# - 0: The tweet content does not mention any of the keywords or topics related to the question.
-# - 1: The tweet content mentions at least one keyword or topic related to the question.
-
-# Instructions for Scoring:
-# 1. Identify keywords or topics from the question that are essential for the answer.
-# 2. Check if the tweet content includes any of these keywords or topics.
-# 3. Assign a score based on the criteria above.
-
-# <Question>
-# {}
-# </Question>
-
-# <Tweet Content>
-# {}
-# </Tweet Content>
-
-# Output:
-# Generate Score number (0 or 1) based on relevance:
-# ----
-# <Score>
-# """
