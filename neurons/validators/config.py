@@ -22,7 +22,10 @@ import argparse
 import bittensor as bt
 from loguru import logger
 from reward import DefaultRewardFrameworkConfig
+from distutils.util import strtobool
 
+def str2bool(v):
+    return bool(strtobool(v))
 
 def check_config(cls, config: "bt.Config"):
     r"""Checks/validates the config namespace object."""
@@ -177,6 +180,12 @@ def add_args(cls, parser):
         default=False,
     )
 
+    parser.add_argument(
+        "--neuron.save_logs",
+        type=str2bool,
+        help="If True, the miner will save logs",
+        default=False,
+    )
 
 def config(cls):
     parser = argparse.ArgumentParser()
