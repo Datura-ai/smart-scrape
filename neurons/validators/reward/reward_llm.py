@@ -15,6 +15,9 @@ from neurons.validators.utils.prompts import (
 )
 
 from enum import Enum
+import torch
+from transformers import pipeline
+
 
 EXPECTED_ACCESS_KEY = os.environ.get('EXPECTED_ACCESS_KEY', 'hello')
 URL_SUBNET_18 = os.environ.get('URL_SUBNET_18')
@@ -23,6 +26,7 @@ class ScoringSource(Enum):
     Subnet18 = 1
     OpenAI = 2
     LocalLLM = 3
+    LocalZephyr = 4
 
 
 class RewardLLM:
@@ -30,6 +34,7 @@ class RewardLLM:
         self.tokenizer = None
         self.model = None
         self.device = None
+        self.pipe = None
 
     def init_tokenizer(self, device, model_name):
         # https://huggingface.co/VMware/open-llama-7b-open-instruct
@@ -52,7 +57,12 @@ class RewardLLM:
         self.model = model
         self.device = device
 
-        return tokenizer, model
+        return None, None
+    
+    def init_pipe_zephyr(self):
+        pipe = pipeline("text-generation", model="HuggingFaceH4/zephyr-7b-alpha", torch_dtype=torch.bfloat16, device_map="auto")
+        self.pipe = pipe
+        return pipe
 
 
     def clean_text(self, text):
@@ -95,6 +105,7 @@ class RewardLLM:
 
     async def get_score_by_openai(self, messages):
         try:
+            start_time = time.time()  # Start timing for query execution
             query_tasks = []
             for message_dict in messages:  # Iterate over each dictionary in the list
                 ((key, message_list),) = message_dict.items()
@@ -124,6 +135,9 @@ class RewardLLM:
                     )
                 ((key, message_list),) = message_dict.items()
                 result[key] = response
+
+            execution_time = time.time() - start_time  # Calculate execution time
+            print(f"Execution time for OpenAI queries: {execution_time} seconds")
             return result
         except Exception as e:
             print(f"Error processing OpenAI queries: {e}")
@@ -180,7 +194,36 @@ class RewardLLM:
             return None
         return result
     
+    def get_score_by_zephyer(self, messages):
+        result = {}
+        total_start_time = time.time()  # Start timing for total execution
+        try:
+            for message_dict in messages:  # Iterate over each dictionary in the list
+                ((key, message_list),) = message_dict.items()
+                
+                prompt = self.pipe.tokenizer.apply_chat_template(message_list, tokenize=False, add_generation_prompt=True)
+                outputs = self.pipe(prompt, max_new_tokens=500, do_sample=True, temperature=0.2, top_k=50, top_p=0.95)
+                generated_text = outputs[0]["generated_text"]
+
+                # Extract score from generated text.
+                score_text = extract_score_and_explanation(generated_text)
+                bt.logging.info(f"Score text: {score_text}")
+                result[key] = score_text
+
+            total_duration = (
+                time.time() - total_start_time
+            )  # Calculate total execution time
+            bt.logging.info(
+                f"Total execution time for get_score_by_zephyer: {total_duration} seconds"
+            )
+        except Exception as e:
+            bt.logging.error(f"Error in get_score_by_zephyer: {e}")
+            return None
+        return result
+    
     def get_score_by_source(self, messages, source: ScoringSource):
+        if source == ScoringSource.LocalZephyr:
+            return self.get_score_by_zephyer(messages)
         if source == ScoringSource.Subnet18:
             return self.call_to_subnet_18_scoring(messages)
         elif source == ScoringSource.OpenAI:
@@ -196,8 +239,8 @@ class RewardLLM:
 
         # Define the order of scoring sources to be used
         scoring_sources = [
-            ScoringSource.LocalLLM,  # Fallback to Local LLM if Subnet 18 fails or is disabled
-            ScoringSource.LocalLLM,  # Fallback to Local LLM if Subnet 18 fails or is disabled
+            ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
+            # ScoringSource.LocalLLM,  # Fallback to Local LLM if Subnet 18 fails or is disabled
             ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
             ScoringSource.Subnet18,  # First attempt with Subnet 18
         ]

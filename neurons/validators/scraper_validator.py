@@ -66,7 +66,7 @@ class ScraperValidator:
             self.neuron.config.reward.link_content_weight > 0
             or self.neuron.config.reward.summary_relevance_weight > 0
         ) and not self.neuron.config.neuron.is_disable_tokenizer_reward:
-            self.reward_llm.init_tokenizer(self.neuron.config.neuron.device, LinkContentRelevanceModel.reward_model_name)
+            self.reward_llm.init_pipe_zephyr()
 
         self.reward_functions = [
             (

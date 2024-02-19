@@ -178,7 +178,7 @@ if __name__ == "__main__":
     model = None
     device = "cuda"
     llm = RewardLLM()
-    llm.init_tokenizer(device, SummaryRelevanceRewardModel.reward_model_name)
+    llm.init_pipe_zephyr()
     summary = SummaryRelevanceRewardModel(
         device=device,
         scoring_type=RewardScoringType.summary_relevance_score_template,
