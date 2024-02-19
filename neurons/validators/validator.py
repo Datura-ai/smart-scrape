@@ -281,7 +281,8 @@ class neuron(AbstractNeuron):
         # checkpoint(self)
         try:
             while True:
-                if len(self.available_uids) == 0:
+                if not self.available_uids:
+                    bt.logging.info("No available UIDs, sleeping for 10 seconds.")
                     await asyncio.sleep(10)
                     continue
 
@@ -295,7 +296,11 @@ class neuron(AbstractNeuron):
 
                 self.loop.run_until_complete(run_forward())
 
-                await set_weights(self)
+                result = set_weights(self)  # Assuming this can be either awaitable or not
+                if asyncio.iscoroutine(result):
+                    await result
+                else:
+                    bt.logging.info("No result to process.")
 
                 # Resync the network state
                 if should_checkpoint(self):
