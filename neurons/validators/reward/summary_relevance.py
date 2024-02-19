@@ -45,6 +45,18 @@ class ScoringSource(Enum):
     OpenAI = 2
     LocalLLM = 3
 
+def clean_text(text):
+    # Remove newline characters and replace with a space
+    text = text.replace("\n", " ")
+
+    # Remove URLs
+    text = re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', text)
+
+    # Keep hashtags, alphanumeric characters, and spaces
+    # Remove other special characters but ensure to keep structured elements like <Question>, <Answer>, etc., intact
+    text = re.sub(r'(?<![\w<>#])[^\w\s#<>]+', '', text)
+
+    return text
 
 class SummaryRelevanceRewardModel(BaseRewardModel):
     reward_model_name: str = "GTP-4"
@@ -121,9 +133,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
                 with torch.no_grad():
                     # Choose correct scoring prompt for request type.
-                    scoring_prompt_text = message_list[-1][
+                    scoring_prompt_text = clean_text(message_list[-1][
                         "content"
-                    ]  # Determine the scoring prompt based on the provided name or the default scoring type.
+                    ])  # Determine the scoring prompt based on the provided name or the default scoring type.
 
                     # Tokenize formatted scoring prompt.
                     encodings_dict = self.tokenizer(
@@ -285,7 +297,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
 
 if __name__ == "__main__":
-    from neurons.validators.reward.fail import completions_empty, prompt, completion_0
+    from neurons.validators.reward.test_summary import completions_empty, prompt, completion_0, completion_1
 
     tokenizer = None
     model = None
@@ -303,7 +315,7 @@ if __name__ == "__main__":
     scoring_messages = []
     completion_0.items()
     # merged_completions = {**completions_empty, **completion_0}
-    for key, value in completion_0.items():
+    for key, value in completion_1.items():
         # response = bt.dendrite(wallet=wallet)
 
         response = ScraperStreamingSynapse(
