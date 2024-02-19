@@ -114,7 +114,7 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
             process.terminate()  # Ensure the process is terminated before retrying
             process.join()  # Clean up the terminated process
             bt.logging.info(f"Attempt {attempt + 1} failed, retrying in {retry_delay} seconds...")
-            time.sleep(retry_delay)  # Wait for the specified delay before retrying
+            time.sleep(retry_delay)  # Wait for the specified 4delay before retrying
 
     if not success:
         # If the loop completes without setting success to True, all retries have failed
@@ -126,8 +126,8 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
 
 def set_weights(self):
     if torch.all(self.moving_averaged_scores == 0):
+        bt.logging.info("All moving averaged scores are zero, skipping weight setting.")
         return
-
     # Calculate the average reward for each uid across non-zero values.
     # Replace any NaN values with 0.
     raw_weights = torch.nn.functional.normalize(self.moving_averaged_scores, p=1, dim=0)
