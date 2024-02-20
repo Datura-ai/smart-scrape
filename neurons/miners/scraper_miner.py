@@ -171,6 +171,34 @@ class ScraperMiner:
             # seed=seed,
         )
 
+    def prepare_tweets_data_for_finalize(self, tweets):
+        data = []
+
+        users = tweets.get("includes", {}).get("users", [])
+
+        for tweet in tweets.get("data", []):
+            author_id = tweet.get("author_id")
+
+            author = (
+                next((user for user in users if user.get("id") == author_id), None)
+                or {}
+            )
+
+            data.append(
+                {
+                    "id": tweet.get("id"),
+                    "text": tweet.get("text"),
+                    "author_id": tweet.get("author_id"),
+                    "created_at": tweet.get("created_at"),
+                    "url": "https://twitter.com/{}/status/{}".format(
+                        author.get("username"), tweet.get("id")
+                    ),
+                    "username": author.get("username"),
+                }
+            )
+
+        return data
+
     async def smart_scraper(self, synapse: ScraperStreamingSynapse, send: Send):
         try:
             buffer = []
@@ -221,7 +249,7 @@ class ScraperMiner:
             response = await self.finalize_data(
                 prompt=prompt,
                 model=openai_summary_model,
-                filtered_tweets=tweets,
+                filtered_tweets=self.prepare_tweets_data_for_finalize(tweets),
                 prompt_analysis=prompt_analysis,
             )
 
