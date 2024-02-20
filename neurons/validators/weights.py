@@ -30,8 +30,8 @@ import torch
 def init_wandb(self):
     try:
         if self.config.wandb_on:
-            run_name = f"validator-{self.my_uuid}-{template.__version__}"
-            self.config.uid = self.my_uuid
+            run_name = f"validator-{self.uid}-{template.__version__}"
+            self.config.uid = self.uid
             self.config.hotkey = self.wallet.hotkey.ss58_address
             self.config.run_name = run_name
             self.config.version = template.__version__
@@ -85,7 +85,7 @@ def set_weights_subtensor(wallet, netuid, uids, weights, config, version_key, tt
     return success
 
 def set_weights_with_retry(self, processed_weight_uids, processed_weights):
-    max_retries = 15  # Maximum number of retries
+    max_retries = 5  # Maximum number of retries
     retry_delay = 45  # Delay between retries in seconds
     ttl = 100  # Time-to-live for each process attempt in seconds
     success = False

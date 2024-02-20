@@ -9,23 +9,22 @@ import bittensor as bt
 import template.utils as utils
 import os
 import time
+import sys
 from typing import List
 from template.protocol import IsAlive
 from neurons.validators.scraper_validator import ScraperValidator
 from config import add_args, check_config, config
-from weights import init_wandb, update_weights, set_weights
+from weights import init_wandb, set_weights
 from traceback import print_exception
 from base_validator import AbstractNeuron
 from template import QUERY_MINERS
 from template.misc import ttl_get_block
-
 from template.utils import (
-    should_checkpoint,
-    checkpoint,
+    resync_metagraph
 )
 
 
-class neuron(AbstractNeuron):
+class Neuron(AbstractNeuron):
     @classmethod
     def check_config(cls, config: "bt.Config"):
         check_config(cls, config)
@@ -45,11 +44,15 @@ class neuron(AbstractNeuron):
 
     scraper_validator: "ScraperValidator"
     moving_average_scores: torch.Tensor = None
-    my_uuid: int = None
+    uid: int = None
     shutdown_event: asyncio.Event()
 
+    @property
+    def block(self):
+        return ttl_get_block(self)
+
     def __init__(self):
-        self.config = neuron.config()
+        self.config = Neuron.config()
         self.check_config(self.config)
         bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
         print(self.config)
@@ -64,9 +67,11 @@ class neuron(AbstractNeuron):
 
         # Init the event loop.
         self.loop = asyncio.get_event_loop()
-        # self.step = 0
+        self.step = 0
         # self.steps_passed = 0
         # self.exclude = []
+        # Check if the miner is registered on the Bittensor network before proceeding further.
+        self.check_registered()
 
         # Init Weights.
         bt.logging.debug("loading", "moving_averaged_scores")
@@ -74,11 +79,14 @@ class neuron(AbstractNeuron):
             self.config.neuron.device
         )
         bt.logging.debug(str(self.moving_averaged_scores))
-        self.prev_block = ttl_get_block(self)
+        # self.prev_block = ttl_get_block(self)
         self.available_uids = []
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(
             thread_name_prefix="asyncio"
         )
+        # Init sync with the network. Updates the metagraph.
+        self.sync()
+
 
     async def run_sync_in_async(self, fn):
         return await self.loop.run_in_executor(self.thread_executor, fn)
@@ -93,53 +101,49 @@ class neuron(AbstractNeuron):
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.dendrite = bt.dendrite(wallet=self.wallet)
-        self.my_uuid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
+        self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
         if self.wallet.hotkey.ss58_address not in self.metagraph.hotkeys:
             bt.logging.error(
                 f"Your validator: {self.wallet} is not registered to chain connection: {self.subtensor}. Run btcli register --netuid 18 and try again."
             )
             exit()
 
-    async def update_weights_periodically(self):
-        while True:
-            try:
-                if len(self.available_uids) == 0 or torch.all(
-                    self.moving_averaged_scores == 0
-                ):
-                    await asyncio.sleep(10)
-                    continue
+    # async def update_weights_periodically(self):
+    #     while True:
+    #         try:
+    #             if len(self.available_uids) == 0 or torch.all(
+    #                 self.moving_averaged_scores == 0
+    #             ):
+    #                 await asyncio.sleep(10)
+    #                 continue
 
-                # await self.update_weights(self.steps_passed)
-                await set_weights(self)
+    #             # await self.update_weights(self.steps_passed)
+    #             await set_weights(self)
 
-                # Resync the network state
-                if should_checkpoint(self):
-                    checkpoint(self)
+    #             # # Resync the network state
+    #             # if should_checkpoint(self):
+    #             #     checkpoint(self)
 
-                self.prev_block = ttl_get_block(self)
-                # self.step += 1
-            except Exception as e:
-                # Log the exception or handle it as needed
-                bt.logging.error(
-                    f"An error occurred in update_weights_periodically: {e}"
-                )
-                # Optionally, decide whether to continue or break the loop based on the exception
-            finally:
-                # Ensure the sleep is in the finally block if you want the loop to always wait,
-                # even if an error occurs.
-                await asyncio.sleep(self.config.neuron.update_weight_interval)
+    #             # self.prev_block = ttl_get_block(self)
+    #             # self.step += 1
+    #         except Exception as e:
+    #             # Log the exception or handle it as needed
+    #             bt.logging.error(
+    #                 f"An error occurred in update_weights_periodically: {e}"
+    #             )
+    #             # Optionally, decide whether to continue or break the loop based on the exception
+    #         finally:
+    #             # Ensure the sleep is in the finally block if you want the loop to always wait,
+    #             # even if an error occurs.
+    #             await asyncio.sleep(self.config.neuron.update_weight_interval)
 
     async def update_available_uids_periodically(self):
         while True:
             start_time = time.time()
             try:
-                # # It's assumed run_sync_in_async is a method that correctly handles running synchronous code in async.
-                # # If not, ensure it's properly implemented to avoid blocking the event loop.
-                # self.metagraph = await self.run_sync_in_async(
-                #     lambda: self.subtensor.metagraph(self.config.netuid)
-                # )
+                if self.should_sync_metagraph():
+                    resync_metagraph(self)
 
-                # Directly await the asynchronous method without intermediate assignment to self.available_uids,
                 # unless it's used elsewhere.
                 self.available_uids = await self.get_available_uids_is_alive()
                 bt.logging.info(
@@ -276,64 +280,115 @@ class neuron(AbstractNeuron):
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(100)
 
-    async def run_syntetic_queries(self, interval=300, strategy=QUERY_MINERS.RANDOM):
-        bt.logging.info(f"run: interval={interval}; strategy={strategy}")
-        # checkpoint(self)
+    async def run_synthetic_queries(self, strategy=QUERY_MINERS.RANDOM):
+        bt.logging.info(f"run synthetic: strategy={strategy}")
+
         try:
-            while True:
-                if not self.available_uids:
-                    bt.logging.info("No available UIDs, sleeping for 10 seconds.")
-                    await asyncio.sleep(10)
-                    continue
+            async def run_forward():
+                coroutines = [self.query_synapse(strategy) for _ in range(1)]
+                await asyncio.gather(*coroutines)
 
-                # Run multiple forwards.
-                async def run_forward():
-                    coroutines = [self.query_synapse(strategy) for _ in range(1)]
-                    await asyncio.gather(*coroutines)
-                    await asyncio.sleep(
-                        interval
-                    )  # This line introduces a five-minute delay
+            self.loop.run_until_complete(run_forward())
 
-                self.loop.run_until_complete(run_forward())
+            self.sync()
 
-                result = set_weights(self)  # Assuming this can be either awaitable or not
-                if asyncio.iscoroutine(result):
-                    await result
-                else:
-                    bt.logging.info("No result to process.")
-
-                # Resync the network state
-                if should_checkpoint(self):
-                    checkpoint(self)
-
-                self.prev_block = ttl_get_block(self)
+            self.step += 1
         except Exception as err:
             bt.logging.error("Error in training loop", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
 
+    def sync(self):
+        """
+        Wrapper for synchronizing the state of the network for the given miner or validator.
+        """
+        # Ensure miner or validator hotkey is still registered on the network.
+        self.check_registered()
+
+        if self.should_sync_metagraph():
+            resync_metagraph(self)
+
+        if self.should_set_weights():
+            set_weights(self)
+                
+    def check_registered(self):
+        # --- Check for registration.
+        if not self.subtensor.is_hotkey_registered(
+            netuid=self.config.netuid,
+            hotkey_ss58=self.wallet.hotkey.ss58_address,
+        ):
+            bt.logging.error(
+                f"Wallet: {self.wallet} is not registered on netuid {self.config.netuid}."
+                f" Please register the hotkey using `btcli subnets register` before trying again"
+            )
+            sys.exit()
+
+    def should_sync_metagraph(self):
+        """
+        Check if enough epoch blocks have elapsed since the last checkpoint to sync.
+        """
+        return (
+            self.block - self.metagraph.last_update[self.uid]
+        ) > self.config.neuron.checkpoint_block_length
+
+    def should_set_weights(self) -> bool:
+        # Don't set weights on initialization.
+        if self.step == 0:
+            return False
+
+        # Check if enough epoch blocks have elapsed since the last epoch.
+        if self.config.neuron.disable_set_weights:
+            return False
+
+        # Define appropriate logic for when set weights.
+        return (
+            self.block - self.metagraph.last_update[self.uid]
+        ) > self.config.neuron.checkpoint_block_length
+
     async def run(self):
         await asyncio.sleep(10)
-        checkpoint(self)
+        self.sync()
         self.loop.create_task(self.update_available_uids_periodically())
-        # self.loop.create_task(self.update_weights_periodically())
-        if self.config.neuron.run_random_miner_syn_qs_interval > 0:
-            self.loop.create_task(
-                self.run_syntetic_queries(
-                    self.config.neuron.run_random_miner_syn_qs_interval,
-                    QUERY_MINERS.RANDOM,
-                )
-            )
+        bt.logging.info(f"Validator starting at block: {self.block}")
 
-        if self.config.neuron.run_all_miner_syn_qs_interval > 0:
-            self.loop.create_task(
-                self.run_syntetic_queries(
-                    self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.ALL
+        try:
+            async def run_with_interval(interval, strategy):
+                while True:
+                    if not self.available_uids:
+                        bt.logging.info("No available UIDs, sleeping for 10 seconds.")
+                        await asyncio.sleep(10)
+                        continue
+                    asyncio.create_task(self.run_synthetic_queries(strategy))
+                    await asyncio.sleep(interval)  # Wait for 1800 seconds (30 minutes)
+
+            # self.loop.create_task(self.update_weights_periodically())
+            if self.config.neuron.run_random_miner_syn_qs_interval > 0:
+                self.loop.create_task(
+                    run_with_interval(
+                        self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.RANDOM
+                    )
                 )
-            )
+
+            if self.config.neuron.run_all_miner_syn_qs_interval > 0:
+                self.loop.create_task(
+                    run_with_interval(
+                        self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.ALL
+                    )
+                )
+                # If someone intentionally stops the validator, it'll safely terminate operations.
+        except KeyboardInterrupt:
+            self.axon.stop()
+            bt.logging.success("Validator killed by keyboard interrupt.")
+            sys.exit()
+
+        # In case of unforeseen errors, the validator will log the error and quit
+        except Exception as err:
+            bt.logging.error("Error during validation", str(err))
+            bt.logging.debug(print_exception(type(err), err, err.__traceback__))
+            self.should_exit = True        
 
 
 def main():
-    asyncio.run(neuron().run())
+    asyncio.run(Neuron().run())
 
 
 if __name__ == "__main__":

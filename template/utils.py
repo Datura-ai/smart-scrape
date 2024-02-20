@@ -260,19 +260,19 @@ def send_discord_alert(message, webhook_url):
         print(f"Failed to send Discord alert: {e}", exc_info=True)
 
 
-def should_checkpoint(self):
-    # Check if enough epoch blocks have elapsed since the last checkpoint.
-    return (
-        ttl_get_block(self) % self.config.neuron.checkpoint_block_length
-        < self.prev_block % self.config.neuron.checkpoint_block_length
-    )
+# def should_checkpoint(self):
+#     # Check if enough epoch blocks have elapsed since the last checkpoint.
+#     return (
+#         ttl_get_block(self) % self.config.neuron.checkpoint_block_length
+#         < self.prev_block % self.config.neuron.checkpoint_block_length
+#     )
 
 
-def checkpoint(self):
-    """Checkpoints the training process."""
-    bt.logging.info("checkpoint()")
-    resync_metagraph(self)
-    # save_state(self)
+# def checkpoint(self):
+#     """Checkpoints the training process."""
+#     bt.logging.info("checkpoint()")
+#     resync_metagraph(self)
+#     # save_state(self)
 
 
 def sync_metagraph(config):

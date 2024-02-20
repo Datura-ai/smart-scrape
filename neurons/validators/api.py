@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException, Request
 import uvicorn
 import bittensor as bt
 import traceback
-from validator import neuron
+from validator import Neuron
 import time
 import asyncio
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,7 +21,7 @@ app.add_middleware(
 )
 EXPECTED_ACCESS_KEY = os.environ.get("EXPECTED_ACCESS_KEY", "hello")
 
-neu = neuron()
+neu = Neuron()
 
 
 async def response_stream(data):

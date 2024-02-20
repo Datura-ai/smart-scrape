@@ -177,6 +177,14 @@ def add_args(cls, parser):
         default=False,
     )
 
+    parser.add_argument(
+        "--neuron.disable_set_weights",
+        action="store_true",
+        help="Disables setting weights.",
+        default=False,
+    )
+
+
 
 def config(cls):
     parser = argparse.ArgumentParser()

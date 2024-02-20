@@ -18,6 +18,7 @@ from enum import Enum
 import torch
 from transformers import pipeline
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 EXPECTED_ACCESS_KEY = os.environ.get('EXPECTED_ACCESS_KEY', 'hello')
 URL_SUBNET_18 = os.environ.get('URL_SUBNET_18')
