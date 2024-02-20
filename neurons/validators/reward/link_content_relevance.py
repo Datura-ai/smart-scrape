@@ -279,9 +279,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
                         non_zero_scores[uid] = {"score": reward_e.reward}
 
                 bt.logging.info(f"==================================Links Content scoring Zero Scores  ({len(zero_scores)} cases)==================================")
-                bt.logging.info(json.dumps(zero_scores, indent=4))
+                bt.logging.info(json.dumps(zero_scores))
                 bt.logging.info(f"==================================Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)==================================")
-                bt.logging.info(json.dumps(non_zero_scores, indent=4))
+                bt.logging.info(json.dumps(non_zero_scores))
             return reward_events
         except Exception as e:
             bt.logging.error(f"Link Content Relevance get_rewards: {str(e)}")

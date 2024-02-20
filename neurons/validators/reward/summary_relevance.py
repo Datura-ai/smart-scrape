@@ -160,9 +160,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
 
             bt.logging.info(f"==================================Summary Relevance scoring Zero Scores  ({len(zero_scores)} cases)==================================")
-            bt.logging.info(json.dumps(zero_scores, indent=4))
+            bt.logging.info(json.dumps(zero_scores))
             bt.logging.info(f"==================================Summary Relevance scoring Non-Zero Scores ({len(non_zero_scores)} cases)==================================")
-            bt.logging.info(json.dumps(non_zero_scores, indent=4))
+            bt.logging.info(json.dumps(non_zero_scores))
 
             return reward_events
         except Exception as e:
