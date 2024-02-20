@@ -1,5 +1,5 @@
 import bittensor as bt
-from template.protocol import TwitterScraperStreaming
+from template.protocol import ScraperStreamingSynapse
 import json
 import asyncio
 import sys  # Import the sys module to access command-line arguments
@@ -18,7 +18,7 @@ dendrite = bt.dendrite(wallet=wallet)
 bt.debug(True)
 
 # construct the synapse from the protocol using the message and whatever else we need
-synapse = TwitterScraperStreaming(messages=message, model="gpt-4-1106-preview", seed=1234)
+synapse = ScraperStreamingSynapse(messages=message, model="gpt-4-1106-preview", seed=1234)
 
 meta = bt.metagraph(netuid = 22)
 axons = [meta.axons[uid] for uid in uids]

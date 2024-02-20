@@ -41,7 +41,7 @@ def check_config(cls, config: "bt.Config"):
             config.wallet.hotkey,
             config.netuid,
             # config.neuron.name,
-            'validator'
+            "validator",
         )
     )
     config.neuron.full_path = os.path.expanduser(full_path)
@@ -62,12 +62,13 @@ def check_config(cls, config: "bt.Config"):
             format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
         )
 
+
 def add_args(cls, parser):
     parser.add_argument(
         "--netuid", type=int, help="Prompting network netuid", default=22
     )
 
-    parser.add_argument('--wandb.off', action='store_false', dest='wandb_on')
+    parser.add_argument("--wandb.off", action="store_false", dest="wandb_on")
 
     parser.set_defaults(wandb_on=True)
 
@@ -85,7 +86,7 @@ def add_args(cls, parser):
         help="Device to run the validator on.",
         default="cuda" if torch.cuda.is_available() else "cpu",
     )
-    
+
     parser.add_argument(
         "--neuron.disable_log_rewards",
         action="store_true",
@@ -101,17 +102,17 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
-        "--reward.prompt_based_weight",
+        "--reward.summary_relevance_weight",
         type=float,
         help="adjusts the influence of a scoring model that evaluates the accuracy and relevance of a node's responses to given prompts.",
-        default=DefaultRewardFrameworkConfig.prompt_model_weight,
+        default=DefaultRewardFrameworkConfig.summary_relevance_weight,
     )
 
     parser.add_argument(
-        "--reward.prompt_summary_links_content_based_weight",
+        "--reward.link_content_weight",
         type=float,
         help="Specifies the weight for the reward model that evaluates the relevance and quality of summary text in conjunction with linked content data.",
-        default=DefaultRewardFrameworkConfig.prompt_model_summary_links_content_weight,
+        default=DefaultRewardFrameworkConfig.link_content_weight,
     )
 
     parser.add_argument(
@@ -120,12 +121,26 @@ def add_args(cls, parser):
         help="Sets the interval, in seconds, for querying a random subset of miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.",
         default=0,
     )
-    
+
     parser.add_argument(
         "--neuron.run_all_miner_syn_qs_interval",
         type=int,
-        help="Sets the interval, in seconds, for querying all miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.",
+        help="Sets the interval, in seconds, for querying all miners with synthetic questions. Set to a positive value to enable. default is 30 minutes.",
         default=1800,
+    )
+
+    parser.add_argument(
+        "--neuron.update_weight_interval",
+        type=int,
+        help="Defines the frequency (in seconds) at which the network's weight parameters are updated. The default interval is 1800 seconds (30 minutes).",
+        default=1800,
+    )
+
+    parser.add_argument(
+        "--neuron.update_available_uids_interval",
+        type=int,
+        help="Specifies the interval, in seconds, for updating the list of available UIDs. The default interval is 600 seconds (10 minutes).",
+        default=600,
     )
 
     parser.add_argument(
@@ -136,7 +151,7 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
-        "--neuron.disable_twitter_links_content_fetch",
+        "--neuron.disable_twitter_completion_links_fetch",
         action="store_true",
         help="Enables the option to skip fetching content data for Twitter links, relying solely on the data provided by miners.",
         default=True,
@@ -144,7 +159,7 @@ def add_args(cls, parser):
 
     parser.add_argument(
         "--neuron.only_allowed_miners",
-        type=lambda x: x.split(','),
+        type=lambda x: x.split(","),
         help="A list of miner identifiers, hotkey",
         default=[],
     )
@@ -162,6 +177,14 @@ def add_args(cls, parser):
         default=False,
     )
 
+    parser.add_argument(
+        "--neuron.disable_set_weights",
+        action="store_true",
+        help="Disables setting weights.",
+        default=False,
+    )
+
+
 
 def config(cls):
     parser = argparse.ArgumentParser()
@@ -169,5 +192,5 @@ def config(cls):
     bt.subtensor.add_args(parser)
     bt.logging.add_args(parser)
     bt.axon.add_args(parser)
-    cls.add_args(parser) 
+    cls.add_args(parser)
     return bt.config(parser)

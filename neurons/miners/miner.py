@@ -23,30 +23,37 @@ from config import get_config, check_config
 from typing import List, Dict, Tuple
 
 from template.utils import get_version
-from template.protocol import StreamPrompting, IsAlive, TwitterScraperStreaming
-from template.services.twitter import TwitterAPIClient
+from template.protocol import StreamPrompting, IsAlive, ScraperStreamingSynapse
+from template.services.twitter_api_wrapper import TwitterAPIClient
 from template.db import DBClient, get_random_tweets
-from twitter_miner import TwitterScrapperMiner
+from neurons.miners.scraper_miner import ScraperMiner
 
-OpenAI.api_key = os.environ.get('OPENAI_API_KEY')
+OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
 if not OpenAI.api_key:
-    raise ValueError("Please set the OPENAI_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md")
+    raise ValueError(
+        "Please set the OPENAI_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md"
+    )
 
-TWITTER_BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TOKEN')
+TWITTER_BEARER_TOKEN = os.environ.get("TWITTER_BEARER_TOKEN")
 if not TWITTER_BEARER_TOKEN:
-    raise ValueError("Please set the TWITTER_BEARER_TOKEN environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md")
+    raise ValueError(
+        "Please set the TWITTER_BEARER_TOKEN environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md"
+    )
 
-netrc_path = pathlib.Path.home() / '.netrc'
-wandb_api_key = os.getenv('WANDB_API_KEY')
+netrc_path = pathlib.Path.home() / ".netrc"
+wandb_api_key = os.getenv("WANDB_API_KEY")
 
 print("WANDB_API_KEY is set:", bool(wandb_api_key))
 print("~/.netrc exists:", netrc_path.exists())
 
 if not wandb_api_key and not netrc_path.exists():
-    raise ValueError("Please log in to wandb using `wandb login` or set the WANDB_API_KEY environment variable.")
+    raise ValueError(
+        "Please log in to wandb using `wandb login` or set the WANDB_API_KEY environment variable."
+    )
 
 client = AsyncOpenAI(timeout=60.0)
 valid_hotkeys = []
+
 
 class StreamMiner(ABC):
     def __init__(self, config=None, axon=None, wallet=None, subtensor=None):
@@ -99,8 +106,8 @@ class StreamMiner(ABC):
             forward_fn=self._is_alive,
             blacklist_fn=self.blacklist_is_alive,
         ).attach(
-            forward_fn=self._twitter_scraper,
-            blacklist_fn=self.blacklist_twitter_scraper,
+            forward_fn=self._smart_scraper,
+            blacklist_fn=self.blacklist_smart_scraper,
         )
         bt.logging.info(f"Axon created: {self.axon}")
 
@@ -114,22 +121,26 @@ class StreamMiner(ABC):
         # thread.start()
 
     @abstractmethod
-    def config(self) -> "bt.Config":
-        ...
-    
-    def _twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
-        return self.twitter_scraper(synapse)
+    def config(self) -> "bt.Config": ...
 
-    def base_blacklist(self, synapse, blacklist_amt = 20000) -> Tuple[bool, str]:
+    def _smart_scraper(
+        self, synapse: ScraperStreamingSynapse
+    ) -> ScraperStreamingSynapse:
+        return self.smart_scraper(synapse)
+
+    def base_blacklist(self, synapse, blacklist_amt=20000) -> Tuple[bool, str]:
         try:
             hotkey = synapse.dendrite.hotkey
             synapse_type = type(synapse).__name__
 
             if hotkey in template.WHITELISTED_KEYS:
-                return False,  f"accepting {synapse_type} request from {hotkey}"
+                return False, f"accepting {synapse_type} request from {hotkey}"
 
             if hotkey not in template.valid_validators:
-                return True, f"Blacklisted a {synapse_type} request from a non-valid hotkey: {hotkey}"
+                return (
+                    True,
+                    f"Blacklisted a {synapse_type} request from a non-valid hotkey: {hotkey}",
+                )
 
             uid = None
             axon = None
@@ -140,13 +151,19 @@ class StreamMiner(ABC):
                     break
 
             if uid is None and template.ALLOW_NON_REGISTERED == False:
-                return True, f"Blacklisted a non registered hotkey's {synapse_type} request from {hotkey}"
+                return (
+                    True,
+                    f"Blacklisted a non registered hotkey's {synapse_type} request from {hotkey}",
+                )
 
             # check the stake
             tao = self.metagraph.neurons[uid].stake.tao
             # metagraph.neurons[uid].S
             if tao < blacklist_amt:
-                return True, f"Blacklisted a low stake {synapse_type} request: {tao} < {blacklist_amt} from {hotkey}"
+                return (
+                    True,
+                    f"Blacklisted a low stake {synapse_type} request: {tao} < {blacklist_amt} from {hotkey}",
+                )
 
             time_window = template.MIN_REQUEST_PERIOD * 60
             current_time = time.time()
@@ -155,14 +172,17 @@ class StreamMiner(ABC):
                 self.request_timestamps[hotkey] = deque()
 
             # Remove timestamps outside the current time window
-            while self.request_timestamps[hotkey] and current_time - self.request_timestamps[hotkey][0] > time_window:
+            while (
+                self.request_timestamps[hotkey]
+                and current_time - self.request_timestamps[hotkey][0] > time_window
+            ):
                 self.request_timestamps[hotkey].popleft()
 
             # Check if the number of requests exceeds the limit
             if len(self.request_timestamps[hotkey]) >= template.MAX_REQUESTS:
                 return (
                     True,
-                    f"Request frequency for {hotkey} exceeded: {len(self.request_timestamps[hotkey])} requests in {template.MIN_REQUEST_PERIOD} minutes. Limit is {template.MAX_REQUESTS} requests."
+                    f"Request frequency for {hotkey} exceeded: {len(self.request_timestamps[hotkey])} requests in {template.MIN_REQUEST_PERIOD} minutes. Limit is {template.MAX_REQUESTS} requests.",
                 )
 
             self.request_timestamps[hotkey].append(current_time)
@@ -172,23 +192,28 @@ class StreamMiner(ABC):
         except Exception as e:
             bt.logging.error(f"errror in blacklist {traceback.format_exc()}")
 
-    def blacklist_is_alive( self, synapse: IsAlive ) -> Tuple[bool, str]:
+    def blacklist_is_alive(self, synapse: IsAlive) -> Tuple[bool, str]:
         blacklist = self.base_blacklist(synapse, template.ISALIVE_BLACKLIST_STAKE)
         bt.logging.debug(blacklist[1])
         return blacklist
-        
-    def blacklist_twitter_scraper( self, synapse: TwitterScraperStreaming ) -> Tuple[bool, str]:
-        blacklist = self.base_blacklist(synapse, template.TWITTER_SCRAPPER_BLACKLIST_STAKE)
+
+    def blacklist_smart_scraper(
+        self, synapse: ScraperStreamingSynapse
+    ) -> Tuple[bool, str]:
+        blacklist = self.base_blacklist(
+            synapse, template.TWITTER_SCRAPPER_BLACKLIST_STAKE
+        )
         bt.logging.info(blacklist[1])
         return blacklist
 
     @classmethod
     @abstractmethod
-    def add_args(cls, parser: argparse.ArgumentParser):
-        ...
-    
-    async def _twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
-        return self.twitter_scraper(synapse)
+    def add_args(cls, parser: argparse.ArgumentParser): ...
+
+    async def _smart_scraper(
+        self, synapse: ScraperStreamingSynapse
+    ) -> ScraperStreamingSynapse:
+        return self.smart_scraper(synapse)
 
     def _is_alive(self, synapse: IsAlive) -> IsAlive:
         bt.logging.info("answered to be active")
@@ -196,15 +221,16 @@ class StreamMiner(ABC):
         return synapse
 
     @abstractmethod
-    def twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
-        ...
+    def smart_scraper(
+        self, synapse: ScraperStreamingSynapse
+    ) -> ScraperStreamingSynapse: ...
 
     def run(self):
         if not self.subtensor.is_hotkey_registered(
             netuid=self.config.netuid,
             hotkey_ss58=self.wallet.hotkey.ss58_address,
         ):
-            bt.logging.error( 
+            bt.logging.error(
                 f"Wallet: {self.wallet} is not registered on netuid {self.config.netuid}"
                 f"Please register the hotkey using `btcli s register --netuid 18` before trying again"
             )
@@ -299,11 +325,14 @@ class StreamingTemplateMiner(StreamMiner):
     def add_args(cls, parser: argparse.ArgumentParser):
         pass
 
-    def twitter_scraper(self, synapse: TwitterScraperStreaming) -> TwitterScraperStreaming:
+    def smart_scraper(
+        self, synapse: ScraperStreamingSynapse
+    ) -> ScraperStreamingSynapse:
         bt.logging.info(f"started processing for synapse {synapse}")
-        tw_miner = TwitterScrapperMiner(self)
-        token_streamer = partial(tw_miner.twitter_scraper, synapse)
+        tw_miner = ScraperMiner(self)
+        token_streamer = partial(tw_miner.smart_scraper, synapse)
         return synapse.create_streaming_response(token_streamer)
+
 
 def get_valid_hotkeys(config):
     global valid_hotkeys
@@ -318,33 +347,45 @@ def get_valid_hotkeys(config):
                 if run.state == "running":
                     try:
                         # Extract hotkey and signature from the run's configuration
-                        hotkey = run.config['hotkey']
-                        signature = run.config['signature']
-                        version = run.config['version']
-                        bt.logging.debug(f"found running run of hotkey {hotkey}, {version} ")
+                        hotkey = run.config["hotkey"]
+                        signature = run.config["signature"]
+                        version = run.config["version"]
+                        bt.logging.debug(
+                            f"found running run of hotkey {hotkey}, {version} "
+                        )
 
                         if latest_version == None:
-                            bt.logging.error(f'Github API call failed!')
+                            bt.logging.error(f"Github API call failed!")
                             continue
-             
+
                         if version != latest_version and latest_version != None:
-                            bt.logging.debug(f'Version Mismatch: Run version {version} does not match GitHub version {latest_version}')
+                            bt.logging.debug(
+                                f"Version Mismatch: Run version {version} does not match GitHub version {latest_version}"
+                            )
                             continue
 
                         # Check if the hotkey is registered in the metagraph
                         if hotkey not in metagraph.hotkeys:
-                            bt.logging.debug(f'Invalid running run: The hotkey: {hotkey} is not in the metagraph.')
+                            bt.logging.debug(
+                                f"Invalid running run: The hotkey: {hotkey} is not in the metagraph."
+                            )
                             continue
 
                         # Verify the signature using the hotkey
-                        if not bt.Keypair(ss58_address=hotkey).verify(run.id, bytes.fromhex(signature)):
-                            bt.logging.debug(f'Failed Signature: The signature: {signature} is not valid')
+                        if not bt.Keypair(ss58_address=hotkey).verify(
+                            run.id, bytes.fromhex(signature)
+                        ):
+                            bt.logging.debug(
+                                f"Failed Signature: The signature: {signature} is not valid"
+                            )
                             continue
-                            
+
                         if hotkey not in valid_hotkeys:
                             valid_hotkeys.append(hotkey)
                     except Exception as e:
-                        bt.logging.debug(f"exception in get_valid_hotkeys: {traceback.format_exc()}")
+                        bt.logging.debug(
+                            f"exception in get_valid_hotkeys: {traceback.format_exc()}"
+                        )
 
             bt.logging.info(f"total valid hotkeys list = {valid_hotkeys}")
             time.sleep(180)

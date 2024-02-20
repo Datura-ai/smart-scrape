@@ -6,8 +6,8 @@ from typing import List
 from urllib.parse import urlparse
 from neurons.validators.utils.tasks import TwitterTask
 from neurons.validators.penalty import BasePenaltyModel, PenaltyModelType
-from template.protocol import TwitterScraperStreaming
-from template.services.twitter import TwitterAPIClient, VALID_DOMAINS
+from template.protocol import ScraperStreamingSynapse
+from template.services.twitter_api_wrapper import TwitterAPIClient, VALID_DOMAINS
 
 
 class LinkValidationPenaltyModel(BasePenaltyModel):
@@ -26,7 +26,6 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
         """
         super().__init__(max_penalty)
         self.client = TwitterAPIClient()
-        
 
     @property
     def name(self) -> str:
@@ -37,7 +36,6 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
             The name of the penalty model as defined in PenaltyModelType.
         """
         return PenaltyModelType.link_validation_penalty.value
-
 
     def is_valid_twitter_link(self, url: str) -> bool:
         """
@@ -51,7 +49,7 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
         """
         parsed_url = urlparse(url)
         return parsed_url.netloc.lower() in VALID_DOMAINS
-    
+
     def fetch_twitter_data_for_links(self, links: List[str]) -> List[dict]:
         """
         Retrieve Twitter data for the given list of Twitter links.
@@ -62,12 +60,16 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
         Returns:
             A list of dictionaries containing the retrieved Twitter data.
         """
-        tweet_ids = [self.client.extract_tweet_id(link) for link in links if self.is_valid_twitter_link(link)]
+        tweet_ids = [
+            self.client.extract_tweet_id(link)
+            for link in links
+            if self.is_valid_twitter_link(link)
+        ]
         return self.client.get_tweets_by_ids(tweet_ids)
 
-
-
-    def calculate_penalties(self, task: TwitterTask, responses: List[TwitterScraperStreaming]) -> torch.FloatTensor:
+    def calculate_penalties(
+        self, task: TwitterTask, responses: List[ScraperStreamingSynapse]
+    ) -> torch.FloatTensor:
         """
         Calculates the penalties for each completion based on the presence and relevance of Twitter links.
 
@@ -84,9 +86,11 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
             # time.sleep(2)
             completion = response.completion
             twitter_links = self.client.find_twitter_links(completion)
-            if twitter_links and all(self.is_valid_twitter_link(link) for link in twitter_links):
-                valid_links = response.links_content
-                
+            if twitter_links and all(
+                self.is_valid_twitter_link(link) for link in twitter_links
+            ):
+                valid_links = response.completion_links
+
                 # response.tweets = json.dumps(valid_links, indent=4, sort_keys=True)
                 penalty = self.max_penalty * len(valid_links) / len(twitter_links)
                 penalties.append(penalty)

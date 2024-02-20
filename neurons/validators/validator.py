@@ -1,28 +1,30 @@
 import torch
 import wandb
 import asyncio
+import concurrent
 import traceback
 import random
 import copy
 import bittensor as bt
 import template.utils as utils
+import os
+import time
+import sys
 from typing import List
 from template.protocol import IsAlive
-from twitter_validator import TwitterScraperValidator
+from neurons.validators.scraper_validator import ScraperValidator
 from config import add_args, check_config, config
-from weights import init_wandb, update_weights, set_weights
+from weights import init_wandb, set_weights
 from traceback import print_exception
 from base_validator import AbstractNeuron
 from template import QUERY_MINERS
 from template.misc import ttl_get_block
-
 from template.utils import (
-    should_checkpoint,
-    checkpoint,
+    resync_metagraph
 )
 
 
-class neuron(AbstractNeuron):
+class Neuron(AbstractNeuron):
     @classmethod
     def check_config(cls, config: "bt.Config"):
         check_config(cls, config)
@@ -40,13 +42,17 @@ class neuron(AbstractNeuron):
     metagraph: "bt.metagraph"
     dendrite: "bt.dendrite"
 
-    twitter_validator: "TwitterScraperValidator"
+    scraper_validator: "ScraperValidator"
     moving_average_scores: torch.Tensor = None
-    my_uuid: int = None
+    uid: int = None
     shutdown_event: asyncio.Event()
 
+    @property
+    def block(self):
+        return ttl_get_block(self)
+
     def __init__(self):
-        self.config = neuron.config()
+        self.config = Neuron.config()
         self.check_config(self.config)
         bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
         print(self.config)
@@ -56,14 +62,16 @@ class neuron(AbstractNeuron):
 
         init_wandb(self)
 
-        self.twitter_validator = TwitterScraperValidator(neuron=self)
+        self.scraper_validator = ScraperValidator(neuron=self)
         bt.logging.info("initialized_validators")
 
         # Init the event loop.
         self.loop = asyncio.get_event_loop()
         self.step = 0
-        self.steps_passed = 0
-        self.exclude = []
+        # self.steps_passed = 0
+        # self.exclude = []
+        # Check if the miner is registered on the Bittensor network before proceeding further.
+        self.check_registered()
 
         # Init Weights.
         bt.logging.debug("loading", "moving_averaged_scores")
@@ -71,7 +79,17 @@ class neuron(AbstractNeuron):
             self.config.neuron.device
         )
         bt.logging.debug(str(self.moving_averaged_scores))
-        self.prev_block = ttl_get_block(self)
+        # self.prev_block = ttl_get_block(self)
+        self.available_uids = []
+        self.thread_executor = concurrent.futures.ThreadPoolExecutor(
+            thread_name_prefix="asyncio"
+        )
+        # Init sync with the network. Updates the metagraph.
+        self.sync()
+
+
+    async def run_sync_in_async(self, fn):
+        return await self.loop.run_in_executor(self.thread_executor, fn)
 
     def initialize_components(self):
         bt.logging(config=self.config, logging_dir=self.config.full_path)
@@ -83,31 +101,73 @@ class neuron(AbstractNeuron):
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.dendrite = bt.dendrite(wallet=self.wallet)
-        self.my_uuid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
+        self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
         if self.wallet.hotkey.ss58_address not in self.metagraph.hotkeys:
             bt.logging.error(
                 f"Your validator: {self.wallet} is not registered to chain connection: {self.subtensor}. Run btcli register --netuid 18 and try again."
             )
             exit()
 
-    async def check_uid(
-        self, axon, uid, is_only_allowed_miner=False, specified_uids=None
-    ):
+    # async def update_weights_periodically(self):
+    #     while True:
+    #         try:
+    #             if len(self.available_uids) == 0 or torch.all(
+    #                 self.moving_averaged_scores == 0
+    #             ):
+    #                 await asyncio.sleep(10)
+    #                 continue
+
+    #             # await self.update_weights(self.steps_passed)
+    #             await set_weights(self)
+
+    #             # # Resync the network state
+    #             # if should_checkpoint(self):
+    #             #     checkpoint(self)
+
+    #             # self.prev_block = ttl_get_block(self)
+    #             # self.step += 1
+    #         except Exception as e:
+    #             # Log the exception or handle it as needed
+    #             bt.logging.error(
+    #                 f"An error occurred in update_weights_periodically: {e}"
+    #             )
+    #             # Optionally, decide whether to continue or break the loop based on the exception
+    #         finally:
+    #             # Ensure the sleep is in the finally block if you want the loop to always wait,
+    #             # even if an error occurs.
+    #             await asyncio.sleep(self.config.neuron.update_weight_interval)
+
+    async def update_available_uids_periodically(self):
+        while True:
+            start_time = time.time()
+            try:
+                if self.should_sync_metagraph():
+                    resync_metagraph(self)
+
+                # unless it's used elsewhere.
+                self.available_uids = await self.get_available_uids_is_alive()
+                bt.logging.info(
+                    f"Number of available UIDs for periodic update: Amount: {len(self.available_uids)}, UIDs: {self.available_uids}"
+                )
+            except Exception as e:
+                bt.logging.error(
+                    f"update_available_uids_periodically Failed to update available UIDs: {e}"
+                )
+                # Consider whether to continue or break the loop upon certain errors.
+
+            end_time = time.time()
+            execution_time = end_time - start_time
+            bt.logging.info(
+                f"update_available_uids_periodically Execution time for getting available UIDs amount is: {execution_time} seconds"
+            )
+
+            await asyncio.sleep(self.config.neuron.update_available_uids_interval)
+
+    async def check_uid(self, axon, uid):
         """Asynchronously check if a UID is available."""
         try:
-            if specified_uids and uid not in specified_uids:
-                raise Exception(f"Not allowed in Specified Uids")
-
-            if (
-                self.config.neuron.only_allowed_miners
-                and axon.coldkey not in self.config.neuron.only_allowed_miners
-                and is_only_allowed_miner
-                and not specified_uids
-            ):
-                raise Exception(f"Not allowed")
-
             response = await self.dendrite(
-                axon, IsAlive(), deserialize=False, timeout=10
+                axon, IsAlive(), deserialize=False, timeout=15
             )
             if response.is_success:
                 bt.logging.trace(f"UID {uid} is active")
@@ -118,16 +178,12 @@ class neuron(AbstractNeuron):
             bt.logging.trace(f"Checking UID {uid}: {e}\n{traceback.format_exc()}")
             raise e
 
-    async def get_available_uids_is_alive(
-        self, is_only_allowed_miner=False, specified_uids=None
-    ):
+    async def get_available_uids_is_alive(self):
         """Get a dictionary of available UIDs and their axons asynchronously."""
         tasks = {
             uid.item(): self.check_uid(
                 self.metagraph.axons[uid.item()],
                 uid.item(),
-                is_only_allowed_miner,
-                specified_uids,
             )
             for uid in self.metagraph.uids
         }
@@ -142,71 +198,28 @@ class neuron(AbstractNeuron):
 
         return available_uids
 
-    def check_uid_availability(
-        self,
-        metagraph: "bt.metagraph.Metagraph",
-        uid: int,
-        vpermit_tao_limit: int = 4096,
-    ) -> bool:
-        """Check if uid is available. The UID should be available if it is serving and has less than vpermit_tao_limit stake
-        Args:
-            metagraph (:obj: bt.metagraph.Metagraph): Metagraph object
-            uid (int): uid to be checked
-            vpermit_tao_limit (int): Validator permit tao limit
-        Returns:
-            bool: True if uid is available, False otherwise
-        """
-        # Filter non serving axons.
-        if not metagraph.axons[uid].is_serving:
-            return False
-        # Filter validator permit > 1024 stake.
-        if metagraph.validator_permit[uid]:
-            if metagraph.S[uid] > vpermit_tao_limit:
-
-                return False
-        # Available otherwise.
-        return True
-
-    async def get_available_uids(
-        self, k: int = None, exclude: List[int] = None
-    ) -> torch.LongTensor:
-        """Returns k available random uids from the metagraph.
-        Args:
-            k (int): Number of uids to return.
-            exclude (List[int]): List of uids to exclude from the random sampling.
-        Returns:
-            uids (torch.LongTensor): Randomly sampled available uids.
-        Notes:
-            If `k` is larger than the number of available `uids`, set `k` to the number of available `uids`.
-        """
-        candidate_uids = []
-        avail_uids = []
-
-        for uid in range(self.metagraph.n.item()):
-            uid_is_available = self.check_uid_availability(
-                self.metagraph, uid, self.config.neuron.vpermit_tao_limit
-            )
-            uid_is_not_excluded = exclude is None or uid not in exclude
-
-            if uid_is_available:
-                avail_uids.append(uid)
-                if uid_is_not_excluded:
-                    candidate_uids.append(uid)
-
-        # Check if candidate_uids contain enough for querying, if not grab all avaliable uids
-        available_uids = candidate_uids
-        return available_uids
-
     async def get_uids(
         self,
         strategy=QUERY_MINERS.RANDOM,
         is_only_allowed_miner=False,
         specified_uids=None,
     ):
-        # uid_list = await self.get_available_uids()
-        uid_list = await self.get_available_uids_is_alive(
-            is_only_allowed_miner, specified_uids
-        )  # uid_list_is_live =
+        if len(self.available_uids) == 0:
+            bt.logging.info("No available UIDs, attempting to refresh list.")
+            return self.available_uids
+
+        # Filter uid_list based on specified_uids and only_allowed_miners
+        uid_list = [
+            uid
+            for uid in self.available_uids
+            if (not specified_uids or uid in specified_uids)
+            and (
+                not is_only_allowed_miner
+                or self.metagraph.axons[uid].coldkey
+                in self.config.neuron.only_allowed_miners
+            )
+        ]
+
         if strategy == QUERY_MINERS.RANDOM:
             uids = (
                 torch.tensor([random.choice(uid_list)])
@@ -215,7 +228,7 @@ class neuron(AbstractNeuron):
             )
         elif strategy == QUERY_MINERS.ALL:
             uids = torch.tensor(uid_list) if uid_list else torch.tensor([])
-        bt.logging.info("Run uids ---------- ", uids)
+        bt.logging.info(f"Run uids ---------- Amount: {len(uids)} | {uids}")
         # uid_list = list(available_uids.keys())
         return uids.to(self.config.neuron.device)
 
@@ -224,24 +237,21 @@ class neuron(AbstractNeuron):
             if self.config.wandb_on:
                 wandb.log(wandb_data)
 
-            iterations_per_set_weights = 2
-            iterations_until_update = iterations_per_set_weights - (
-                (self.steps_passed + 1) % iterations_per_set_weights
-            )
-            bt.logging.info(
-                f"Updating weights in {iterations_until_update} iterations."
-            )
-
-            if iterations_until_update == 1:
-                set_weights(self)
-
-            self.steps_passed += 1
+            # self.steps_passed += 1
         except Exception as e:
             bt.logging.error(f"Error in update_scores: {e}")
             raise e
 
     def update_moving_averaged_scores(self, uids, rewards):
         try:
+            # Ensure uids is a tensor
+            if not isinstance(uids, torch.Tensor):
+                uids = torch.tensor(uids, dtype=torch.long, device=self.config.neuron.device)
+            
+            # Ensure rewards is also a tensor and on the correct device
+            if not isinstance(rewards, torch.Tensor):
+                rewards = torch.tensor(rewards, device=self.config.neuron.device)
+
             scattered_rewards = self.moving_averaged_scores.scatter(
                 0, uids, rewards
             ).to(self.config.neuron.device)
@@ -264,55 +274,121 @@ class neuron(AbstractNeuron):
 
     async def query_synapse(self, strategy=QUERY_MINERS.RANDOM):
         try:
-            self.metagraph = self.subtensor.metagraph(netuid=self.config.netuid)
-            await self.twitter_validator.query_and_score(strategy)
+            # self.metagraph = self.subtensor.metagraph(netuid=self.config.netuid)
+            await self.scraper_validator.query_and_score(strategy)
         except Exception as e:
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(100)
 
-    def run(self, interval=300, strategy=QUERY_MINERS.RANDOM):
-        bt.logging.info(f"run: interval={interval}; strategy={strategy}")
-        checkpoint(self)
+    async def run_synthetic_queries(self, strategy=QUERY_MINERS.RANDOM):
+        bt.logging.info(f"run synthetic: strategy={strategy}")
+
         try:
-            while True:
-                # Run multiple forwards.
-                async def run_forward():
-                    coroutines = [self.query_synapse(strategy) for _ in range(1)]
-                    await asyncio.gather(*coroutines)
-                    await asyncio.sleep(
-                        interval
-                    )  # This line introduces a five-minute delay
+            async def run_forward():
+                coroutines = [self.query_synapse(strategy) for _ in range(1)]
+                await asyncio.gather(*coroutines)
 
-                self.loop.run_until_complete(run_forward())
+            self.loop.run_until_complete(run_forward())
 
-                # Resync the network state
-                if should_checkpoint(self):
-                    checkpoint(self)
+            self.sync()
 
-                # # Set the weights on chain.
-                # if should_set_weights(self):
-                #     set_weights(self)
-                #     save_state(self)
-                self.prev_block = ttl_get_block(self)
-                self.step += 1
+            self.step += 1
         except Exception as err:
             bt.logging.error("Error in training loop", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
 
-    async def run_syn_qs(self):
-        if self.config.neuron.run_random_miner_syn_qs_interval > 0:
-            await asyncio.sleep(5)
-            self.run(
-                self.config.neuron.run_random_miner_syn_qs_interval, QUERY_MINERS.RANDOM
-            )
+    def sync(self):
+        """
+        Wrapper for synchronizing the state of the network for the given miner or validator.
+        """
+        # Ensure miner or validator hotkey is still registered on the network.
+        self.check_registered()
 
-        if self.config.neuron.run_all_miner_syn_qs_interval > 0:
-            await asyncio.sleep(20)
-            self.run(self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.ALL)
+        if self.should_sync_metagraph():
+            resync_metagraph(self)
+
+        if self.should_set_weights():
+            set_weights(self)
+                
+    def check_registered(self):
+        # --- Check for registration.
+        if not self.subtensor.is_hotkey_registered(
+            netuid=self.config.netuid,
+            hotkey_ss58=self.wallet.hotkey.ss58_address,
+        ):
+            bt.logging.error(
+                f"Wallet: {self.wallet} is not registered on netuid {self.config.netuid}."
+                f" Please register the hotkey using `btcli subnets register` before trying again"
+            )
+            sys.exit()
+
+    def should_sync_metagraph(self):
+        """
+        Check if enough epoch blocks have elapsed since the last checkpoint to sync.
+        """
+        return (
+            self.block - self.metagraph.last_update[self.uid]
+        ) > self.config.neuron.checkpoint_block_length
+
+    def should_set_weights(self) -> bool:
+        # Don't set weights on initialization.
+        if self.step == 0:
+            return False
+
+        # Check if enough epoch blocks have elapsed since the last epoch.
+        if self.config.neuron.disable_set_weights:
+            return False
+
+        # Define appropriate logic for when set weights.
+        return (
+            self.block - self.metagraph.last_update[self.uid]
+        ) > self.config.neuron.checkpoint_block_length
+
+    async def run(self):
+        await asyncio.sleep(10)
+        self.sync()
+        self.loop.create_task(self.update_available_uids_periodically())
+        bt.logging.info(f"Validator starting at block: {self.block}")
+
+        try:
+            async def run_with_interval(interval, strategy):
+                while True:
+                    if not self.available_uids:
+                        bt.logging.info("No available UIDs, sleeping for 10 seconds.")
+                        await asyncio.sleep(10)
+                        continue
+                    asyncio.create_task(self.run_synthetic_queries(strategy))
+                    await asyncio.sleep(interval)  # Wait for 1800 seconds (30 minutes)
+
+            # self.loop.create_task(self.update_weights_periodically())
+            if self.config.neuron.run_random_miner_syn_qs_interval > 0:
+                self.loop.create_task(
+                    run_with_interval(
+                        self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.RANDOM
+                    )
+                )
+
+            if self.config.neuron.run_all_miner_syn_qs_interval > 0:
+                self.loop.create_task(
+                    run_with_interval(
+                        self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.ALL
+                    )
+                )
+                # If someone intentionally stops the validator, it'll safely terminate operations.
+        except KeyboardInterrupt:
+            self.axon.stop()
+            bt.logging.success("Validator killed by keyboard interrupt.")
+            sys.exit()
+
+        # In case of unforeseen errors, the validator will log the error and quit
+        except Exception as err:
+            bt.logging.error("Error during validation", str(err))
+            bt.logging.debug(print_exception(type(err), err, err.__traceback__))
+            self.should_exit = True        
 
 
 def main():
-    asyncio.run(neuron().run_syn_qs())
+    asyncio.run(Neuron().run())
 
 
 if __name__ == "__main__":

@@ -25,16 +25,17 @@ import template
 import multiprocessing
 import time
 import torch
-   
+
+
 def init_wandb(self):
     try:
         if self.config.wandb_on:
-            run_name = f'validator-{self.my_uuid}-{template.__version__}'
-            self.config.uid = self.my_uuid
+            run_name = f"validator-{self.uid}-{template.__version__}"
+            self.config.uid = self.uid
             self.config.hotkey = self.wallet.hotkey.ss58_address
             self.config.run_name = run_name
             self.config.version = template.__version__
-            self.config.type = 'validator'
+            self.config.type = "validator"
 
             # Initialize the wandb run for the single project
             run = wandb.init(
@@ -43,20 +44,29 @@ def init_wandb(self):
                 entity=template.ENTITY,
                 config=self.config,
                 dir=self.config.full_path,
-                reinit=True
+                reinit=True,
             )
 
             # Sign the run to ensure it's from the correct hotkey
             signature = self.wallet.hotkey.sign(run.id.encode()).hex()
-            self.config.signature = signature 
+            self.config.signature = signature
             wandb.config.update(self.config, allow_val_change=True)
 
-            bt.logging.success(f"Started wandb run for project '{template.PROJECT_NAME}'")
+            bt.logging.success(
+                f"Started wandb run for project '{template.PROJECT_NAME}'"
+            )
     except Exception as e:
         bt.logging.error(f"Error in init_wandb: {e}")
         raise
 
-def set_weights_process(wallet, netuid, uids, weights, config, version_key):
+class RetryException(Exception):
+    pass
+
+def on_retry(exception, tries_remaining, delay):
+    attempt = 6 - tries_remaining  # Assuming 5 total tries
+    bt.logging.info(f"Retry attempt {attempt}, will retry in {delay} seconds...")
+
+def set_weights_subtensor(wallet, netuid, uids, weights, config, version_key, ttl = 100):
     subtensor = bt.subtensor(config=config)
     success = subtensor.set_weights(
         wallet=wallet,
@@ -66,14 +76,58 @@ def set_weights_process(wallet, netuid, uids, weights, config, version_key):
         wait_for_inclusion=False,
         wait_for_finalization=False,
         version_key=version_key,
+        ttl=ttl
     )
+
+    if not success:
+        raise RetryException("Failed to set weights, retrying...")
 
     return success
 
+def set_weights_with_retry(self, processed_weight_uids, processed_weights):
+    max_retries = 5  # Maximum number of retries
+    retry_delay = 45  # Delay between retries in seconds
+    ttl = 100  # Time-to-live for each process attempt in seconds
+    success = False
+
+    for attempt in range(max_retries):
+        process = multiprocessing.Process(
+            target=set_weights_subtensor,
+            args=(
+                self.wallet,
+                self.config.netuid,
+                processed_weight_uids,
+                processed_weights,
+                self.config,
+                template.__weights_version__,
+                ttl
+            ),
+        )
+        process.start()
+        process.join(timeout=ttl)
+
+        if not process.is_alive():
+            bt.logging.success("Completed set weights action successfully.")
+            success = True
+            break  # Exit the retry loop on success
+        else:
+            process.terminate()  # Ensure the process is terminated before retrying
+            process.join()  # Clean up the terminated process
+            bt.logging.info(f"Attempt {attempt + 1} failed, retrying in {retry_delay} seconds...")
+            time.sleep(retry_delay)  # Wait for the specified 4delay before retrying
+
+    if not success:
+        # If the loop completes without setting success to True, all retries have failed
+        bt.logging.error("Failed to complete set weights action after multiple attempts.")
+        return False
+
+    return True
+
+
 def set_weights(self):
     if torch.all(self.moving_averaged_scores == 0):
+        bt.logging.info("All moving averaged scores are zero, skipping weight setting.")
         return
-
     # Calculate the average reward for each uid across non-zero values.
     # Replace any NaN values with 0.
     raw_weights = torch.nn.functional.normalize(self.moving_averaged_scores, p=1, dim=0)
@@ -93,46 +147,38 @@ def set_weights(self):
         metagraph=self.metagraph,
     )
 
-    weights_dict = {str(uid.item()): weight.item() for uid, weight in zip(processed_weight_uids, processed_weights)}
+    weights_dict = {
+        str(uid.item()): weight.item()
+        for uid, weight in zip(processed_weight_uids, processed_weights)
+    }
 
     # Log the weights dictionary
     bt.logging.info(f"Attempting to set weights action for {weights_dict}")
 
-    # Start the process with a timeout
-    ttl = 60  # Time-to-live in seconds
-    process = multiprocessing.Process(
-        target=set_weights_process,
-        args=(
-            self.wallet,
-            self.config.netuid,
-            processed_weight_uids,
-            processed_weights,
-            self.config,
-            template.__weights_version__,
-        ),
-    )
-    process.start()
-    process.join(timeout=ttl)
+    bt.logging.info(f"Attempting to set weights details begins: ================")
+    uids_weights = [
+        f"UID - {uid.item()} = Weight - {weight.item()}"
+        for uid, weight in zip(processed_weight_uids, processed_weights)
+    ]
+    for i in range(0, len(uids_weights), 4):
+        bt.logging.info(" | ".join(uids_weights[i : i + 4]))
+    bt.logging.info(f"Attempting to set weights details ends: ================")
 
-    if process.is_alive():
-        process.terminate()
-        process.join()
-        bt.logging.error("Failed to complete set weights action after multiple attempts.")
-        return False
+    # Call the new method to handle the process with retry logic
+    success = set_weights_with_retry(self, processed_weight_uids, processed_weights)
+    return success
 
-    bt.logging.success("Completed set weights action successfully.")
-    return True
 
 
 def update_weights(self, total_scores, steps_passed):
     try:
-        """ Update weights based on total scores, using min-max normalization for display"""
+        """Update weights based on total scores, using min-max normalization for display"""
         avg_scores = total_scores / (steps_passed + 1)
 
         # Normalize avg_scores to a range of 0 to 1
         min_score = torch.min(avg_scores)
         max_score = torch.max(avg_scores)
-        
+
         if max_score - min_score != 0:
             normalized_scores = (avg_scores - min_score) / (max_score - min_score)
         else:

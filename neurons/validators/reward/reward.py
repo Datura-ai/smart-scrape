@@ -56,7 +56,7 @@ class BaseRewardModel:
 
     @abstractmethod
     def get_rewards(
-        self, prompt: str, responses: List[bt.Synapse], name: str
+        self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]: ...
 
     def __init__(self) -> None:
@@ -79,7 +79,7 @@ class BaseRewardModel:
         successful_completions_indices: List[int] = [
             idx
             for idx, resp in enumerate(responses)
-            if resp.dendrite.status_code == 200 and resp.links_content
+            if resp.dendrite.status_code == 200 and resp.completion_links
         ]
 
         # Get all completions from responding calls.
@@ -91,14 +91,14 @@ class BaseRewardModel:
 
     def get_successful_completion(self, response: bt.Synapse):
         # Check if the response is successful.
-        if response.dendrite.status_code == 200 and response.links_content:
+        if response.dendrite.status_code == 200 and response.completion_links:
             # Get the completion from the successful response.
             successful_completion = response.completion.strip()
             return successful_completion
         return None
 
     def apply(
-        self, prompt: str, responses: List[bt.Synapse], name: str
+        self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]:
         """Applies the reward model across each call. Unsuccessful responses are zeroed."""
         # Get indices of correctly responding calls.
@@ -106,12 +106,12 @@ class BaseRewardModel:
         successful_completions_indices: List[int] = [
             idx
             for idx, resp in enumerate(responses)
-            if resp.dendrite.status_code == 200 and resp.links_content
+            if resp.dendrite.status_code == 200 and resp.completion_links
         ]
 
         # Reward each completion.
         reward_events = BaseRewardEvent.parse_reward_events(
-            self.get_rewards(prompt, responses, name)
+            self.get_rewards(prompt, responses, name, uids)
         )
         successful_rewards = reward_events
         successful_rewards = torch.tensor(

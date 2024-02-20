@@ -1,7 +1,7 @@
 import unittest
 from neurons.validators.penalty.link_validation import LinkValidationPenaltyModel
 from neurons.validators.utils.tasks import TwitterTask
-from template.protocol import TwitterScraperStreaming
+from template.protocol import ScraperStreamingSynapse
 
 completion1 = f"""
 Last year's recipe trends from verified accounts highlighted veganism, innovative food products, and sustainable agriculture. Key insights are supported by these specific Twitter links:
@@ -26,6 +26,7 @@ In 2023, one of the most influential political commentators on Twitter was John 
 However, the answer lacks broader context about his influence compared to other commentators.
 """
 
+
 class LinkValidationPenaltyModelTestCase(unittest.TestCase):
     """
     This class contains unit tests for the LinkValidationPenaltyModel class.
@@ -40,7 +41,10 @@ class LinkValidationPenaltyModelTestCase(unittest.TestCase):
         Test if the find_twitter_links method correctly identifies Twitter links in a text.
         """
         text_with_links = "Check out this tweet https://twitter.com/user/status/123 and this one https://x.com/user/status/456"
-        expected_links = ["https://twitter.com/user/status/123", "https://x.com/user/status/456"]
+        expected_links = [
+            "https://twitter.com/user/status/123",
+            "https://x.com/user/status/456",
+        ]
         found_links = self.validator.find_twitter_links(text_with_links)
         self.assertEqual(found_links, expected_links)
 
@@ -66,38 +70,38 @@ class LinkValidationPenaltyModelTestCase(unittest.TestCase):
         """
         Test if the calculate_penalties method returns correct penalties for given responses.
         """
-        task = TwitterTask(base_text="Some base text for relevance", 
-                    task_name="test",
-                    task_type="test",
-                    criteria=[]
-                    )
+        task = TwitterTask(
+            base_text="Some base text for relevance",
+            task_name="test",
+            task_type="test",
+            criteria=[],
+        )
         responses = [
-            TwitterScraperStreaming(completion=completion1, 
-                                    messages='', 
-                                    model='', 
-                                    seed=1,
-                                    links_content=[
-                                        'https://twitter.com/XtalksFood/status/1743286252969828589',
-                                        'https://twitter.com/XtalksFood/status/1743286252969828589'
-                                    ]),
-            TwitterScraperStreaming(completion=completion2, 
-                                    messages='', 
-                                    model='', 
-                                    seed=1),
-            TwitterScraperStreaming(completion="This is a tweet with no link", 
-                                    messages='', 
-                                    model='', 
-                                    seed=1),
-            TwitterScraperStreaming(completion=completion3, 
-                                    messages='', 
-                                    model='', 
-                                    seed=1),
-
+            ScraperStreamingSynapse(
+                completion=completion1,
+                messages="",
+                model="",
+                seed=1,
+                completion_links=[
+                    "https://twitter.com/XtalksFood/status/1743286252969828589",
+                    "https://twitter.com/XtalksFood/status/1743286252969828589",
+                ],
+            ),
+            ScraperStreamingSynapse(
+                completion=completion2, messages="", model="", seed=1
+            ),
+            ScraperStreamingSynapse(
+                completion="This is a tweet with no link", messages="", model="", seed=1
+            ),
+            ScraperStreamingSynapse(
+                completion=completion3, messages="", model="", seed=1
+            ),
         ]
         expected_penalties = [self.max_penalty, 0.0, 0.0, 0.5]
         penalties = self.validator.calculate_penalties(task, responses)
         for penalty, expected_penalty in zip(penalties, expected_penalties):
             self.assertEqual(penalty.item(), expected_penalty)
+
 
 if __name__ == "__main__":
     unittest.main()
