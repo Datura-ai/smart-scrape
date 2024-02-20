@@ -252,18 +252,24 @@ class Neuron(AbstractNeuron):
         try:
 
             async def run_forward():
+                start_time = time.time()
                 bt.logging.info("Gathering coroutines for query_synapse")
                 coroutines = [self.query_synapse(strategy) for _ in range(1)]
                 await asyncio.gather(*coroutines)
-                bt.logging.info("Completed gathering coroutines for query_synapse")
+                end_time = time.time()
+                bt.logging.info(f"Completed gathering coroutines for query_synapse in {end_time - start_time:.2f} seconds")
 
             bt.logging.info("Running coroutines with run_until_complete")
             self.loop.run_until_complete(run_forward())
             bt.logging.info("Completed running coroutines with run_until_complete")
 
+            sync_start_time = time.time()
             bt.logging.info("Calling sync method")
             self.sync()
             bt.logging.info("Completed calling sync method")
+            
+            sync_end_time = time.time()
+            bt.logging.info(f"Sync method execution time: {sync_end_time - sync_start_time:.2f} seconds")
 
             self.step += 1
             bt.logging.info(f"Incremented step to {self.step}")
@@ -285,8 +291,11 @@ class Neuron(AbstractNeuron):
             bt.logging.info("No need to sync metagraph at this moment.")
 
         if self.should_set_weights():
+            weight_set_start_time = time.time()
             bt.logging.info("Setting weights as per condition.")
             set_weights(self)
+            weight_set_end_time = time.time()
+            bt.logging.info(f"Weight setting execution time: {weight_set_end_time - weight_set_start_time:.2f} seconds")
         else:
             bt.logging.info("No need to set weights at this moment.")
 
@@ -322,9 +331,9 @@ class Neuron(AbstractNeuron):
             return False
 
         # Define appropriate logic for when set weights.
-        should_set = (
-            self.block - self.metagraph.last_update[self.uid]
-        ) > self.config.neuron.checkpoint_block_length
+        difference = self.block - self.metagraph.last_update[self.uid]
+        print(f"Current block: {self.block}, Last update for UID {self.uid}: {self.metagraph.last_update[self.uid]}, Difference: {difference}")
+        should_set = difference > self.config.neuron.checkpoint_block_length
         bt.logging.info(f"Should set weights: {should_set}")
         return should_set
 
