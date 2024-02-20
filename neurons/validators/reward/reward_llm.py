@@ -13,6 +13,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from neurons.validators.utils.prompts import (
     extract_score_and_explanation,
 )
+from neurons.validators.utils.prompts import ScoringPrompt
 
 from enum import Enum
 import torch
@@ -36,6 +37,7 @@ class RewardLLM:
         self.model = None
         self.device = None
         self.pipe = None
+        self.scoring_prompt = ScoringPrompt()
 
     def init_tokenizer(self, device, model_name):
         # https://huggingface.co/VMware/open-llama-7b-open-instruct
@@ -233,7 +235,6 @@ class RewardLLM:
         else:
             return self.get_score_by_llm(messages=messages)
     
-
     def llm_processing(self, messages):
         # Initialize score_responses as an empty dictionary to hold the scoring results
         score_responses = {}
@@ -256,16 +257,16 @@ class RewardLLM:
                 score_responses.update(current_score_responses)
 
                 # Filter messages that still need scoring (i.e., messages that did not receive a score)
-                # messages = [
-                #     message
-                #     for (key, score_text), message in zip(current_score_responses.items(), messages)
-                #     if not any(char.isdigit() for char in score_text)
-                # ]
                 messages = [
                     message
                     for (key, score_text), message in zip(current_score_responses.items(), messages)
-                    if not any(char.isdigit() for char in score_text) or extract_score_and_explanation(score_text) == 0
+                    if not any(char.isdigit() for char in score_text)
                 ]
+                # messages = [
+                #     message
+                #     for (key, score_text), message in zip(current_score_responses.items(), messages)
+                #     if not any(char.isdigit() for char in score_text) or self.scoring_prompt.extract_score(score_text) == 0
+                # ]
                 # If all messages have been scored, break out of the loop
                 if not messages:
                     break

@@ -143,6 +143,11 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
            
             for (index, response), uid_tensor in zip(enumerate(responses), uids):
                 uid = uid_tensor.item()
+                score = scores.get(str(index), 0)
+                score_explain = score_text.get(str(index), "")
+                reward_event = BaseRewardEvent()
+                reward_event.reward = score
+                reward_events.append(reward_event)
                 if score == 0:
                     bt.logging.info(
                         f"==================================Summary Relevance scoring Explanation Begins=================================="
@@ -150,14 +155,6 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     bt.logging.info(
                         f"PROMPT: {prompt}"
                     )
-                    bt.logging.info(
-                        f"----------------------------------------------------------------------------------------------"
-                    )
-                    score = scores.get(str(index), 0)
-                    score_explain = score_text.get(str(index), "")
-                    reward_event = BaseRewardEvent()
-                    reward_event.reward = score
-                    reward_events.append(reward_event)
                     bt.logging.info(
                         f"UID: {uid} | Score: {score:.2f} | Explanation: {score_explain.strip()}"
                     )
