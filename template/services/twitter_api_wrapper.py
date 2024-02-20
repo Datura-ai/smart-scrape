@@ -26,61 +26,64 @@ twitter_api_query_example = {
     # 'since_id': "Returns results with a Tweet ID greater than (that is, more recent than) the specified ID. The ID specified is exclusive and responses will not include it.",
     # 'unit_id': "Returns results with a Tweet ID less than (that is, older than) the specified ID. The ID specified is exclusive and responses will not include it."s
 }
-query_examples = """
-    pepsi OR cola OR "coca cola"
-    ("Twitter API" OR #v2) -"recent search"
-    thankunext #fanart OR @arianagrande
-    to:twitterdev OR to:twitterapi -to:twitter
-    from:TwitterDev url:"https://t.co"
-    retweets_of:twitterdev OR retweets_of:twitterapi
-    place_country:US OR place_country:MX OR place_country:CA
-    data @twitterdev -is:retweet
-    "mobile games" -is:nullcast
-    from:twitterdev -has:hashtags
-    from:twitterdev announcement has:links
-    #meme has:images
-    : #icebucketchallenge has:video_link
-    recommend #paris has:geo -bakery
-    recommend #paris lang:en
-    (kittens OR puppies) has:media
-    #nowplaying has:mentions
-    #stonks has:cashtags
-    #nowplaying is:verified
-    place:"new york city" OR place:seattle OR place:fd70c22040963ac7
-    conversation_id:1334987486343299072 (from:twitterdev OR from:twitterapi)
-    context:domain_id.entity_id
-    has:media
-    has:links OR is:retweet
-    "twitter data" has:mentions (has:media OR has:links)
-    (grumpy cat) OR (#meme has:images)
-    skiing -snow -day -noschool
-    (happy OR happiness) place_country:GB -birthday -is:retweet
-    (happy OR happiness) lang:en -birthday -is:retweet
-    (happy OR happiness OR excited OR elated) lang:en -birthday -is:retweet -holidays
-    has:geo (from:NWSNHC OR from:NHC_Atlantic OR from:NWSHouston OR from:NWSSanAntonio OR from:USGS_TexasRain OR from:USGS_TexasFlood OR from:JeffLindner1) -is:retweet
-    ("artificial intelligence" OR "machine learning" OR "AI applications" OR "data science") (#AI OR #ArtificialIntelligence OR #MachineLearning OR #AIApplications OR #DataScience)
-"""
+
+# - end_time must be on or after start_date
+# - Don't use "since:" and "until:" for date filter
+query_examples = [
+    '"pepsi OR cola OR "coca cola"',
+    '("Twitter API" OR #v2) -"recent search"',
+    'thankunext #fanart OR @arianagrande',
+    'to:twitterdev OR to:twitterapi -to:twitter',
+    'from:TwitterDev url:"https://t.co"',
+    'retweets_of:twitterdev OR retweets_of:twitterapi',
+    'place_country:US OR place_country:MX OR place_country:CA',
+    'data @twitterdev -is:retweet',
+    'mobile games" -is:nullcast',
+    'from:twitterdev -has:hashtags',
+    'from:twitterdev announcement has:links',
+    '#meme has:images',
+    'recommend #paris has:geo -bakery',
+    'recommend #paris lang:en',
+    '(kittens OR puppies) has:media',
+    '#nowplaying has:mentions',
+    '#stonks has:cashtags',
+    '#nowplaying is:verified',
+    'place:"new york city" OR place:seattle OR place:fd70c22040963ac7',
+    'conversation_id:1334987486343299072 (from:twitterdev OR from:twitterapi)',
+    'context:domain_id.entity_id',
+    'has:media',
+    'has:links OR is:retweet',
+    'twitter data" has:mentions (has:media OR has:links)',
+    '(grumpy cat) OR (#meme has:images)',
+    'skiing -snow -day -noschool',
+    '(happy OR happiness) place_country:GB -birthday -is:retweet',
+    '(happy OR happiness) lang:en -birthday -is:retweet',
+    '(happy OR happiness OR excited OR elated) lang:en -birthday -is:retweet -holidays',
+    'has:geo (from:NWSNHC OR from:NHC_Atlantic OR from:NWSHouston OR from:NWSSanAntonio OR from:USGS_TexasRain OR from:USGS_TexasFlood OR from:JeffLindner1) -is:retweet',
+    '("artificial intelligence" OR "machine learning" OR "AI applications" OR "data science") (#AI OR #ArtificialIntelligence OR #MachineLearning OR #AIApplications OR #DataScience)',
+]
+
 bad_query_examples = f"""
     (horrible OR worst OR sucks OR bad OR disappointing) (place_country:US OR place_country:MX OR place_country:CA
-    # There were errors processing your request: missing EOF at ')' (at position 51)
+    #Explanation: There were errors processing your request: missing EOF at ')' (at position 51)
 
     [(OpenAI OR GPT-3) (#OpenAI OR #AI)]
-    # There were errors processing your request: no viable alternative at input '[' (at position 1).
+    #Explanation: There were errors processing your request: no viable alternative at input '[' (at position 1).
 
     has:polls
-    # There were errors processing your request: is/has/lang cannot be used as a standalone operator (at position 1), Reference to invalid operator 'has:polls'. 
+    #Explanation: There were errors processing your request: is/has/lang cannot be used as a standalone operator (at position 1), Reference to invalid operator 'has:polls'. 
 
     is:polls
-    # There were errors processing your request: is/has/lang cannot be used as a standalone operator (at position 1), Reference to invalid operator 'is:polls'.
+    #Explanation: There were errors processing your request: is/has/lang cannot be used as a standalone operator (at position 1), Reference to invalid operator 'is:polls'.
 
     (humorous AND (film OR movies OR cinema OR "film industry" OR directors)) -is:retweet lang:en
-    # There were errors processing your request: Ambiguous use of and as a keyword. Use a space to logically join two clauses, or \"and\" to find occurrences of and in text (at position 11)
+    #Explanation: There were errors processing your request: Ambiguous use of and as a keyword. Use a space to logically join two clauses, or \"and\" to find occurrences of and in text (at position 11)
 
     (pepsi OR cola OR 'coca cola')
-    # There were errors processing your request: no viable alternative at character ''' (at position 19)
+    #Explanation: There were errors processing your request: no viable alternative at character ''' (at position 19)
     
     (artificial intelligence OR machine learning OR 'AI applications' OR 'data science') (#AI OR #ArtificialIntelligence OR #MachineLearning OR #AIApplications OR #DataScience)
-    #There were errors processing your request: no viable alternative at character ''' (at position 49), no viable alternative at character ''' (at position 70)
+    #Explanation: There were errors processing your request: no viable alternative at character ''' (at position 49), no viable alternative at character ''' (at position 70)
 """
 
 # - media.fields allowed values: "duration_ms,height,media_key,preview_image_url,type,url,width"
@@ -126,29 +129,30 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
 
         Twitter API:
         1. Params: "{twitter_api_query_example}"
-        2. Params.query correct examples: 
+
+        2. api_params.query correct examples: 
         <CORRECT_EXAMPLES>
         {query_examples}
         </CORRECT_EXAMPLES>
 
-        3. Params.query bad examples:
+        3. api_params.query bad examples:
         <BAD_QUERY_EXAMPES>
            {bad_query_examples}
         </BAD_QUERY_EXAMPES>
-        4. API Params rules:
-            - Enclose phrases consisting of two or more words in double quotes (e.g., "Coca Cola"). Do not use single quotes.
-            - Don't use "since:" and "until:" for date filter
-            - end_time must be on or after start_date
-            - use lang filter in query, and filter based on user's language, default lang.en
+
+        4. api_params fields rulesplink:
             - media.fields allowed values: "preview_image_url,type,url,width"
-            - max_results only between 10 - 100
+            - max_results set always 10
             - user.fields only allowed: "created_at,description,id,location,name,profile_image_url,url,username,verified"
             - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text"
-            - - "expansions": "author_id" include it always
-            - "has:" options include "hashtags", "links", "mentions", "media", "images", "videos", "geo", "cashtags", i.e. has:hashtags
+            - "expansions": "author_id" include it always
+        5. api_params.query rules:
+            - Enclose phrases consisting of two or more words in double quotes (e.g., "Coca Cola"). Do not use single quotes.
+            - use lang filter in query, and filter based on user's language, default lang.en
+            - has: operator only include "hashtags", "links", "mentions", "media", "images", "videos", "geo", "cashtags", i.e. has:hashtags
+            - Don't use has:polls
             - "is:" options include "retweet", "nullcast", "verified", i.e. is:retweet
             - To construct effective queries, combine search terms using spaces for an implicit 'AND' relationship. Use 'OR' to expand your search to include various terms, and group complex combinations with parentheses. Avoid using 'AND' explicitly. Instead, rely on spacing and grouping to define your search logic. For exclusions, use the '-' operator.
-            - Construct queries by combining search terms with spaces for an implicit 'AND' relationship. Use 'OR' to include various terms, and group complex combinations with parentheses. Avoid using 'AND' explicitly. Use '-' for exclusions.
 
         Output example:
         {{
@@ -365,7 +369,9 @@ class TwitterAPIClient:
             return result_json, prompt_analysis
         except Exception as e:
             bt.logging.error(f"analyse_prompt_and_fetch_tweets, {e}")
-            raise e
+            return {
+                "meta" : {"result_count": 0}
+            }, prompt_analysis
 
     async def generate_and_analyze_query(self, prompt):
         query = await self.generate_query_params_from_prompt(prompt)
@@ -387,15 +393,27 @@ class TwitterAPIClient:
     async def retry_with_fixed_query(
         self, prompt, old_query, error=None, is_accuracy=True
     ):
-        new_query = await self.fix_twitter_query(
-            prompt=prompt, query=old_query, error=error, is_accuracy=is_accuracy
-        )
-        prompt_analysis = TwitterPromptAnalysisResult()
-        prompt_analysis.fill(new_query)
-        self.set_max_results(prompt_analysis.api_params)
-        result = self.get_recent_tweets(prompt_analysis.api_params)
-        return result, prompt_analysis
-
+        retry_attempts = 3
+        for attempt in range(retry_attempts):
+            try:
+                # Pass the error parameter to self.fix_twitter_query to handle the error
+                new_query = await self.fix_twitter_query(
+                    prompt=prompt, query=old_query, error=error, is_accuracy=is_accuracy
+                )
+                prompt_analysis = TwitterPromptAnalysisResult()
+                prompt_analysis.fill(new_query)
+                self.set_max_results(prompt_analysis.api_params)
+                result = self.get_recent_tweets(prompt_analysis.api_params)
+                return result, prompt_analysis
+            except Exception as e:
+                bt.logging.error(f"retry_with_fixed_query Attempt {attempt + 1} failed with error: {e}")
+                # Update the error variable with the current exception for the next retry attempt
+                error = e
+                old_query = new_query
+                if attempt == retry_attempts - 1:
+                    raise
+                else:
+                    bt.logging.info(f"retry_with_fixed_query Retrying... Attempt {attempt + 2}")
     @staticmethod
     def extract_tweet_id(url: str) -> str:
         """

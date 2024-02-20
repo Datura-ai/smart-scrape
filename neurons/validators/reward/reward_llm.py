@@ -181,7 +181,7 @@ class RewardLLM:
 
                     # Extract score from generated text.
                     score_text = extract_score_and_explanation(generated_text)
-                    bt.logging.info(f"Score text: {score_text}")
+                    # bt.logging.info(f"Score text: {score_text}")
                     result[key] = score_text
 
             total_duration = (
@@ -208,7 +208,7 @@ class RewardLLM:
 
                 # Extract score from generated text.
                 score_text = extract_score_and_explanation(generated_text)
-                bt.logging.info(f"Score text: {score_text}")
+                # bt.logging.info(f"Score text: {score_text}")
                 result[key] = score_text
 
             total_duration = (
