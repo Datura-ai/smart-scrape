@@ -115,8 +115,8 @@ def extract_score_and_explanation(generated_text):
 
 summary_relevance_scoring_template = """
 Evaluate the correctness, relevance, and depth of an answer given a context and question, focusing on the inclusion of Twitter links as supporting evidence. 
-Scores range from 0 to 10:
-- 0 for answers completely unrelated or incorrect, especially those not addressing the question's topic.
+Scores range from 1 to 10:
+- 1 for answers completely unrelated or incorrect, especially those not addressing the question's topic.
 - 2 for answers relevant to the question but lacking any Twitter links as evidence.
 - 3-9 for answers that vary in correctness, relevance, and the inclusion of Twitter links, with higher scores reflecting better quality and more relevant evidence.
 - 10 for answers that are not only accurate and relevant but also well-supported by Twitter links, fully addressing the question's demands.
