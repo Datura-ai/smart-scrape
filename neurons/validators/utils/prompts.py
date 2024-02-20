@@ -113,33 +113,6 @@ def extract_score_and_explanation(generated_text):
     return result
 
 
-link_content_relevance_template = """
-Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the level of relevance the tweet content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
-
-Scores can be:
-- 0: The tweet content does not mention any of the keywords or topics related to the question, indicating no relevance.
-- 5: The tweet content mentions at least one keyword or topic related to the question but does not fully engage with the question's core topics or only does so tangentially.
-- 10: The tweet content is highly relevant, mentioning multiple keywords or topics related to the question and engaging with the core topics in a meaningful way.
-
-Instructions for Scoring:
-1. Identify keywords or topics from the question that are essential for the answer.
-2. Evaluate the tweet content to determine its level of engagement with these keywords or topics.
-3. Assign a score based on the criteria above.
-
-<Question>
-{}
-</Question>
-
-<Tweet Content>
-{}
-</Tweet Content>
-
-Output:
-Generate Score number (0, 5, or 10) based on relevance:
-----
-<Score>
-"""
-
 summary_relevance_scoring_template = """
 Evaluate the correctness, relevance, and depth of an answer given a context and question, focusing on the inclusion of Twitter links as supporting evidence. 
 Scores range from 0 to 10:
@@ -149,11 +122,11 @@ Scores range from 0 to 10:
 - 10 for answers that are not only accurate and relevant but also well-supported by Twitter links, fully addressing the question's demands.
 
 Score Examples:
-- Assign a score of 0 if Answer discusses a completely different topic without any relation to the question.
-- Assign a score of 2 if Answer is on topic but does not provide any Twitter links to support its statements.
-- Assign a score of 6 if Provides a partially correct response with some Twitter links, but lacks comprehensive coverage or depth on the topic.
-- Assign a score of 3-9 if Offers a thorough answer with relevant Twitter links but misses minor details or broader implications.
-- Assign a score of 10 if Fully satisfies the question with accurate, relevant information and substantial evidence from Twitter links.
+- Score 0: Answer discusses a completely different topic without any relation to the question.
+- Score 2: Answer is on topic but does not provide any Twitter links to support its statements.
+- Score 6: Provides a partially correct response with some Twitter links, but lacks comprehensive coverage or depth on the topic.
+- Score 8: Offers a thorough answer with relevant Twitter links but misses minor details or broader implications.
+- Score 10: Fully satisfies the question with accurate, relevant information and substantial evidence from Twitter links.
 
 Additional Scoring Criteria:
 - Accuracy and relevance to the question.
@@ -173,6 +146,7 @@ Generate Score number and explain with one sentence why assigned that score:
 ----
 <Score>
 """
+
 
 
 link_content_relevance_template = """
@@ -201,30 +175,3 @@ Generate Score number and explain with one sentence why assigned that score:
 ----
 <Score>
 """
-
-
-# link_content_relevance_template = """
-# Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on whether the tweet content mentions at least one keyword or topic related to the question.
-
-# Scores are binary:
-# - 0: The tweet content does not mention any of the keywords or topics related to the question.
-# - 1: The tweet content mentions at least one keyword or topic related to the question.
-
-# Instructions for Scoring:
-# 1. Identify keywords or topics from the question that are essential for the answer.
-# 2. Check if the tweet content includes any of these keywords or topics.
-# 3. Assign a score based on the criteria above.
-
-# <Question>
-# {}
-# </Question>
-
-# <Tweet Content>
-# {}
-# </Tweet Content>
-
-# Output:
-# Generate Score number (0 or 1) based on relevance:
-# ----
-# <Score>
-# """
