@@ -143,8 +143,8 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - media.fields allowed values: "preview_image_url,type,url,width"
             - max_results only between 10 - 100
             - user.fields only allowed: "created_at,description,id,location,name,profile_image_url,url,username,verified"
-            - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text"
-            - - "expansions": "author_id" include it always
+            - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text,entities"
+            - - "expansions": "author_id", "entities.mentions.username" include it always
             - "has:" options include "hashtags", "links", "mentions", "media", "images", "videos", "geo", "cashtags", i.e. has:hashtags
             - "is:" options include "retweet", "nullcast", "verified", i.e. is:retweet
             - To construct effective queries, combine search terms using spaces for an implicit 'AND' relationship. Use 'OR' to expand your search to include various terms, and group complex combinations with parentheses. Avoid using 'AND' explicitly. Instead, rely on spacing and grouping to define your search logic. For exclusions, use the '-' operator.
@@ -160,7 +160,7 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
                 "tweet.fields": "all important fields needed to answer user's prompt",
                 "user.fields": "id,created_at,username,name",
                 "max_results": "10".
-                "expansions": "author_id"
+                "expansions": "author_id,entities.mentions.username"
             }}
         }}"
     """
