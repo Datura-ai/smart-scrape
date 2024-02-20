@@ -66,9 +66,6 @@ class Neuron(AbstractNeuron):
         # Init the event loop.
         self.loop = asyncio.get_event_loop()
         self.step = 0
-        # self.steps_passed = 0
-        # self.exclude = []
-        # Check if the miner is registered on the Bittensor network before proceeding further.
         self.check_registered()
 
         # Init Weights.
@@ -77,7 +74,6 @@ class Neuron(AbstractNeuron):
             self.config.neuron.device
         )
         bt.logging.debug(str(self.moving_averaged_scores))
-        # self.prev_block = ttl_get_block(self)
         self.available_uids = []
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(
             thread_name_prefix="asyncio"
@@ -105,41 +101,12 @@ class Neuron(AbstractNeuron):
             )
             exit()
 
-    # async def update_weights_periodically(self):
-    #     while True:
-    #         try:
-    #             if len(self.available_uids) == 0 or torch.all(
-    #                 self.moving_averaged_scores == 0
-    #             ):
-    #                 await asyncio.sleep(10)
-    #                 continue
-
-    #             # await self.update_weights(self.steps_passed)
-    #             await set_weights(self)
-
-    #             # # Resync the network state
-    #             # if should_checkpoint(self):
-    #             #     checkpoint(self)
-
-    #             # self.prev_block = ttl_get_block(self)
-    #             # self.step += 1
-    #         except Exception as e:
-    #             # Log the exception or handle it as needed
-    #             bt.logging.error(
-    #                 f"An error occurred in update_weights_periodically: {e}"
-    #             )
-    #             # Optionally, decide whether to continue or break the loop based on the exception
-    #         finally:
-    #             # Ensure the sleep is in the finally block if you want the loop to always wait,
-    #             # even if an error occurs.
-    #             await asyncio.sleep(self.config.neuron.update_weight_interval)
-
     async def update_available_uids_periodically(self):
         while True:
             start_time = time.time()
             try:
-                if self.should_sync_metagraph():
-                    resync_metagraph(self)
+                # if self.should_sync_metagraph():
+                #     resync_metagraph(self)
 
                 # unless it's used elsewhere.
                 self.available_uids = await self.get_available_uids_is_alive()
@@ -378,7 +345,6 @@ class Neuron(AbstractNeuron):
                     asyncio.create_task(self.run_synthetic_queries(strategy))
                     await asyncio.sleep(interval)  # Wait for 1800 seconds (30 minutes)
 
-            # self.loop.create_task(self.update_weights_periodically())
             if self.config.neuron.run_random_miner_syn_qs_interval > 0:
                 self.loop.create_task(
                     run_with_interval(
