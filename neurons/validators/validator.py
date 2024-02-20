@@ -315,9 +315,11 @@ class Neuron(AbstractNeuron):
         """
         Check if enough epoch blocks have elapsed since the last checkpoint to sync.
         """
-        return (
-            self.block - self.metagraph.last_update[self.uid]
-        ) > self.config.neuron.checkpoint_block_length
+        difference = self.block - self.metagraph.last_update[self.uid]
+        print(f"Current block: {self.block}, Last update for UID {self.uid}: {self.metagraph.last_update[self.uid]}, Difference: {difference}")
+        should_set = difference > self.config.neuron.checkpoint_block_length
+        bt.logging.info(f"Should set weights: {should_set}")
+        return should_set
 
     def should_set_weights(self) -> bool:
         # Don't set weights on initialization.
