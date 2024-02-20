@@ -73,7 +73,7 @@ def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_
         netuid=netuid,
         uids=uids,
         weights=weights,
-        wait_for_inclusion=False,
+        wait_for_inclusion=True,
         wait_for_finalization=False,
         version_key=version_key
     )
@@ -116,18 +116,18 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
                 if success:
                     success_status, success_message = success  # Unpack the tuple
                     if success_status:
-                        bt.logging.success(f"Completed set weights action successfully. Message: '{success_message}'")
+                        bt.logging.success(f"Set Weights Completed set weights action successfully. Message: '{success_message}'")
                         break  # Exit the retry loop on success
                     else:
-                        bt.logging.info(f"Attempt {attempt + 1} failed with message: '{success_message}', retrying in {retry_delay} seconds...")
+                        bt.logging.info(f"Set Weights Attempt {attempt + 1} failed with message: '{success_message}', retrying in {retry_delay} seconds...")
                 else:
-                    bt.logging.info(f"Attempt {attempt + 1} failed, retrying in {retry_delay} seconds...")
+                    bt.logging.info(f"Set Weights Attempt {attempt + 1} failed, retrying in {retry_delay} seconds...")
             else:
-                bt.logging.info(f"Attempt {attempt + 1} failed, no response received, retrying in {retry_delay} seconds...")
+                bt.logging.info(f"Set Weights Attempt {attempt + 1} failed, no response received, retrying in {retry_delay} seconds...")
         else:
             process.terminate()  # Ensure the process is terminated before retrying
             process.join()  # Clean up the terminated process
-            bt.logging.info(f"Attempt {attempt + 1} failed, process did not complete in time, retrying in {retry_delay} seconds...")
+            bt.logging.info(f"Set Weights Attempt {attempt + 1} failed, process did not complete in time, retrying in {retry_delay} seconds...")
 
         time.sleep(retry_delay)  # Wait for the specified delay before retrying
 
