@@ -37,6 +37,7 @@ from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.reward_llm import RewardLLM
+from neurons.validators.utils.prompts import ScoringPrompt
 
 class LinkContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
@@ -215,17 +216,14 @@ class LinkContentRelevanceModel(BaseRewardModel):
             ]
 
             reward_events = []
+            scoring_messages = []
             for apify_score, response, uid_tensor in zip(
                 scores, responses, uids
             ):  # Fixed variable name from 'response' to 'responses'
-                uid = uid_tensor.item()
-                reward_event = BaseRewardEvent()
-                reward_event.reward = 0
-
                 bt.logging.info(f"Processing score for response with miner tweets.")
+                uid = uid_tensor.item()
                 miner_tweets = response.miner_tweets
                 miner_tweets_data = miner_tweets.get("data", [])
-                links_scores = []
                 for link in random.sample(response.completion_links, 1 if len(response.completion_links) > 1 else len(response.completion_links)):
                     tweet_id = self.tw_client.extract_tweet_id(link)
                     miner_tweet = next(
@@ -239,33 +237,23 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     if miner_tweet:
                         miner_tweet_text = miner_tweet["text"]
                         scoring_prompt, scoring_text = self.get_scoring_text(prompt, miner_tweet_text)
-                        score_responses = self.reward_llm.llm_processing([{ str(tweet_id) : scoring_text}])     
-                        reward = BaseRewardEvent()
-                        if score_responses:
-                            score_result = score_responses[str(tweet_id)]
-                            score = scoring_prompt.extract_score(score_result)
-                            score /= 10.0
-                            reward.reward = score
-                        links_scores.append(reward)
-                        bt.logging.info(
-                            f"UID:{uid}, Tweet ID {tweet_id} yielded a reward of {reward.reward}, Explanation: {score_result}"
-                        )
-                    else:
-                        bt.logging.warning(
-                            f"UID:{uid}, No matching tweet found for ID {tweet_id}."
-                        )
-                if links_scores:
-                    average_score = sum(link.reward for link in links_scores) / len(
-                        links_scores
-                    )
-                    reward_event.reward = average_score
-                    bt.logging.info(
-                        f"UID:{uid}, Average score calculated: {average_score}, links_scores: {[link.reward for link in links_scores]}"
-                    )
-                else:
-                    bt.logging.warning(
-                        "UID:{uid}No link scores to average, reward remains 0."
-                    )
+                        scoring_messages.append({ str(uid) : scoring_text})
+
+            score_responses = self.reward_llm.llm_processing(scoring_messages)  
+            reward_events = []
+            scoring_prompt = ScoringPrompt()
+            for apify_score, response, uid_tensor in zip(
+                scores, responses, uids
+            ):  # Fixed variable name from 'response' to 'responses'
+                uid = uid_tensor.item()
+                reward_event = BaseRewardEvent()
+                reward_event.reward = 0
+
+                if score_responses:
+                    score_result = score_responses[str(uid)]
+                    score = scoring_prompt.extract_score(score_result)
+                    score /= 10.0
+                    reward_event.reward = score
                 if apify_score:
                     reward_event.reward = min(reward_event.reward * 2, 1)
                 else:
