@@ -201,24 +201,26 @@ class RewardLLM:
         result = {}
         total_start_time = time.time()  # Start timing for total execution
         try:
+            # Prepare batch
+            prompts = []
+            keys = []
             for message_dict in messages:  # Iterate over each dictionary in the list
                 ((key, message_list),) = message_dict.items()
-                
                 prompt = self.pipe.tokenizer.apply_chat_template(message_list, tokenize=False, add_generation_prompt=True)
-                outputs = self.pipe(prompt, max_new_tokens=500, do_sample=True, temperature=0.2, top_k=50, top_p=0.95)
-                generated_text = outputs[0]["generated_text"]
-
-                # Extract score from generated text.
+                prompts.append(prompt)
+                keys.append(key)
+            
+            # Process batch
+            outputs = self.pipe(prompts, max_new_tokens=500, do_sample=True, temperature=0.2, top_k=50, top_p=0.95)
+            
+            # Process outputs
+            for key, output in zip(keys, outputs):
+                generated_text = output[0]["generated_text"]
                 score_text = extract_score_and_explanation(generated_text)
-                # bt.logging.info(f"Score text: {score_text}")
                 result[key] = score_text
 
-            total_duration = (
-                time.time() - total_start_time
-            )  # Calculate total execution time
-            bt.logging.info(
-                f"Total execution time for get_score_by_zephyer: {total_duration} seconds"
-            )
+            total_duration = time.time() - total_start_time  # Calculate total execution time
+            bt.logging.info(f"Total execution time for get_score_by_zephyer: {total_duration} seconds")
         except Exception as e:
             bt.logging.error(f"Error in get_score_by_zephyer: {e}")
             return None
