@@ -86,7 +86,7 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
 
     max_retries = 5  # Maximum number of retries
     retry_delay = 45  # Delay between retries in seconds
-    ttl = 100  # Time-to-live for each process attempt in seconds
+    ttl = 140  # Time-to-live for each process attempt in seconds
     success = False
 
     for attempt in range(max_retries):
