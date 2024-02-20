@@ -281,47 +281,36 @@ def sync_metagraph(config):
     metagraph.save()
 
 
-def resync_metagraph(self: "validators.neuron.neuron"):
+def resync_metagraph(self):
     """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
     bt.logging.info("resync_metagraph()")
 
     # Copies state of metagraph before syncing.
     previous_metagraph = copy.deepcopy(self.metagraph)
 
-    process = multiprocessing.Process(target=sync_metagraph, args=(self.config,))
-    process.start()
-    ttl = 60
-    process.join(timeout=ttl)
-    if process.is_alive():
-        process.terminate()
-        process.join()
-        bt.logging.error(f"Failed to sync metagraph after {ttl} seconds")
-        return
-
-    bt.logging.info("Synced metagraph")
-    self.metagraph.load()
+    # Sync the metagraph.
+    self.metagraph.sync(subtensor=self.subtensor)
 
     # Check if the metagraph axon info has changed.
-    metagraph_axon_info_updated = previous_metagraph.axons != self.metagraph.axons
+    if previous_metagraph.axons == self.metagraph.axons:
+        return
 
-    if metagraph_axon_info_updated:
-        bt.logging.info(
-            "resync_metagraph: Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
-        )
+    bt.logging.info(
+        "Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
+    )
+    # Zero out all hotkeys that have been replaced.
+    for uid, hotkey in enumerate(self.hotkeys):
+        if hotkey != self.metagraph.hotkeys[uid]:
+            self.moving_averaged_scores[uid] = 0  # hotkey has been replaced
 
-        # Zero out all hotkeys that have been replaced.
-        for uid, hotkey in enumerate(self.hotkeys):
-            if hotkey != self.metagraph.hotkeys[uid]:
-                self.moving_averaged_scores[uid] = 0  # hotkey has been replaced
+    # Check to see if the metagraph has changed size.
+    # If so, we need to add new hotkeys and moving averages.
+    if len(self.hotkeys) < len(self.metagraph.hotkeys):
+        # Update the size of the moving average scores.
+        new_moving_average = torch.zeros((self.metagraph.n)).to(self.device)
+        min_len = min(len(self.hotkeys), len(self.moving_averaged_scores))
+        new_moving_average[:min_len] =  self.moving_averaged_scores[:min_len]
+        self.moving_averaged_scores = new_moving_average
 
-        # Check to see if the metagraph has changed size.
-        # If so, we need to add new hotkeys and moving averages.
-        if len(self.hotkeys) < len(self.metagraph.hotkeys):
-            # Update the size of the moving average scores.
-            new_moving_average = torch.zeros((self.metagraph.n)).to(self.device)
-            min_len = min(len(self.hotkeys), len(self.moving_averaged_scores))
-            new_moving_average[:min_len] = self.moving_averaged_scores[:min_len]
-            self.moving_averaged_scores = new_moving_average
-
-        # Update the hotkeys.
-        self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+    # Update the hotkeys.
+    self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)

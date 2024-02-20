@@ -312,9 +312,9 @@ class Neuron(AbstractNeuron):
 
     def should_set_weights(self) -> bool:
         # Don't set weights on initialization.
-        if self.step == 0:
-            bt.logging.info("Skipping weight setting on initialization.")
-            return False
+        # if self.step == 0:
+        #     bt.logging.info("Skipping weight setting on initialization.")
+        #     return False
 
         # Check if enough epoch blocks have elapsed since the last epoch.
         if self.config.neuron.disable_set_weights:
