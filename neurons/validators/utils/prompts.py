@@ -122,7 +122,7 @@ Scores range from 0 to 10:
 - 10 for answers that are not only accurate and relevant but also well-supported by Twitter links, fully addressing the question's demands.
 
 Score Examples:
-- Score 0: Answer discusses a completely different topic without any relation to the question.
+- Score 1: Answer discusses a completely different topic without any relation to the question.
 - Score 2: Answer is on topic but does not provide any Twitter links to support its statements.
 - Score 6: Provides a partially correct response with some Twitter links, but lacks comprehensive coverage or depth on the topic.
 - Score 8: Offers a thorough answer with relevant Twitter links but misses minor details or broader implications.
