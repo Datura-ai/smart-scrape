@@ -19,9 +19,7 @@ from traceback import print_exception
 from base_validator import AbstractNeuron
 from template import QUERY_MINERS
 from template.misc import ttl_get_block
-from template.utils import (
-    resync_metagraph
-)
+from template.utils import resync_metagraph
 
 
 class Neuron(AbstractNeuron):
@@ -86,7 +84,6 @@ class Neuron(AbstractNeuron):
         )
         # Init sync with the network. Updates the metagraph.
         self.sync()
-
 
     async def run_sync_in_async(self, fn):
         return await self.loop.run_in_executor(self.thread_executor, fn)
@@ -246,8 +243,10 @@ class Neuron(AbstractNeuron):
         try:
             # Ensure uids is a tensor
             if not isinstance(uids, torch.Tensor):
-                uids = torch.tensor(uids, dtype=torch.long, device=self.config.neuron.device)
-            
+                uids = torch.tensor(
+                    uids, dtype=torch.long, device=self.config.neuron.device
+                )
+
             # Ensure rewards is also a tensor and on the correct device
             if not isinstance(rewards, torch.Tensor):
                 rewards = torch.tensor(rewards, device=self.config.neuron.device)
@@ -281,20 +280,28 @@ class Neuron(AbstractNeuron):
             await asyncio.sleep(100)
 
     async def run_synthetic_queries(self, strategy=QUERY_MINERS.RANDOM):
-        bt.logging.info(f"run synthetic: strategy={strategy}")
+        bt.logging.info(f"Starting run_synthetic_queries with strategy={strategy}")
 
         try:
+
             async def run_forward():
+                bt.logging.info("Gathering coroutines for query_synapse")
                 coroutines = [self.query_synapse(strategy) for _ in range(1)]
                 await asyncio.gather(*coroutines)
+                bt.logging.info("Completed gathering coroutines for query_synapse")
 
+            bt.logging.info("Running coroutines with run_until_complete")
             self.loop.run_until_complete(run_forward())
+            bt.logging.info("Completed running coroutines with run_until_complete")
 
+            bt.logging.info("Calling sync method")
             self.sync()
+            bt.logging.info("Completed calling sync method")
 
             self.step += 1
+            bt.logging.info(f"Incremented step to {self.step}")
         except Exception as err:
-            bt.logging.error("Error in training loop", str(err))
+            bt.logging.error("Error in run_synthetic_queries", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
 
     def sync(self):
@@ -305,11 +312,17 @@ class Neuron(AbstractNeuron):
         self.check_registered()
 
         if self.should_sync_metagraph():
+            bt.logging.info("Syncing metagraph as per condition.")
             resync_metagraph(self)
+        else:
+            bt.logging.info("No need to sync metagraph at this moment.")
 
         if self.should_set_weights():
+            bt.logging.info("Setting weights as per condition.")
             set_weights(self)
-                
+        else:
+            bt.logging.info("No need to set weights at this moment.")
+
     def check_registered(self):
         # --- Check for registration.
         if not self.subtensor.is_hotkey_registered(
@@ -333,16 +346,20 @@ class Neuron(AbstractNeuron):
     def should_set_weights(self) -> bool:
         # Don't set weights on initialization.
         if self.step == 0:
+            bt.logging.info("Skipping weight setting on initialization.")
             return False
 
         # Check if enough epoch blocks have elapsed since the last epoch.
         if self.config.neuron.disable_set_weights:
+            bt.logging.info("Weight setting is disabled by configuration.")
             return False
 
         # Define appropriate logic for when set weights.
-        return (
+        should_set = (
             self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.checkpoint_block_length
+        bt.logging.info(f"Should set weights: {should_set}")
+        return should_set
 
     async def run(self):
         await asyncio.sleep(10)
@@ -351,6 +368,7 @@ class Neuron(AbstractNeuron):
         bt.logging.info(f"Validator starting at block: {self.block}")
 
         try:
+
             async def run_with_interval(interval, strategy):
                 while True:
                     if not self.available_uids:
@@ -364,14 +382,16 @@ class Neuron(AbstractNeuron):
             if self.config.neuron.run_random_miner_syn_qs_interval > 0:
                 self.loop.create_task(
                     run_with_interval(
-                        self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.RANDOM
+                        self.config.neuron.run_all_miner_syn_qs_interval,
+                        QUERY_MINERS.RANDOM,
                     )
                 )
 
             if self.config.neuron.run_all_miner_syn_qs_interval > 0:
                 self.loop.create_task(
                     run_with_interval(
-                        self.config.neuron.run_all_miner_syn_qs_interval, QUERY_MINERS.ALL
+                        self.config.neuron.run_all_miner_syn_qs_interval,
+                        QUERY_MINERS.ALL,
                     )
                 )
                 # If someone intentionally stops the validator, it'll safely terminate operations.
@@ -384,7 +404,7 @@ class Neuron(AbstractNeuron):
         except Exception as err:
             bt.logging.error("Error during validation", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
-            self.should_exit = True        
+            self.should_exit = True
 
 
 def main():

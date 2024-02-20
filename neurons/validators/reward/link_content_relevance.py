@@ -39,6 +39,7 @@ from template.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.prompts import ScoringPrompt
 
+
 class LinkContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
 
@@ -46,12 +47,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
     def name(self) -> str:
         return RewardModelType.link_content_match.value
 
-    def __init__(
-        self,
-        device: str,
-        scoring_type: None,
-        llm_reward : RewardLLM
-    ):
+    def __init__(self, device: str, scoring_type: None, llm_reward: RewardLLM):
         super().__init__()
         self.device = device
         self.reward_llm = llm_reward
@@ -180,7 +176,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             bt.logging.error(f"check_response_random_tweet: {e}")
             return 0
 
-    def get_scoring_text(self, prompt: str, content:str) -> BaseRewardEvent:
+    def get_scoring_text(self, prompt: str, content: str) -> BaseRewardEvent:
         try:
             scoring_prompt = None
 
@@ -220,11 +216,18 @@ class LinkContentRelevanceModel(BaseRewardModel):
             for apify_score, response, uid_tensor in zip(
                 scores, responses, uids
             ):  # Fixed variable name from 'response' to 'responses'
-                bt.logging.info(f"Processing score for response with miner tweets.")
+                # bt.logging.info(f"Processing score for response with miner tweets.")
                 uid = uid_tensor.item()
                 miner_tweets = response.miner_tweets
                 miner_tweets_data = miner_tweets.get("data", [])
-                for link in random.sample(response.completion_links, 1 if len(response.completion_links) > 1 else len(response.completion_links)):
+                for link in random.sample(
+                    response.completion_links,
+                    (
+                        1
+                        if len(response.completion_links) > 1
+                        else len(response.completion_links)
+                    ),
+                ):
                     tweet_id = self.tw_client.extract_tweet_id(link)
                     miner_tweet = next(
                         (
@@ -236,10 +239,12 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     )
                     if miner_tweet:
                         miner_tweet_text = miner_tweet["text"]
-                        scoring_prompt, scoring_text = self.get_scoring_text(prompt, miner_tweet_text)
-                        scoring_messages.append({ str(uid) : scoring_text})
+                        scoring_prompt, scoring_text = self.get_scoring_text(
+                            prompt, miner_tweet_text
+                        )
+                        scoring_messages.append({str(uid): scoring_text})
 
-            score_responses = self.reward_llm.llm_processing(scoring_messages)  
+            score_responses = self.reward_llm.llm_processing(scoring_messages)
             reward_events = []
             scoring_prompt = ScoringPrompt()
             for apify_score, response, uid_tensor in zip(
@@ -260,7 +265,6 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     reward_event.reward /= 2
                 reward_events.append(reward_event)
 
-          
             for (index, response), uid_tensor, reward_e in zip(
                 enumerate(responses), uids, reward_events
             ):
