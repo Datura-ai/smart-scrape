@@ -34,6 +34,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
 from neurons.validators.reward.reward_llm import RewardLLM
+import json
 
 
 class SummaryRelevanceRewardModel(BaseRewardModel):
@@ -94,7 +95,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
             return scoring_prompt, [{"role": "user", "content": scoring_prompt_text}]
         except Exception as e:
-            bt.logging.error(f"Error in Prompt reward method: {e}")
+            bt.logging.error(f"Summary Relevance get_scoring_text: {str(e)}")
             return None
         
     def get_rewards(
@@ -141,6 +142,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             # Iterate over responses and assign rewards based on scores
             reward_events = []
            
+            # Initialize dictionaries to store zero and non-zero scores separately
+            zero_scores = {}
+            non_zero_scores = {}
+
             for (index, response), uid_tensor in zip(enumerate(responses), uids):
                 uid = uid_tensor.item()
                 score = scores.get(str(index), 0)
@@ -149,26 +154,19 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 reward_event.reward = score
                 reward_events.append(reward_event)
                 if score == 0:
-                    bt.logging.info(
-                        f"==================================Summary Relevance scoring Explanation Begins=================================="
-                    )
-                    bt.logging.info(
-                        f"PROMPT: {prompt}"
-                    )
-                    bt.logging.info(
-                        f"UID: {uid} | Score: {score:.2f} | Explanation: {score_explain.strip()}"
-                    )
-                    bt.logging.info(
-                        f"==================================Summary Relevance Scoring Explanation Ends=================================="
-                    )
+                    zero_scores[uid] = {"score": score, "explanation": score_explain.strip()}
                 else:
-                    bt.logging.info(
-                        f"UID: {uid} | Score: {score:.2f}"
-                    )
+                    non_zero_scores[uid] = {"score": score}
+
+
+            bt.logging.info(f"==================================Summary Relevance scoring Zero Scores  ({len(zero_scores)} cases)==================================")
+            bt.logging.info(json.dumps(zero_scores, indent=4))
+            bt.logging.info(f"==================================Summary Relevance scoring Non-Zero Scores ({len(non_zero_scores)} cases)==================================")
+            bt.logging.info(json.dumps(non_zero_scores, indent=4))
 
             return reward_events
         except Exception as e:
-            bt.logging.error(f"Reward model issue: {e}")
+            bt.logging.error(f"Summary Relevance issue get_rewards: {str(e)}")
             reward_events = []
             for response in responses:
                 reward_event = BaseRewardEvent()

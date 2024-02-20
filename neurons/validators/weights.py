@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
-# Copyright © 2023 Opentensor Foundation
+# Copyright d© 2023 Opentensor Foundation
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -66,7 +66,7 @@ def on_retry(exception, tries_remaining, delay):
     attempt = 6 - tries_remaining  # Assuming 5 total tries
     bt.logging.info(f"Retry attempt {attempt}, will retry in {delay} seconds...")
 
-def set_weights_subtensor(wallet, netuid, uids, weights, config, version_key, ttl = 100):
+def set_weights_subtensor(wallet, netuid, uids, weights, config, version_key):
     subtensor = bt.subtensor(config=config)
     success = subtensor.set_weights(
         wallet=wallet,
@@ -75,8 +75,7 @@ def set_weights_subtensor(wallet, netuid, uids, weights, config, version_key, tt
         weights=weights,
         wait_for_inclusion=False,
         wait_for_finalization=False,
-        version_key=version_key,
-        ttl=ttl
+        version_key=version_key
     )
 
     if not success:
@@ -99,8 +98,7 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
                 processed_weight_uids,
                 processed_weights,
                 self.config,
-                template.__weights_version__,
-                ttl
+                template.__weights_version__
             ),
         )
         process.start()

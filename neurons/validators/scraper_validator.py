@@ -208,6 +208,7 @@ class ScraperValidator:
             for weight_i, reward_fn_i in zip(
                 self.reward_weights, self.reward_functions
             ):
+                start_time = time.time()
                 reward_i_normalized, reward_event = reward_fn_i.apply(
                     task.base_text, responses, task.task_name, uids
                 )
@@ -216,23 +217,26 @@ class ScraperValidator:
                 )
                 if not self.neuron.config.neuron.disable_log_rewards:
                     event = {**event, **reward_event}
+                execution_time = time.time() - start_time
                 bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
                 bt.logging.info(
-                    f"Applied reward function: {reward_fn_i.name} with reward: {reward_event.get(reward_fn_i.name, 'N/A')}"
+                    f"Applied reward function: {reward_fn_i.name} with reward: {reward_event.get(reward_fn_i.name, 'N/A')} in {execution_time:.2f} seconds"
                 )
 
             for penalty_fn_i in self.penalty_functions:
                 raw_penalty_i, adjusted_penalty_i, applied_penalty_i = (
                     penalty_fn_i.apply_penalties(responses, task)
                 )
+                penalty_start_time = time.time()
                 rewards *= applied_penalty_i.to(self.neuron.config.neuron.device)
+                penalty_execution_time = time.time() - penalty_start_time
                 if not self.neuron.config.neuron.disable_log_rewards:
                     event[penalty_fn_i.name + "_raw"] = raw_penalty_i.tolist()
                     event[penalty_fn_i.name + "_adjusted"] = adjusted_penalty_i.tolist()
                     event[penalty_fn_i.name + "_applied"] = applied_penalty_i.tolist()
                 bt.logging.trace(str(penalty_fn_i.name), applied_penalty_i.tolist())
                 bt.logging.info(
-                    f"Applied penalty function: {penalty_fn_i.name} with reward: {adjusted_penalty_i.tolist()}"
+                    f"Applied penalty function: {penalty_fn_i.name} with reward: {adjusted_penalty_i.tolist()} in {penalty_execution_time:.2f} seconds"
                 )
 
             scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)
@@ -249,9 +253,9 @@ class ScraperValidator:
                 "scores": {},
                 "timestamps": {},
             }
-            bt.logging.info(
-                f"======================== Reward ==========================="
-            )
+            bt.logging.info( f"======================== Reward ===========================")
+            # Initialize an empty list to accumulate log messages
+            log_messages = []
             for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
                 uid = uid_tensor.item()
                 completion_length = (
@@ -262,15 +266,17 @@ class ScraperValidator:
                     if response.completion_links is not None
                     else 0
                 )
-                bt.logging.info(
-                    f"uid: {uid};  score: {reward};  completion length: {completion_length};  completion_links length: {completion_links_length};"
+                # Accumulate log messages instead of logging them immediately
+                log_messages.append(
+                    f"uid: {uid}; R: {reward}; C: {completion_length}; L: {completion_links_length};"
                 )
                 bt.logging.trace(f"{response.completion}")
-                bt.logging.info(f"uid: {uid} Completion: ---------------------")
-                bt.logging.info(f"-----------------------------")
-            bt.logging.info(
-                f"======================== Reward ==========================="
-            )
+
+            # Log the accumulated messages in groups of three
+            for i in range(0, len(log_messages), 3):
+                bt.logging.info(" | ".join(log_messages[i : i + 3]))
+
+            bt.logging.info(f"======================== Reward ===========================")
 
             for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
                 uid = uid_tensor.item()  # Convert tensor to int

@@ -319,7 +319,8 @@ class Neuron(AbstractNeuron):
         print(f"Current block: {self.block}, Last update for UID {self.uid}: {self.metagraph.last_update[self.uid]}, Difference: {difference}")
         should_set = difference > self.config.neuron.checkpoint_block_length
         bt.logging.info(f"Should set weights: {should_set}")
-        return should_set
+        # return should_set
+        return True # Update right not based on interval of synthetic data
 
     def should_set_weights(self) -> bool:
         # Don't set weights on initialization.
@@ -337,7 +338,8 @@ class Neuron(AbstractNeuron):
         print(f"Current block: {self.block}, Last update for UID {self.uid}: {self.metagraph.last_update[self.uid]}, Difference: {difference}")
         should_set = difference > self.config.neuron.checkpoint_block_length
         bt.logging.info(f"Should set weights: {should_set}")
-        return should_set
+        # return should_set
+        return True # Update right not based on interval of synthetic data
 
     async def run(self):
         await asyncio.sleep(10)

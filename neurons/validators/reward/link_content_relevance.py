@@ -38,6 +38,7 @@ from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.prompts import ScoringPrompt
+import json
 
 
 class LinkContentRelevanceModel(BaseRewardModel):
@@ -82,10 +83,12 @@ class LinkContentRelevanceModel(BaseRewardModel):
                         response.validator_tweets.append(tweet)
             end_time = time.time()
             bt.logging.info(
-                f"Fetched Twitter links method took {end_time - start_time} seconds"
+                f"Fetched Twitter links method took {end_time - start_time} seconds. "
+                f"All links count: {len(all_links)}, Unique links count: {len(unique_links)}, "
+                f"APIFY fetched tweets links count: {len(tweets_list)}"
             )
         except Exception as e:
-            bt.logging.error(f"Error in process_tweets: {e}")
+            bt.logging.error(f"Error in process_tweets: {str(e)}")
             return
 
     def format_text_for_match(self, text):
@@ -158,22 +161,22 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     tweet_score = 1
                 else:
                     # If there is a discrepancy, log the details and append a score of 0
-                    bt.logging.info(f"Discrepancy found:")
-                    bt.logging.info(
+                    bt.logging.debug(f"Discrepancy found:")
+                    bt.logging.debug(
                         f"Miner tweet - Created at: {miner_tweet_created_at}, Text: {miner_text_compared}"
                     )
-                    bt.logging.info(
+                    bt.logging.debug(
                         f"Validator tweet - Created at: {val_tweet_created_at}, Text: {validator_text_compared}"
                     )
                     tweet_score = 0
             else:
-                bt.logging.info(
+                bt.logging.debug(
                     "No corresponding miner tweet found for the validator tweet."
                 )
                 tweet_score = 0
             return tweet_score
         except Exception as e:
-            bt.logging.error(f"check_response_random_tweet: {e}")
+            bt.logging.error(f"check_response_random_tweet: {str(e)}")
             return 0
 
     def get_scoring_text(self, prompt: str, content: str) -> BaseRewardEvent:
@@ -189,7 +192,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
 
             return scoring_prompt, [{"role": "user", "content": scoring_prompt_text}]
         except Exception as e:
-            bt.logging.error(f"Error in Prompt reward method: {e}")
+            bt.logging.error(f"Error in Prompt reward method: {str(e)}")
             return None
 
     def get_rewards(
@@ -265,29 +268,23 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     reward_event.reward /= 2
                 reward_events.append(reward_event)
 
-            for (index, response), uid_tensor, reward_e in zip(
-                enumerate(responses), uids, reward_events
-            ):
-                uid = uid_tensor.item()
-                if reward_e.reward == 0:
-                    # Iterate over responses and assign rewards based on scores
-                    bt.logging.info(
-                        f"==================================Links Content scoring Explanation Begins=================================="
-                    )
-                    bt.logging.info(f"Prompt: {prompt}")
-                    bt.logging.info(f"UID:{uid} Score: {reward_e.reward:.2f}")
-                    bt.logging.info(
-                        f"----------------------------------------------------------------------"
-                    )
-                else:
-                    bt.logging.info(f"UID:{uid} Score: {reward_e.reward:.2f}")
+                zero_scores = {}
+                non_zero_scores = {}
 
-            bt.logging.info(
-                f"==================================Summary Relevance Scoring Explanation Ends=================================="
-            )
+                for (index, response), uid_tensor, reward_e in zip(enumerate(responses), uids, reward_events):
+                    uid = uid_tensor.item()
+                    if reward_e.reward == 0:
+                        zero_scores[uid] = {"score": reward_e.reward, "explanation": "Your explanation here"}  # Adjust explanation as needed
+                    else:
+                        non_zero_scores[uid] = {"score": reward_e.reward}
+
+                bt.logging.info(f"==================================Links Content scoring Zero Scores  ({len(zero_scores)} cases)==================================")
+                bt.logging.info(json.dumps(zero_scores, indent=4))
+                bt.logging.info(f"==================================Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)==================================")
+                bt.logging.info(json.dumps(non_zero_scores, indent=4))
             return reward_events
         except Exception as e:
-            bt.logging.error(f"Reward model issue: {e}")
+            bt.logging.error(f"Link Content Relevance get_rewards: {str(e)}")
             reward_events = []
             for response in responses:
                 reward_event = BaseRewardEvent()
