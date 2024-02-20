@@ -272,20 +272,24 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     reward_event.reward /= 2
                 reward_events.append(reward_event)
 
-            # Iterate over responses and assign rewards based on scores
-            bt.logging.info(
-                f"==================================Links Content scoring Explanation Begins=================================="
-            )
-            bt.logging.info(f"Prompt: {prompt}")
+          
             for (index, response), uid_tensor, reward_e in zip(
                 enumerate(responses), uids, reward_events
             ):
                 uid = uid_tensor.item()
-                bt.logging.info(f"UID: {uid} | Score: {reward_e.reward:.2f}")
-                bt.logging.info(f"UID:{uid} Compeltion: {response.completion}")
-                bt.logging.info(
-                    f"----------------------------------------------------------------------"
-                )
+                if reward_e.reward == 0:
+                    # Iterate over responses and assign rewards based on scores
+                    bt.logging.info(
+                        f"==================================Links Content scoring Explanation Begins=================================="
+                    )
+                    bt.logging.info(f"Prompt: {prompt}")
+                    bt.logging.info(f"UID:{uid} Score: {reward_e.reward:.2f}")
+                    bt.logging.info(
+                        f"----------------------------------------------------------------------"
+                    )
+                else:
+                    bt.logging.info(f"UID:{uid} Score: {reward_e.reward:.2f}")
+
             bt.logging.info(
                 f"==================================Summary Relevance Scoring Explanation Ends=================================="
             )

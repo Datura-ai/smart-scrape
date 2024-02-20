@@ -281,9 +281,12 @@ class TwitterAPIClient:
             response_format={"type": "json_object"},
         )
         response_dict = json.loads(res)
-        if 'query' in response_dict:
-            response_dict['query'] = response_dict['query'].replace("'", '"').replace('has:polls', '')
         bt.logging.trace("generate_query_params_from_prompt Content: ", response_dict)
+        return self.fix_query_dict(response_dict)
+
+    def fix_query_dict(self, response_dict):
+        if 'api_params' in response_dict and 'query' in response_dict['api_params']:
+            response_dict['api_params']['query'] = response_dict['api_params']['query'].replace("'", '"').replace('has:polls', '')
         return response_dict
 
     async def fix_twitter_query(self, prompt, query, error, is_accuracy=True):
@@ -306,10 +309,8 @@ class TwitterAPIClient:
                 response_format={"type": "json_object"},
             )
             response_dict = json.loads(res)
-            if 'query' in response_dict:
-                response_dict['query'] = response_dict['query'].replace("'", '"').replace('has:polls', '')
-            bt.logging.trace("fix_twitter_query Content: ", response_dict)
-            return response_dict
+           
+            return self.fix_query_dict(response_dict)
         except Exception as e:
             bt.logging.info(e)
             return [], None
@@ -404,14 +405,17 @@ class TwitterAPIClient:
                 prompt_analysis.fill(new_query)
                 self.set_max_results(prompt_analysis.api_params)
                 result = self.get_recent_tweets(prompt_analysis.api_params)
+                if result.status_code == 400:
+                    raise result.text
+
                 return result, prompt_analysis
             except Exception as e:
-                bt.logging.error(f"retry_with_fixed_query Attempt {attempt + 1} failed with error: {e}")
+                bt.logging.info(f"retry_with_fixed_query Attempt {attempt + 1} failed with error: {e}")
                 # Update the error variable with the current exception for the next retry attempt
                 error = e
                 old_query = new_query
                 if attempt == retry_attempts - 1:
-                    raise
+                    raise e
                 else:
                     bt.logging.info(f"retry_with_fixed_query Retrying... Attempt {attempt + 2}")
     @staticmethod

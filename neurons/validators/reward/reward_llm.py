@@ -241,9 +241,8 @@ class RewardLLM:
         # Define the order of scoring sources to be used
         scoring_sources = [
             ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
-            # ScoringSource.LocalLLM,  # Fallback to Local LLM if Subnet 18 fails or is disabled
             ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
-            ScoringSource.Subnet18,  # First attempt with Subnet 18
+            # ScoringSource.Subnet18,  # First attempt with Subnet 18
         ]
 
         # Attempt to score messages using the defined sources in order
@@ -257,15 +256,21 @@ class RewardLLM:
                 score_responses.update(current_score_responses)
 
                 # Filter messages that still need scoring (i.e., messages that did not receive a score)
+                # messages = [
+                #     message
+                #     for (key, score_text), message in zip(current_score_responses.items(), messages)
+                #     if not any(char.isdigit() for char in score_text)
+                # ]
                 messages = [
                     message
                     for (key, score_text), message in zip(current_score_responses.items(), messages)
-                    if not any(char.isdigit() for char in score_text)
+                    if not any(char.isdigit() for char in score_text) or extract_score_and_explanation(score_text) == 0
                 ]
-
                 # If all messages have been scored, break out of the loop
                 if not messages:
                     break
+                else:
+                    bt.logging.info(f"OpenAI Attempt for scoring. Remaining messages: {len(messages)}")
             else:
                 bt.logging.info(
                     f"Scoring with {source} failed or returned no results. Attempting next source."

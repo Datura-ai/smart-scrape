@@ -14,7 +14,7 @@
 # THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+# DEALINGS IN THE SOFTWARE.p
 
 import time
 import torch
@@ -140,25 +140,34 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
             # Iterate over responses and assign rewards based on scores
             reward_events = []
-            bt.logging.info(
-                f"==================================Summary Relevance scoring Explanation Begins=================================="
-            )
+           
             for (index, response), uid_tensor in zip(enumerate(responses), uids):
                 uid = uid_tensor.item()
-                score = scores.get(str(index), 0)
-                score_explain = score_text.get(str(index), "")
-                reward_event = BaseRewardEvent()
-                reward_event.reward = score
-                reward_events.append(reward_event)
-                bt.logging.info(
-                    f"UID: {uid} | Score: {score:.2f} | Explanation: {score_explain.strip()}"
-                )
-                bt.logging.info(
-                    f"----------------------------------------------------------------------"
-                )
-            bt.logging.info(
-                f"==================================Summary Relevance Scoring Explanation Ends=================================="
-            )
+                if score == 0:
+                    bt.logging.info(
+                        f"==================================Summary Relevance scoring Explanation Begins=================================="
+                    )
+                    bt.logging.info(
+                        f"PROMPT: {prompt}"
+                    )
+                    bt.logging.info(
+                        f"----------------------------------------------------------------------------------------------"
+                    )
+                    score = scores.get(str(index), 0)
+                    score_explain = score_text.get(str(index), "")
+                    reward_event = BaseRewardEvent()
+                    reward_event.reward = score
+                    reward_events.append(reward_event)
+                    bt.logging.info(
+                        f"UID: {uid} | Score: {score:.2f} | Explanation: {score_explain.strip()}"
+                    )
+                    bt.logging.info(
+                        f"==================================Summary Relevance Scoring Explanation Ends=================================="
+                    )
+                else:
+                    bt.logging.info(
+                        f"UID: {uid} | Score: {score:.2f}"
+                    )
 
             return reward_events
         except Exception as e:
