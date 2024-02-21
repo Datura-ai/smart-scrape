@@ -37,6 +37,9 @@ from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.reward_llm import RewardLLM
+from neurons.validators.utils.prompts import ScoringPrompt
+import json
+
 
 class LinkContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
@@ -45,12 +48,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
     def name(self) -> str:
         return RewardModelType.link_content_match.value
 
-    def __init__(
-        self,
-        device: str,
-        scoring_type: None,
-        llm_reward : RewardLLM
-    ):
+    def __init__(self, device: str, scoring_type: None, llm_reward: RewardLLM):
         super().__init__()
         self.device = device
         self.reward_llm = llm_reward
@@ -85,10 +83,12 @@ class LinkContentRelevanceModel(BaseRewardModel):
                         response.validator_tweets.append(tweet)
             end_time = time.time()
             bt.logging.info(
-                f"Fetched Twitter links method took {end_time - start_time} seconds"
+                f"Fetched Twitter links method took {end_time - start_time} seconds. "
+                f"All links count: {len(all_links)}, Unique links count: {len(unique_links)}, "
+                f"APIFY fetched tweets links count: {len(tweets_list)}"
             )
         except Exception as e:
-            bt.logging.error(f"Error in process_tweets: {e}")
+            bt.logging.error(f"Error in process_tweets: {str(e)}")
             return
 
     def format_text_for_match(self, text):
@@ -161,25 +161,25 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     tweet_score = 1
                 else:
                     # If there is a discrepancy, log the details and append a score of 0
-                    bt.logging.info(f"Discrepancy found:")
-                    bt.logging.info(
+                    bt.logging.debug(f"Discrepancy found:")
+                    bt.logging.debug(
                         f"Miner tweet - Created at: {miner_tweet_created_at}, Text: {miner_text_compared}"
                     )
-                    bt.logging.info(
+                    bt.logging.debug(
                         f"Validator tweet - Created at: {val_tweet_created_at}, Text: {validator_text_compared}"
                     )
                     tweet_score = 0
             else:
-                bt.logging.info(
+                bt.logging.debug(
                     "No corresponding miner tweet found for the validator tweet."
                 )
                 tweet_score = 0
             return tweet_score
         except Exception as e:
-            bt.logging.error(f"check_response_random_tweet: {e}")
+            bt.logging.error(f"check_response_random_tweet: {str(e)}")
             return 0
 
-    def get_scoring_text(self, prompt: str, content:str) -> BaseRewardEvent:
+    def get_scoring_text(self, prompt: str, content: str) -> BaseRewardEvent:
         try:
             scoring_prompt = None
 
@@ -192,7 +192,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
 
             return scoring_prompt, [{"role": "user", "content": scoring_prompt_text}]
         except Exception as e:
-            bt.logging.error(f"Error in Prompt reward method: {e}")
+            bt.logging.error(f"Error in Prompt reward method: {str(e)}")
             return None
 
     def get_rewards(
@@ -215,18 +215,22 @@ class LinkContentRelevanceModel(BaseRewardModel):
             ]
 
             reward_events = []
+            scoring_messages = []
             for apify_score, response, uid_tensor in zip(
                 scores, responses, uids
             ):  # Fixed variable name from 'response' to 'responses'
+                # bt.logging.info(f"Processing score for response with miner tweets.")
                 uid = uid_tensor.item()
-                reward_event = BaseRewardEvent()
-                reward_event.reward = 0
-
-                bt.logging.info(f"Processing score for response with miner tweets.")
                 miner_tweets = response.miner_tweets
                 miner_tweets_data = miner_tweets.get("data", [])
-                links_scores = []
-                for link in random.sample(response.completion_links, 1 if len(response.completion_links) > 1 else len(response.completion_links)):
+                for link in random.sample(
+                    response.completion_links,
+                    (
+                        1
+                        if len(response.completion_links) > 1
+                        else len(response.completion_links)
+                    ),
+                ):
                     tweet_id = self.tw_client.extract_tweet_id(link)
                     miner_tweet = next(
                         (
@@ -238,60 +242,53 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     )
                     if miner_tweet:
                         miner_tweet_text = miner_tweet["text"]
-                        scoring_prompt, scoring_text = self.get_scoring_text(prompt, miner_tweet_text)
-                        score_responses = self.reward_llm.llm_processing([{ str(tweet_id) : scoring_text}])     
-                        reward = BaseRewardEvent()
-                        if score_responses:
-                            score_result = score_responses[str(tweet_id)]
-                            score = scoring_prompt.extract_score(score_result)
-                            score /= 10.0
-                            reward.reward = score
-                        links_scores.append(reward)
-                        bt.logging.info(
-                            f"UID:{uid}, Tweet ID {tweet_id} yielded a reward of {reward.reward}, Explanation: {score_result}"
+                        scoring_prompt, scoring_text = self.get_scoring_text(
+                            prompt, miner_tweet_text
                         )
+                        scoring_messages.append({str(uid): scoring_text})
+
+            score_responses = self.reward_llm.llm_processing(scoring_messages)
+            reward_events = []
+            scoring_prompt = ScoringPrompt()
+            for apify_score, response, uid_tensor in zip(
+                scores, responses, uids
+            ):  # Fixed variable name from 'response' to 'responses'
+                uid = uid_tensor.item()
+                reward_event = BaseRewardEvent()
+                reward_event.reward = 0
+
+                if score_responses:
+                    score_result = score_responses.get(str(uid), None)
+                    if score_result is None:
+                        bt.logging.error(f"Link Content Relevance get_rewards: No score response for UID '{uid}'")
+                        score = 0  # Default score or another logic to handle missing scores
                     else:
-                        bt.logging.warning(
-                            f"UID:{uid}, No matching tweet found for ID {tweet_id}."
-                        )
-                if links_scores:
-                    average_score = sum(link.reward for link in links_scores) / len(
-                        links_scores
-                    )
-                    reward_event.reward = average_score
-                    bt.logging.info(
-                        f"UID:{uid}, Average score calculated: {average_score}, links_scores: {[link.reward for link in links_scores]}"
-                    )
-                else:
-                    bt.logging.warning(
-                        "UID:{uid}No link scores to average, reward remains 0."
-                    )
+                        score = scoring_prompt.extract_score(score_result)
+                        score /= 10.0
+                    reward_event.reward = score
                 if apify_score:
                     reward_event.reward = min(reward_event.reward * 2, 1)
                 else:
                     reward_event.reward /= 2
                 reward_events.append(reward_event)
 
-            # Iterate over responses and assign rewards based on scores
-            bt.logging.info(
-                f"==================================Links Content scoring Explanation Begins=================================="
-            )
-            bt.logging.info(f"Prompt: {prompt}")
-            for (index, response), uid_tensor, reward_e in zip(
-                enumerate(responses), uids, reward_events
-            ):
-                uid = uid_tensor.item()
-                bt.logging.info(f"UID: {uid} | Score: {reward_e.reward:.2f}")
-                bt.logging.info(f"UID:{uid} Compeltion: {response.completion}")
-                bt.logging.info(
-                    f"----------------------------------------------------------------------"
-                )
-            bt.logging.info(
-                f"==================================Summary Relevance Scoring Explanation Ends=================================="
-            )
+                zero_scores = {}
+                non_zero_scores = {}
+
+                for (index, response), uid_tensor, reward_e in zip(enumerate(responses), uids, reward_events):
+                    uid = uid_tensor.item()
+                    if reward_e.reward == 0:
+                        zero_scores[uid] = {"score": reward_e.reward, "explanation": "Your explanation here"}  # Adjust explanation as needed
+                    else:
+                        non_zero_scores[uid] = {"score": reward_e.reward}
+
+                bt.logging.info(f"==================================Links Content scoring Zero Scores  ({len(zero_scores)} cases)==================================")
+                bt.logging.info(json.dumps(zero_scores))
+                bt.logging.info(f"==================================Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)==================================")
+                bt.logging.info(json.dumps(non_zero_scores))
             return reward_events
         except Exception as e:
-            bt.logging.error(f"Reward model issue: {e}")
+            bt.logging.error(f"Link Content Relevance get_rewards: {str(e)}")
             reward_events = []
             for response in responses:
                 reward_event = BaseRewardEvent()

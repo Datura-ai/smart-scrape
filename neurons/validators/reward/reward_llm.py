@@ -13,11 +13,13 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from neurons.validators.utils.prompts import (
     extract_score_and_explanation,
 )
+from neurons.validators.utils.prompts import ScoringPrompt
 
 from enum import Enum
 import torch
 from transformers import pipeline
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 EXPECTED_ACCESS_KEY = os.environ.get('EXPECTED_ACCESS_KEY', 'hello')
 URL_SUBNET_18 = os.environ.get('URL_SUBNET_18')
@@ -35,6 +37,7 @@ class RewardLLM:
         self.model = None
         self.device = None
         self.pipe = None
+        self.scoring_prompt = ScoringPrompt()
 
     def init_tokenizer(self, device, model_name):
         # https://huggingface.co/VMware/open-llama-7b-open-instruct
@@ -180,7 +183,7 @@ class RewardLLM:
 
                     # Extract score from generated text.
                     score_text = extract_score_and_explanation(generated_text)
-                    bt.logging.info(f"Score text: {score_text}")
+                    # bt.logging.info(f"Score text: {score_text}")
                     result[key] = score_text
 
             total_duration = (
@@ -198,24 +201,26 @@ class RewardLLM:
         result = {}
         total_start_time = time.time()  # Start timing for total execution
         try:
+            # Prepare batch
+            prompts = []
+            keys = []
             for message_dict in messages:  # Iterate over each dictionary in the list
                 ((key, message_list),) = message_dict.items()
-                
                 prompt = self.pipe.tokenizer.apply_chat_template(message_list, tokenize=False, add_generation_prompt=True)
-                outputs = self.pipe(prompt, max_new_tokens=500, do_sample=True, temperature=0.2, top_k=50, top_p=0.95)
-                generated_text = outputs[0]["generated_text"]
-
-                # Extract score from generated text.
+                prompts.append(prompt)
+                keys.append(key)
+            
+            # Process batch
+            outputs = self.pipe(prompts, max_new_tokens=500, do_sample=True, temperature=0.2, top_k=50, top_p=0.95)
+            
+            # Process outputs
+            for key, output in zip(keys, outputs):
+                generated_text = output[0]["generated_text"]
                 score_text = extract_score_and_explanation(generated_text)
-                bt.logging.info(f"Score text: {score_text}")
                 result[key] = score_text
 
-            total_duration = (
-                time.time() - total_start_time
-            )  # Calculate total execution time
-            bt.logging.info(
-                f"Total execution time for get_score_by_zephyer: {total_duration} seconds"
-            )
+            total_duration = time.time() - total_start_time  # Calculate total execution time
+            bt.logging.info(f"Total execution time for get_score_by_zephyer: {total_duration} seconds")
         except Exception as e:
             bt.logging.error(f"Error in get_score_by_zephyer: {e}")
             return None
@@ -232,7 +237,6 @@ class RewardLLM:
         else:
             return self.get_score_by_llm(messages=messages)
     
-
     def llm_processing(self, messages):
         # Initialize score_responses as an empty dictionary to hold the scoring results
         score_responses = {}
@@ -240,9 +244,8 @@ class RewardLLM:
         # Define the order of scoring sources to be used
         scoring_sources = [
             ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
-            # ScoringSource.LocalLLM,  # Fallback to Local LLM if Subnet 18 fails or is disabled
             ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
-            ScoringSource.Subnet18,  # First attempt with Subnet 18
+            # ScoringSource.Subnet18,  # First attempt with Subnet 18
         ]
 
         # Attempt to score messages using the defined sources in order
@@ -261,10 +264,16 @@ class RewardLLM:
                     for (key, score_text), message in zip(current_score_responses.items(), messages)
                     if not any(char.isdigit() for char in score_text)
                 ]
-
+                # messages = [
+                #     message
+                #     for (key, score_text), message in zip(current_score_responses.items(), messages)
+                #     if not any(char.isdigit() for char in score_text) or self.scoring_prompt.extract_score(score_text) == 0
+                # ]
                 # If all messages have been scored, break out of the loop
                 if not messages:
                     break
+                else:
+                    bt.logging.info(f"OpenAI Attempt for scoring. Remaining messages: {len(messages)}")
             else:
                 bt.logging.info(
                     f"Scoring with {source} failed or returned no results. Attempting next source."

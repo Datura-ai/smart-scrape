@@ -1,4 +1,4 @@
-bittensor
+bittensor=6.7.2
 torch==2.1.0
 wandb
 transformers
@@ -13,3 +13,4 @@ datasets
 apify-client==1.6.1
 elasticsearch==8.11.1
 sentencepiece
+accelerate

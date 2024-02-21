@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
-# Copyright © 2023 Opentensor Foundation
+# Copyright d© 2023 Opentensor Foundation
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -25,13 +25,13 @@ import template
 import multiprocessing
 import time
 import torch
-
+from multiprocessing import Queue
 
 def init_wandb(self):
     try:
         if self.config.wandb_on:
-            run_name = f"validator-{self.my_uuid}-{template.__version__}"
-            self.config.uid = self.my_uuid
+            run_name = f"validator-{self.uid}-{template.__version__}"
+            self.config.uid = self.uid
             self.config.hotkey = self.wallet.hotkey.ss58_address
             self.config.run_name = run_name
             self.config.version = template.__version__
@@ -66,34 +66,40 @@ def on_retry(exception, tries_remaining, delay):
     attempt = 6 - tries_remaining  # Assuming 5 total tries
     bt.logging.info(f"Retry attempt {attempt}, will retry in {delay} seconds...")
 
-def set_weights_subtensor(wallet, netuid, uids, weights, config, version_key, ttl = 100):
-    subtensor = bt.subtensor(config=config)
-    success = subtensor.set_weights(
-        wallet=wallet,
-        netuid=netuid,
-        uids=uids,
-        weights=weights,
-        wait_for_inclusion=False,
-        wait_for_finalization=False,
-        version_key=version_key,
-        ttl=ttl
-    )
+def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_key, ttl):
+    try:
+        subtensor = bt.subtensor(config=config)
+        success, message = subtensor.set_weights(
+            wallet=wallet,
+            netuid=netuid,
+            uids=uids,
+            weights=weights,
+            wait_for_inclusion=False,
+            wait_for_finalization=False,
+            version_key=version_key,
+            ttl=ttl
+        )
 
-    if not success:
-        raise RetryException("Failed to set weights, retrying...")
-
-    return success
+        # Send the success status back to the main process
+        queue.put(success)
+        return success, message 
+    except Exception as e:
+        bt.logging.error(f"Failed to set weights on chain with exception: { e }")
+        return False, message
 
 def set_weights_with_retry(self, processed_weight_uids, processed_weights):
-    max_retries = 15  # Maximum number of retries
+    max_retries = 7  # Maximum number of retries
     retry_delay = 45  # Delay between retries in seconds
-    ttl = 100  # Time-to-live for each process attempt in seconds
-    success = False
-
+    ttl = 200  # Time-to-live for each process attempt in seconds
+   
+    bt.logging.info("Initiating weight setting process on Bittensor network.")
     for attempt in range(max_retries):
+        success = False
+        queue = Queue()  # Create a new queue for each attempt
         process = multiprocessing.Process(
             target=set_weights_subtensor,
             args=(
+                queue,  # Pass the queue as the first argument
                 self.wallet,
                 self.config.netuid,
                 processed_weight_uids,
@@ -107,21 +113,43 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
         process.join(timeout=ttl)
 
         if not process.is_alive():
-            bt.logging.success("Completed set weights action successfully.")
-            success = True
-            break  # Exit the retry loop on success
+            process.terminate()  # Ensure the process is terminated
+            process.join()  # Clean up the terminated process
+
+            # Check the queue for the success status
+            if not queue.empty():
+                queue_success = queue.get()
+                # Directly handle the return value without unpacking
+                if isinstance(queue_success, tuple):
+                    # If it's a tuple, unpack it
+                    success_status, message = queue_success
+                    success = success_status
+                    if success_status:
+                        bt.logging.success(f"Set Weights Completed set weights action successfully. Message: '{message}'")
+                    else:
+                        bt.logging.info(f"Set Weights Attempt failed with message: '{message}', retrying in {retry_delay} seconds...")
+                else:
+                    # Handle the case where the return value is not a tuple (e.g., a boolean)
+                    success = queue_success
+                    if success:
+                        bt.logging.success("Set Weights Completed set weights action successfully.")
+                    else:
+                        bt.logging.info("Set Weights Attempt failed. retrying in {retry_delay} seconds...")
+            else:
+                bt.logging.info(f"Set Weights Attempt {attempt + 1} failed, no response received, retrying in {retry_delay} seconds...")
         else:
             process.terminate()  # Ensure the process is terminated before retrying
             process.join()  # Clean up the terminated process
-            bt.logging.info(f"Attempt {attempt + 1} failed, retrying in {retry_delay} seconds...")
-            time.sleep(retry_delay)  # Wait for the specified 4delay before retrying
-
-    if not success:
-        # If the loop completes without setting success to True, all retries have failed
-        bt.logging.error("Failed to complete set weights action after multiple attempts.")
-        return False
-
-    return True
+            bt.logging.info(f"Set Weights Attempt {attempt + 1} failed, process did not complete in time, retrying in {retry_delay} seconds..")
+        if not success:
+            time.sleep(retry_delay)  # Wait for the specified delay before retrying
+        else:
+            break  # Exit the retry loop on success
+    if success:
+        bt.logging.success("Final Result: Successfully set weights after attempts.")
+    else:
+        bt.logging.error("Final Result: Failed to set weights after all attempts.")
+    return success
 
 
 def set_weights(self):

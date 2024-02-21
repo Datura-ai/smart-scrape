@@ -4,7 +4,7 @@
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+# the rights to use, copy, modify, merge, publish,pvali distribute, sublicense, and/or sell copies of the Software,
 # and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
 # The above copyright notice and this permission notice shall be included in all copies or substantial portions of
@@ -115,14 +115,14 @@ def extract_score_and_explanation(generated_text):
 
 summary_relevance_scoring_template = """
 Evaluate the correctness, relevance, and depth of an answer given a context and question, focusing on the inclusion of Twitter links as supporting evidence. 
-Scores range from 0 to 10:
-- 0 for answers completely unrelated or incorrect, especially those not addressing the question's topic.
+Scores range from 1 to 10:
+- 1 for answers completely unrelated or incorrect, especially those not addressing the question's topic.
 - 2 for answers relevant to the question but lacking any Twitter links as evidence.
 - 3-9 for answers that vary in correctness, relevance, and the inclusion of Twitter links, with higher scores reflecting better quality and more relevant evidence.
 - 10 for answers that are not only accurate and relevant but also well-supported by Twitter links, fully addressing the question's demands.
 
 Score Examples:
-- Score 0: Answer discusses a completely different topic without any relation to the question.
+- Score 1: Answer discusses a completely different topic without any relation to the question.
 - Score 2: Answer is on topic but does not provide any Twitter links to support its statements.
 - Score 6: Provides a partially correct response with some Twitter links, but lacks comprehensive coverage or depth on the topic.
 - Score 8: Offers a thorough answer with relevant Twitter links but misses minor details or broader implications.
@@ -153,7 +153,7 @@ link_content_relevance_template = """
 Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the level of relevance the tweet content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
 
 Scores can be:
-- Assign a score of 0 if the tweet content fails to mention any keywords or topics related to the question, indicating a lack of relevance.
+- Assign a score of 1 if the tweet content fails to mention any keywords or topics related to the question, indicating a lack of relevance.
 - Assign a score of 5 if the tweet content mentions at least one keyword or topic from the question but either engages with the question's core topics superficially or only tangentially.
 - Assign a score of 10 if the tweet content is highly relevant, incorporating multiple keywords or topics from the question and engaging deeply and meaningfully with the question's core topics.
 
