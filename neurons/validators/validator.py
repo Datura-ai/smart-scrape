@@ -350,6 +350,7 @@ class Neuron(AbstractNeuron):
 
         try:
             async def run_with_interval(interval, strategy):
+                query_count = 0  # Initialize query count
                 while True:
                     try:
                         if not self.available_uids:
@@ -364,7 +365,8 @@ class Neuron(AbstractNeuron):
 
                         await asyncio.sleep(interval)  # Wait for 1800 seconds (30 minutes)
 
-                        bt.logging.info(f"Executing next synthetic query after a wait interval of {interval} seconds.")
+                        query_count += 1  # Increment query count after each interval
+                        bt.logging.info(f"Executing next synthetic query #{query_count} after a wait interval of {interval} seconds.")
                     except Exception as e:
                         bt.logging.error(f"Error during task execution: {e}")
                         await asyncio.sleep(interval)  # Wait before retrying
