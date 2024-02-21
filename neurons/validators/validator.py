@@ -248,12 +248,11 @@ class Neuron(AbstractNeuron):
 
     async def run_synthetic_queries(self, strategy=QUERY_MINERS.RANDOM):
         bt.logging.info(f"Starting run_synthetic_queries with strategy={strategy}")
-
+        total_start_time = time.time()
         try:
-
             async def run_forward():
                 start_time = time.time()
-                bt.logging.info("Running step forward for query_synapse, Step: {self.step}")
+                bt.logging.info(f"Running step forward for query_synapse, Step: {self.step}")
                 coroutines = [self.query_synapse(strategy) for _ in range(1)]
                 await asyncio.gather(*coroutines)
                 end_time = time.time()
@@ -264,7 +263,6 @@ class Neuron(AbstractNeuron):
             self.loop.run_until_complete(run_forward())
             bt.logging.info("Completed running coroutines with run_until_complete")
 
-            sync_start_time = time.time()
             sync_start_time = time.time()
             bt.logging.info("Calling sync method")
             self.sync()
@@ -277,6 +275,10 @@ class Neuron(AbstractNeuron):
         except Exception as err:
             bt.logging.error("Error in run_synthetic_queries", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
+        finally:
+            total_end_time = time.time()
+            total_execution_time = (total_end_time - total_start_time) / 60
+            bt.logging.info(f"Total execution time for run_synthetic_queries: {total_execution_time:.2f} minutes")
 
     def sync(self):
         """
@@ -357,11 +359,7 @@ class Neuron(AbstractNeuron):
                             bt.logging.info("No available UIDs, sleeping for 10 seconds.")
                             await asyncio.sleep(10)
                             continue
-                        start_time = time.time()
-                        asyncio.create_task(self.run_synthetic_queries(strategy))
-                        end_time = time.time()
-                        execution_time = (end_time - start_time) / 60  # Convert to minutes
-                        bt.logging.info(f"Execution time of running synthetic query: {execution_time:.2f} minutes")
+                        self.loop.create_task(self.run_synthetic_queries(strategy))
 
                         await asyncio.sleep(interval)  # Wait for 1800 seconds (30 minutes)
 
