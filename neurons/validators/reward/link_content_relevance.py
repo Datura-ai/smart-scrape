@@ -261,7 +261,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 if score_responses:
                     score_result = score_responses.get(str(uid), None)
                     if score_result is None:
-                        bt.logging.error(f"Link Content Relevance get_rewards: No score response for UID '{uid}'")
+                        bt.logging.info(f"Link Content Relevance get_rewards: No score response for UID '{uid}'")
                         score = 0  # Default score or another logic to handle missing scores
                     else:
                         score = scoring_prompt.extract_score(score_result)
