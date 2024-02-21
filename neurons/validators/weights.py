@@ -141,7 +141,7 @@ def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_
 def set_weights_with_retry(self, processed_weight_uids, processed_weights):
     max_retries = 5  # Maximum number of retries
     retry_delay = 45  # Delay between retries in seconds
-    ttl = 140  # Time-to-live for each process attempt in seconds
+    ttl = 200  # Time-to-live for each process attempt in seconds
     success = False
 
     queue = Queue()  # Create a new queue for each attempt
