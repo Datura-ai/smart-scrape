@@ -258,9 +258,13 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 reward_event.reward = 0
 
                 if score_responses:
-                    score_result = score_responses[str(uid)]
-                    score = scoring_prompt.extract_score(score_result)
-                    score /= 10.0
+                    score_result = score_responses.get(str(uid), None)
+                    if score_result is None:
+                        bt.logging.error(f"Link Content Relevance get_rewards: No score response for UID '{uid}'")
+                        score = 0  # Default score or another logic to handle missing scores
+                    else:
+                        score = scoring_prompt.extract_score(score_result)
+                        score /= 10.0
                     reward_event.reward = score
                 if apify_score:
                     reward_event.reward = min(reward_event.reward * 2, 1)

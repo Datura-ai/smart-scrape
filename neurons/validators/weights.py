@@ -66,131 +66,89 @@ def on_retry(exception, tries_remaining, delay):
     attempt = 6 - tries_remaining  # Assuming 5 total tries
     bt.logging.info(f"Retry attempt {attempt}, will retry in {delay} seconds...")
 
-def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_key):
-    subtensor = bt.subtensor(config=config)
-    success = subtensor.set_weights(
-        wallet=wallet,
-        netuid=netuid,
-        uids=uids,
-        weights=weights,
-        wait_for_inclusion=False,
-        wait_for_finalization=False,
-        version_key=version_key
-    )
+def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_key, ttl):
+    try:
+        subtensor = bt.subtensor(config=config)
+        success, message = subtensor.set_weights(
+            wallet=wallet,
+            netuid=netuid,
+            uids=uids,
+            weights=weights,
+            wait_for_inclusion=False,
+            wait_for_finalization=False,
+            version_key=version_key,
+            ttl=ttl
+        )
 
-    # Send the success status back to the main process
-    queue.put(success)
-
-# def set_weights_with_retry(self, processed_weight_uids, processed_weights):
-
-
-#     max_retries = 5  # Maximum number of retries
-#     retry_delay = 45  # Delay between retries in seconds
-#     ttl = 140  # Time-to-live for each process attempt in seconds
-#     success = False
-
-#     for attempt in range(max_retries):
-#         queue = Queue()  # Create a new queue for each attempt
-#         process = multiprocessing.Process(
-#             target=set_weights_subtensor,
-#             args=(
-#                 queue,  # Pass the queue as the first argument
-#                 self.wallet,
-#                 self.config.netuid,
-#                 processed_weight_uids,
-#                 processed_weights,
-#                 self.config,
-#                 template.__weights_version__
-#             ),
-#         )
-#         process.start()
-#         process.join(timeout=ttl)
-
-#         if not process.is_alive():
-#             process.terminate()  # Ensure the process is terminated
-#             process.join()  # Clean up the terminated process
-
-#             # Check the queue for the success status
-#             if not queue.empty():
-#                 success = queue.get()
-#                 if success:
-#                     success_status, success_message = success  # Unpack the tuple
-#                     if success_status:
-#                         bt.logging.success(f"Set Weights Completed set weights action successfully. Message: '{success_message}'")
-#                         break  # Exit the retry loop on success
-#                     else:
-#                         bt.logging.info(f"Set Weights Attempt {attempt + 1} failed with message: '{success_message}', retrying in {retry_delay} seconds...")
-#                 else:
-#                     bt.logging.info(f"Set Weights Attempt {attempt + 1} failed, retrying in {retry_delay} seconds...")
-#             else:
-#                 bt.logging.info(f"Set Weights Attempt {attempt + 1} failed, no response received, retrying in {retry_delay} seconds...")
-#         else:
-#             process.terminate()  # Ensure the process is terminated before retrying
-#             process.join()  # Clean up the terminated process
-#             bt.logging.info(f"Set Weights Attempt {attempt + 1} failed, process did not complete in time, retrying in {retry_delay} seconds...")
-
-#         time.sleep(retry_delay)  # Wait for the specified delay before retrying
-
-#     if not success:
-#         # If the loop completes without setting success to True, all retries have failed
-#         bt.logging.error("Failed to complete set weights action after multiple attempts.")
-#         return False
-
-#     return True
+        # Send the success status back to the main process
+        queue.put(success)
+        return success, message 
+    except Exception as e:
+        bt.logging.error(f"Failed to set weights on chain with exception: { e }")
+        return False, message
 
 def set_weights_with_retry(self, processed_weight_uids, processed_weights):
-    max_retries = 5  # Maximum number of retries
+    max_retries = 7  # Maximum number of retries
     retry_delay = 45  # Delay between retries in seconds
     ttl = 200  # Time-to-live for each process attempt in seconds
-    success = False
+   
+    bt.logging.info("Initiating weight setting process on Bittensor network.")
+    for attempt in range(max_retries):
+        success = False
+        queue = Queue()  # Create a new queue for each attempt
+        process = multiprocessing.Process(
+            target=set_weights_subtensor,
+            args=(
+                queue,  # Pass the queue as the first argument
+                self.wallet,
+                self.config.netuid,
+                processed_weight_uids,
+                processed_weights,
+                self.config,
+                template.__weights_version__,
+                ttl
+            ),
+        )
+        process.start()
+        process.join(timeout=ttl)
 
-    queue = Queue()  # Create a new queue for each attempt
-    process = multiprocessing.Process(
-        target=set_weights_subtensor,
-        args=(
-            queue,  # Pass the queue as the first argument
-            self.wallet,
-            self.config.netuid,
-            processed_weight_uids,
-            processed_weights,
-            self.config,
-            template.__weights_version__
-        ),
-    )
-    process.start()
-    process.join(timeout=ttl)
+        if not process.is_alive():
+            process.terminate()  # Ensure the process is terminated
+            process.join()  # Clean up the terminated process
 
-    if not process.is_alive():
-        process.terminate()  # Ensure the process is terminated
-        process.join()  # Clean up the terminated process
-
-        # Check the queue for the success status
-        if not queue.empty():
-            queue_success = queue.get()
-            # Directly handle the return value without unpacking
-            if isinstance(queue_success, tuple):
-                # If it's a tuple, unpack it
-                success_status, success_message = queue_success
-                success = success_status
-                if success_status:
-                    bt.logging.success(f"Set Weights Completed set weights action successfully. Message: '{success_message}'")
+            # Check the queue for the success status
+            if not queue.empty():
+                queue_success = queue.get()
+                # Directly handle the return value without unpacking
+                if isinstance(queue_success, tuple):
+                    # If it's a tuple, unpack it
+                    success_status, message = queue_success
+                    success = success_status
+                    if success_status:
+                        bt.logging.success(f"Set Weights Completed set weights action successfully. Message: '{message}'")
+                    else:
+                        bt.logging.info(f"Set Weights Attempt failed with message: '{message}', retrying in {retry_delay} seconds...")
                 else:
-                    bt.logging.info(f"Set Weights Attempt failed with message: '{success_message}'")
+                    # Handle the case where the return value is not a tuple (e.g., a boolean)
+                    success = queue_success
+                    if success:
+                        bt.logging.success("Set Weights Completed set weights action successfully.")
+                    else:
+                        bt.logging.info("Set Weights Attempt failed. retrying in {retry_delay} seconds...")
             else:
-                # Handle the case where the return value is not a tuple (e.g., a boolean)
-                success = queue_success
-                if success:
-                    bt.logging.success("Set Weights Completed set weights action successfully.")
-                else:
-                    bt.logging.info("Set Weights Attempt failed.")
+                bt.logging.info(f"Set Weights Attempt {attempt + 1} failed, no response received, retrying in {retry_delay} seconds...")
         else:
-            bt.logging.info("Set Weights Attempt failed, no response received.")
+            process.terminate()  # Ensure the process is terminated before retrying
+            process.join()  # Clean up the terminated process
+            bt.logging.info(f"Set Weights Attempt {attempt + 1} failed, process did not complete in time, retrying in {retry_delay} seconds..")
+        if not success:
+            time.sleep(retry_delay)  # Wait for the specified delay before retrying
+        else:
+            break  # Exit the retry loop on success
+    if success:
+        bt.logging.success("Final Result: Successfully set weights after attempts.")
     else:
-        process.terminate()  # Ensure the process is terminated before retrying
-        process.join()  # Clean up the terminated process
-        bt.logging.info("Set Weights Attempt failed, process did not complete in time")
-
-
+        bt.logging.error("Final Result: Failed to set weights after all attempts.")
     return success
 
 

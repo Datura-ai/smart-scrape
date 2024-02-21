@@ -1,4 +1,4 @@
-bittensor
+bittensor=6.7.2
 torch==2.1.0
 wandb
 transformers
