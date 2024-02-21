@@ -167,23 +167,29 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
         # Check the queue for the success status
         if not queue.empty():
             queue_success = queue.get()
-            if queue_success:
-                success_status, success_message = queue_success  # Unpack the tuple
-                success = True
+            # Directly handle the return value without unpacking
+            if isinstance(queue_success, tuple):
+                # If it's a tuple, unpack it
+                success_status, success_message = queue_success
+                success = success_status
                 if success_status:
                     bt.logging.success(f"Set Weights Completed set weights action successfully. Message: '{success_message}'")
                 else:
-                    bt.logging.info(f"Set Weights Attempt  failed with message: '{success_message}'")
+                    bt.logging.info(f"Set Weights Attempt failed with message: '{success_message}'")
             else:
-                bt.logging.info(f"Set Weights Attempt failed")
+                # Handle the case where the return value is not a tuple (e.g., a boolean)
+                success = queue_success
+                if success:
+                    bt.logging.success("Set Weights Completed set weights action successfully.")
+                else:
+                    bt.logging.info("Set Weights Attempt failed.")
         else:
-            bt.logging.info(f"Set Weights Attempt failed, no response received.")
+            bt.logging.info("Set Weights Attempt failed, no response received.")
     else:
         process.terminate()  # Ensure the process is terminated before retrying
         process.join()  # Clean up the terminated process
-        bt.logging.info(f"Set Weights Attempt failed, process did not complete in time")
+        bt.logging.info("Set Weights Attempt failed, process did not complete in time")
 
-    time.sleep(retry_delay)  # Wait for the specified delay before retrying
 
     return success
 
