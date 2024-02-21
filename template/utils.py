@@ -15,6 +15,7 @@ import traceback
 import bittensor as bt
 import threading
 import multiprocessing
+import aiohttp
 from . import client
 from collections import deque
 from template.protocol import TwitterPromptAnalysisResult
@@ -325,3 +326,23 @@ def resync_metagraph(self: "validators.neuron.neuron"):
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+
+
+async def save_logs(prompt, completions, prompt_analyses, data, miner_uids, scores):
+    logging_endpoint_url = os.environ.get("LOGGING_ENDPOINT_URL")
+
+    if not logging_endpoint_url:
+        return
+
+    async with aiohttp.ClientSession() as session:
+        await session.post(
+            logging_endpoint_url,
+            json={
+                "prompt": prompt,
+                "data": data,
+                "completions": completions,
+                "prompt_analyses": prompt_analyses,
+                "miner_uids": miner_uids,
+                "scores": scores,
+            },
+        )

@@ -24,9 +24,10 @@ from neurons.validators.utils.tasks import TwitterTask
 
 from template.dataset import MockTwitterQuestionsDataset
 from template.services.twitter_api_wrapper import TwitterAPIClient
-from template.services.logging import save_logs
+from template.utils import save_logs
 from template import QUERY_MINERS
 import asyncio
+
 
 class ScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
@@ -74,7 +75,7 @@ class ScraperValidator:
                 SummaryRelevanceRewardModel(
                     device=self.neuron.config.neuron.device,
                     scoring_type=RewardScoringType.summary_relevance_score_template,
-                    llm_reward=self.reward_llm
+                    llm_reward=self.reward_llm,
                 )
                 if self.neuron.config.reward.summary_relevance_weight > 0
                 else MockRewardModel(RewardModelType.summary_relavance_match.value)
@@ -83,7 +84,7 @@ class ScraperValidator:
                 LinkContentRelevanceModel(
                     device=self.neuron.config.neuron.device,
                     scoring_type=RewardScoringType.summary_relevance_score_template,
-                    llm_reward=self.reward_llm
+                    llm_reward=self.reward_llm,
                 )
                 if self.neuron.config.reward.link_content_weight > 0
                 else MockRewardModel(RewardModelType.link_content_match.value)
@@ -281,15 +282,33 @@ class ScraperValidator:
                 wandb_data["responses"][uid] = response.completion
                 wandb_data["prompts"][uid] = prompt
 
-                if self.neuron.config.neuron.save_logs:
-                    await save_logs(
-                        prompt=prompt,
-                        response=response.completion,
-                        prompt_analysis=response.prompt_analysis,
-                        data=response.miner_tweets,
-                        miner_uid=uid,
-                        score=reward,
-                    )
+            await self.neuron.update_scores(wandb_data)
+
+            # logs = []
+
+            # logs.append(
+            #     {
+            #         "completion": response.completion,
+            #         "prompt_analysis": response.prompt_analysis,
+            #         "miner_uids": uid,
+            #         "score": reward,
+            #         "data": response.miner_tweets,
+            #         "hotkey": response.axon.hotkey,
+            #         "coldkey": ""
+            #     }
+            # )
+
+            if self.neuron.config.neuron.save_logs:
+                await save_logs(
+                    prompt=prompt,
+                    completions=[response.completion for response in responses],
+                    prompt_analyses=[
+                        response.prompt_analysis.dict() for response in responses
+                    ],
+                    miner_uids=[uid_tensor.item() for uid_tensor in uids],
+                    scores=uid_scores_dict,
+                    data=[response.miner_tweets for response in responses],
+                )
 
             return rewards
         except Exception as e:
