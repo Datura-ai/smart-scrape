@@ -88,7 +88,7 @@ def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_
         return False, message
 
 def set_weights_with_retry(self, processed_weight_uids, processed_weights):
-    max_retries = 7  # Maximum number of retries
+    max_retries = 9  # Maximum number of retries
     retry_delay = 45  # Delay between retries in seconds
     ttl = 200  # Time-to-live for each process attempt in seconds
    
@@ -132,7 +132,7 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
                     # Handle the case where the return value is not a tuple (e.g., a boolean)
                     success = queue_success
                     if success:
-                        bt.logging.success("Set Weights Completed set weights action successfully, Response: {success}")
+                        bt.logging.success(f"Set Weights Completed set weights action successfully, Response: {success}")
                     else:
                         bt.logging.info(f"Set Weights Attempt failed. retrying in {retry_delay} seconds..., Response: {success}")
             else:
