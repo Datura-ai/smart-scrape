@@ -348,15 +348,21 @@ class Neuron(AbstractNeuron):
         bt.logging.info(f"Validator starting at block: {self.block}")
 
         try:
-
             async def run_with_interval(interval, strategy):
                 while True:
-                    if not self.available_uids:
-                        bt.logging.info("No available UIDs, sleeping for 10 seconds.")
-                        await asyncio.sleep(10)
-                        continue
-                    asyncio.create_task(self.run_synthetic_queries(strategy))
-                    await asyncio.sleep(interval)  # Wait for 1800 seconds (30 minutes)
+                    try:
+                        if not self.available_uids:
+                            bt.logging.info("No available UIDs, sleeping for 10 seconds.")
+                            await asyncio.sleep(10)
+                            continue
+                        asyncio.create_task(self.run_synthetic_queries(strategy))
+                        bt.logging.info(f"Run Next Synthetic Query")
+
+                        await asyncio.sleep(interval)  # Wait for 1800 seconds (30 minutes)
+                    except Exception as e:
+                        bt.logging.error(f"Error during task execution: {e}")
+                        await asyncio.sleep(interval)  # Wait before retrying
+
 
             if self.config.neuron.run_random_miner_syn_qs_interval > 0:
                 self.loop.create_task(

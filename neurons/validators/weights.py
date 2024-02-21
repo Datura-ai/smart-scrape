@@ -73,7 +73,7 @@ def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_
         netuid=netuid,
         uids=uids,
         weights=weights,
-        wait_for_inclusion=True,
+        wait_for_inclusion=False,
         wait_for_finalization=False,
         version_key=version_key
     )
