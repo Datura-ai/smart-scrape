@@ -132,9 +132,9 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
                     # Handle the case where the return value is not a tuple (e.g., a boolean)
                     success = queue_success
                     if success:
-                        bt.logging.success("Set Weights Completed set weights action successfully.")
+                        bt.logging.success("Set Weights Completed set weights action successfully, Response: {success}")
                     else:
-                        bt.logging.info("Set Weights Attempt failed. retrying in {retry_delay} seconds...")
+                        bt.logging.info(f"Set Weights Attempt failed. retrying in {retry_delay} seconds..., Response: {success}")
             else:
                 bt.logging.info(f"Set Weights Attempt {attempt + 1} failed, no response received, retrying in {retry_delay} seconds...")
         else:

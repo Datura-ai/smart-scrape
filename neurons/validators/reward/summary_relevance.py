@@ -155,10 +155,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 reward_event.reward = score
                 reward_events.append(reward_event)
                 if score == 0:
-                    zero_scores[uid] = {"score": score, "explanation": score_explain.strip()}
+                    zero_scores[uid] = {"score": score, "explain": score_explain}
                 else:
-                    non_zero_scores[uid] = {"score": score}
-
+                    non_zero_scores[uid] = score
 
             bt.logging.info(f"==================================Summary Relevance scoring Zero Scores  ({len(zero_scores)} cases)==================================")
             bt.logging.info(json.dumps(zero_scores))

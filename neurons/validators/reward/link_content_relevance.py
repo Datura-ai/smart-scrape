@@ -279,9 +279,13 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 for (index, response), uid_tensor, reward_e in zip(enumerate(responses), uids, reward_events):
                     uid = uid_tensor.item()
                     if reward_e.reward == 0:
-                        zero_scores[uid] = {"score": reward_e.reward, "explanation": "Your explanation here"}  # Adjust explanation as needed
+                        score_explain = score_responses.get(str(uid), "")
+                        zero_scores[uid] = {
+                            "score": reward_e.reward,
+                            "explain": score_explain
+                        }
                     else:
-                        non_zero_scores[uid] = {"score": reward_e.reward}
+                        non_zero_scores[uid] = reward_e.reward
 
                 bt.logging.info(f"==================================Links Content scoring Zero Scores  ({len(zero_scores)} cases)==================================")
                 bt.logging.info(json.dumps(zero_scores))
