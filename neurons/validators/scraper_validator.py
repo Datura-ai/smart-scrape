@@ -220,7 +220,7 @@ class ScraperValidator:
                 execution_time = time.time() - start_time
                 bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
                 bt.logging.info(
-                    f"Applied reward function: {reward_fn_i.name} with reward: {reward_event.get(reward_fn_i.name, 'N/A')} in {execution_time:.2f} seconds"
+                    f"Applied reward function: {reward_fn_i.name} with reward: {reward_event.get(reward_fn_i.name, 'N/A')} in {execution_time / 60:.2f} minutes"
                 )
 
             for penalty_fn_i in self.penalty_functions:
@@ -268,7 +268,7 @@ class ScraperValidator:
                 )
                 # Accumulate log messages instead of logging them immediately
                 log_messages.append(
-                    f"uid: {uid}; R: {reward}; C: {completion_length}; L: {completion_links_length};"
+                    f"UID: {uid}, R: {round(reward, 3)}, C: {completion_length}, L: {completion_links_length}"
                 )
                 bt.logging.trace(f"{response.completion}")
 

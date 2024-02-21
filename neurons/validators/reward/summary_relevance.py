@@ -128,6 +128,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             scores = {}
             score_text = {}
             if messages:
+                bt.logging.info(f"Executing llm_processing on {len(messages)} summary relevance messages.")
                 score_responses = self.reward_llm.llm_processing(messages)
                 if score_responses:
                     for (key, score_result), (scoring_prompt, _) in zip(

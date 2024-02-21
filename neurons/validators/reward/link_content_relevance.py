@@ -246,7 +246,8 @@ class LinkContentRelevanceModel(BaseRewardModel):
                             prompt, miner_tweet_text
                         )
                         scoring_messages.append({str(uid): scoring_text})
-
+                        
+            bt.logging.info(f"Executing llm_processing on {len(scoring_messages)} Link Content Relevance messages.")
             score_responses = self.reward_llm.llm_processing(scoring_messages)
             reward_events = []
             scoring_prompt = ScoringPrompt()

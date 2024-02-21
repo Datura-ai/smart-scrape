@@ -146,9 +146,10 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
         else:
             break  # Exit the retry loop on success
     if success:
-        bt.logging.success("Final Result: Successfully set weights after attempts.")
+        bt.logging.success(f"Final Result: Successfully set weights after {attempt + 1} attempts.")
     else:
-        bt.logging.error("Final Result: Failed to set weights after all attempts.")
+        bt.logging.error(f"Final Result: Failed to set weights after {attempt + 1} attempts.")
+        
     return success
 
 
