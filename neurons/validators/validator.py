@@ -14,13 +14,12 @@ from typing import List
 from template.protocol import IsAlive
 from neurons.validators.scraper_validator import ScraperValidator
 from config import add_args, check_config, config
-from weights import init_wandb, set_weights
+from weights import init_wandb, set_weights, get_weights
 from traceback import print_exception
 from base_validator import AbstractNeuron
 from template import QUERY_MINERS
 from template.misc import ttl_get_block
-from template.utils import resync_metagraph
-from template.utils import save_logs
+from template.utils import resync_metagraph, save_logs
 
 
 class Neuron(AbstractNeuron):
@@ -214,12 +213,34 @@ class Neuron(AbstractNeuron):
             bt.logging.error(f"Error in save_logs_in_chunks: {e}")
             raise e
 
-    async def update_scores(self, wandb_data, prompt, logs):
+    async def update_scores(self, wandb_data, prompt, responses, uids, rewards):
         try:
             if self.config.wandb_on:
                 wandb.log(wandb_data)
 
             if self.config.neuron.save_logs:
+                weights = get_weights(self)
+
+                logs = [
+                    {
+                        "completion": response.completion,
+                        "prompt_analysis": response.prompt_analysis.dict(),
+                        "data": response.miner_tweets,
+                        "miner_uid": uid,
+                        "score": reward,
+                        "hotkey": response.axon.hotkey,
+                        "coldkey": next(
+                            axon.coldkey
+                            for axon in self.metagraph.axons
+                            if axon.hotkey == response.axon.hotkey
+                        ),
+                        "weight": weights.get(str(uid)),
+                    }
+                    for response, uid, reward in zip(
+                        responses, uids.tolist(), rewards.tolist()
+                    )
+                ]
+
                 asyncio.create_task(
                     self.save_logs_in_chunks(
                         prompt=prompt,

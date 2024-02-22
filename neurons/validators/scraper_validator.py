@@ -292,25 +292,12 @@ class ScraperValidator:
                 wandb_data["responses"][uid] = response.completion
                 wandb_data["prompts"][uid] = prompt
 
-            logs = [
-                {
-                    "completion": response.completion,
-                    "prompt_analysis": response.prompt_analysis.dict(),
-                    "data": response.miner_tweets,
-                    "miner_uid": uid.item(),
-                    "score": reward,
-                    "hotkey": response.axon.hotkey,
-                    "coldkey": next(
-                        axon.coldkey
-                        for axon in self.neuron.metagraph.axons
-                        if axon.hotkey == response.axon.hotkey
-                    ),
-                }
-                for response, uid, reward in zip(responses, uids, rewards.tolist())
-            ]
-
             await self.neuron.update_scores(
-                wandb_data=wandb_data, prompt=prompt, logs=logs
+                wandb_data=wandb_data,
+                prompt=prompt,
+                responses=responses,
+                uids=uids,
+                rewards=rewards,
             )
 
             return rewards
