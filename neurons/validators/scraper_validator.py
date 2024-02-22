@@ -396,7 +396,7 @@ class ScraperValidator:
             final_synapses = []
             async for value in process_async_responses(async_responses):
                 if isinstance(value, bt.Synapse):
-                    final_synapses.append(value[1])
+                    final_synapses.append(value)
                 else:
                     pass
             rewards = await self.compute_rewards_and_penalties(

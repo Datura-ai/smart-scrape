@@ -244,7 +244,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     def set_tweets(self, data: any):
         self.tweets = data
 
-    async def process_streaming_response(self, response: ClientResponse):
+    async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:
             self.completion = ""
 
@@ -254,7 +254,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                 chunk_str = chunk.decode("utf-8")
                 # Attempt to parse the chunk as JSON
                 try:
-                    json_objects, remaining_chunk = self.extract_json_chunk(chunk_str)
+                    json_objects, remaining_chunk = extract_json_chunk(chunk_str)
                     for json_data in json_objects:
                         content_type = json_data.get("type")
 
@@ -275,7 +275,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                 except json.JSONDecodeError as e:
                     bt.logging.info(f"process_streaming_response json.JSONDecodeError: {e}")
         except Exception as e:
-            bt.logging.trace(f"process_streaming_response: {e}")
+            bt.logging.info(f"process_streaming_response: {e}")
 
     def deserialize(self) -> str:
         return self.completion
