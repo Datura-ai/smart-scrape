@@ -5,7 +5,8 @@ import random
 import json
 import bittensor as bt
 from base_validator import AbstractNeuron
-from template.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult, process_streaming_response, process_single_response_combined
+from template.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult
+from template.stream import process_async_responses
 from reward import RewardModelType, RewardScoringType
 from typing import List
 from utils.mock import MockRewardModel
@@ -92,59 +93,6 @@ class ScraperValidator:
             AccuracyPenaltyModel(max_penalty=1),
         ]
         self.twitter_api = TwitterAPIClient()
-
-    async def process_single_response(self, resp, prompt):
-        default = ScraperStreamingSynapse(
-            messages=prompt, model=self.model, seed=self.seed
-        )
-        full_response = ""
-        synapse_object = None
-
-        try:
-            async for chunk in resp:
-                if isinstance(chunk, str):
-                    full_response += chunk
-                elif isinstance(chunk, bt.Synapse):
-                    if chunk.is_failure:
-                        raise Exception("Dendrite's status code indicates failure")
-                    synapse_object = chunk
-        except Exception as e:
-            bt.logging.trace(f"Process Single Response: {e}")
-            return default
-
-        if synapse_object is not None:
-            return synapse_object
-
-        return default
-
-    async def process_async_responses(self, async_responses, prompt):
-        tasks = [self.collect_generator_results(resp, prompt) for resp in async_responses]
-        responses = await asyncio.gather(*tasks)
-        for response in responses:
-            stream_text = ''.join([chunk[1] for chunk in response if not chunk[0]])
-            if stream_text:
-                yield stream_text  # Yield stream text as soon as it's available
-            # Instead of returning, yield final synapse objects with a distinct flag
-            final_synapse = next((chunk[1] for chunk in response if chunk[0]), None)
-            if final_synapse:
-                yield (True, final_synapse)  # Yield final synapse with a flag
-
-    async def collect_generator_results(self, response, prompt):
-        results = []
-        async for result in process_single_response_combined(self, response, prompt):
-            results.append(result)
-        return results
-    
-    async def return_tokens(self, chunks):
-        async for resp in chunks:
-            if isinstance(resp, str):
-                try:
-                    chunk_data = json.loads(resp)
-                    tokens = chunk_data.get("tokens", "")
-                    bt.logging.trace(tokens)
-                    yield tokens
-                except json.JSONDecodeError:
-                    bt.logging.trace(f"Failed to decode JSON chunk: {resp}")
 
     async def run_task_and_score(
         self,
@@ -337,7 +285,7 @@ class ScraperValidator:
             )
 
             final_synapses = []
-            async for value in self.process_async_responses(async_responses, prompt):
+            async for value in process_async_responses(async_responses, prompt):
                 if isinstance(value, tuple) and value[0] == True:
                     final_synapses.append(value[1])
                 else:
@@ -375,49 +323,19 @@ class ScraperValidator:
                 is_only_allowed_miner=True,
                 is_intro_text=True,
             )
-
-            responses = []
-            for resp in async_responses:
-                try:
-                    full_response = ""
-                    try:
-                        async for chunk in resp:
-                            if isinstance(chunk, str):
-                                full_response += chunk
-                                yield chunk
-                            elif isinstance(chunk, bt.Synapse):
-                                if chunk.is_failure:
-                                    raise Exception(
-                                        "Dendrite's status code indicates failure"
-                                    )
-                                synapse_object = chunk
-
-                    except Exception as e:
-                        bt.logging.trace(f"Organic Async Response: {e}")
-                        responses.append(
-                            ScraperStreamingSynapse(
-                                messages=prompt, model=self.model, seed=self.seed
-                            )
-                        )
-                        continue
-
-                    if synapse_object is not None:
-                        responses.append(synapse_object)
-
-                except Exception as e:
-                    bt.logging.trace(f"Error for resp in async_responses: {e}")
-                    responses.append(
-                        ScraperStreamingSynapse(
-                            messages=prompt, model=self.model, seed=self.seed
-                        )
-                    )
+            final_synapses = []
+            async for value in process_async_responses(async_responses, prompt):
+                if isinstance(value, tuple) and value[0] == True:
+                    final_synapses.append(value[1])
+                else:
+                    yield value
 
             async def process_and_score_responses():
                 await self.compute_rewards_and_penalties(
                     event=event,
                     prompt=prompt,
                     task=task,
-                    responses=responses,
+                    responses=final_synapses,
                     uids=uids,
                     start_time=start_time,
                 )
@@ -452,7 +370,7 @@ class ScraperValidator:
             )
 
             final_synapses = []
-            async for value in self.process_async_responses(async_responses, prompt):
+            async for value in process_async_responses(async_responses, prompt):
                 if isinstance(value, tuple) and value[0] == True:
                     final_synapses.append(value[1])
                 else:
