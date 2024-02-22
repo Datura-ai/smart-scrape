@@ -296,7 +296,7 @@ class ScraperValidator:
             )
 
             final_synapses = []
-            async for value in process_async_responses(async_responses, prompt):
+            async for value in process_async_responses(async_responses):
                 if isinstance(value, tuple) and value[0] == True:
                     final_synapses.append(value[1])
                 else:
@@ -336,7 +336,7 @@ class ScraperValidator:
             )
             final_synapses = []
             for response in async_responses:
-                async for value in process_single_response(response, prompt):
+                async for value in process_single_response(response):
                     if value[0] == False:
                          yield value[1]
                     else:
@@ -382,7 +382,7 @@ class ScraperValidator:
             )
 
             final_synapses = []
-            async for value in process_async_responses(async_responses, prompt):
+            async for value in process_async_responses(async_responses):
                 if isinstance(value, tuple) and value[0] == True:
                     final_synapses.append(value[1])
                 else:

@@ -1,5 +1,6 @@
 from template.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult
 import bittensor as bt
+import aiohttp
 import json
 import asyncio
 
@@ -30,8 +31,8 @@ def extract_json_chunk(chunk):
 
     return json_objects, remaining_chunk
 
-async def process_async_responses(async_responses, prompt):
-    tasks = [collect_generator_results(resp, prompt) for resp in async_responses]
+async def process_async_responses(async_responses):
+    tasks = [collect_generator_results(resp) for resp in async_responses]
     responses = await asyncio.gather(*tasks)
     for response in responses:
         stream_text = ''.join([chunk[1] for chunk in response if not chunk[0]])
@@ -42,15 +43,15 @@ async def process_async_responses(async_responses, prompt):
         if final_synapse:
             yield (True, final_synapse)  # Yield final synapse with a flag
 
-async def collect_generator_results(response, prompt):
+async def collect_generator_results(response):
     results = []
-    async for result in process_single_response(response, prompt):
+    async for result in process_single_response(response):
         results.append(result)
     return results
 
-async def process_single_response(response, prompt):
+async def process_single_response(response):
     synapse = ScraperStreamingSynapse(
-        messages=prompt, model='', seed=1
+        messages='', model='', seed=1
     )
     completion = ""
     prompt_analysis = None
@@ -59,9 +60,9 @@ async def process_single_response(response, prompt):
     try:
         async for chunk in response:
             if isinstance(chunk, bt.Synapse):
+                    synapse = chunk
                     if chunk.is_failure:
                         raise Exception("Dendrite's status code indicates failure")
-                    synapse = chunk
             else: 
                 chunk_str = chunk.decode("utf-8")
                 try:
@@ -85,15 +86,33 @@ async def process_single_response(response, prompt):
                 except json.JSONDecodeError as e:
                     bt.logging.info(f"process_single_response json.JSONDecodeError: {e}")
            
-    except Exception as e:
-        bt.logging.debug(f"Process Single Response Combined: {e}")
+    except Exception as exception:
+        if isinstance(exception, aiohttp.ClientConnectorError):
+            synapse.dendrite.status_code = "503"
+            synapse.dendrite.status_message = f"Service at {synapse.axon.ip}:{str(synapse.axon.port)}/{synapse.__class__.__name__} unavailable."
+        elif isinstance(exception, asyncio.TimeoutError):
+            synapse.dendrite.status_code = "408"
+            synapse.dendrite.status_message = (
+                f"Timedout after {synapse.timeout} seconds."
+            )
+        else:
+            synapse.dendrite.status_code = "422"
+            synapse.dendrite.status_message = (
+                f"Failed to parse response object with error: {str(exception)}"
+            )
+        bt.logging.debug(f"Process Single Response Combined: {str(exception)}")
         yield (True, synapse)  # Indicate this is the final value to return
         return
-    if completion:
-        synapse.completion = completion
-    if synapse:
-        synapse.miner_tweets = miner_tweets
-    if synapse:
-        synapse.prompt_analysis = prompt_analysis
+    except GeneratorExit:
+        bt.logging.warning(f"Handle it here: GeneratorExit")
+        # Handle generator cleanup here
+        pass
+    finally:
+        if completion:
+            synapse.completion = completion
+        if miner_tweets:
+            synapse.miner_tweets = miner_tweets
+        if prompt_analysis:
+            synapse.prompt_analysis = prompt_analysis
 
-    yield (True, synapse)  # Final value
+        yield (True, synapse)  # Final value
