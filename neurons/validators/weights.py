@@ -24,6 +24,7 @@ import bittensor as bt
 import template
 import multiprocessing
 import time
+
 import torch
 from multiprocessing import Queue
 
@@ -76,8 +77,7 @@ def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_
             weights=weights,
             wait_for_inclusion=False,
             wait_for_finalization=False,
-            version_key=version_key,
-            ttl=ttl
+            version_key=version_key
         )
 
         # Send the success status back to the main process

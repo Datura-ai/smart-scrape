@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel, Field
-
+from aiohttp import ClientResponse
 
 class IsAlive(bt.Synapse):
     answer: typing.Optional[str] = None
@@ -270,7 +270,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
 
         return json_objects, remaining_chunk
 
-    async def process_streaming_response(self, response: StreamingResponse):
+    async def process_streaming_response(self, response: ClientResponse):
         if self.completion is None:
             self.completion = ""
 
@@ -306,7 +306,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     def deserialize(self) -> str:
         return self.completion
 
-    def extract_response_json(self, response: StreamingResponse) -> dict:
+    def extract_response_json(self, response: ClientResponse) -> dict:
         headers = {
             k.decode("utf-8"): v.decode("utf-8")
             for k, v in response.__dict__["_raw_headers"]
@@ -334,3 +334,118 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
 
     class Config:
         arbitrary_types_allowed = True
+
+
+
+def extract_json_chunk(chunk):
+    stack = []
+    start_index = None
+    json_objects = []
+
+    for i, char in enumerate(chunk):
+        if char == "{":
+            if not stack:
+                start_index = i
+            stack.append(char)
+        elif char == "}":
+            stack.pop()
+            if not stack and start_index is not None:
+                json_str = chunk[start_index : i + 1]
+                try:
+                    json_obj = json.loads(json_str)
+                    json_objects.append(json_obj)
+                    start_index = None
+                except json.JSONDecodeError as e:
+                    # Handle the case where json_str is not a valid JSON object
+                    continue
+
+    remaining_chunk = chunk[i + 1 :] if start_index is None else chunk[start_index:]
+
+    return json_objects, remaining_chunk
+    
+
+async def process_streaming_response(response: ClientResponse):
+    completion = ''
+    prompt_analysis = None
+    miner_tweets = []
+
+    try:
+        async for chunk in response.content.iter_any():
+            # Decode the chunk from bytes to a string
+            chunk_str = chunk.decode("utf-8")
+            # Attempt to parse the chunk as JSON
+            try:
+                json_objects, remaining_chunk = extract_json_chunk(chunk_str)
+                for json_data in json_objects:
+                    content_type = json_data.get("type")
+
+                    if content_type == "text":
+                        text_content = json_data.get("content", "")
+                        completion += text_content
+                        yield text_content
+
+                    elif content_type == "prompt_analysis":
+                        prompt_analysis_json = json_data.get("content", "{}")
+                        prompt_analysis = TwitterPromptAnalysisResult()
+                        prompt_analysis.fill(prompt_analysis_json)
+
+                    elif content_type == "tweets":
+                        tweets_json = json_data.get("content", "[]")
+                        miner_tweets = tweets_json
+            except json.JSONDecodeError as e:
+                print(f"process_streaming_response json.JSONDecodeError: {e}")
+        # Since returning a value in an async generator is not allowed, we'll yield the results instead
+        yield (completion, prompt_analysis, miner_tweets)
+    except Exception as e:
+        bt.logging.trace(f"process_streaming_response: {e}")
+
+
+async def process_single_response_combined(self, response, prompt):
+    synapse = ScraperStreamingSynapse(
+        messages=prompt, model=self.model, seed=self.seed
+    )
+    completion = ""
+    prompt_analysis = None
+    miner_tweets = []
+
+    try:
+        async for chunk in response:
+            if isinstance(chunk, bt.Synapse):
+                    if chunk.is_failure:
+                        raise Exception("Dendrite's status code indicates failure")
+                    synapse = chunk
+            else: 
+                chunk_str = chunk.decode("utf-8")
+                try:
+                    json_objects, remaining_chunk = extract_json_chunk(chunk_str)
+                    for json_data in json_objects:
+                        content_type = json_data.get("type")
+
+                        if content_type == "text":
+                            text_content = json_data.get("content", "")
+                            completion += text_content
+                            yield (False, text_content)
+
+                        elif content_type == "prompt_analysis":
+                            prompt_analysis_json = json_data.get("content", "{}")
+                            prompt_analysis = TwitterPromptAnalysisResult()
+                            prompt_analysis.fill(prompt_analysis_json)
+
+                        elif content_type == "tweets":
+                            tweets_json = json_data.get("content", "[]")
+                            miner_tweets = tweets_json
+                except json.JSONDecodeError as e:
+                    print(f"process_single_response_combined json.JSONDecodeError: {e}")
+           
+    except Exception as e:
+        bt.logging.error(f"Process Single Response Combined: {e}")
+        yield (True, synapse)  # Indicate this is the final value to return
+        return
+    if completion:
+        synapse.completion = completion
+    if synapse:
+        synapse.miner_tweets = miner_tweets
+    if synapse:
+        synapse.prompt_analysis = prompt_analysis
+
+    yield (True, synapse)  # Final value

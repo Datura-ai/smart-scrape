@@ -5,7 +5,7 @@ import random
 import json
 import bittensor as bt
 from base_validator import AbstractNeuron
-from template.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult
+from template.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult, process_streaming_response, process_single_response_combined
 from reward import RewardModelType, RewardScoringType
 from typing import List
 from utils.mock import MockRewardModel
@@ -59,8 +59,6 @@ class ScraperValidator:
             bt.logging.error(message)
             raise Exception(message)
 
-        tokenizer = None
-        model = None
         self.reward_llm = RewardLLM()
         if (
             self.neuron.config.reward.link_content_weight > 0
@@ -120,12 +118,23 @@ class ScraperValidator:
         return default
 
     async def process_async_responses(self, async_responses, prompt):
-        # Create a list of coroutine objects for each response
-        tasks = [self.process_single_response(resp, prompt) for resp in async_responses]
-        # Use asyncio.gather to run them concurrently
+        tasks = [self.collect_generator_results(resp, prompt) for resp in async_responses]
         responses = await asyncio.gather(*tasks)
-        return responses
+        for response in responses:
+            stream_text = ''.join([chunk[1] for chunk in response if not chunk[0]])
+            if stream_text:
+                yield stream_text  # Yield stream text as soon as it's available
+            # Instead of returning, yield final synapse objects with a distinct flag
+            final_synapse = next((chunk[1] for chunk in response if chunk[0]), None)
+            if final_synapse:
+                yield (True, final_synapse)  # Yield final synapse with a flag
 
+    async def collect_generator_results(self, response, prompt):
+        results = []
+        async for result in process_single_response_combined(self, response, prompt):
+            results.append(result)
+        return results
+    
     async def return_tokens(self, chunks):
         async for resp in chunks:
             if isinstance(resp, str):
@@ -177,6 +186,7 @@ class ScraperValidator:
             streaming=self.streaming,
             deserialize=False,
         )
+
 
         return async_responses, uids, event, start_time
 
@@ -326,12 +336,17 @@ class ScraperValidator:
                 task=task, strategy=strategy, is_only_allowed_miner=False
             )
 
-            responses = await self.process_async_responses(async_responses, prompt)
+            final_synapses = []
+            async for value in self.process_async_responses(async_responses, prompt):
+                if isinstance(value, tuple) and value[0] == True:
+                    final_synapses.append(value[1])
+                else:
+                    pass
             await self.compute_rewards_and_penalties(
                 event=event,
                 prompt=prompt,
                 task=task,
-                responses=responses,
+                responses=final_synapses,
                 uids=uids,
                 start_time=start_time,
             )
@@ -436,16 +451,21 @@ class ScraperValidator:
                 specified_uids=specified_uids,
             )
 
-            responses = await self.process_async_responses(async_responses, prompt)
+            final_synapses = []
+            async for value in self.process_async_responses(async_responses, prompt):
+                if isinstance(value, tuple) and value[0] == True:
+                    final_synapses.append(value[1])
+                else:
+                    pass
             rewards = await self.compute_rewards_and_penalties(
                 event=event,
                 prompt=prompt,
                 task=task,
-                responses=responses,
+                responses=final_synapses,
                 uids=uids,
                 start_time=start_time,
             )
-            for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
+            for uid_tensor, reward, response in zip(uids, rewards.tolist(), final_synapses):
                 yield f"Miner ID: {uid_tensor.item()} - Reward: {reward:.2f}\n\n"
                 yield "----------------------------------------\n\n"
                 yield f"Miner's Completion Output:\n{response.completion}\n\n"
