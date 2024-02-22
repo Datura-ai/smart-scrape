@@ -274,6 +274,18 @@ class ScraperValidator:
         )
         bt.logging.debug("Run Task event:", str(event))
 
+    async def process_async_responses(async_responses):
+        tasks = [resp for resp in async_responses]
+        responses = await asyncio.gather(*tasks)
+        for response in responses:
+            stream_text = ''.join([chunk[1] for chunk in response if not chunk[0]])
+            if stream_text:
+                yield stream_text  # Yield stream text as soon as it's available
+            # Instead of returning, yield final synapse objects with a distinct flag
+            final_synapse = next((chunk[1] for chunk in response if chunk[0]), None)
+            if final_synapse:
+                yield (True, final_synapse)  # Yield final synapse with a flag
+                
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
             dataset = MockTwitterQuestionsDataset()
@@ -297,10 +309,11 @@ class ScraperValidator:
 
             final_synapses = []
             async for value in process_async_responses(async_responses):
-                if isinstance(value, tuple) and value[0] == True:
-                    final_synapses.append(value[1])
+                if isinstance(value, bt.Synapse):
+                    final_synapses.append(value)
                 else:
                     pass
+                    
             await self.compute_rewards_and_penalties(
                 event=event,
                 prompt=prompt,
@@ -336,12 +349,11 @@ class ScraperValidator:
             )
             final_synapses = []
             for response in async_responses:
-                async for value in process_single_response(response):
-                    if value[0] == False:
-                         yield value[1]
+                async for value in response:
+                    if isinstance(value, bt.Synapse):
+                        final_synapses.append(value)
                     else:
-                        final_synapses.append(value[1])
-
+                        yield value
             async def process_and_score_responses():
                 await self.compute_rewards_and_penalties(
                     event=event,
@@ -383,7 +395,7 @@ class ScraperValidator:
 
             final_synapses = []
             async for value in process_async_responses(async_responses):
-                if isinstance(value, tuple) and value[0] == True:
+                if isinstance(value, bt.Synapse):
                     final_synapses.append(value[1])
                 else:
                     pass

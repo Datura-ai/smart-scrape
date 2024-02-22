@@ -1,52 +1,33 @@
-from template.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult
+from template.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult, extract_json_chunk
 import bittensor as bt
 import aiohttp
 import json
 import asyncio
 
-def extract_json_chunk(chunk):
-    stack = []
-    start_index = None
-    json_objects = []
-
-    for i, char in enumerate(chunk):
-        if char == "{":
-            if not stack:
-                start_index = i
-            stack.append(char)
-        elif char == "}":
-            stack.pop()
-            if not stack and start_index is not None:
-                json_str = chunk[start_index : i + 1]
-                try:
-                    json_obj = json.loads(json_str)
-                    json_objects.append(json_obj)
-                    start_index = None
-                except json.JSONDecodeError as e:
-                    # Handle the case where json_str is not a valid JSON object
-                    continue
-
-    remaining_chunk = chunk[i + 1 :] if start_index is None else chunk[start_index:]
-
-    return json_objects, remaining_chunk
-
 async def process_async_responses(async_responses):
     tasks = [collect_generator_results(resp) for resp in async_responses]
     responses = await asyncio.gather(*tasks)
     for response in responses:
-        stream_text = ''.join([chunk[1] for chunk in response if not chunk[0]])
-        if stream_text:
-            yield stream_text  # Yield stream text as soon as it's available
-        # Instead of returning, yield final synapse objects with a distinct flag
-        final_synapse = next((chunk[1] for chunk in response if chunk[0]), None)
+        final_synapse = next((chunk for chunk in response if isinstance(chunk, bt.Synapse)), None)
         if final_synapse:
-            yield (True, final_synapse)  # Yield final synapse with a flag
+            yield final_synapse  # Yield final synapse
+        else:
+            # Fixed code as per instructions
+            stream_text = ''.join([str(chunk) for chunk in response if chunk is not None])
+            if stream_text:
+                yield stream_text  # Yield stream text as soon as it's available  
 
 async def collect_generator_results(response):
     results = []
-    async for result in process_single_response(response):
+    async for result in response:
         results.append(result)
     return results
+
+# async def collect_generator_results(response):
+#     results = []
+#     async for result in process_single_response(response):
+#         results.append(result)
+#     return results
 
 async def process_single_response(response):
     synapse = ScraperStreamingSynapse(
