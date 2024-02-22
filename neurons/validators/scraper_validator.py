@@ -6,6 +6,7 @@ import json
 import bittensor as bt
 from base_validator import AbstractNeuron
 from template.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult
+from template.stream import process_async_responses, process_single_response
 from reward import RewardModelType, RewardScoringType
 from typing import List
 from utils.mock import MockRewardModel
@@ -61,8 +62,6 @@ class ScraperValidator:
             bt.logging.error(message)
             raise Exception(message)
 
-        tokenizer = None
-        model = None
         self.reward_llm = RewardLLM()
         if (
             self.neuron.config.reward.link_content_weight > 0
@@ -96,48 +95,6 @@ class ScraperValidator:
             AccuracyPenaltyModel(max_penalty=1),
         ]
         self.twitter_api = TwitterAPIClient()
-
-    async def process_single_response(self, resp, prompt):
-        default = ScraperStreamingSynapse(
-            messages=prompt, model=self.model, seed=self.seed
-        )
-        full_response = ""
-        synapse_object = None
-
-        try:
-            async for chunk in resp:
-                if isinstance(chunk, str):
-                    full_response += chunk
-                elif isinstance(chunk, bt.Synapse):
-                    if chunk.is_failure:
-                        raise Exception("Dendrite's status code indicates failure")
-                    synapse_object = chunk
-        except Exception as e:
-            bt.logging.trace(f"Process Single Response: {e}")
-            return default
-
-        if synapse_object is not None:
-            return synapse_object
-
-        return default
-
-    async def process_async_responses(self, async_responses, prompt):
-        # Create a list of coroutine objects for each response
-        tasks = [self.process_single_response(resp, prompt) for resp in async_responses]
-        # Use asyncio.gather to run them concurrently
-        responses = await asyncio.gather(*tasks)
-        return responses
-
-    async def return_tokens(self, chunks):
-        async for resp in chunks:
-            if isinstance(resp, str):
-                try:
-                    chunk_data = json.loads(resp)
-                    tokens = chunk_data.get("tokens", "")
-                    bt.logging.trace(tokens)
-                    yield tokens
-                except json.JSONDecodeError:
-                    bt.logging.trace(f"Failed to decode JSON chunk: {resp}")
 
     async def run_task_and_score(
         self,
@@ -222,7 +179,7 @@ class ScraperValidator:
                 execution_time = time.time() - start_time
                 bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
                 bt.logging.info(
-                    f"Applied reward function: {reward_fn_i.name} with reward: {reward_event.get(reward_fn_i.name, 'N/A')} in {execution_time:.2f} seconds"
+                    f"Applied reward function: {reward_fn_i.name} with reward: {reward_event.get(reward_fn_i.name, 'N/A')} in {execution_time / 60:.2f} minutes"
                 )
 
             for penalty_fn_i in self.penalty_functions:
@@ -272,7 +229,7 @@ class ScraperValidator:
                 )
                 # Accumulate log messages instead of logging them immediately
                 log_messages.append(
-                    f"uid: {uid}; R: {reward}; C: {completion_length}; L: {completion_links_length};"
+                    f"UID: {uid}, R: {round(reward, 3)}, C: {completion_length}, L: {completion_links_length}"
                 )
                 bt.logging.trace(f"{response.completion}")
 
@@ -338,12 +295,17 @@ class ScraperValidator:
                 task=task, strategy=strategy, is_only_allowed_miner=False
             )
 
-            responses = await self.process_async_responses(async_responses, prompt)
+            final_synapses = []
+            async for value in process_async_responses(async_responses, prompt):
+                if isinstance(value, tuple) and value[0] == True:
+                    final_synapses.append(value[1])
+                else:
+                    pass
             await self.compute_rewards_and_penalties(
                 event=event,
                 prompt=prompt,
                 task=task,
-                responses=responses,
+                responses=final_synapses,
                 uids=uids,
                 start_time=start_time,
             )
@@ -372,49 +334,20 @@ class ScraperValidator:
                 is_only_allowed_miner=True,
                 is_intro_text=True,
             )
-
-            responses = []
-            for resp in async_responses:
-                try:
-                    full_response = ""
-                    try:
-                        async for chunk in resp:
-                            if isinstance(chunk, str):
-                                full_response += chunk
-                                yield chunk
-                            elif isinstance(chunk, bt.Synapse):
-                                if chunk.is_failure:
-                                    raise Exception(
-                                        "Dendrite's status code indicates failure"
-                                    )
-                                synapse_object = chunk
-
-                    except Exception as e:
-                        bt.logging.trace(f"Organic Async Response: {e}")
-                        responses.append(
-                            ScraperStreamingSynapse(
-                                messages=prompt, model=self.model, seed=self.seed
-                            )
-                        )
-                        continue
-
-                    if synapse_object is not None:
-                        responses.append(synapse_object)
-
-                except Exception as e:
-                    bt.logging.trace(f"Error for resp in async_responses: {e}")
-                    responses.append(
-                        ScraperStreamingSynapse(
-                            messages=prompt, model=self.model, seed=self.seed
-                        )
-                    )
+            final_synapses = []
+            for response in async_responses:
+                async for value in process_single_response(response, prompt):
+                    if value[0] == False:
+                         yield value[1]
+                    else:
+                        final_synapses.append(value[1])
 
             async def process_and_score_responses():
                 await self.compute_rewards_and_penalties(
                     event=event,
                     prompt=prompt,
                     task=task,
-                    responses=responses,
+                    responses=final_synapses,
                     uids=uids,
                     start_time=start_time,
                 )
@@ -448,16 +381,21 @@ class ScraperValidator:
                 specified_uids=specified_uids,
             )
 
-            responses = await self.process_async_responses(async_responses, prompt)
+            final_synapses = []
+            async for value in process_async_responses(async_responses, prompt):
+                if isinstance(value, tuple) and value[0] == True:
+                    final_synapses.append(value[1])
+                else:
+                    pass
             rewards = await self.compute_rewards_and_penalties(
                 event=event,
                 prompt=prompt,
                 task=task,
-                responses=responses,
+                responses=final_synapses,
                 uids=uids,
                 start_time=start_time,
             )
-            for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
+            for uid_tensor, reward, response in zip(uids, rewards.tolist(), final_synapses):
                 yield f"Miner ID: {uid_tensor.item()} - Reward: {reward:.2f}\n\n"
                 yield "----------------------------------------\n\n"
                 yield f"Miner's Completion Output:\n{response.completion}\n\n"

@@ -246,7 +246,8 @@ class LinkContentRelevanceModel(BaseRewardModel):
                             prompt, miner_tweet_text
                         )
                         scoring_messages.append({str(uid): scoring_text})
-
+                        
+            bt.logging.info(f"Executing llm_processing on {len(scoring_messages)} Link Content Relevance messages.")
             score_responses = self.reward_llm.llm_processing(scoring_messages)
             reward_events = []
             scoring_prompt = ScoringPrompt()
@@ -260,7 +261,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 if score_responses:
                     score_result = score_responses.get(str(uid), None)
                     if score_result is None:
-                        bt.logging.error(f"Link Content Relevance get_rewards: No score response for UID '{uid}'")
+                        bt.logging.info(f"Link Content Relevance get_rewards: No score response for UID '{uid}'")
                         score = 0  # Default score or another logic to handle missing scores
                     else:
                         score = scoring_prompt.extract_score(score_result)
@@ -275,17 +276,21 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 zero_scores = {}
                 non_zero_scores = {}
 
-                for (index, response), uid_tensor, reward_e in zip(enumerate(responses), uids, reward_events):
-                    uid = uid_tensor.item()
-                    if reward_e.reward == 0:
-                        zero_scores[uid] = {"score": reward_e.reward, "explanation": "Your explanation here"}  # Adjust explanation as needed
-                    else:
-                        non_zero_scores[uid] = {"score": reward_e.reward}
+            for (index, response), uid_tensor, reward_e in zip(enumerate(responses), uids, reward_events):
+                uid = uid_tensor.item()
+                if reward_e.reward == 0:
+                    score_explain = score_responses.get(str(uid), "")
+                    zero_scores[uid] = {
+                        "score": reward_e.reward,
+                        "explain": score_explain
+                    }
+                else:
+                    non_zero_scores[uid] = reward_e.reward
 
-                bt.logging.info(f"==================================Links Content scoring Zero Scores  ({len(zero_scores)} cases)==================================")
-                bt.logging.info(json.dumps(zero_scores))
-                bt.logging.info(f"==================================Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)==================================")
-                bt.logging.info(json.dumps(non_zero_scores))
+            bt.logging.info(f"==================================Links Content scoring Zero Scores  ({len(zero_scores)} cases)==================================")
+            bt.logging.info(json.dumps(zero_scores))
+            bt.logging.info(f"==================================Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)==================================")
+            bt.logging.info(json.dumps(non_zero_scores))
             return reward_events
         except Exception as e:
             bt.logging.error(f"Link Content Relevance get_rewards: {str(e)}")

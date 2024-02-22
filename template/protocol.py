@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel, Field
-
+from aiohttp import ClientResponse
 
 class IsAlive(bt.Synapse):
     answer: typing.Optional[str] = None
@@ -270,7 +270,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
 
         return json_objects, remaining_chunk
 
-    async def process_streaming_response(self, response: StreamingResponse):
+    async def process_streaming_response(self, response: ClientResponse):
         if self.completion is None:
             self.completion = ""
 
@@ -306,7 +306,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     def deserialize(self) -> str:
         return self.completion
 
-    def extract_response_json(self, response: StreamingResponse) -> dict:
+    def extract_response_json(self, response: ClientResponse) -> dict:
         headers = {
             k.decode("utf-8"): v.decode("utf-8")
             for k, v in response.__dict__["_raw_headers"]

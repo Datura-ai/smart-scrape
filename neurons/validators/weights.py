@@ -24,6 +24,7 @@ import bittensor as bt
 import template
 import multiprocessing
 import time
+
 import torch
 from multiprocessing import Queue
 
@@ -95,7 +96,7 @@ def set_weights_subtensor(
 
 
 def set_weights_with_retry(self, processed_weight_uids, processed_weights):
-    max_retries = 7  # Maximum number of retries
+    max_retries = 9  # Maximum number of retries
     retry_delay = 45  # Delay between retries in seconds
     ttl = 200  # Time-to-live for each process attempt in seconds
 
@@ -143,13 +144,9 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
                     # Handle the case where the return value is not a tuple (e.g., a boolean)
                     success = queue_success
                     if success:
-                        bt.logging.success(
-                            "Set Weights Completed set weights action successfully."
-                        )
+                        bt.logging.success(f"Set Weights Completed set weights action successfully, Response: {success}")
                     else:
-                        bt.logging.info(
-                            "Set Weights Attempt failed. retrying in {retry_delay} seconds..."
-                        )
+                        bt.logging.info(f"Set Weights Attempt failed. retrying in {retry_delay} seconds..., Response: {success}")
             else:
                 bt.logging.info(
                     f"Set Weights Attempt {attempt + 1} failed, no response received, retrying in {retry_delay} seconds..."
@@ -165,9 +162,10 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
         else:
             break  # Exit the retry loop on success
     if success:
-        bt.logging.success("Final Result: Successfully set weights after attempts.")
+        bt.logging.success(f"Final Result: Successfully set weights after {attempt + 1} attempts.")
     else:
-        bt.logging.error("Final Result: Failed to set weights after all attempts.")
+        bt.logging.error(f"Final Result: Failed to set weights after {attempt + 1} attempts.")
+        
     return success
 
 

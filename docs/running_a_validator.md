@@ -65,12 +65,11 @@ CUDA_VISIBLE_DEVICES=1 pm2 start neurons/validators/api.py --interpreter /usr/bi
     --netuid 22 
     --wallet.hotkey <your-wallet-hot-key>  
     --subtensor.network <network>  
-    --logging.debug
 ```
 
 ### Example Command
 ```sh
-pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name validator_api -- --wallet.name validator --netuid 41 --wallet.hotkey default --subtensor.network testnet --logging.debug
+pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name validator_api -- --wallet.name validator --netuid 41 --wallet.hotkey default --subtensor.network testnet
 ```
 
 ### Variable Explanation

@@ -294,12 +294,11 @@ class Neuron(AbstractNeuron):
 
     async def run_synthetic_queries(self, strategy=QUERY_MINERS.RANDOM):
         bt.logging.info(f"Starting run_synthetic_queries with strategy={strategy}")
-
+        total_start_time = time.time()
         try:
-
             async def run_forward():
                 start_time = time.time()
-                bt.logging.info("Gathering coroutines for query_synapse")
+                bt.logging.info(f"Running step forward for query_synapse, Step: {self.step}")
                 coroutines = [self.query_synapse(strategy) for _ in range(1)]
                 await asyncio.gather(*coroutines)
                 end_time = time.time()
@@ -326,6 +325,10 @@ class Neuron(AbstractNeuron):
         except Exception as err:
             bt.logging.error("Error in run_synthetic_queries", str(err))
             bt.logging.debug(print_exception(type(err), err, err.__traceback__))
+        finally:
+            total_end_time = time.time()
+            total_execution_time = (total_end_time - total_start_time) / 60
+            bt.logging.info(f"Total execution time for run_synthetic_queries: {total_execution_time:.2f} minutes")
 
     def sync(self):
         """
@@ -406,6 +409,7 @@ class Neuron(AbstractNeuron):
         try:
 
             async def run_with_interval(interval, strategy):
+                query_count = 0  # Initialize query count
                 while True:
                     try:
                         if not self.available_uids:
@@ -414,8 +418,7 @@ class Neuron(AbstractNeuron):
                             )
                             await asyncio.sleep(10)
                             continue
-                        asyncio.create_task(self.run_synthetic_queries(strategy))
-                        bt.logging.info(f"Run Next Synthetic Query")
+                        self.loop.create_task(self.run_synthetic_queries(strategy))
 
                         await asyncio.sleep(
                             interval
