@@ -299,7 +299,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                             tweets_json = json_data.get("content", "[]")
                             self.miner_tweets = tweets_json
                 except json.JSONDecodeError as e:
-                    print(f"process_streaming_response json.JSONDecodeError: {e}")
+                    bt.logging.info(f"process_streaming_response json.JSONDecodeError: {e}")
         except Exception as e:
             bt.logging.trace(f"process_streaming_response: {e}")
 

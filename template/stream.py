@@ -83,10 +83,10 @@ async def process_single_response(response, prompt):
                             tweets_json = json_data.get("content", "[]")
                             miner_tweets = tweets_json
                 except json.JSONDecodeError as e:
-                    print(f"process_single_response json.JSONDecodeError: {e}")
+                    bt.logging.info(f"process_single_response json.JSONDecodeError: {e}")
            
     except Exception as e:
-        bt.logging.error(f"Process Single Response Combined: {e}")
+        bt.logging.debug(f"Process Single Response Combined: {e}")
         yield (True, synapse)  # Indicate this is the final value to return
         return
     if completion:
