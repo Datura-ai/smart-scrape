@@ -50,7 +50,7 @@ async def collect_generator_results(response, prompt):
 
 async def process_single_response(response, prompt):
     synapse = ScraperStreamingSynapse(
-        messages=prompt, model=self.model, seed=self.seed
+        messages=prompt, model='', seed=1
     )
     completion = ""
     prompt_analysis = None

@@ -6,7 +6,7 @@ import json
 import bittensor as bt
 from base_validator import AbstractNeuron
 from template.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult
-from template.stream import process_async_responses
+from template.stream import process_async_responses, process_single_response
 from reward import RewardModelType, RewardScoringType
 from typing import List
 from utils.mock import MockRewardModel
@@ -134,7 +134,6 @@ class ScraperValidator:
             streaming=self.streaming,
             deserialize=False,
         )
-
 
         return async_responses, uids, event, start_time
 
@@ -324,11 +323,12 @@ class ScraperValidator:
                 is_intro_text=True,
             )
             final_synapses = []
-            async for value in process_async_responses(async_responses, prompt):
-                if isinstance(value, tuple) and value[0] == True:
-                    final_synapses.append(value[1])
-                else:
-                    yield value
+            for response in async_responses:
+                async for value in process_single_response(response, prompt):
+                    if value[0] == False:
+                         yield value[1]
+                    else:
+                        final_synapses.append(value[1])
 
             async def process_and_score_responses():
                 await self.compute_rewards_and_penalties(
