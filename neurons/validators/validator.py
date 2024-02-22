@@ -196,8 +196,29 @@ class Neuron(AbstractNeuron):
         # uid_list = list(available_uids.keys())
         return uids.to(self.config.neuron.device)
 
-    async def save_logs_in_chunks(self, prompt, logs):
+    async def save_logs_in_chunks(self, prompt, responses, uids, rewards):
         try:
+            weights = get_weights(self)
+
+            logs = [
+                {
+                    "completion": response.completion,
+                    "prompt_analysis": response.prompt_analysis.dict(),
+                    "data": response.miner_tweets,
+                    "miner_uid": uid,
+                    "score": reward,
+                    "hotkey": response.axon.hotkey,
+                    "coldkey": next(
+                        (axon.coldkey for axon in self.metagraph.axons if axon.hotkey == response.axon.hotkey),
+                        None  # Provide a default value here, such as None or an appropriate placeholder
+                    ),
+                    "weight": weights.get(str(uid)),
+                }
+                for response, uid, reward in zip(
+                    responses, uids.tolist(), rewards.tolist()
+                )
+            ]
+        
             chunk_size = 50
 
             log_chunks = [
@@ -219,35 +240,14 @@ class Neuron(AbstractNeuron):
                 wandb.log(wandb_data)
 
             if self.config.neuron.save_logs:
-                weights = get_weights(self)
-
-                logs = [
-                    {
-                        "completion": response.completion,
-                        "prompt_analysis": response.prompt_analysis.dict(),
-                        "data": response.miner_tweets,
-                        "miner_uid": uid,
-                        "score": reward,
-                        "hotkey": response.axon.hotkey,
-                        "coldkey": next(
-                            axon.coldkey
-                            for axon in self.metagraph.axons
-                            if axon.hotkey == response.axon.hotkey
-                        ),
-                        "weight": weights.get(str(uid)),
-                    }
-                    for response, uid, reward in zip(
-                        responses, uids.tolist(), rewards.tolist()
-                    )
-                ]
-
                 asyncio.create_task(
                     self.save_logs_in_chunks(
                         prompt=prompt,
-                        logs=logs,
+                        responses=responses, 
+                        uids=uids, 
+                        rewards=rewards
                     )
                 )
-            # self.steps_passed += 1
         except Exception as e:
             bt.logging.error(f"Error in update_scores: {e}")
             raise e
