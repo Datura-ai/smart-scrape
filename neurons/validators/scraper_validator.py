@@ -297,11 +297,16 @@ class ScraperValidator:
                     "completion": response.completion,
                     "prompt_analysis": response.prompt_analysis.dict(),
                     "data": response.miner_tweets,
-                    "miner_uids": uid.item(),
-                    "score": reward.item(),
+                    "miner_uid": uid.item(),
+                    "score": reward,
                     "hotkey": response.axon.hotkey,
+                    "coldkey": next(
+                        axon.coldkey
+                        for axon in self.neuron.metagraph.axons
+                        if axon.hotkey == response.axon.hotkey
+                    ),
                 }
-                for response, uid, reward in zip(responses, uids, rewards)
+                for response, uid, reward in zip(responses, uids, rewards.tolist())
             ]
 
             await self.neuron.update_scores(
