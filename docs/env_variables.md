@@ -38,10 +38,6 @@ Here's a breakdown of the environment variables necessary for the Smart-Scrape s
    - **Usage**: URL for Subnet 18, utilized for scoring the relevance of summaries.
    - **How to Create**: Generate a unique, strong, and random string.
    - **Required for**: Validators exclusively.
-7. **LOGGING_ENDPOINT_URL**
-   - **Usage**: Logging endpoint URL for logging miner score, prompt, full response and etc.
-   - **How to Use**: Create API endpoint and receive log data.
-   - **Required for**: Validator and Miners.
 
 
 ### Executing Commands for Setting Environment Variables
@@ -54,7 +50,6 @@ export EXPECTED_ACCESS_KEY=<your_EXPECTED_ACCESS_KEY_here>  # Only for Validator
 export WANDB_API_KEY=<your_wandb_api_key_here>
 export APIFY_API_KEY=<your_apify_api_key_here>  # Only for Validators
 export URL_SUBNET_18=<your_url_subent_18>
-export LOGGING_ENDPOINT_URL=<your_logging_endpoint_url>
 ```
 
 ### Setting Environment Variables Using `.bashrc`

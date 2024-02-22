@@ -72,7 +72,7 @@ def on_retry(exception, tries_remaining, delay):
 
 
 def set_weights_subtensor(
-    queue, wallet, netuid, uids, weights, config, version_key, ttl
+    queue, wallet, netuid, uids, weights, config, version_key
 ):
     try:
         subtensor = bt.subtensor(config=config)
@@ -84,7 +84,6 @@ def set_weights_subtensor(
             wait_for_inclusion=False,
             wait_for_finalization=False,
             version_key=version_key,
-            ttl=ttl,
         )
 
         # Send the success status back to the main process
@@ -113,8 +112,7 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
                 processed_weight_uids,
                 processed_weights,
                 self.config,
-                template.__weights_version__,
-                ttl,
+                template.__weights_version__
             ),
         )
         process.start()
