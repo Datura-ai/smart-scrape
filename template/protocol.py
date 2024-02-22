@@ -7,6 +7,7 @@ from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from aiohttp import ClientResponse
+from template.stream import extract_json_chunk
 
 class IsAlive(bt.Synapse):
     answer: typing.Optional[str] = None
@@ -243,65 +244,76 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
 
     def set_tweets(self, data: any):
         self.tweets = data
-
-    def extract_json_chunk(self, chunk):
-        stack = []
-        start_index = None
-        json_objects = []
-
-        for i, char in enumerate(chunk):
-            if char == "{":
-                if not stack:
-                    start_index = i
-                stack.append(char)
-            elif char == "}":
-                stack.pop()
-                if not stack and start_index is not None:
-                    json_str = chunk[start_index : i + 1]
-                    try:
-                        json_obj = json.loads(json_str)
-                        json_objects.append(json_obj)
-                        start_index = None
-                    except json.JSONDecodeError as e:
-                        # Handle the case where json_str is not a valid JSON object
-                        continue
-
-        remaining_chunk = chunk[i + 1 :] if start_index is None else chunk[start_index:]
-
-        return json_objects, remaining_chunk
-
+    
     async def process_streaming_response(self, response: ClientResponse):
         if self.completion is None:
             self.completion = ""
 
         try:
-            async for chunk in response.content.iter_any():
-                # Decode the chunk from bytes to a string
-                chunk_str = chunk.decode("utf-8")
-                # Attempt to parse the chunk as JSON
-                try:
-                    json_objects, remaining_chunk = self.extract_json_chunk(chunk_str)
-                    for json_data in json_objects:
-                        content_type = json_data.get("type")
+            async for chunk in response:
+                if isinstance(chunk, bt.Synapse):
+                        synapse = chunk
+                        if chunk.is_failure:
+                            raise Exception("Dendrite's status code indicates failure")
+                else: 
+                    chunk_str = chunk.decode("utf-8")
+                    try:
+                        json_objects, remaining_chunk = extract_json_chunk(chunk_str)
+                        for json_data in json_objects:
+                            content_type = json_data.get("type")
 
-                        if content_type == "text":
-                            text_content = json_data.get("content", "")
-                            self.completion += text_content
-                            yield text_content
+                            if content_type == "text":
+                                text_content = json_data.get("content", "")
+                                self.ccompletion += text_content
+                                yield (False, text_content)
 
-                        elif content_type == "prompt_analysis":
-                            prompt_analysis_json = json_data.get("content", "{}")
-                            prompt_analysis = TwitterPromptAnalysisResult()
-                            prompt_analysis.fill(prompt_analysis_json)
-                            self.set_prompt_analysis(prompt_analysis)
+                            elif content_type == "prompt_analysis":
+                                prompt_analysis_json = json_data.get("content", "{}")
+                                self.prompt_analysis = TwitterPromptAnalysisResult()
+                                self.prompt_analysis.fill(prompt_analysis_json)
 
-                        elif content_type == "tweets":
-                            tweets_json = json_data.get("content", "[]")
-                            self.miner_tweets = tweets_json
-                except json.JSONDecodeError as e:
-                    bt.logging.info(f"process_streaming_response json.JSONDecodeError: {e}")
+                            elif content_type == "tweets":
+                                tweets_json = json_data.get("content", "[]")
+                                self.miner_tweets = tweets_json
+                    except json.JSONDecodeError as e:
+                        bt.logging.info(f"process_single_response json.JSONDecodeError: {e}")
+            
         except Exception as e:
             bt.logging.trace(f"process_streaming_response: {e}")
+            yield (True, self)  # Indicate this is the final value to return
+
+    # async def process_streaming_response(self, response: ClientResponse):
+    #     if self.completion is None:
+    #         self.completion = ""
+
+    #     try:
+    #         async for chunk in response.content.iter_any():
+    #             # Decode the chunk from bytes to a string
+    #             chunk_str = chunk.decode("utf-8")
+    #             # Attempt to parse the chunk as JSON
+    #             try:
+    #                 json_objects, remaining_chunk = self.extract_json_chunk(chunk_str)
+    #                 for json_data in json_objects:
+    #                     content_type = json_data.get("type")
+
+    #                     if content_type == "text":
+    #                         text_content = json_data.get("content", "")
+    #                         self.completion += text_content
+    #                         yield text_content
+
+    #                     elif content_type == "prompt_analysis":
+    #                         prompt_analysis_json = json_data.get("content", "{}")
+    #                         prompt_analysis = TwitterPromptAnalysisResult()
+    #                         prompt_analysis.fill(prompt_analysis_json)
+    #                         self.set_prompt_analysis(prompt_analysis)
+
+    #                     elif content_type == "tweets":
+    #                         tweets_json = json_data.get("content", "[]")
+    #                         self.miner_tweets = tweets_json
+    #             except json.JSONDecodeError as e:
+    #                 bt.logging.info(f"process_streaming_response json.JSONDecodeError: {e}")
+    #     except Exception as e:
+    #         bt.logging.trace(f"process_streaming_response: {e}")
 
     def deserialize(self) -> str:
         return self.completion

@@ -4,7 +4,6 @@ import aiohttp
 import json
 import asyncio
 
-
 def extract_json_chunk(chunk):
     stack = []
     start_index = None
@@ -102,11 +101,11 @@ async def process_single_response(response):
             )
         bt.logging.debug(f"Process Single Response Combined: {str(exception)}")
         yield (True, synapse)  # Indicate this is the final value to return
-        return
+        return 
     except GeneratorExit:
         bt.logging.warning(f"Handle it here: GeneratorExit")
         # Handle generator cleanup here
-        pass
+        return
     finally:
         if completion:
             synapse.completion = completion
