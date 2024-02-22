@@ -296,7 +296,7 @@ def resync_metagraph(self):
     self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
 
-async def save_logs(prompt, completions, prompt_analyses, data, miner_uids, scores):
+async def save_logs(prompt, logs):
     logging_endpoint_url = os.environ.get("LOGGING_ENDPOINT_URL")
 
     if not logging_endpoint_url:
@@ -307,10 +307,6 @@ async def save_logs(prompt, completions, prompt_analyses, data, miner_uids, scor
             logging_endpoint_url,
             json={
                 "prompt": prompt,
-                "data": data,
-                "completions": completions,
-                "prompt_analyses": prompt_analyses,
-                "miner_uids": miner_uids,
-                "scores": scores,
+                "logs": logs,
             },
         )

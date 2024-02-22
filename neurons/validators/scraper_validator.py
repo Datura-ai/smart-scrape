@@ -255,7 +255,9 @@ class ScraperValidator:
                 "scores": {},
                 "timestamps": {},
             }
-            bt.logging.info( f"======================== Reward ===========================")
+            bt.logging.info(
+                f"======================== Reward ==========================="
+            )
             # Initialize an empty list to accumulate log messages
             log_messages = []
             for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
@@ -278,7 +280,9 @@ class ScraperValidator:
             for i in range(0, len(log_messages), 3):
                 bt.logging.info(" | ".join(log_messages[i : i + 3]))
 
-            bt.logging.info(f"======================== Reward ===========================")
+            bt.logging.info(
+                f"======================== Reward ==========================="
+            )
 
             for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
                 uid = uid_tensor.item()  # Convert tensor to int
@@ -288,33 +292,21 @@ class ScraperValidator:
                 wandb_data["responses"][uid] = response.completion
                 wandb_data["prompts"][uid] = prompt
 
-            await self.neuron.update_scores(wandb_data)
+            logs = [
+                {
+                    "completion": response.completion,
+                    "prompt_analysis": response.prompt_analysis.dict(),
+                    "data": response.miner_tweets,
+                    "miner_uids": uid.item(),
+                    "score": reward.item(),
+                    "hotkey": response.axon.hotkey,
+                }
+                for response, uid, reward in zip(responses, uids, rewards)
+            ]
 
-            # logs = []
-
-            # logs.append(
-            #     {
-            #         "completion": response.completion,
-            #         "prompt_analysis": response.prompt_analysis,
-            #         "miner_uids": uid,
-            #         "score": reward,
-            #         "data": response.miner_tweets,
-            #         "hotkey": response.axon.hotkey,
-            #         "coldkey": ""
-            #     }
-            # )
-
-            if self.neuron.config.neuron.save_logs:
-                await save_logs(
-                    prompt=prompt,
-                    completions=[response.completion for response in responses],
-                    prompt_analyses=[
-                        response.prompt_analysis.dict() for response in responses
-                    ],
-                    miner_uids=[uid_tensor.item() for uid_tensor in uids],
-                    scores=uid_scores_dict,
-                    data=[response.miner_tweets for response in responses],
-                )
+            await self.neuron.update_scores(
+                wandb_data=wandb_data, prompt=prompt, logs=logs
+            )
 
             return rewards
         except Exception as e:

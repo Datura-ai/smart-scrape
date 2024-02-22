@@ -328,13 +328,17 @@ class ScraperMiner:
                 )
 
             if self.miner.config.miner.save_logs:
-                await save_logs(
-                    prompt=prompt,
-                    completions=[joined_full_text],
-                    prompt_analyses=[prompt_analysis.dict()],
-                    data=[tweets],
-                    miner_uids=None,
-                    scores=None,
+                asyncio.create_task(
+                    save_logs(
+                        prompt=prompt,
+                        logs=[
+                            {
+                                "completion": joined_full_text,
+                                "prompt_analysis": prompt_analysis.dict(),
+                                "data": tweets,
+                            }
+                        ],
+                    )
                 )
 
             bt.logging.info(f"End of Streaming")
