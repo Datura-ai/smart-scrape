@@ -285,7 +285,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 uid = uid_tensor.item()
                 if reward_e.reward == 0:
                     # score_explain = score_responses.get(str(uid), "")
-                    zero_scores[uid] = reward_e.rewar
+                    zero_scores[uid] = reward_e.reward
                 else:
                     non_zero_scores[uid] = reward_e.reward
 
