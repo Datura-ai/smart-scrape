@@ -184,8 +184,12 @@ class LinkContentRelevanceModel(BaseRewardModel):
             bt.logging.error(f"check_response_random_tweet: {str(e)}")
             return 0
 
-    def get_scoring_text(self, prompt: str, content: str) -> BaseRewardEvent:
+    def get_scoring_text(self, prompt: str, content: str, response: bt.Synapse) -> BaseRewardEvent:
         try:
+            completion = self.get_successful_completion(response=response)
+            if not completion:
+                return None
+            
             scoring_prompt = None
 
             scoring_prompt_text = None
@@ -248,7 +252,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     if miner_tweet:
                         miner_tweet_text = miner_tweet["text"]
                         scoring_prompt, scoring_text = self.get_scoring_text(
-                            prompt, miner_tweet_text
+                            prompt, miner_tweet_text, response
                         )
                         scoring_messages.append({str(uid): scoring_text})
                         

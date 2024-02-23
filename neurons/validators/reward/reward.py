@@ -21,7 +21,7 @@ import bittensor as bt
 from typing import List, Union
 from abc import abstractmethod
 from dataclasses import dataclass, asdict, fields
-
+import re
 
 @dataclass
 class BaseRewardEvent:
@@ -42,7 +42,18 @@ class BaseRewardEvent:
         reward_event = dict(zip(field_names, list(zip(*reward_events))))
         return reward_event
 
-
+patterns_to_remove = [
+    r"<question>",
+    r"</question>",
+    r"<answer>",
+    r"</answer>",
+    # Assuming you want to selectively keep or remove closing tags like </answer>, adjust your approach accordingly.
+    # For example, if you want to keep </answer>, do not include it here.
+    r"<score>",
+    r"</score>"
+    # Similar to above, adjust based on whether you want to keep or remove certain tags.
+    r"----",
+]
 class BaseRewardModel:
     @property
     @abstractmethod
@@ -88,13 +99,16 @@ class BaseRewardModel:
         ]
 
         return successful_completions
-
+    
     def get_successful_completion(self, response: bt.Synapse):
         # Check if the response is successful.
         if response.dendrite.status_code == 200 and response.completion_links:
             # Get the completion from the successful response.
             successful_completion = response.completion.strip()
-            return successful_completion
+
+            if any(re.search(pattern, successful_completion, flags=re.IGNORECASE) for pattern in patterns_to_remove):
+                return None
+            return successful_completion.strip()
         return None
 
     def apply(
