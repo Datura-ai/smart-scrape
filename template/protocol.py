@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel, Field
-
+from aiohttp import ClientResponse
 
 class IsAlive(bt.Synapse):
     answer: typing.Optional[str] = None
@@ -244,32 +244,6 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     def set_tweets(self, data: any):
         self.tweets = data
 
-    def extract_json_chunk(self, chunk):
-        stack = []
-        start_index = None
-        json_objects = []
-
-        for i, char in enumerate(chunk):
-            if char == "{":
-                if not stack:
-                    start_index = i
-                stack.append(char)
-            elif char == "}":
-                stack.pop()
-                if not stack and start_index is not None:
-                    json_str = chunk[start_index : i + 1]
-                    try:
-                        json_obj = json.loads(json_str)
-                        json_objects.append(json_obj)
-                        start_index = None
-                    except json.JSONDecodeError as e:
-                        # Handle the case where json_str is not a valid JSON object
-                        continue
-
-        remaining_chunk = chunk[i + 1 :] if start_index is None else chunk[start_index:]
-
-        return json_objects, remaining_chunk
-
     async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:
             self.completion = ""
@@ -280,7 +254,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                 chunk_str = chunk.decode("utf-8")
                 # Attempt to parse the chunk as JSON
                 try:
-                    json_objects, remaining_chunk = self.extract_json_chunk(chunk_str)
+                    json_objects, remaining_chunk = extract_json_chunk(chunk_str)
                     for json_data in json_objects:
                         content_type = json_data.get("type")
 
@@ -299,14 +273,14 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                             tweets_json = json_data.get("content", "[]")
                             self.miner_tweets = tweets_json
                 except json.JSONDecodeError as e:
-                    print(f"process_streaming_response json.JSONDecodeError: {e}")
+                    bt.logging.debug(f"process_streaming_response json.JSONDecodeError: {e}")
         except Exception as e:
-            bt.logging.trace(f"process_streaming_response: {e}")
+            bt.logging.debug(f"process_streaming_response: {e}")
 
     def deserialize(self) -> str:
         return self.completion
 
-    def extract_response_json(self, response: StreamingResponse) -> dict:
+    def extract_response_json(self, response: ClientResponse) -> dict:
         headers = {
             k.decode("utf-8"): v.decode("utf-8")
             for k, v in response.__dict__["_raw_headers"]
@@ -334,3 +308,29 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
 
     class Config:
         arbitrary_types_allowed = True
+
+def extract_json_chunk(chunk):
+    stack = []
+    start_index = None
+    json_objects = []
+
+    for i, char in enumerate(chunk):
+        if char == "{":
+            if not stack:
+                start_index = i
+            stack.append(char)
+        elif char == "}":
+            stack.pop()
+            if not stack and start_index is not None:
+                json_str = chunk[start_index : i + 1]
+                try:
+                    json_obj = json.loads(json_str)
+                    json_objects.append(json_obj)
+                    start_index = None
+                except json.JSONDecodeError as e:
+                    # Handle the case where json_str is not a valid JSON object
+                    continue
+
+    remaining_chunk = chunk[i + 1 :] if start_index is None else chunk[start_index:]
+
+    return json_objects, remaining_chunk

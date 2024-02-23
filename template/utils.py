@@ -15,6 +15,7 @@ import traceback
 import bittensor as bt
 import threading
 import multiprocessing
+import aiohttp
 from . import client
 from collections import deque
 from template.protocol import TwitterPromptAnalysisResult
@@ -288,8 +289,24 @@ def resync_metagraph(self):
         # Update the size of the moving average scores.
         new_moving_average = torch.zeros((self.metagraph.n)).to(self.device)
         min_len = min(len(self.hotkeys), len(self.moving_averaged_scores))
-        new_moving_average[:min_len] =  self.moving_averaged_scores[:min_len]
+        new_moving_average[:min_len] = self.moving_averaged_scores[:min_len]
         self.moving_averaged_scores = new_moving_average
 
     # Update the hotkeys.
     self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+
+
+async def save_logs(prompt, logs):
+    logging_endpoint_url = os.environ.get("LOGGING_ENDPOINT_URL")
+
+    if not logging_endpoint_url:
+        return
+
+    async with aiohttp.ClientSession() as session:
+        await session.post(
+            logging_endpoint_url,
+            json={
+                "prompt": prompt,
+                "logs": logs,
+            },
+        )

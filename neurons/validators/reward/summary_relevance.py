@@ -155,7 +155,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 reward_event.reward = score
                 reward_events.append(reward_event)
                 if score == 0:
-                    zero_scores[uid] = {"score": score, "explain": score_explain}
+                    zero_scores[uid] = score
                 else:
                     non_zero_scores[uid] = score
 

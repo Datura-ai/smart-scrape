@@ -147,28 +147,33 @@ class LinkContentRelevanceModel(BaseRewardModel):
             # If there is no corresponding miner tweet, append a score of 0
             if miner_tweet:
                 # If a corresponding miner tweet is found, extract its creation time and text
-                miner_tweet_created_at = miner_tweet["created_at"]
+                
                 miner_tweet_text = miner_tweet["text"]
                 # Prepare texts for comparison by normalizing them
                 miner_text_compared = self.format_text_for_match(miner_tweet_text)
                 validator_text_compared = self.format_text_for_match(val_tweet_content)
                 # Compare the normalized texts and creation times of the tweets
+
                 if (
                     miner_text_compared == validator_text_compared
-                    and miner_tweet_created_at == val_tweet_created_at
+                ):
+                    tweet_score = 1.5
+                    
+                if (
+                    miner_tweet.get("created_at") == val_tweet_created_at
                 ):
                     # If both match, append a score of 1
-                    tweet_score = 1
-                else:
+                    tweet_score += 0.5
+
+                if tweet_score == 0:
                     # If there is a discrepancy, log the details and append a score of 0
-                    bt.logging.debug(f"Discrepancy found:")
-                    bt.logging.debug(
-                        f"Miner tweet - Created at: {miner_tweet_created_at}, Text: {miner_text_compared}"
+                    bt.logging.info(
+                        f"Miner tweet - Created at: {miner_tweet.get('created_at', 'None')}, Text: {miner_text_compared}"
                     )
                     bt.logging.debug(
                         f"Validator tweet - Created at: {val_tweet_created_at}, Text: {validator_text_compared}"
                     )
-                    tweet_score = 0
+                  
             else:
                 bt.logging.debug(
                     "No corresponding miner tweet found for the validator tweet."
@@ -268,7 +273,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                         score /= 10.0
                     reward_event.reward = score
                 if apify_score:
-                    reward_event.reward = min(reward_event.reward * 2, 1)
+                    reward_event.reward = min(reward_event.reward * apify_score, 1)
                 else:
                     reward_event.reward /= 2
                 reward_events.append(reward_event)
@@ -279,11 +284,8 @@ class LinkContentRelevanceModel(BaseRewardModel):
             for (index, response), uid_tensor, reward_e in zip(enumerate(responses), uids, reward_events):
                 uid = uid_tensor.item()
                 if reward_e.reward == 0:
-                    score_explain = score_responses.get(str(uid), "")
-                    zero_scores[uid] = {
-                        "score": reward_e.reward,
-                        "explain": score_explain
-                    }
+                    # score_explain = score_responses.get(str(uid), "")
+                    zero_scores[uid] = reward_e.rewar
                 else:
                     non_zero_scores[uid] = reward_e.reward
 

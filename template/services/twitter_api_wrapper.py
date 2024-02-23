@@ -32,34 +32,34 @@ twitter_api_query_example = {
 query_examples = [
     '"pepsi OR cola OR "coca cola"',
     '("Twitter API" OR #v2) -"recent search"',
-    'thankunext #fanart OR @arianagrande',
-    'to:twitterdev OR to:twitterapi -to:twitter',
+    "thankunext #fanart OR @arianagrande",
+    "to:twitterdev OR to:twitterapi -to:twitter",
     'from:TwitterDev url:"https://t.co"',
-    'retweets_of:twitterdev OR retweets_of:twitterapi',
-    'place_country:US OR place_country:MX OR place_country:CA',
-    'data @twitterdev -is:retweet',
+    "retweets_of:twitterdev OR retweets_of:twitterapi",
+    "place_country:US OR place_country:MX OR place_country:CA",
+    "data @twitterdev -is:retweet",
     'mobile games" -is:nullcast',
-    'from:twitterdev -has:hashtags',
-    'from:twitterdev announcement has:links',
-    '#meme has:images',
-    'recommend #paris has:geo -bakery',
-    'recommend #paris lang:en',
-    '(kittens OR puppies) has:media',
-    '#nowplaying has:mentions',
-    '#stonks has:cashtags',
-    '#nowplaying is:verified',
+    "from:twitterdev -has:hashtags",
+    "from:twitterdev announcement has:links",
+    "#meme has:images",
+    "recommend #paris has:geo -bakery",
+    "recommend #paris lang:en",
+    "(kittens OR puppies) has:media",
+    "#nowplaying has:mentions",
+    "#stonks has:cashtags",
+    "#nowplaying is:verified",
     'place:"new york city" OR place:seattle OR place:fd70c22040963ac7',
-    'conversation_id:1334987486343299072 (from:twitterdev OR from:twitterapi)',
-    'context:domain_id.entity_id',
-    'has:media',
-    'has:links OR is:retweet',
+    "conversation_id:1334987486343299072 (from:twitterdev OR from:twitterapi)",
+    "context:domain_id.entity_id",
+    "has:media",
+    "has:links OR is:retweet",
     'twitter data" has:mentions (has:media OR has:links)',
-    '(grumpy cat) OR (#meme has:images)',
-    'skiing -snow -day -noschool',
-    '(happy OR happiness) place_country:GB -birthday -is:retweet',
-    '(happy OR happiness) lang:en -birthday -is:retweet',
-    '(happy OR happiness OR excited OR elated) lang:en -birthday -is:retweet -holidays',
-    'has:geo (from:NWSNHC OR from:NHC_Atlantic OR from:NWSHouston OR from:NWSSanAntonio OR from:USGS_TexasRain OR from:USGS_TexasFlood OR from:JeffLindner1) -is:retweet',
+    "(grumpy cat) OR (#meme has:images)",
+    "skiing -snow -day -noschool",
+    "(happy OR happiness) place_country:GB -birthday -is:retweet",
+    "(happy OR happiness) lang:en -birthday -is:retweet",
+    "(happy OR happiness OR excited OR elated) lang:en -birthday -is:retweet -holidays",
+    "has:geo (from:NWSNHC OR from:NHC_Atlantic OR from:NWSHouston OR from:NWSSanAntonio OR from:USGS_TexasRain OR from:USGS_TexasFlood OR from:JeffLindner1) -is:retweet",
     '("artificial intelligence" OR "machine learning" OR "AI applications" OR "data science") (#AI OR #ArtificialIntelligence OR #MachineLearning OR #AIApplications OR #DataScience)',
 ]
 
@@ -96,6 +96,7 @@ bad_query_examples = f"""
 # 2. Determine and list relevant hashtags which is related to <UserPrompt>.
 # 3. Identify and list any significant user mentions frequently associated with <UserPrompt>, but don't create if users has not mentioned any user
 # 4. Generate Twitter API query params based on examples and your knowledge below, user keywords, mentions, hashtags for query which is related to <UserPrompt>.
+
 
 def get_query_gen_prompt(prompt, is_accuracy=True):
     accuracy_text = ""
@@ -144,8 +145,8 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - media.fields allowed values: "preview_image_url,type,url,width"
             - max_results set always 10
             - user.fields only allowed: "created_at,description,id,location,name,profile_image_url,url,username,verified"
-            - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text"
-            - "expansions": "author_id" include it always
+            - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text,entities"
+            - "expansions": "author_id", "entities.mentions.username" include it always
         5. api_params.query rules:
             - Enclose phrases consisting of two or more words in double quotes (e.g., "Coca Cola"). Do not use single quotes.
             - use lang filter in query, and filter based on user's language, default lang.en
@@ -164,7 +165,7 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
                 "tweet.fields": "all important fields needed to answer user's prompt",
                 "user.fields": "id,created_at,username,name",
                 "max_results": "10".
-                "expansions": "author_id"
+                "expansions": "author_id,entities.mentions.username"
             }}
         }}"
     """
@@ -285,8 +286,12 @@ class TwitterAPIClient:
         return self.fix_query_dict(response_dict)
 
     def fix_query_dict(self, response_dict):
-        if 'api_params' in response_dict and 'query' in response_dict['api_params']:
-            response_dict['api_params']['query'] = response_dict['api_params']['query'].replace("'", '"').replace('has:polls', '')
+        if "api_params" in response_dict and "query" in response_dict["api_params"]:
+            response_dict["api_params"]["query"] = (
+                response_dict["api_params"]["query"]
+                .replace("'", '"')
+                .replace("has:polls", "")
+            )
         return response_dict
 
     async def fix_twitter_query(self, prompt, query, error, is_accuracy=True):
@@ -309,7 +314,7 @@ class TwitterAPIClient:
                 response_format={"type": "json_object"},
             )
             response_dict = json.loads(res)
-           
+
             return self.fix_query_dict(response_dict)
         except Exception as e:
             bt.logging.info(e)
@@ -370,9 +375,7 @@ class TwitterAPIClient:
             return result_json, prompt_analysis
         except Exception as e:
             bt.logging.error(f"analyse_prompt_and_fetch_tweets, {e}")
-            return {
-                "meta" : {"result_count": 0}
-            }, prompt_analysis
+            return {"meta": {"result_count": 0}}, prompt_analysis
 
     async def generate_and_analyze_query(self, prompt):
         query = await self.generate_query_params_from_prompt(prompt)
@@ -410,14 +413,19 @@ class TwitterAPIClient:
 
                 return result, prompt_analysis
             except Exception as e:
-                bt.logging.info(f"retry_with_fixed_query Attempt {attempt + 1} failed with error: {e}")
+                bt.logging.info(
+                    f"retry_with_fixed_query Attempt {attempt + 1} failed with error: {e}"
+                )
                 # Update the error variable with the current exception for the next retry attempt
                 error = e
                 old_query = new_query
                 if attempt == retry_attempts - 1:
                     raise e
                 else:
-                    bt.logging.info(f"retry_with_fixed_query Retrying... Attempt {attempt + 2}")
+                    bt.logging.info(
+                        f"retry_with_fixed_query Retrying... Attempt {attempt + 2}"
+                    )
+
     @staticmethod
     def extract_tweet_id(url: str) -> str:
         """

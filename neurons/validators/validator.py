@@ -14,12 +14,12 @@ from typing import List
 from template.protocol import IsAlive
 from neurons.validators.scraper_validator import ScraperValidator
 from config import add_args, check_config, config
-from weights import init_wandb, set_weights
+from weights import init_wandb, set_weights, get_weights
 from traceback import print_exception
 from base_validator import AbstractNeuron
 from template import QUERY_MINERS
 from template.misc import ttl_get_block
-from template.utils import resync_metagraph
+from template.utils import resync_metagraph, save_logs
 
 
 class Neuron(AbstractNeuron):
@@ -196,12 +196,58 @@ class Neuron(AbstractNeuron):
         # uid_list = list(available_uids.keys())
         return uids.to(self.config.neuron.device)
 
-    async def update_scores(self, wandb_data):
+    async def save_logs_in_chunks(self, prompt, responses, uids, rewards):
+        try:
+            weights = get_weights(self)
+
+            logs = [
+                {
+                    "completion": response.completion,
+                    "prompt_analysis": response.prompt_analysis.dict(),
+                    "data": response.miner_tweets,
+                    "miner_uid": uid,
+                    "score": reward,
+                    "hotkey": response.axon.hotkey,
+                    "coldkey": next(
+                        (axon.coldkey for axon in self.metagraph.axons if axon.hotkey == response.axon.hotkey),
+                        None  # Provide a default value here, such as None or an appropriate placeholder
+                    ),
+                    "weight": weights.get(str(uid)),
+                }
+                for response, uid, reward in zip(
+                    responses, uids.tolist(), rewards.tolist()
+                )
+            ]
+        
+            chunk_size = 50
+
+            log_chunks = [
+                logs[i : i + chunk_size] for i in range(0, len(logs), chunk_size)
+            ]
+
+            for chunk in log_chunks:
+                await save_logs(
+                    prompt=prompt,
+                    logs=chunk,
+                )
+        except Exception as e:
+            bt.logging.error(f"Error in save_logs_in_chunks: {e}")
+            raise e
+
+    async def update_scores(self, wandb_data, prompt, responses, uids, rewards):
         try:
             if self.config.wandb_on:
                 wandb.log(wandb_data)
 
-            # self.steps_passed += 1
+            if self.config.neuron.save_logs:
+                asyncio.create_task(
+                    self.save_logs_in_chunks(
+                        prompt=prompt,
+                        responses=responses, 
+                        uids=uids, 
+                        rewards=rewards
+                    )
+                )
         except Exception as e:
             bt.logging.error(f"Error in update_scores: {e}")
             raise e
@@ -256,8 +302,9 @@ class Neuron(AbstractNeuron):
                 coroutines = [self.query_synapse(strategy) for _ in range(1)]
                 await asyncio.gather(*coroutines)
                 end_time = time.time()
-                elapsed_time_minutes = (end_time - start_time) / 60
-                bt.logging.info(f"Finished running step forward for query_synapse in {elapsed_time_minutes:.2f} minutes, Step: {self.step}")
+                bt.logging.info(
+                    f"Completed gathering coroutines for query_synapse in {end_time - start_time:.2f} seconds"
+                )
 
             bt.logging.info("Running coroutines with run_until_complete")
             self.loop.run_until_complete(run_forward())
@@ -267,8 +314,11 @@ class Neuron(AbstractNeuron):
             bt.logging.info("Calling sync method")
             self.sync()
             bt.logging.info("Completed calling sync method")
+
             sync_end_time = time.time()
-            bt.logging.info(f"Sync method execution time: {(sync_end_time - sync_start_time) / 60:.2f} minutes, Step: {self.step}")
+            bt.logging.info(
+                f"Sync method execution time: {sync_end_time - sync_start_time:.2f} seconds"
+            )
 
             self.step += 1
             bt.logging.info(f"Incremented step to {self.step}")
@@ -298,7 +348,9 @@ class Neuron(AbstractNeuron):
             bt.logging.info("Setting weights as per condition.")
             set_weights(self)
             weight_set_end_time = time.time()
-            bt.logging.info(f"Weight setting execution time: {weight_set_end_time - weight_set_start_time:.2f} seconds")
+            bt.logging.info(
+                f"Weight setting execution time: {weight_set_end_time - weight_set_start_time:.2f} seconds"
+            )
         else:
             bt.logging.info("No need to set weights at this moment.")
 
@@ -319,11 +371,13 @@ class Neuron(AbstractNeuron):
         Check if enough epoch blocks have elapsed since the last checkpoint to sync.
         """
         difference = self.block - self.metagraph.last_update[self.uid]
-        print(f"Current block: {self.block}, Last update for UID {self.uid}: {self.metagraph.last_update[self.uid]}, Difference: {difference}")
+        print(
+            f"Current block: {self.block}, Last update for UID {self.uid}: {self.metagraph.last_update[self.uid]}, Difference: {difference}"
+        )
         should_set = difference > self.config.neuron.checkpoint_block_length
         bt.logging.info(f"Should set weights: {should_set}")
         # return should_set
-        return True # Update right not based on interval of synthetic data
+        return True  # Update right not based on interval of synthetic data
 
     def should_set_weights(self) -> bool:
         # Don't set weights on initialization.
@@ -338,11 +392,13 @@ class Neuron(AbstractNeuron):
 
         # Define appropriate logic for when set weights.
         difference = self.block - self.metagraph.last_update[self.uid]
-        print(f"Current block: {self.block}, Last update for UID {self.uid}: {self.metagraph.last_update[self.uid]}, Difference: {difference}")
+        print(
+            f"Current block: {self.block}, Last update for UID {self.uid}: {self.metagraph.last_update[self.uid]}, Difference: {difference}"
+        )
         should_set = difference > self.config.neuron.checkpoint_block_length
         bt.logging.info(f"Should set weights: {should_set}")
         # return should_set
-        return True # Update right not based on interval of synthetic data
+        return True  # Update right not based on interval of synthetic data
 
     async def run(self):
         await asyncio.sleep(10)
@@ -351,24 +407,25 @@ class Neuron(AbstractNeuron):
         bt.logging.info(f"Validator starting at block: {self.block}")
 
         try:
+
             async def run_with_interval(interval, strategy):
                 query_count = 0  # Initialize query count
                 while True:
                     try:
                         if not self.available_uids:
-                            bt.logging.info("No available UIDs, sleeping for 10 seconds.")
+                            bt.logging.info(
+                                "No available UIDs, sleeping for 10 seconds."
+                            )
                             await asyncio.sleep(10)
                             continue
                         self.loop.create_task(self.run_synthetic_queries(strategy))
 
-                        await asyncio.sleep(interval)  # Wait for 1800 seconds (30 minutes)
-
-                        query_count += 1  # Increment query count after each interval
-                        bt.logging.info(f"Executing next synthetic query #{query_count} after a wait interval of {interval} seconds.")
+                        await asyncio.sleep(
+                            interval
+                        )  # Wait for 1800 seconds (30 minutes)
                     except Exception as e:
                         bt.logging.error(f"Error during task execution: {e}")
                         await asyncio.sleep(interval)  # Wait before retrying
-
 
             if self.config.neuron.run_random_miner_syn_qs_interval > 0:
                 self.loop.create_task(

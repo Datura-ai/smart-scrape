@@ -24,8 +24,10 @@ import bittensor as bt
 import template
 import multiprocessing
 import time
+
 import torch
 from multiprocessing import Queue
+
 
 def init_wandb(self):
     try:
@@ -59,14 +61,19 @@ def init_wandb(self):
         bt.logging.error(f"Error in init_wandb: {e}")
         raise
 
+
 class RetryException(Exception):
     pass
+
 
 def on_retry(exception, tries_remaining, delay):
     attempt = 6 - tries_remaining  # Assuming 5 total tries
     bt.logging.info(f"Retry attempt {attempt}, will retry in {delay} seconds...")
 
-def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_key, ttl):
+
+def set_weights_subtensor(
+    queue, wallet, netuid, uids, weights, config, version_key
+):
     try:
         subtensor = bt.subtensor(config=config)
         success, message = subtensor.set_weights(
@@ -77,21 +84,21 @@ def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_
             wait_for_inclusion=False,
             wait_for_finalization=False,
             version_key=version_key,
-            ttl=ttl
         )
 
         # Send the success status back to the main process
         queue.put(success)
-        return success, message 
+        return success, message
     except Exception as e:
         bt.logging.error(f"Failed to set weights on chain with exception: { e }")
         return False, message
+
 
 def set_weights_with_retry(self, processed_weight_uids, processed_weights):
     max_retries = 9  # Maximum number of retries
     retry_delay = 45  # Delay between retries in seconds
     ttl = 200  # Time-to-live for each process attempt in seconds
-   
+
     bt.logging.info("Initiating weight setting process on Bittensor network.")
     for attempt in range(max_retries):
         success = False
@@ -105,8 +112,7 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
                 processed_weight_uids,
                 processed_weights,
                 self.config,
-                template.__weights_version__,
-                ttl
+                template.__weights_version__
             ),
         )
         process.start()
@@ -125,9 +131,13 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
                     success_status, message = queue_success
                     success = success_status
                     if success_status:
-                        bt.logging.success(f"Set Weights Completed set weights action successfully. Message: '{message}'")
+                        bt.logging.success(
+                            f"Set Weights Completed set weights action successfully. Message: '{message}'"
+                        )
                     else:
-                        bt.logging.info(f"Set Weights Attempt failed with message: '{message}', retrying in {retry_delay} seconds...")
+                        bt.logging.info(
+                            f"Set Weights Attempt failed with message: '{message}', retrying in {retry_delay} seconds..."
+                        )
                 else:
                     # Handle the case where the return value is not a tuple (e.g., a boolean)
                     success = queue_success
@@ -136,11 +146,15 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
                     else:
                         bt.logging.info(f"Set Weights Attempt failed. retrying in {retry_delay} seconds..., Response: {success}")
             else:
-                bt.logging.info(f"Set Weights Attempt {attempt + 1} failed, no response received, retrying in {retry_delay} seconds...")
+                bt.logging.info(
+                    f"Set Weights Attempt {attempt + 1} failed, no response received, retrying in {retry_delay} seconds..."
+                )
         else:
             process.terminate()  # Ensure the process is terminated before retrying
             process.join()  # Clean up the terminated process
-            bt.logging.info(f"Set Weights Attempt {attempt + 1} failed, process did not complete in time, retrying in {retry_delay} seconds..")
+            bt.logging.info(
+                f"Set Weights Attempt {attempt + 1} failed, process did not complete in time, retrying in {retry_delay} seconds.."
+            )
         if not success:
             time.sleep(retry_delay)  # Wait for the specified delay before retrying
         else:
@@ -151,6 +165,32 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
         bt.logging.error(f"Final Result: Failed to set weights after {attempt + 1} attempts.")
         
     return success
+
+
+def get_weights(self):
+    if torch.all(self.moving_averaged_scores == 0):
+        bt.logging.info("All moving averaged scores are zero, skipping weight setting.")
+        return {}
+
+    raw_weights = torch.nn.functional.normalize(self.moving_averaged_scores, p=1, dim=0)
+
+    (
+        processed_weight_uids,
+        processed_weights,
+    ) = bt.utils.weight_utils.process_weights_for_netuid(
+        uids=self.metagraph.uids.to("cpu"),
+        weights=raw_weights.to("cpu"),
+        netuid=self.config.netuid,
+        subtensor=self.subtensor,
+        metagraph=self.metagraph,
+    )
+
+    weights_dict = {
+        str(uid.item()): weight.item()
+        for uid, weight in zip(processed_weight_uids, processed_weights)
+    }
+
+    return weights_dict
 
 
 def set_weights(self):
@@ -196,7 +236,6 @@ def set_weights(self):
     # Call the new method to handle the process with retry logic
     success = set_weights_with_retry(self, processed_weight_uids, processed_weights)
     return success
-
 
 
 def update_weights(self, total_scores, steps_passed):
