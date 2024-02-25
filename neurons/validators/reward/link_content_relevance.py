@@ -26,7 +26,7 @@ import html
 import random
 from typing import List, Union
 from .config import RewardModelType, RewardScoringType
-from .reward import BaseRewardModel, BaseRewardEvent
+from .reward import BaseRewardModel, BaseRewardEvent, pattern_to_check
 from neurons.validators.utils.prompts import (
     SummaryRelevancePrompt,
     LinkContentPrompt,
@@ -56,7 +56,19 @@ class LinkContentRelevanceModel(BaseRewardModel):
         self.scoring_type = scoring_type
         self.tw_client = TwitterAPIClient()
 
-    async def process_tweets(self, responses):
+    async def llm_process_validator_tweets(self, prompt, tweets_list):
+        scoring_messages = []
+        for tweet in tweets_list:
+            val_text = tweet.full_text
+            val_tweet_id = tweet.id
+            scoring_prompt, scoring_text = self.get_scoring_text(
+                            prompt=prompt, content=val_text, response = None
+                        )
+            scoring_messages.append({str(val_tweet_id): scoring_text})
+        score_responses = self.reward_llm.llm_processing(scoring_messages)
+        return score_responses
+
+    async def process_tweets(self, prompt, responses):
         try:
             start_time = time.time()
             all_links = [
@@ -81,12 +93,14 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 for tweet in tweets_list:
                     if tweet.id in ids:
                         response.validator_tweets.append(tweet)
+            val_score_responses =  await self.llm_process_validator_tweets(prompt, tweets_list)
             end_time = time.time()
             bt.logging.info(
                 f"Fetched Twitter links method took {end_time - start_time} seconds. "
                 f"All links count: {len(all_links)}, Unique links count: {len(unique_links)}, "
                 f"APIFY fetched tweets links count: {len(tweets_list)}"
             )
+            return val_score_responses
         except Exception as e:
             bt.logging.error(f"Error in process_tweets: {str(e)}")
             return
@@ -122,7 +136,10 @@ class LinkContentRelevanceModel(BaseRewardModel):
 
             # Assign completion links and validator tweets from the response
             completion_links = response.completion_links
-            validator_tweets = response.validator_tweets
+
+            if len(completion_links) < 2:
+                # at least miners should provide two twitter links
+                return 0
 
             # Check if there are no completion links, no miner tweets, or no validator tweets
             if (
@@ -149,6 +166,10 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 # If a corresponding miner tweet is found, extract its creation time and text
                 
                 miner_tweet_text = miner_tweet["text"]
+
+                if not miner_tweet_text or re.search(pattern_to_check, miner_tweet_text, flags=re.IGNORECASE):
+                    return 0 
+
                 # Prepare texts for comparison by normalizing them
                 miner_text_compared = self.format_text_for_match(miner_tweet_text)
                 validator_text_compared = self.format_text_for_match(val_tweet_content)
@@ -186,9 +207,10 @@ class LinkContentRelevanceModel(BaseRewardModel):
 
     def get_scoring_text(self, prompt: str, content: str, response: bt.Synapse) -> BaseRewardEvent:
         try:
-            completion = self.get_successful_completion(response=response)
-            if not completion:
-                return None
+            if response:
+                completion = self.get_successful_completion(response=response)
+                if not completion:
+                    return None
             
             scoring_prompt = None
 
@@ -199,7 +221,10 @@ class LinkContentRelevanceModel(BaseRewardModel):
             if not scoring_prompt_text:
                 scoring_prompt_text = scoring_prompt.text(prompt, content)
 
-            return scoring_prompt, [{"role": "user", "content": scoring_prompt_text}]
+            return scoring_prompt, [
+                {"role": "user", "content": scoring_prompt_text},    
+                {"role": "system", "content": scoring_prompt.get_system_message()},  
+            ]
         except Exception as e:
             bt.logging.error(f"Error in Prompt reward method: {str(e)}")
             return None
@@ -216,8 +241,8 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 f"LinkContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
             )
 
-            asyncio.get_event_loop().run_until_complete(
-                self.process_tweets(responses=responses)
+            val_score_responses = asyncio.get_event_loop().run_until_complete(
+                self.process_tweets(prompt=prompt, responses=responses)
             )
             scores = [
                 self.check_response_random_tweet(response) for response in responses
@@ -232,29 +257,31 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 uid = uid_tensor.item()
                 miner_tweets = response.miner_tweets
                 miner_tweets_data = miner_tweets.get("data", [])
-                for link in random.sample(
-                    response.completion_links,
-                    (
-                        1
-                        if len(response.completion_links) > 1
-                        else len(response.completion_links)
-                    ),
-                ):
-                    tweet_id = self.tw_client.extract_tweet_id(link)
-                    miner_tweet = next(
+
+                if not len(response.validator_tweets):
+                    for link in random.sample(
+                        response.completion_links,
                         (
-                            tweet
-                            for tweet in miner_tweets_data
-                            if tweet["id"] == tweet_id
+                            1
+                            if len(response.completion_links) > 1
+                            else len(response.completion_links)
                         ),
-                        None,
-                    )
-                    if miner_tweet:
-                        miner_tweet_text = miner_tweet["text"]
-                        scoring_prompt, scoring_text = self.get_scoring_text(
-                            prompt, miner_tweet_text, response
+                    ):
+                        tweet_id = self.tw_client.extract_tweet_id(link)
+                        miner_tweet = next(
+                            (
+                                tweet
+                                for tweet in miner_tweets_data
+                                if tweet["id"] == tweet_id
+                            ),
+                            None,
                         )
-                        scoring_messages.append({str(uid): scoring_text})
+                        if miner_tweet:
+                            miner_tweet_text = miner_tweet["text"]
+                            scoring_prompt, scoring_text = self.get_scoring_text(
+                                prompt, miner_tweet_text, response
+                            )
+                            scoring_messages.append({str(uid): scoring_text})
                         
             bt.logging.info(f"Executing llm_processing on {len(scoring_messages)} Link Content Relevance messages.")
             score_responses = self.reward_llm.llm_processing(scoring_messages)
@@ -267,19 +294,26 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
 
-                if score_responses:
-                    score_result = score_responses.get(str(uid), None)
-                    if score_result is None:
+                score_result = None
+                if len(response.validator_tweets):
+                    val_tweet = random.choice(response.validator_tweets)
+                    val_tweet_id = val_tweet.id
+                    if val_score_responses:
+                        score_result = val_score_responses.get(str(val_tweet_id), None)
+                else:
+                    if score_responses:
+                        score_result = score_responses.get(str(uid), None)
+                if score_result is None:
                         bt.logging.info(f"Link Content Relevance get_rewards: No score response for UID '{uid}'")
                         score = 0  # Default score or another logic to handle missing scores
-                    else:
-                        score = scoring_prompt.extract_score(score_result)
-                        score /= 10.0
+                else:
+                    score = scoring_prompt.extract_score(score_result)
+                    score /= 10.0
                     reward_event.reward = score
                 if apify_score:
                     reward_event.reward = min(reward_event.reward * apify_score, 1)
                 else:
-                    reward_event.reward /= 2
+                    reward_event.reward /= 3
                 reward_events.append(reward_event)
 
                 zero_scores = {}
@@ -306,3 +340,5 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 reward_event.reward = 0
                 reward_events.append(reward_event)
             return reward_events
+
+

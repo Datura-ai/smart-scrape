@@ -215,6 +215,7 @@ class RewardLLM:
             # Process outputs
             for key, output in zip(keys, outputs):
                 generated_text = output[0]["generated_text"]
+                # score_text = extract_score_and_explanation(generated_text)
                 score_text = extract_score_and_explanation(generated_text)
                 result[key] = score_text
 
@@ -243,7 +244,7 @@ class RewardLLM:
         # Define the order of scoring sources to be used
         scoring_sources = [
             ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
-            # ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
+            ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
             # ScoringSource.Subnet18,  # First attempt with Subnet 18
         ]
 

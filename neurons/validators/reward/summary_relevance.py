@@ -94,8 +94,8 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 scoring_prompt_text = scoring_prompt.text(prompt, completion)
 
             return scoring_prompt, [
-                {"role": "user", "content": scoring_prompt_text},
-                {"role": "user", "content": scoring_prompt.get_system_message()},      
+                {"role": "user", "content": scoring_prompt_text},    
+                {"role": "system", "content": scoring_prompt.get_system_message()},  
             ]
         except Exception as e:
             bt.logging.error(f"Summary Relevance get_scoring_text: {str(e)}")
@@ -176,52 +176,3 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 reward_event.reward = 0
                 reward_events.append(reward_event)
             return reward_events
-
-
-if __name__ == "__main__":
-    from neurons.validators.reward.test_summary import completions_empty, prompt, completion_0, completion_1
-
-    tokenizer = None
-    model = None
-    device = "cuda"
-    llm = RewardLLM()
-    llm.init_pipe_zephyr()
-    summary = SummaryRelevanceRewardModel(
-        device=device,
-        scoring_type=RewardScoringType.summary_relevance_score_template,
-        llm_reward=llm
-    )
-    wallet = bt.wallet(name="validator-prod", hotkey="default")
-    completions_empty
-    scoring_messages = []
-    completion_0.items()
-    # merged_completions = {**completions_empty, **completion_0}
-    for key, value in completion_1.items():
-        # response = bt.dendrite(wallet=wallet)
-
-        response = ScraperStreamingSynapse(
-            messages=prompt, model="", seed=1, is_intro_text=False
-        )
-        response.dendrite.status_code = 200
-        response.completion = value
-        response.completion_links = [
-            "https://twitter.com/Carlossainz55/status/1753134900129956343",
-            "https://twitter.com/Carlossainz55/status/1753134900129956343",
-        ]
-        result = summary.get_scoring_text(prompt, response)
-        scoring_messages.append(result)
-
-    messages = [
-        {str(index): item[1]}
-        for index, item in enumerate(scoring_messages)
-        if item is not None
-    ]
-    score_responses = summary.reward_llm.llm_processing(messages=messages)
-    for key in score_responses.keys():
-        llm_response = score_responses.get(key, "No response").replace("\n", " ")
-        print(f" KEY: {key} ===========================================")
-        print(f"{llm_response}")
-
-        print(f"--------------------------------------------------------")
-
-    print("Processing complete.")
