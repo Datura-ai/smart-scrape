@@ -93,7 +93,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 # Format scoring prompt for this completion.
                 scoring_prompt_text = scoring_prompt.text(prompt, completion)
 
-            return scoring_prompt, [{"role": "user", "content": scoring_prompt_text}]
+            return scoring_prompt, [
+                {"role": "user", "content": scoring_prompt_text},
+                {"role": "user", "content": scoring_prompt.get_system_message()},      
+            ]
         except Exception as e:
             bt.logging.error(f"Summary Relevance get_scoring_text: {str(e)}")
             return None

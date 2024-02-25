@@ -67,7 +67,6 @@ class RewardLLM:
         self.pipe = pipe
         return pipe
 
-
     def clean_text(self, text):
         # Remove newline characters and replace with a space
         text = text.replace("\n", " ")
@@ -211,7 +210,7 @@ class RewardLLM:
                 keys.append(key)
             
             # Process batch
-            outputs = self.pipe(prompts, max_new_tokens=500, do_sample=True, temperature=0.2, top_k=50, top_p=0.95)
+            outputs = self.pipe(prompts, max_new_tokens=50, do_sample=True, temperature=0.2, top_k=50, top_p=0.95)
             
             # Process outputs
             for key, output in zip(keys, outputs):
@@ -244,7 +243,7 @@ class RewardLLM:
         # Define the order of scoring sources to be used
         scoring_sources = [
             ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
-            ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
+            # ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
             # ScoringSource.Subnet18,  # First attempt with Subnet 18
         ]
 

@@ -53,6 +53,12 @@ patterns_to_remove = [
     r"</score>"
     # Similar to above, adjust based on whether you want to keep or remove certain tags.
     r"----",
+    r"SC_RED",
+    r"SC_PINK",
+    r"SC_BLUE",
+    r"SC_GREY",
+    r"SC_GREY",
+    r"SC_GREEN",
 ]
 class BaseRewardModel:
     @property
@@ -106,8 +112,10 @@ class BaseRewardModel:
             # Get the completion from the successful response.
             successful_completion = response.completion.strip()
 
-            if any(re.search(pattern, successful_completion, flags=re.IGNORECASE) for pattern in patterns_to_remove):
-                return None
+            # if any(re.search(pattern, successful_completion, flags=re.IGNORECASE) for pattern in patterns_to_remove):
+            #     return None
+            for pattern in patterns_to_remove:
+                successful_completion = re.sub(pattern, "", successful_completion, flags=re.IGNORECASE)
             return successful_completion.strip()
         return None
 
