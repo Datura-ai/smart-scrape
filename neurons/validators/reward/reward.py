@@ -42,24 +42,8 @@ class BaseRewardEvent:
         reward_event = dict(zip(field_names, list(zip(*reward_events))))
         return reward_event
 
-patterns_to_remove = [
-    r"<question>",
-    r"</question>",
-    r"<answer>",
-    r"</answer>",
-    # Assuming you want to selectively keep or remove closing tags like </answer>, adjust your approach accordingly.
-    # For example, if you want to keep </answer>, do not include it here.
-    r"<score>",
-    r"</score>"
-    # Similar to above, adjust based on whether you want to keep or remove certain tags.
-    r"----",
-    r"SC_RED",
-    r"SC_PINK",
-    r"SC_BLUE",
-    r"SC_GREY",
-    r"SC_GREY",
-    r"SC_GREEN",
-]
+pattern_to_check = r"<Question>|</Question>|<Answer>|</Answer>|<Score>|</Score>|----|SM_SCS_RDD|SM_SCS_PNK|SM_SCS_BLE|SM_SCS_GRY|SM_SCS_GRN|SM-SCS-RDD|SM-SCS-PNK|SM-SCS-BLE|SM-SCS-GRY|SM-SCS-GRN|SM SCS RDD|SM SCS PNK|SM SCS BLE|SM SCS GRY|SM SCS GRN|SM RDD|SM SCS PNK|SM SCS BLE|SM SCS GRY|SM SCS GRN"
+
 class BaseRewardModel:
     @property
     @abstractmethod
@@ -114,8 +98,10 @@ class BaseRewardModel:
 
             # if any(re.search(pattern, successful_completion, flags=re.IGNORECASE) for pattern in patterns_to_remove):
             #     return None
-            for pattern in patterns_to_remove:
-                successful_completion = re.sub(pattern, "", successful_completion, flags=re.IGNORECASE)
+
+            if re.search(pattern_to_check, successful_completion, flags=re.IGNORECASE):
+                return None
+            
             return successful_completion.strip()
         return None
 
