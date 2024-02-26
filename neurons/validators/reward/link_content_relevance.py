@@ -72,6 +72,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
 
     async def process_tweets(self, prompt, responses):
         try:
+            non_fetched_links = {}
             start_time = time.time()
             all_links = [
                 random.choice(response.completion_links)
@@ -98,6 +99,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
             if len(unique_links) == 0:
                 bt.logging.info("No unique links found to process.")
                 return {}
+            
+           
+
             val_score_responses = await self.llm_process_validator_tweets(
                 prompt, tweets_list
             )
@@ -107,6 +111,10 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 f"All links count: {len(all_links)}, Unique links count: {len(unique_links)}, "
                 f"APIFY fetched tweets links count: {len(tweets_list)}"
             )
+            fetched_tweet_ids = {tweet.id for tweet in tweets_list}
+            non_fetched_links = [link for link in unique_links if self.tw_client.extract_tweet_id(link) not in fetched_tweet_ids]
+
+            bt.logging.info(f"Twitter Links not fetched Amount: {len(non_fetched_links)}; List: {non_fetched_links}; For prompt: [{prompt}]")
             return val_score_responses
         except Exception as e:
             bt.logging.error(f"Error in process_tweets: {str(e)}")
