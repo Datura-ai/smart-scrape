@@ -22,7 +22,6 @@ from template.protocol import TwitterPromptAnalysisResult
 from datetime import datetime
 from template.misc import ttl_get_block
 
-
 list_update_lock = asyncio.Lock()
 _text_questions_buffer = deque()
 
@@ -310,3 +309,70 @@ async def save_logs(prompt, logs):
                 "logs": logs,
             },
         )
+
+
+async def save_logs_from_miner(
+    self, synapse, prompt, completion, prompt_analysis, data
+):
+    if not self.miner.config.miner.save_logs:
+        return
+
+    asyncio.create_task(
+        save_logs(
+            prompt=prompt,
+            logs=[
+                {
+                    "completion": completion,
+                    "prompt_analysis": prompt_analysis.dict(),
+                    "data": data,
+                    "miner_uid": self.miner.my_subnet_uid,
+                    "hotkey": synapse.axon.hotkey,
+                    "coldkey": next(
+                        (
+                            axon.coldkey
+                            for axon in self.miner.metagraph.axons
+                            if axon.hotkey == synapse.axon.hotkey
+                        ),
+                        None,  # Provide a default value here, such as None or an appropriate placeholder
+                    ),
+                }
+            ],
+        )
+    )
+
+
+async def save_logs_in_chunks(self, prompt, responses, uids, rewards, weights):
+    try:
+        logs = [
+            {
+                "completion": response.completion,
+                "prompt_analysis": response.prompt_analysis.dict(),
+                "data": response.miner_tweets,
+                "miner_uid": uid,
+                "score": reward,
+                "hotkey": response.axon.hotkey,
+                "coldkey": next(
+                    (
+                        axon.coldkey
+                        for axon in self.metagraph.axons
+                        if axon.hotkey == response.axon.hotkey
+                    ),
+                    None,  # Provide a default value here, such as None or an appropriate placeholder
+                ),
+                "weight": weights.get(str(uid)),
+            }
+            for response, uid, reward in zip(responses, uids.tolist(), rewards.tolist())
+        ]
+
+        chunk_size = 50
+
+        log_chunks = [logs[i : i + chunk_size] for i in range(0, len(logs), chunk_size)]
+
+        for chunk in log_chunks:
+            await save_logs(
+                prompt=prompt,
+                logs=chunk,
+            )
+    except Exception as e:
+        bt.logging.error(f"Error in save_logs_in_chunks: {e}")
+        raise e
