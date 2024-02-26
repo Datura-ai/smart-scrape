@@ -216,7 +216,7 @@ class TwitterAPIClient:
         self.twitter_link_regex = re.compile(
             r"https?://(?:"
             + "|".join(re.escape(domain) for domain in VALID_DOMAINS)
-            + r")/[\w/:%#\$&\?\(\)~\.=\+\-]+(?<![\.\)])",
+            + r")/[\w/:%#\$&\?\(\)~\.=\+\-]+(?<=\d)",
             re.IGNORECASE,
         )
         self.openai_query_model = openai_query_model
