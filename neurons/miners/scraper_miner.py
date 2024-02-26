@@ -336,6 +336,16 @@ class ScraperMiner:
                                 "completion": joined_full_text,
                                 "prompt_analysis": prompt_analysis.dict(),
                                 "data": tweets,
+                                "miner_uid": self.miner.my_subnet_uid,
+                                "hotkey": synapse.axon.hotkey,
+                                "coldkey": next(
+                                    (
+                                        axon.coldkey
+                                        for axon in self.miner.metagraph.axons
+                                        if axon.hotkey == synapse.axon.hotkey
+                                    ),
+                                    None,  # Provide a default value here, such as None or an appropriate placeholder
+                                ),
                             }
                         ],
                     )
