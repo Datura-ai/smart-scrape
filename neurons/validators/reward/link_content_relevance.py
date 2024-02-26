@@ -93,6 +93,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 for tweet in tweets_list:
                     if tweet.id in ids:
                         response.validator_tweets.append(tweet)
+            if len(unique_links) == 0:
+                bt.logging.info("No unique links found to process.")
+                return {}
             val_score_responses =  await self.llm_process_validator_tweets(prompt, tweets_list)
             end_time = time.time()
             bt.logging.info(
@@ -103,7 +106,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             return val_score_responses
         except Exception as e:
             bt.logging.error(f"Error in process_tweets: {str(e)}")
-            return
+            return {}
 
     def format_text_for_match(self, text):
         # url shorteners can cause problems with tweet verification, so remove urls from the text comparison.
@@ -243,6 +246,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
 
             val_score_responses = asyncio.get_event_loop().run_until_complete(
                 self.process_tweets(prompt=prompt, responses=responses)
+            )
+            bt.logging.info(
+                f"LinkContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
             )
             scores = [
                 self.check_response_random_tweet(response) for response in responses
