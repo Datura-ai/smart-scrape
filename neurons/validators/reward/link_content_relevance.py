@@ -64,7 +64,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             result = self.get_scoring_text(
                 prompt=prompt, content=val_text, response=None
             )
-            if not result:
+            if result:
                 scoring_prompt, scoring_text = result
                 scoring_messages.append({str(val_tweet_id): scoring_text})
         score_responses = self.reward_llm.llm_processing(scoring_messages)
@@ -292,7 +292,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                                 result = self.get_scoring_text(
                                     prompt, miner_tweet_text, response
                                 )
-                                if not result:
+                                if result:
                                     scoring_prompt, scoring_text = result
                                     scoring_messages.append({str(uid): scoring_text})
 
