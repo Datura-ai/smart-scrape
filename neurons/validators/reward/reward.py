@@ -42,8 +42,7 @@ class BaseRewardEvent:
         reward_event = dict(zip(field_names, list(zip(*reward_events))))
         return reward_event
     
-pattern_to_check = r"(?:<Question>|</Question>|<Answer>|</Answer>|<Score>|</Score>|----|(?:SM(?:[-_ ])?(?:SCS)?(?:[-_ ])?|SCS(?:[-_ ])?|CS[-_])?(?:RDD|PNK|BLE|GRY|GRN))"
-
+pattern_to_check = r"<(?:Question|/Question|Answer|/Answer|Score|/Score)>|SM(?:[-_ ]SCS)?[-_ ]?(?:RDD|PNK|BLE|GRY|GRN)"
 
 class BaseRewardModel:
     @property
