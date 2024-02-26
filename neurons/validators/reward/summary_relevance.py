@@ -15,7 +15,7 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.p
-
+import traceback
 import time
 import torch
 import bittensor as bt
@@ -169,7 +169,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
             return reward_events
         except Exception as e:
-            bt.logging.error(f"Summary Relevance issue get_rewards: {str(e)}")
+            error_message = f"Summary Relevanc Relevance get_rewards: {str(e)}"
+            tb_str = traceback.format_exception(type(e), e, e.__traceback__)
+            bt.logging.error("\n".join(tb_str) + error_message)
             reward_events = []
             for response in responses:
                 reward_event = BaseRewardEvent()
