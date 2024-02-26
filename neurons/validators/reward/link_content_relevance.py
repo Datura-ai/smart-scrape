@@ -61,10 +61,12 @@ class LinkContentRelevanceModel(BaseRewardModel):
         for tweet in tweets_list:
             val_text = tweet.full_text
             val_tweet_id = tweet.id
-            scoring_prompt, scoring_text = self.get_scoring_text(
+            result = self.get_scoring_text(
                 prompt=prompt, content=val_text, response=None
             )
-            scoring_messages.append({str(val_tweet_id): scoring_text})
+            if not result:
+                scoring_prompt, scoring_text = result
+                scoring_messages.append({str(val_tweet_id): scoring_text})
         score_responses = self.reward_llm.llm_processing(scoring_messages)
         return score_responses
 
@@ -287,10 +289,12 @@ class LinkContentRelevanceModel(BaseRewardModel):
                         if miner_tweet:
                             miner_tweet_text = miner_tweet["text"]
                             if miner_tweet_text:
-                                scoring_prompt, scoring_text = self.get_scoring_text(
+                                result = self.get_scoring_text(
                                     prompt, miner_tweet_text, response
                                 )
-                                scoring_messages.append({str(uid): scoring_text})
+                                if not result:
+                                    scoring_prompt, scoring_text = result
+                                    scoring_messages.append({str(uid): scoring_text})
 
             bt.logging.info(
                 f"Executing llm_processing on {len(scoring_messages)} Link Content Relevance messages."
