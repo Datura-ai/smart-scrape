@@ -353,9 +353,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             return reward_events
         except Exception as e:
             error_message = f"Link Content Relevance get_rewards: {str(e)}"
-            tb_str = traceback.format_exception(
-                etype=type(e), value=e, tb=e.__traceback__
-            )
+            tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.error("\n".join(tb_str) + error_message)
             reward_events = []
             for response in responses:
