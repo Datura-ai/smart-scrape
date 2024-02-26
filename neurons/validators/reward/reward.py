@@ -100,7 +100,7 @@ class BaseRewardModel:
             #     return None
 
             if re.search(pattern_to_check, successful_completion, flags=re.IGNORECASE):
-                bt.logging.warning(f"Pattern Check Hotkey ID: {response.axon.hotkey}, Completion: {successful_completion}.")
+                bt.logging.info(f"Pattern validation issue Hotkey ID: {response.axon.hotkey}.")
                 return None
             
             return successful_completion.strip()
