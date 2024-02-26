@@ -34,7 +34,7 @@ from template.protocol import (
 )
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from template.db import DBClient, get_random_tweets
-from template.utils import save_logs
+from template.utils import save_logs_from_miner
 
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
 if not OpenAI.api_key:
@@ -327,29 +327,14 @@ class ScraperMiner:
                     }
                 )
 
-            if self.miner.config.miner.save_logs:
-                asyncio.create_task(
-                    save_logs(
-                        prompt=prompt,
-                        logs=[
-                            {
-                                "completion": joined_full_text,
-                                "prompt_analysis": prompt_analysis.dict(),
-                                "data": tweets,
-                                "miner_uid": self.miner.my_subnet_uid,
-                                "hotkey": synapse.axon.hotkey,
-                                "coldkey": next(
-                                    (
-                                        axon.coldkey
-                                        for axon in self.miner.metagraph.axons
-                                        if axon.hotkey == synapse.axon.hotkey
-                                    ),
-                                    None,  # Provide a default value here, such as None or an appropriate placeholder
-                                ),
-                            }
-                        ],
-                    )
-                )
+            await save_logs_from_miner(
+                self,
+                synapse=synapse,
+                prompt=prompt,
+                completion=joined_full_text,
+                prompt_analysis=prompt_analysis,
+                data=tweets,
+            )
 
             bt.logging.info(f"End of Streaming")
 
