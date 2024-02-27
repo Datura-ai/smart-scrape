@@ -86,7 +86,9 @@ class ScraperMiner:
         )
 
         response_streamer = ResponseStreamer(send=send)
-        await response_streamer.stream_response(response=response, wait_time=0.1)
+        await response_streamer.stream_response(
+            response=response, role="intro", wait_time=0.1
+        )
 
         return response_streamer.get_full_text()
 
@@ -223,14 +225,16 @@ class ScraperMiner:
             response_streamer = ResponseStreamer(send=send)
 
             for completed_task in asyncio.as_completed([twitter_task, search_task]):
-                response = await completed_task
-                await response_streamer.stream_response(response=response)
+                response, role = await completed_task
+                await response_streamer.stream_response(response=response, role=role)
 
             final_summary = await self.finalize_summary(
                 prompt, openai_summary_model, response_streamer.get_full_text()
             )
 
-            await response_streamer.stream_response(response=final_summary)
+            await response_streamer.stream_response(
+                response=final_summary, role="summary"
+            )
 
             bt.logging.info(
                 "================================== Completion Response ==================================="
@@ -313,8 +317,8 @@ class ResponseStreamer:
         self.more_body = True
         self.send = send
 
-    async def send_text_event(self, text: str):
-        text_data_json = json.dumps({"type": "text", "content": text})
+    async def send_text_event(self, text: str, role):
+        text_data_json = json.dumps({"type": "text", "role": role, "content": text})
 
         await self.send(
             {
@@ -324,8 +328,8 @@ class ResponseStreamer:
             }
         )
 
-    async def stream_response(self, response, wait_time=None):
-        await self.send_text_event("\n\n")
+    async def stream_response(self, response, role, wait_time=None):
+        await self.send_text_event(text="\n\n", role=role)
 
         async for chunk in response:
             token = chunk.choices[0].delta.content or ""
@@ -334,7 +338,7 @@ class ResponseStreamer:
 
             if len(self.buffer) == self.N:
                 joined_buffer = "".join(self.buffer)
-                await self.send_text_event(joined_buffer)
+                await self.send_text_event(text=joined_buffer, role=role)
 
                 if wait_time is not None:
                     await asyncio.sleep(wait_time)

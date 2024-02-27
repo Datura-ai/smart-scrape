@@ -58,9 +58,11 @@ async def summarize_twitter_data(
         {"role": "user", "content": content},
     ]
 
-    return await client.chat.completions.create(
+    res = await client.chat.completions.create(
         model=model,
         messages=messages,
         temperature=0.1,
         stream=True,
     )
+
+    return res, "twitter_summary"

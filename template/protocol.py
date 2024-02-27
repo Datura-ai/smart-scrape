@@ -244,6 +244,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Indicates whether the text is an introductory text.",
     )
 
+    texts: Optional[Dict[str, str]] = pydantic.Field(
+        default_factory=dict,
+        title="Texts",
+        description="A dictionary of texts in the StreamPrompting scenario, containing a role (intro, twitter summary, search summary, summary) and content. Immutable.",
+    )
+
     def set_prompt_analysis(self, data: any):
         self.prompt_analysis = data
 
@@ -292,6 +298,14 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
 
                         if content_type == "text":
                             text_content = json_data.get("content", "")
+                            role = json_data.get("role")
+
+                            if role:
+                                if self.texts.get(role):
+                                    self.texts[role] += text_content
+                                else:
+                                    self.texts[role] = text_content
+
                             self.completion += text_content
                             yield text_content
 
