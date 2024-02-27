@@ -33,6 +33,7 @@ from template.protocol import (
     TwitterPromptAnalysisResult,
 )
 from template.services.twitter_api_wrapper import TwitterAPIClient
+from template.services.twitter_prompt_analyzer import TwitterPromptAnalyzer
 from template.db import DBClient, get_random_tweets
 from template.utils import save_logs
 
@@ -110,12 +111,12 @@ class ScraperMiner:
         else:
             openai_query_model = self.miner.config.miner.openai_query_model
             openai_fix_query_model = self.miner.config.miner.openai_fix_query_model
-            tw_client = TwitterAPIClient(
+            tw_analyzer = TwitterPromptAnalyzer(
                 openai_query_model=openai_query_model,
                 openai_fix_query_model=openai_fix_query_model,
             )
             filtered_tweets, prompt_analysis = (
-                await tw_client.analyse_prompt_and_fetch_tweets(prompt)
+                await tw_analyzer.analyse_prompt_and_fetch_tweets(prompt)
             )
         return filtered_tweets, prompt_analysis
 
