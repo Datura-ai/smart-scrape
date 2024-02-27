@@ -115,6 +115,8 @@ class LinkContentRelevanceModel(BaseRewardModel):
             non_fetched_links = [link for link in unique_links if self.tw_client.extract_tweet_id(link) not in fetched_tweet_ids]
 
             bt.logging.info(f"Twitter Links not fetched Amount: {len(non_fetched_links)}; List: {non_fetched_links}; For prompt: [{prompt}]")
+            if len(non_fetched_links):
+                bt.logging.info(f"Unique Twitter Links Amount: {len(unique_links)}; List: {unique_links};")
             return val_score_responses
         except Exception as e:
             bt.logging.error(f"Error in process_tweets: {str(e)}")

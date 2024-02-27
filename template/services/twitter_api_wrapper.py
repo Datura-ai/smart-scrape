@@ -145,7 +145,7 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - media.fields allowed values: "preview_image_url,type,url,width"
             - max_results set always 10
             - user.fields only allowed: "created_at,description,id,location,name,profile_image_url,url,username,verified"
-            - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text,entities"
+            - tweet.fields only allowed: "author_id,created_at,id,possibly_sensitive,text,entities,public_metrics"
             - "expansions": "author_id", "entities.mentions.username" include it always
         5. api_params.query rules:
             - Enclose phrases consisting of two or more words in double quotes (e.g., "Coca Cola"). Do not use single quotes.
@@ -154,6 +154,8 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
             - Don't use has:polls
             - "is:" options include "retweet", "nullcast", "verified", i.e. is:retweet
             - To construct effective queries, combine search terms using spaces for an implicit 'AND' relationship. Use 'OR' to expand your search to include various terms, and group complex combinations with parentheses. Avoid using 'AND' explicitly. Instead, rely on spacing and grouping to define your search logic. For exclusions, use the '-' operator.
+            - Always use filter -is:retweet to exclude retweets from the search results, ensuring only original tweets are retrieved.
+
 
         Output example:
         {{
