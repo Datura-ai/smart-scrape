@@ -1,4 +1,5 @@
 from openai import AsyncOpenAI
+from template.protocol import ScraperTextRole
 
 client = AsyncOpenAI(timeout=60.0)
 
@@ -53,4 +54,4 @@ async def summarize_serp_google_search_data(prompt: str, model: str, data):
         stream=True,
     )
 
-    return res, "search_summary"
+    return res, ScraperTextRole.SEARCH_SUMMARY

@@ -31,6 +31,7 @@ from template.protocol import (
     IsAlive,
     ScraperStreamingSynapse,
     TwitterPromptAnalysisResult,
+    ScraperTextRole,
 )
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from template.db import DBClient, get_random_tweets
@@ -38,13 +39,16 @@ from template.tools.serp.serp_google_search_tool import SerpGoogleSearchTool
 from template.tools.twitter.twitter_summary import summarize_twitter_data
 from template.tools.serp.serp_summary import summarize_serp_google_search_data
 
-# from template.tools.tool_manager import ToolManager
+from template.tools.tool_manager import ToolManager
 
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
 if not OpenAI.api_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable.")
 
 client = AsyncOpenAI(timeout=60.0)
+
+# tool_manager = ToolManager()
+# asyncio.run(tool_manager.run("What are latest AI trends?"))
 
 
 class ScraperMiner:
@@ -87,7 +91,7 @@ class ScraperMiner:
 
         response_streamer = ResponseStreamer(send=send)
         await response_streamer.stream_response(
-            response=response, role="intro", wait_time=0.1
+            response=response, role=ScraperTextRole.INTRO, wait_time=0.1
         )
 
         return response_streamer.get_full_text()
@@ -233,7 +237,7 @@ class ScraperMiner:
             )
 
             await response_streamer.stream_response(
-                response=final_summary, role="summary"
+                response=final_summary, role=ScraperTextRole.FINAL_SUMMARY
             )
 
             bt.logging.info(
@@ -317,8 +321,10 @@ class ResponseStreamer:
         self.more_body = True
         self.send = send
 
-    async def send_text_event(self, text: str, role):
-        text_data_json = json.dumps({"type": "text", "role": role, "content": text})
+    async def send_text_event(self, text: str, role: ScraperTextRole):
+        text_data_json = json.dumps(
+            {"type": "text", "role": role.value, "content": text}
+        )
 
         await self.send(
             {
@@ -328,7 +334,7 @@ class ResponseStreamer:
             }
         )
 
-    async def stream_response(self, response, role, wait_time=None):
+    async def stream_response(self, response, role: ScraperTextRole, wait_time=None):
         await self.send_text_event(text="\n\n", role=role)
 
         async for chunk in response:

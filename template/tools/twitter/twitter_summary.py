@@ -1,5 +1,5 @@
 from openai import AsyncOpenAI
-from template.protocol import TwitterPromptAnalysisResult
+from template.protocol import TwitterPromptAnalysisResult, ScraperTextRole
 
 client = AsyncOpenAI(timeout=60.0)
 
@@ -65,4 +65,4 @@ async def summarize_twitter_data(
         stream=True,
     )
 
-    return res, "twitter_summary"
+    return res, ScraperTextRole.TWITTER_SUMMARY

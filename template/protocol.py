@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from enum import Enum
 
 
 class IsAlive(bt.Synapse):
@@ -173,6 +174,13 @@ class TwitterScraperTweet(BaseModel):
     user_mentions: List[TwitterScraperUserMention] = []
     urls: List[TwitterScraperTweetURL] = []
     media: List[TwitterScraperMedia] = []
+
+
+class ScraperTextRole(str, Enum):
+    INTRO = "intro"
+    TWITTER_SUMMARY = "twitter_summary"
+    SEARCH_SUMMARY = "search_summary"
+    FINAL_SUMMARY = "summary"
 
 
 class ScraperStreamingSynapse(bt.StreamingSynapse):
