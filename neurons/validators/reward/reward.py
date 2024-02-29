@@ -21,7 +21,7 @@ import bittensor as bt
 from typing import List, Union
 from abc import abstractmethod
 from dataclasses import dataclass, asdict, fields
-
+import re
 
 @dataclass
 class BaseRewardEvent:
@@ -41,7 +41,8 @@ class BaseRewardEvent:
         ]
         reward_event = dict(zip(field_names, list(zip(*reward_events))))
         return reward_event
-
+    
+pattern_to_check = r"<(?:Question|/Question|Answer|/Answer|Score|/Score)>|SM(?:[-_ ]SCS)?[-_ ]?(?:RDD|PNK|BLE|GRY|GRN)"
 
 class BaseRewardModel:
     @property
@@ -88,13 +89,21 @@ class BaseRewardModel:
         ]
 
         return successful_completions
-
+    
     def get_successful_completion(self, response: bt.Synapse):
         # Check if the response is successful.
         if response.dendrite.status_code == 200 and response.completion_links:
             # Get the completion from the successful response.
             successful_completion = response.completion.strip()
-            return successful_completion
+
+            # if any(re.search(pattern, successful_completion, flags=re.IGNORECASE) for pattern in patterns_to_remove):
+            #     return None
+
+            if re.search(pattern_to_check, successful_completion, flags=re.IGNORECASE):
+                bt.logging.info(f"Pattern validation issue Hotkey ID: {response.axon.hotkey}.")
+                return None
+            
+            return successful_completion.strip()
         return None
 
     def apply(
@@ -150,3 +159,6 @@ class BaseRewardModel:
 
         # Return the filled rewards.
         return filled_rewards_normalized, reward_events
+
+
+

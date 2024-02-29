@@ -22,6 +22,11 @@ import argparse
 import bittensor as bt
 from loguru import logger
 from reward import DefaultRewardFrameworkConfig
+from distutils.util import strtobool
+
+
+def str2bool(v):
+    return bool(strtobool(v))
 
 
 def check_config(cls, config: "bt.Config"):
@@ -167,13 +172,27 @@ def add_args(cls, parser):
         "--neuron.checkpoint_block_length",
         type=int,
         help="Blocks before a checkpoint is saved.",
-        default=100,
+        default=50,
     )
 
     parser.add_argument(
         "--neuron.is_disable_tokenizer_reward",
         action="store_true",
         help="If enabled, activates a mock reward system for testing and development purposes without affecting the live reward mechanisms.",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--neuron.disable_set_weights",
+        action="store_true",
+        help="Disables setting weights.",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--neuron.save_logs",
+        type=str2bool,
+        help="If True, the miner will save logs",
         default=False,
     )
 

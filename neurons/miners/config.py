@@ -81,6 +81,13 @@ def get_config() -> "bt.Config":
     )
 
     parser.add_argument(
+        "--miner.save_logs",
+        type=str2bool,
+        help="If True, the miner will save logs",
+        default=False
+    )
+
+    parser.add_argument(
         "--miner.openai_summary_model",
         default="gpt-3.5-turbo-1106",
         help="OpenAI model used for summarizing content.",
