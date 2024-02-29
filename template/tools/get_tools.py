@@ -1,5 +1,5 @@
 from typing import List
-from template.tools.base import BaseToolkit
+from template.tools.base import BaseToolkit, BaseTool
 from template.tools.serp.serp_google_search_toolkit import SerpGoogleSearchToolkit
 from template.tools.twitter.twitter_toolkit import TwitterToolkit
 
@@ -8,7 +8,7 @@ TOOLKITS: List[BaseToolkit] = [SerpGoogleSearchToolkit(), TwitterToolkit()]
 
 def get_all_tools():
     """Return a list of all tools."""
-    result = []
+    result: List[BaseTool] = []
 
     for toolkit in TOOLKITS:
         tools = toolkit.get_tools()

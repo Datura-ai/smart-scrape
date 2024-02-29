@@ -1,4 +1,5 @@
 from openai import AsyncOpenAI
+from template.protocol import ScraperTextRole
 
 client = AsyncOpenAI(timeout=60.0)
 
@@ -46,9 +47,11 @@ async def summarize_serp_google_search_data(prompt: str, model: str, data):
         {"role": "user", "content": content},
     ]
 
-    return await client.chat.completions.create(
+    res = await client.chat.completions.create(
         model=model,
         messages=messages,
         temperature=0.1,
         stream=True,
     )
+
+    return res, ScraperTextRole.SEARCH_SUMMARY
