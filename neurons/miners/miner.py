@@ -24,7 +24,7 @@ from typing import List, Dict, Tuple
 
 from template.utils import get_version
 
-from template.protocol import StreamPrompting, IsAlive, ScraperStreamingSynapse
+from template.protocol import IsAlive, ScraperStreamingSynapse
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from template.db import DBClient, get_random_tweets
 from neurons.miners.scraper_miner import ScraperMiner
@@ -237,7 +237,7 @@ class StreamMiner(ABC):
             )
             exit()
         bt.logging.info(
-            f"Serving axon {StreamPrompting} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+            f"Serving axon {ScraperStreamingSynapse} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
         self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
         bt.logging.info(f"Starting axon server on port: {self.config.axon.port}")

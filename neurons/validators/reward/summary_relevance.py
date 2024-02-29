@@ -57,7 +57,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
     def get_scoring_text(self, prompt: str, response: ScraperStreamingSynapse) -> BaseRewardEvent:
         try:
-            completion = self.get_successful_completion(response=response)
+            completion = self.get_successful_twitter_completion(response=response)
 
             if not completion:
                 return None

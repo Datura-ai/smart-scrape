@@ -11,6 +11,7 @@ import bittensor as bt
 from typing import List, Dict, Any
 from urllib.parse import urlparse
 from template.dataset import MockTwitterQuestionsDataset
+from template.services.twitter_utils import TwitterUtils
 
 BEARER_TOKEN = os.environ.get("TWITTER_BEARER_TOKEN")
 
@@ -216,12 +217,7 @@ class TwitterAPIClient:
     ):
         # self.bearer_token = os.environ.get("BEARER_TOKEN")
         self.bearer_token = BEARER_TOKEN
-        self.twitter_link_regex = re.compile(
-            r"https?://(?:"
-            + "|".join(re.escape(domain) for domain in VALID_DOMAINS)
-            + r")/[\w/:%#\$&\?\(\)~\.=\+\-]+(?<=\d)",
-            re.IGNORECASE,
-        )
+        self.utils = TwitterUtils()
         self.openai_query_model = openai_query_model
         self.openai_fix_query_model = openai_fix_query_model
 
@@ -443,54 +439,6 @@ class TwitterAPIClient:
                     bt.logging.info(
                         f"retry_with_fixed_query Retrying... Attempt {attempt + 2}"
                     )
-
-    @staticmethod
-    def extract_tweet_id(url: str) -> str:
-        """
-        Extract the tweet ID from a Twitter URL.
-
-        Args:
-            url: The Twitter URL to extract the tweet ID from.
-
-        Returns:
-            The extracted tweet ID.
-        """
-        match = re.search(r"/status(?:es)?/(\d+)", url)
-        return match.group(1) if match else None
-
-    def fetch_twitter_data_for_links(self, links: List[str]) -> List[dict]:
-        tweet_ids = [
-            self.extract_tweet_id(link)
-            for link in links
-            if self.is_valid_twitter_link(link)
-        ]
-        return self.get_tweets_by_ids(tweet_ids)
-
-    def is_valid_twitter_link(self, url: str) -> bool:
-        """
-        Check if the given URL is a valid Twitter link.
-
-        Args:
-            url: The URL to check.
-
-        Returns:
-            True if the URL is a valid Twitter link, False otherwise.
-        """
-        parsed_url = urlparse(url)
-        return parsed_url.netloc.lower() in VALID_DOMAINS
-
-    def find_twitter_links(self, text: str) -> List[str]:
-        """
-        Find all Twitter links in the given text.
-
-        Args:
-            text: The text to search for Twitter links.
-
-        Returns:
-            A list of found Twitter links.
-        """
-        return self.twitter_link_regex.findall(text)
-
 
 if __name__ == "__main__":
     client = TwitterAPIClient()

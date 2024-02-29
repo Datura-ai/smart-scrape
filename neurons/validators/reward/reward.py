@@ -83,9 +83,6 @@ class BaseRewardModel:
             # Get the completion from the successful response.
             successful_completion = response.completion.strip()
 
-            # if any(re.search(pattern, successful_completion, flags=re.IGNORECASE) for pattern in patterns_to_remove):
-            #     return None
-
             if re.search(pattern_to_check, successful_completion, flags=re.IGNORECASE):
                 bt.logging.info(f"Pattern validation issue Hotkey ID: {response.axon.hotkey}.")
                 return None
@@ -97,10 +94,7 @@ class BaseRewardModel:
         # Check if the response is successful.
         if response.dendrite.status_code == 200 and response.completion_links:
             # Get the completion from the successful response.
-            successful_completion = response.completion.strip()
-
-            # if any(re.search(pattern, successful_completion, flags=re.IGNORECASE) for pattern in patterns_to_remove):
-            #     return None
+            successful_completion = response.get_twitter_completion().strip()
 
             if re.search(pattern_to_check, successful_completion, flags=re.IGNORECASE):
                 bt.logging.info(f"Pattern validation issue Hotkey ID: {response.axon.hotkey}.")

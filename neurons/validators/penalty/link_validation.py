@@ -61,7 +61,7 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
             A list of dictionaries containing the retrieved Twitter data.
         """
         tweet_ids = [
-            self.client.extract_tweet_id(link)
+            self.client.utils.extract_tweet_id(link)
             for link in links
             if self.is_valid_twitter_link(link)
         ]
@@ -85,7 +85,7 @@ class LinkValidationPenaltyModel(BasePenaltyModel):
         for response in responses:
             # time.sleep(2)
             completion = response.completion
-            twitter_links = self.client.find_twitter_links(completion)
+            twitter_links = self.client.utils.find_twitter_links(completion)
             if twitter_links and all(
                 self.is_valid_twitter_link(link) for link in twitter_links
             ):

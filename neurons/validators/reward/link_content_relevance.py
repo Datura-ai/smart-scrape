@@ -89,7 +89,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             tweets_list = await TwitterScraperActor().get_tweets(urls=unique_links)
             for response in responses:
                 ids = [
-                    self.tw_client.extract_tweet_id(link)
+                    self.tw_client.utils.extract_tweet_id(link)
                     for link in response.completion_links
                 ]
 
@@ -110,7 +110,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 f"APIFY fetched tweets links count: {len(tweets_list)}"
             )
             fetched_tweet_ids = {tweet.id for tweet in tweets_list}
-            non_fetched_links = [link for link in unique_links if self.tw_client.extract_tweet_id(link) not in fetched_tweet_ids]
+            non_fetched_links = [link for link in unique_links if self.tw_client.utils.extract_tweet_id(link) not in fetched_tweet_ids]
 
             bt.logging.info(f"Twitter Links not fetched Amount: {len(non_fetched_links)}; List: {non_fetched_links}; For prompt: [{prompt}]")
             if len(non_fetched_links):
@@ -138,7 +138,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
         try:
             tweet_score = 0
 
-            completion = self.get_successful_completion(response=response)
+            completion = self.get_successful_twitter_completion(response=response)
             if not completion:
                 return 0
 
@@ -223,7 +223,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
     ) -> BaseRewardEvent:
         try:
             if response:
-                completion = self.get_successful_completion(response=response)
+                completion = self.get_successful_twitter_completion(response=response)
                 if not completion:
                     return None
 
@@ -277,7 +277,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                             else len(response.completion_links)
                         ),
                     ):
-                        tweet_id = self.tw_client.extract_tweet_id(link)
+                        tweet_id = self.tw_client.utils.extract_tweet_id(link)
                         miner_tweet = next(
                             (
                                 tweet
