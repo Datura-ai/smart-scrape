@@ -15,11 +15,11 @@ import traceback
 import bittensor as bt
 import threading
 import multiprocessing
+import aiohttp
 from . import client
 from collections import deque
 from datetime import datetime
 from template.misc import ttl_get_block
-
 
 list_update_lock = asyncio.Lock()
 _text_questions_buffer = deque()
@@ -259,68 +259,119 @@ def send_discord_alert(message, webhook_url):
         print(f"Failed to send Discord alert: {e}", exc_info=True)
 
 
-def should_checkpoint(self):
-    # Check if enough epoch blocks have elapsed since the last checkpoint.
-    return (
-        ttl_get_block(self) % self.config.neuron.checkpoint_block_length
-        < self.prev_block % self.config.neuron.checkpoint_block_length
-    )
-
-
-def checkpoint(self):
-    """Checkpoints the training process."""
-    bt.logging.info("checkpoint()")
-    resync_metagraph(self)
-    # save_state(self)
-
-
-def sync_metagraph(config):
-    subtensor = bt.subtensor(config=config)
-    metagraph = subtensor.metagraph(config.netuid)
-    metagraph.save()
-
-
-def resync_metagraph(self: "validators.neuron.neuron"):
+def resync_metagraph(self):
     """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
     bt.logging.info("resync_metagraph()")
 
     # Copies state of metagraph before syncing.
     previous_metagraph = copy.deepcopy(self.metagraph)
 
-    process = multiprocessing.Process(target=sync_metagraph, args=(self.config,))
-    process.start()
-    ttl = 60
-    process.join(timeout=ttl)
-    if process.is_alive():
-        process.terminate()
-        process.join()
-        bt.logging.error(f"Failed to sync metagraph after {ttl} seconds")
-        return
-
-    bt.logging.info("Synced metagraph")
-    self.metagraph.load()
+    # Sync the metagraph.
+    self.metagraph.sync(subtensor=self.subtensor)
 
     # Check if the metagraph axon info has changed.
-    metagraph_axon_info_updated = previous_metagraph.axons != self.metagraph.axons
+    if previous_metagraph.axons == self.metagraph.axons:
+        return
 
-    if metagraph_axon_info_updated:
-        bt.logging.info(
-            "resync_metagraph: Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
+    bt.logging.info(
+        "Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
+    )
+    # Zero out all hotkeys that have been replaced.
+    for uid, hotkey in enumerate(self.hotkeys):
+        if hotkey != self.metagraph.hotkeys[uid]:
+            self.moving_averaged_scores[uid] = 0  # hotkey has been replaced
+
+    # Check to see if the metagraph has changed size.
+    # If so, we need to add new hotkeys and moving averages.
+    if len(self.hotkeys) < len(self.metagraph.hotkeys):
+        # Update the size of the moving average scores.
+        new_moving_average = torch.zeros((self.metagraph.n)).to(self.device)
+        min_len = min(len(self.hotkeys), len(self.moving_averaged_scores))
+        new_moving_average[:min_len] = self.moving_averaged_scores[:min_len]
+        self.moving_averaged_scores = new_moving_average
+
+    # Update the hotkeys.
+    self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+
+
+async def save_logs(prompt, logs):
+    logging_endpoint_url = os.environ.get("LOGGING_ENDPOINT_URL")
+
+    if not logging_endpoint_url:
+        return
+
+    async with aiohttp.ClientSession() as session:
+        await session.post(
+            logging_endpoint_url,
+            json={
+                "prompt": prompt,
+                "logs": logs,
+            },
         )
 
-        # Zero out all hotkeys that have been replaced.
-        for uid, hotkey in enumerate(self.hotkeys):
-            if hotkey != self.metagraph.hotkeys[uid]:
-                self.moving_averaged_scores[uid] = 0  # hotkey has been replaced
 
-        # Check to see if the metagraph has changed size.
-        # If so, we need to add new hotkeys and moving averages.
-        if len(self.hotkeys) < len(self.metagraph.hotkeys):
-            # Update the size of the moving average scores.
-            new_moving_average = torch.zeros((self.metagraph.n)).to(self.device)
-            min_len = min(len(self.hotkeys), len(self.moving_averaged_scores))
-            new_moving_average[:min_len] = self.moving_averaged_scores[:min_len]
-            self.moving_averaged_scores = new_moving_average
+async def save_logs_from_miner(
+    self, synapse, prompt, completion, prompt_analysis, data
+):
+    if not self.miner.config.miner.save_logs:
+        return
 
-        # Update the hotkeys.
-        self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+    asyncio.create_task(
+        save_logs(
+            prompt=prompt,
+            logs=[
+                {
+                    "completion": completion,
+                    "prompt_analysis": prompt_analysis.dict(),
+                    "data": data,
+                    "miner_uid": self.miner.my_subnet_uid,
+                    "hotkey": synapse.axon.hotkey,
+                    "coldkey": next(
+                        (
+                            axon.coldkey
+                            for axon in self.miner.metagraph.axons
+                            if axon.hotkey == synapse.axon.hotkey
+                        ),
+                        None,  # Provide a default value here, such as None or an appropriate placeholder
+                    ),
+                }
+            ],
+        )
+    )
+
+
+async def save_logs_in_chunks(self, prompt, responses, uids, rewards, weights):
+    try:
+        logs = [
+            {
+                "completion": response.completion,
+                "prompt_analysis": response.prompt_analysis.dict(),
+                "data": response.miner_tweets,
+                "miner_uid": uid,
+                "score": reward,
+                "hotkey": response.axon.hotkey,
+                "coldkey": next(
+                    (
+                        axon.coldkey
+                        for axon in self.metagraph.axons
+                        if axon.hotkey == response.axon.hotkey
+                    ),
+                    None,  # Provide a default value here, such as None or an appropriate placeholder
+                ),
+                "weight": weights.get(str(uid)),
+            }
+            for response, uid, reward in zip(responses, uids.tolist(), rewards.tolist())
+        ]
+
+        chunk_size = 50
+
+        log_chunks = [logs[i : i + chunk_size] for i in range(0, len(logs), chunk_size)]
+
+        for chunk in log_chunks:
+            await save_logs(
+                prompt=prompt,
+                logs=chunk,
+            )
+    except Exception as e:
+        bt.logging.error(f"Error in save_logs_in_chunks: {e}")
+        raise e
