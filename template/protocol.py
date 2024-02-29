@@ -6,7 +6,10 @@ from abc import ABC, abstractmethod
 from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from enum import Enum
+
 from aiohttp import ClientResponse
+
 
 class IsAlive(bt.Synapse):
     answer: typing.Optional[str] = None
@@ -175,6 +178,13 @@ class TwitterScraperTweet(BaseModel):
     media: List[TwitterScraperMedia] = []
 
 
+class ScraperTextRole(str, Enum):
+    INTRO = "intro"
+    TWITTER_SUMMARY = "twitter_summary"
+    SEARCH_SUMMARY = "search_summary"
+    FINAL_SUMMARY = "summary"
+
+
 class ScraperStreamingSynapse(bt.StreamingSynapse):
     messages: str = pydantic.Field(
         ...,
@@ -244,6 +254,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Indicates whether the text is an introductory text.",
     )
 
+    texts: Optional[Dict[str, str]] = pydantic.Field(
+        default_factory=dict,
+        title="Texts",
+        description="A dictionary of texts in the StreamPrompting scenario, containing a role (intro, twitter summary, search summary, summary) and content. Immutable.",
+    )
+
     def set_prompt_analysis(self, data: any):
         self.prompt_analysis = data
 
@@ -266,6 +282,14 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
 
                         if content_type == "text":
                             text_content = json_data.get("content", "")
+                            role = json_data.get("role")
+
+                            if role:
+                                if self.texts.get(role):
+                                    self.texts[role] += text_content
+                                else:
+                                    self.texts[role] = text_content
+
                             self.completion += text_content
                             yield text_content
 
@@ -283,7 +307,9 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                             search_json = json_data.get("content", "{}")
                             self.search_results = search_json
                 except json.JSONDecodeError as e:
-                    bt.logging.debug(f"process_streaming_response json.JSONDecodeError: {e}")
+                    bt.logging.debug(
+                        f"process_streaming_response json.JSONDecodeError: {e}"
+                    )
         except Exception as e:
             bt.logging.debug(f"process_streaming_response: {e}")
 
@@ -319,6 +345,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
 
     class Config:
         arbitrary_types_allowed = True
+
 
 def extract_json_chunk(chunk):
     stack = []
