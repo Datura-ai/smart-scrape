@@ -41,6 +41,9 @@ from template.tools.serp.serp_summary import summarize_serp_google_search_data
 
 from template.tools.tool_manager import ToolManager
 
+# from template.tools.tool_manager import ToolManager
+from template.utils import save_logs_from_miner
+
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
 if not OpenAI.api_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable.")
@@ -161,6 +164,34 @@ class ScraperMiner:
             stream=True,
         )
 
+    def prepare_tweets_data_for_finalize(self, tweets):
+        data = []
+
+        users = tweets.get("includes", {}).get("users", [])
+
+        for tweet in tweets.get("data", []):
+            author_id = tweet.get("author_id")
+
+            author = (
+                next((user for user in users if user.get("id") == author_id), None)
+                or {}
+            )
+
+            data.append(
+                {
+                    "id": tweet.get("id"),
+                    "text": tweet.get("text"),
+                    "author_id": tweet.get("author_id"),
+                    "created_at": tweet.get("created_at"),
+                    "url": "https://twitter.com/{}/status/{}".format(
+                        author.get("username"), tweet.get("id")
+                    ),
+                    "username": author.get("username"),
+                }
+            )
+
+        return data
+
     async def smart_scraper(self, synapse: ScraperStreamingSynapse, send: Send):
         try:
             model = synapse.model
@@ -216,7 +247,7 @@ class ScraperMiner:
             twitter_task = summarize_twitter_data(
                 prompt=prompt,
                 model=openai_summary_model,
-                filtered_tweets=tweets,
+                filtered_tweets=self.prepare_tweets_data_for_finalize(tweets),
                 prompt_analysis=prompt_analysis,
             )
 
@@ -306,6 +337,15 @@ class ScraperMiner:
                         "more_body": False,
                     }
                 )
+
+            await save_logs_from_miner(
+                self,
+                synapse=synapse,
+                prompt=prompt,
+                completion=response_streamer.get_full_text(),
+                prompt_analysis=prompt_analysis,
+                data=tweets,
+            )
 
             bt.logging.info("End of Streaming")
 

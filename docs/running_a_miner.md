@@ -36,11 +36,10 @@ pm2 start neurons/miners/miner.py \
 --wallet.hotkey <wallet-hotkey> \
 --netuid <netuid> \
 --subtensor.network <network> \
---logging.debug \
 --axon.port <port>
 
 # Example
-pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 -- --wallet.name miner --wallet.hotkey default --subtensor.network testnet --netuid 41 --axon.port 14001 --logging.debug
+pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 -- --wallet.name miner --wallet.hotkey default --subtensor.network testnet --netuid 41 --axon.port 14001
 ```
 
 #### Variable Explanation

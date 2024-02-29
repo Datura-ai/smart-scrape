@@ -6,6 +6,7 @@ import json
 import bittensor as bt
 from base_validator import AbstractNeuron
 from template.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult
+from template.stream import process_async_responses, process_single_response
 from reward import RewardModelType, RewardScoringType
 from typing import List
 from utils.mock import MockRewardModel
@@ -18,12 +19,13 @@ from neurons.validators.penalty import (
 from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
 from neurons.validators.reward.link_content_relevance import (
     LinkContentRelevanceModel,
-    init_tokenizer,
 )
+from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask
 
 from template.dataset import MockTwitterQuestionsDataset
 from template.services.twitter_api_wrapper import TwitterAPIClient
+from template.utils import save_logs
 from template import QUERY_MINERS
 import asyncio
 
@@ -60,22 +62,19 @@ class ScraperValidator:
             bt.logging.error(message)
             raise Exception(message)
 
-        tokenizer = None
-        model = None
+        self.reward_llm = RewardLLM()
         if (
             self.neuron.config.reward.link_content_weight > 0
             or self.neuron.config.reward.summary_relevance_weight > 0
         ) and not self.neuron.config.neuron.is_disable_tokenizer_reward:
-            tokenizer, model = init_tokenizer(self.neuron.config.neuron.device)
+            self.reward_llm.init_pipe_zephyr()
 
         self.reward_functions = [
             (
                 SummaryRelevanceRewardModel(
                     device=self.neuron.config.neuron.device,
                     scoring_type=RewardScoringType.summary_relevance_score_template,
-                    tokenizer=tokenizer,
-                    model=model,
-                    is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward,
+                    llm_reward=self.reward_llm,
                 )
                 if self.neuron.config.reward.summary_relevance_weight > 0
                 else MockRewardModel(RewardModelType.summary_relavance_match.value)
@@ -84,9 +83,7 @@ class ScraperValidator:
                 LinkContentRelevanceModel(
                     device=self.neuron.config.neuron.device,
                     scoring_type=RewardScoringType.summary_relevance_score_template,
-                    tokenizer=tokenizer,
-                    model=model,
-                    is_disable_tokenizer_reward=self.neuron.config.neuron.is_disable_tokenizer_reward,
+                    llm_reward=self.reward_llm,
                 )
                 if self.neuron.config.reward.link_content_weight > 0
                 else MockRewardModel(RewardModelType.link_content_match.value)
@@ -98,48 +95,6 @@ class ScraperValidator:
             AccuracyPenaltyModel(max_penalty=1),
         ]
         self.twitter_api = TwitterAPIClient()
-
-    async def process_single_response(self, resp, prompt):
-        default = ScraperStreamingSynapse(
-            messages=prompt, model=self.model, seed=self.seed
-        )
-        full_response = ""
-        synapse_object = None
-
-        try:
-            async for chunk in resp:
-                if isinstance(chunk, str):
-                    full_response += chunk
-                elif isinstance(chunk, bt.Synapse):
-                    if chunk.is_failure:
-                        raise Exception("Dendrite's status code indicates failure")
-                    synapse_object = chunk
-        except Exception as e:
-            bt.logging.trace(f"Process Single Response: {e}")
-            return default
-
-        if synapse_object is not None:
-            return synapse_object
-
-        return default
-
-    async def process_async_responses(self, async_responses, prompt):
-        # Create a list of coroutine objects for each response
-        tasks = [self.process_single_response(resp, prompt) for resp in async_responses]
-        # Use asyncio.gather to run them concurrently
-        responses = await asyncio.gather(*tasks)
-        return responses
-
-    async def return_tokens(self, chunks):
-        async for resp in chunks:
-            if isinstance(resp, str):
-                try:
-                    chunk_data = json.loads(resp)
-                    tokens = chunk_data.get("tokens", "")
-                    bt.logging.trace(tokens)
-                    yield tokens
-                except json.JSONDecodeError:
-                    bt.logging.trace(f"Failed to decode JSON chunk: {resp}")
 
     async def run_task_and_score(
         self,
@@ -212,6 +167,7 @@ class ScraperValidator:
             for weight_i, reward_fn_i in zip(
                 self.reward_weights, self.reward_functions
             ):
+                start_time = time.time()
                 reward_i_normalized, reward_event = reward_fn_i.apply(
                     task.base_text, responses, task.task_name, uids
                 )
@@ -220,23 +176,26 @@ class ScraperValidator:
                 )
                 if not self.neuron.config.neuron.disable_log_rewards:
                     event = {**event, **reward_event}
+                execution_time = time.time() - start_time
                 bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
                 bt.logging.info(
-                    f"Applied reward function: {reward_fn_i.name} with reward: {reward_event.get(reward_fn_i.name, 'N/A')}"
+                    f"Applied reward function: {reward_fn_i.name} with reward: {reward_event.get(reward_fn_i.name, 'N/A')} in {execution_time / 60:.2f} minutes"
                 )
 
             for penalty_fn_i in self.penalty_functions:
                 raw_penalty_i, adjusted_penalty_i, applied_penalty_i = (
                     penalty_fn_i.apply_penalties(responses, task)
                 )
+                penalty_start_time = time.time()
                 rewards *= applied_penalty_i.to(self.neuron.config.neuron.device)
+                penalty_execution_time = time.time() - penalty_start_time
                 if not self.neuron.config.neuron.disable_log_rewards:
                     event[penalty_fn_i.name + "_raw"] = raw_penalty_i.tolist()
                     event[penalty_fn_i.name + "_adjusted"] = adjusted_penalty_i.tolist()
                     event[penalty_fn_i.name + "_applied"] = applied_penalty_i.tolist()
                 bt.logging.trace(str(penalty_fn_i.name), applied_penalty_i.tolist())
                 bt.logging.info(
-                    f"Applied penalty function: {penalty_fn_i.name} with reward: {adjusted_penalty_i.tolist()}"
+                    f"Applied penalty function: {penalty_fn_i.name} with reward: {adjusted_penalty_i.tolist()} in {penalty_execution_time:.2f} seconds"
                 )
 
             scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)
@@ -256,6 +215,8 @@ class ScraperValidator:
             bt.logging.info(
                 f"======================== Reward ==========================="
             )
+            # Initialize an empty list to accumulate log messages
+            log_messages = []
             for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
                 uid = uid_tensor.item()
                 completion_length = (
@@ -266,12 +227,16 @@ class ScraperValidator:
                     if response.completion_links is not None
                     else 0
                 )
-                bt.logging.info(
-                    f"uid: {uid};  score: {reward};  completion length: {completion_length};  completion_links length: {completion_links_length};"
+                # Accumulate log messages instead of logging them immediately
+                log_messages.append(
+                    f"UID: {uid}, R: {round(reward, 3)}, C: {completion_length}, L: {completion_links_length}"
                 )
                 bt.logging.trace(f"{response.completion}")
-                bt.logging.info(f"uid: {uid} Completion: ---------------------")
-                bt.logging.info(f"-----------------------------")
+
+            # Log the accumulated messages in groups of three
+            for i in range(0, len(log_messages), 3):
+                bt.logging.info(" | ".join(log_messages[i : i + 3]))
+
             bt.logging.info(
                 f"======================== Reward ==========================="
             )
@@ -284,7 +249,13 @@ class ScraperValidator:
                 wandb_data["responses"][uid] = response.completion
                 wandb_data["prompts"][uid] = prompt
 
-            await self.neuron.update_scores(wandb_data)
+            await self.neuron.update_scores(
+                wandb_data=wandb_data,
+                prompt=prompt,
+                responses=responses,
+                uids=uids,
+                rewards=rewards,
+            )
 
             return rewards
         except Exception as e:
@@ -302,6 +273,18 @@ class ScraperValidator:
             }
         )
         bt.logging.debug("Run Task event:", str(event))
+
+    async def process_async_responses(async_responses):
+        tasks = [resp for resp in async_responses]
+        responses = await asyncio.gather(*tasks)
+        for response in responses:
+            stream_text = "".join([chunk[1] for chunk in response if not chunk[0]])
+            if stream_text:
+                yield stream_text  # Yield stream text as soon as it's available
+            # Instead of returning, yield final synapse objects with a distinct flag
+            final_synapse = next((chunk[1] for chunk in response if chunk[0]), None)
+            if final_synapse:
+                yield (True, final_synapse)  # Yield final synapse with a flag
 
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
@@ -324,12 +307,18 @@ class ScraperValidator:
                 task=task, strategy=strategy, is_only_allowed_miner=False
             )
 
-            responses = await self.process_async_responses(async_responses, prompt)
+            final_synapses = []
+            async for value in process_async_responses(async_responses):
+                if isinstance(value, bt.Synapse):
+                    final_synapses.append(value)
+                else:
+                    pass
+
             await self.compute_rewards_and_penalties(
                 event=event,
                 prompt=prompt,
                 task=task,
-                responses=responses,
+                responses=final_synapses,
                 uids=uids,
                 start_time=start_time,
             )
@@ -358,52 +347,20 @@ class ScraperValidator:
                 is_only_allowed_miner=True,
                 is_intro_text=True,
             )
-
-            responses = []
-            for resp in async_responses:
-                try:
-                    full_response = ""
-                    try:
-                        async for chunk in resp:
-                            if isinstance(chunk, str):
-                                full_response += chunk
-                                yield json.dumps({"type": "text", "content": chunk})
-                            elif isinstance(chunk, bt.Synapse):
-                                if chunk.is_failure:
-                                    raise Exception(
-                                        "Dendrite's status code indicates failure"
-                                    )
-                                synapse_object = chunk
-
-                                yield json.dumps({"type": "tweets", "content": synapse_object.miner_tweets})
-                                yield json.dumps({"type": "search", "content": synapse_object.search_results})
-
-                    except Exception as e:
-                        bt.logging.trace(f"Organic Async Response: {e}")
-                        responses.append(
-                            ScraperStreamingSynapse(
-                                messages=prompt, model=self.model, seed=self.seed
-                            )
-                        )
-                        continue
-
-                    if synapse_object is not None:
-                        responses.append(synapse_object)
-
-                except Exception as e:
-                    bt.logging.trace(f"Error for resp in async_responses: {e}")
-                    responses.append(
-                        ScraperStreamingSynapse(
-                            messages=prompt, model=self.model, seed=self.seed
-                        )
-                    )
+            final_synapses = []
+            for response in async_responses:
+                async for value in response:
+                    if isinstance(value, bt.Synapse):
+                        final_synapses.append(value)
+                    else:
+                        yield value
 
             async def process_and_score_responses():
                 await self.compute_rewards_and_penalties(
                     event=event,
                     prompt=prompt,
                     task=task,
-                    responses=responses,
+                    responses=final_synapses,
                     uids=uids,
                     start_time=start_time,
                 )
@@ -437,16 +394,23 @@ class ScraperValidator:
                 specified_uids=specified_uids,
             )
 
-            responses = await self.process_async_responses(async_responses, prompt)
+            final_synapses = []
+            async for value in process_async_responses(async_responses):
+                if isinstance(value, bt.Synapse):
+                    final_synapses.append(value)
+                else:
+                    pass
             rewards = await self.compute_rewards_and_penalties(
                 event=event,
                 prompt=prompt,
                 task=task,
-                responses=responses,
+                responses=final_synapses,
                 uids=uids,
                 start_time=start_time,
             )
-            for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
+            for uid_tensor, reward, response in zip(
+                uids, rewards.tolist(), final_synapses
+            ):
                 yield f"Miner ID: {uid_tensor.item()} - Reward: {reward:.2f}\n\n"
                 yield "----------------------------------------\n\n"
                 yield f"Miner's Completion Output:\n{response.completion}\n\n"
