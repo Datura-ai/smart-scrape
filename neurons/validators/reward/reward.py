@@ -21,6 +21,7 @@ import bittensor as bt
 from typing import List, Union
 from abc import abstractmethod
 from dataclasses import dataclass, asdict, fields
+from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
 import re
 
 @dataclass
@@ -57,7 +58,7 @@ class BaseRewardModel:
 
     @abstractmethod
     def get_rewards(
-        self, prompt: str, responses: List[bt.Synapse], name: str, uids
+        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]: ...
 
     def __init__(self) -> None:
@@ -76,21 +77,23 @@ class BaseRewardModel:
 
         return rewards
 
-    def get_successful_completions(self, responses: List[bt.Synapse]):
-        successful_completions_indices: List[int] = [
-            idx
-            for idx, resp in enumerate(responses)
-            if resp.dendrite.status_code == 200 and resp.completion_links
-        ]
+    def get_successful_completion(self, response: ScraperStreamingSynapse):
+        # Check if the response is successful.
+        if response.dendrite.status_code == 200 and response.completion_links:
+            # Get the completion from the successful response.
+            successful_completion = response.completion.strip()
 
-        # Get all completions from responding calls.
-        successful_completions: List[str] = [
-            responses[idx].completion.strip() for idx in successful_completions_indices
-        ]
+            # if any(re.search(pattern, successful_completion, flags=re.IGNORECASE) for pattern in patterns_to_remove):
+            #     return None
 
-        return successful_completions
+            if re.search(pattern_to_check, successful_completion, flags=re.IGNORECASE):
+                bt.logging.info(f"Pattern validation issue Hotkey ID: {response.axon.hotkey}.")
+                return None
+            
+            return successful_completion.strip()
+        return None
     
-    def get_successful_completion(self, response: bt.Synapse):
+    def get_successful_twitter_completion(self, response: ScraperStreamingSynapse):
         # Check if the response is successful.
         if response.dendrite.status_code == 200 and response.completion_links:
             # Get the completion from the successful response.
@@ -107,7 +110,7 @@ class BaseRewardModel:
         return None
 
     def apply(
-        self, prompt: str, responses: List[bt.Synapse], name: str, uids
+        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]:
         """Applies the reward model across each call. Unsuccessful responses are zeroed."""
         # Get indices of correctly responding calls.

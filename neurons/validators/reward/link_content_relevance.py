@@ -99,8 +99,6 @@ class LinkContentRelevanceModel(BaseRewardModel):
             if len(unique_links) == 0:
                 bt.logging.info("No unique links found to process.")
                 return {}
-            
-           
 
             val_score_responses = await self.llm_process_validator_tweets(
                 prompt, tweets_list
@@ -221,7 +219,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             return 0
 
     def get_scoring_text(
-        self, prompt: str, content: str, response: bt.Synapse
+        self, prompt: str, content: str, response: ScraperStreamingSynapse
     ) -> BaseRewardEvent:
         try:
             if response:
@@ -247,17 +245,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
             return None
 
     def get_rewards(
-        self, prompt: str, responses: List[bt.Synapse], name: str, uids
+        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
-            completions: List[str] = self.get_successful_completions(responses)
-            bt.logging.debug(
-                f"LinkContentRelevanceModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
-            )
-            bt.logging.trace(
-                f"LinkContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
-            )
-
             val_score_responses = asyncio.get_event_loop().run_until_complete(
                 self.process_tweets(prompt=prompt, responses=responses)
             )

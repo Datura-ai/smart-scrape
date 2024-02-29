@@ -7,6 +7,9 @@ from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from aiohttp import ClientResponse
+from template.services.twitter_api_wrapper import TwitterAPIClient
+
+twitter_api = TwitterAPIClient()
 
 class IsAlive(bt.Synapse):
     answer: typing.Optional[str] = None
@@ -86,7 +89,6 @@ class StreamPrompting(bt.StreamingSynapse):
             "messages": self.messages,
             "completion": self.completion,
         }
-
 
 class TwitterPromptAnalysisResult(BaseModel):
     api_params: Dict[str, Any] = {}
@@ -302,6 +304,8 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                 for key, value in headers.items()
                 if key.startswith(prefix)
             }
+        
+        completion_links = twitter_api.find_twitter_links(self.completion)
 
         return {
             "name": headers.get("name", ""),
@@ -315,6 +319,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "miner_tweets": self.miner_tweets,
             "search_results": self.search_results,
             "prompt_analysis": self.prompt_analysis.dict(),
+            "completion_links": completion_links
         }
 
     class Config:
