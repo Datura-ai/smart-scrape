@@ -1,3 +1,5 @@
+import json
+import bittensor as bt
 from typing import Type
 from starlette.types import Send
 from pydantic import BaseModel, Field
@@ -41,4 +43,38 @@ class GetFullArchiveTweetsTool(BaseTool):
         return (result, prompt_analysis)
 
     async def send_event(self, send: Send, response_streamer, data):
-        pass
+        if not data:
+            return
+
+        tweets, prompt_analysis = data
+
+        # Send prompt_analysis
+        if prompt_analysis:
+            prompt_analysis_response_body = {
+                "type": "prompt_analysis",
+                "content": prompt_analysis.dict(),
+            }
+
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": json.dumps(prompt_analysis_response_body).encode("utf-8"),
+                    "more_body": True,
+                }
+            )
+            bt.logging.info("Prompt Analysis sent")
+
+        if tweets:
+            tweets_amount = tweets.get("meta", {}).get("result_count", 0)
+
+            tweets_response_body = {"type": "tweets", "content": tweets}
+            response_streamer.more_body = False
+
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": json.dumps(tweets_response_body).encode("utf-8"),
+                    "more_body": False,
+                }
+            )
+            bt.logging.info(f"Tweet data sent. Number of tweets: {tweets_amount}")
