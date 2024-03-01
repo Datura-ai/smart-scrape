@@ -89,7 +89,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             tweets_list = await TwitterScraperActor().get_tweets(urls=unique_links)
             for response in responses:
                 ids = [
-                    self.tw_client.extract_tweet_id(link)
+                    self.tw_client.utils.extract_tweet_id(link)
                     for link in response.completion_links
                 ]
 
@@ -99,8 +99,6 @@ class LinkContentRelevanceModel(BaseRewardModel):
             if len(unique_links) == 0:
                 bt.logging.info("No unique links found to process.")
                 return {}
-            
-           
 
             val_score_responses = await self.llm_process_validator_tweets(
                 prompt, tweets_list
@@ -112,7 +110,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 f"APIFY fetched tweets links count: {len(tweets_list)}"
             )
             fetched_tweet_ids = {tweet.id for tweet in tweets_list}
-            non_fetched_links = [link for link in unique_links if self.tw_client.extract_tweet_id(link) not in fetched_tweet_ids]
+            non_fetched_links = [link for link in unique_links if self.tw_client.utils.extract_tweet_id(link) not in fetched_tweet_ids]
 
             bt.logging.info(f"Twitter Links not fetched Amount: {len(non_fetched_links)}; List: {non_fetched_links}; For prompt: [{prompt}]")
             if len(non_fetched_links):
@@ -140,7 +138,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
         try:
             tweet_score = 0
 
-            completion = self.get_successful_completion(response=response)
+            completion = self.get_successful_twitter_completion(response=response)
             if not completion:
                 return 0
 
@@ -221,11 +219,11 @@ class LinkContentRelevanceModel(BaseRewardModel):
             return 0
 
     def get_scoring_text(
-        self, prompt: str, content: str, response: bt.Synapse
+        self, prompt: str, content: str, response: ScraperStreamingSynapse
     ) -> BaseRewardEvent:
         try:
             if response:
-                completion = self.get_successful_completion(response=response)
+                completion = self.get_successful_twitter_completion(response=response)
                 if not completion:
                     return None
 
@@ -247,17 +245,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
             return None
 
     def get_rewards(
-        self, prompt: str, responses: List[bt.Synapse], name: str, uids
+        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
-            completions: List[str] = self.get_successful_completions(responses)
-            bt.logging.debug(
-                f"LinkContentRelevanceModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
-            )
-            bt.logging.trace(
-                f"LinkContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
-            )
-
             val_score_responses = asyncio.get_event_loop().run_until_complete(
                 self.process_tweets(prompt=prompt, responses=responses)
             )
@@ -287,7 +277,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                             else len(response.completion_links)
                         ),
                     ):
-                        tweet_id = self.tw_client.extract_tweet_id(link)
+                        tweet_id = self.tw_client.utils.extract_tweet_id(link)
                         miner_tweet = next(
                             (
                                 tweet

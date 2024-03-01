@@ -27,10 +27,7 @@ from typing import List, Dict, Tuple, Union, Callable, Awaitable
 
 from template.utils import get_version
 from template.protocol import (
-    StreamPrompting,
-    IsAlive,
     ScraperStreamingSynapse,
-    TwitterPromptAnalysisResult,
     ScraperTextRole,
 )
 from template.services.twitter_api_wrapper import TwitterAPIClient
