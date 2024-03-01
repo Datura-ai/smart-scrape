@@ -21,3 +21,4 @@ urllib3==1.26.9
 accelerate
 wikipedia==1.4.0
 youtube-search==2.1.2
+arxiv==2.1.0
