@@ -141,15 +141,6 @@ class ScraperValidator:
 
         return async_responses, uids, event, start_time
 
-    def process_content_links(self, responses):
-        try:
-            for response in responses:
-                com_links = self.twitter_api.find_twitter_links(response.completion)
-                response.completion_links = com_links
-        except Exception as e:
-            bt.logging.error(f"Error in process_content_links: {e}")
-            return
-
     async def compute_rewards_and_penalties(
         self, event, prompt, task, responses, uids, start_time
     ):
@@ -159,10 +150,7 @@ class ScraperValidator:
                 return
 
             bt.logging.info("Computing rewards and penalties")
-
-            self.process_content_links(responses)
-            # await self.process_tweets(responses)
-
+            
             rewards = torch.zeros(len(responses), dtype=torch.float32).to(
                 self.neuron.config.neuron.device
             )
