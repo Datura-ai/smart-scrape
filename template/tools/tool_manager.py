@@ -1,22 +1,19 @@
-from typing import List
+from typing import List, Dict
 from openai import OpenAI
+import asyncio
 import os
-from langchain import hub
-from langchain.agents import create_react_agent, AgentExecutor
+import json
+import bittensor as bt
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
-from template.tools.serp.serp_google_search_toolkit import SerpGoogleSearchToolkit
-from template.tools.twitter.twitter_toolkit import TwitterToolkit
 from template.tools.base import BaseTool
-from template.tools.get_tools import get_all_tools
+from template.tools.get_tools import get_all_tools, find_toolkit_by_tool_name
 from langchain_core.prompts import PromptTemplate
 from langchain.tools.render import render_text_description
-import json
+from template.protocol import ScraperTextRole
+from openai import AsyncOpenAI
+from template.tools.response_streamer import ResponseStreamer
 
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
-
-prompt = hub.pull("hwchase17/react-chat")
-os.environ["TAVILY_API_KEY"] = "test"
 
 
 TEMPLATE = """Answer the following questions as best you can. You have access to the following tools:
@@ -27,13 +24,13 @@ You can use multiple tools to answer the question. Order of tools does not matte
 Here is example of JSON array format to return. Keep in mind that this is example:
 [
   {{
-    "action": "Get Recent Tweets",
+    "action": "Recent Tweets",
     "args": {{
       "query": "AI trends"
     }}
   }},
   {{
-    "action": "Serp Google Search",
+    "action": "Web Search",
     "args": {{
       "query": "What are AI trends?"
     }}
@@ -45,48 +42,80 @@ User Question: {input}
 
 prompt_template = PromptTemplate.from_template(TEMPLATE)
 
+client = AsyncOpenAI(timeout=60.0)
+
 
 class ToolManager:
-    client = OpenAI()
     model = "gpt-3.5-turbo-1106"
-    agent_executor: AgentExecutor
+    openai_summary_model: str = "gpt-3.5-turbo-1106"
+    all_tools: List[BaseTool]
+    manual_tool_names: List[str]
+    tool_name_to_instance: Dict[str, BaseTool]
 
-    def __init__(self):
+    is_intro_text: bool
+    miner: any
 
-        # tools = TwitterToolkit().get_tools()
-        tools = get_all_tools()
+    def __init__(self, prompt, manual_tool_names, send, model, is_intro_text, miner):
+        self.prompt = prompt
+        self.manual_tool_names = manual_tool_names
+        self.miner = miner
+        self.is_intro_text = is_intro_text
 
-        agent = create_react_agent(
-            llm=ChatOpenAI(model_name="gpt-4", temperature=0.2, streaming=True),
-            tools=tools,
-            prompt=prompt,
+        self.response_streamer = ResponseStreamer(send=send)
+        self.send = send
+        self.model = model
+        self.openai_summary_model = self.miner.config.miner.openai_summary_model
+
+        self.all_tools = get_all_tools()
+        self.tool_name_to_instance = {tool.name: tool for tool in self.all_tools}
+
+    async def run(self):
+        actions = await self.detect_tools_to_use()
+
+        intro_text_task = self.intro_text(
+            model="gpt-3.5-turbo",
+            tool_names=[action["action"] for action in actions],
         )
 
-        # self.agent_executor = AgentExecutor(
-        #     agent=agent,
-        #     tools=tools,
-        #     verbose=True,
-        #     handle_parsing_errors=True,
-        #     return_intermediate_steps=True,
-        # )
+        tasks = [asyncio.create_task(self.run_tool(action)) for action in actions]
 
-    # def set_tools(self, tools):
-    #     self.tools = tools
+        await intro_text_task
 
-    async def run(self, prompt: str):
-        # res = await self.agent_executor.ainvoke({"input": prompt, "chat_history": ""})
+        for completed_task in asyncio.as_completed(tasks):
+            response, role = await completed_task
+            await self.response_streamer.stream_response(response=response, role=role)
 
+        await self.finalize_summary_and_stream(
+            self.response_streamer.get_full_text(),
+        )
+
+        if self.response_streamer.more_body:
+            await self.send(
+                {
+                    "type": "http.response.body",
+                    "body": b"",
+                    "more_body": False,
+                }
+            )
+
+    async def detect_tools_to_use(self):
+        # If user provided tools manually, use them
+        if self.manual_tool_names:
+            return [
+                {"action": tool_name, "args": self.prompt}
+                for tool_name in self.manual_tool_names
+            ]
+
+        # Otherwise identify tools to use based on prompt
+        # TODO model
         llm = ChatOpenAI(model_name="gpt-4", temperature=0.2)
         chain = prompt_template | llm
-        tools = get_all_tools()
 
-        tool_name_to_instance = {tool.name: tool for tool in tools}
-
-        tools_description = render_text_description(tools)
+        tools_description = render_text_description(self.all_tools)
 
         message = chain.invoke(
             {
-                "input": prompt,
+                "input": self.prompt,
                 "tools": tools_description,
             }
         )
@@ -95,117 +124,137 @@ class ToolManager:
 
         try:
             actions = json.loads(message.content)
-
-            for action in actions:
-                tool_name = action.get("action")
-                tool_args = action.get("args")
-                tool = tool_name_to_instance[tool_name]
-
-                tool_res = await tool.ainvoke(tool_args)
-
-                print(tool_res)
         except json.JSONDecodeError as e:
             print(e)
 
         return actions
 
-        # chunks = []
-        # async for chunk in self.agent_executor.astream(
-        #     {"input": prompt, "chat_history": ""}
-        # ):
-        #     steps = chunk.get("steps")
+    async def run_tool(self, action: Dict[str, str]):
+        tool_name = action.get("action")
+        tool_args = action.get("args")
+        tool_instance = self.tool_name_to_instance.get(tool_name)
 
-        #     if steps:
-        #         observation = steps[0].observation
-        #         print("\n\nTOOL OBSERVATION: ", observation, "\n\n")
+        print("Running tool: ", tool_name)
 
-        #         # TODO Summarize data based on tool (summarize_twitter_data, summarize_serp_google_search_data)
+        if not tool_instance:
+            return
 
-        #         # TODO Send the summarized data to ui
-        #     chunks.append(chunk)
-        #     print("---------")
+        print("Fetching data from tool: ", tool_name)
 
-        # return ""
+        result = await tool_instance.ainvoke(tool_args)
 
-    # Uses OpenAI parallel function calling to call tools
-    def run_old(self, content, tool_choice="auto"):
-        from operator import itemgetter
-        from typing import Union
+        print("Data fetched from tool: ", tool_name)
 
-        from langchain.output_parsers import JsonOutputToolsParser
-        from langchain_core.runnables import (
-            Runnable,
-            RunnableLambda,
-            RunnableMap,
-            RunnablePassthrough,
+        if tool_instance.send_event:
+            print(f"Sending event from {tool_name} tool")
+            await tool_instance.send_event(
+                send=self.send,
+                response_streamer=self.response_streamer,
+                data=result,
+            )
+
+        return await find_toolkit_by_tool_name(tool_name).summarize(
+            prompt=self.prompt, model=self.model, data=result
         )
-        from langchain_openai import ChatOpenAI
 
-        model = ChatOpenAI(model="gpt-4-0125-preview")
-        tools = get_all_tools()
-        model_with_tools = model.bind_tools(tools)
-        tool_map = {tool.name: tool for tool in tools}
+    async def intro_text(self, model, tool_names):
+        bt.logging.trace("miner.intro_text => ", self.miner.config.miner.intro_text)
+        bt.logging.trace("Synapse.is_intro_text => ", self.is_intro_text)
+        if not self.miner.config.miner.intro_text:
+            return
 
-        def call_tool(tool_invocation: dict) -> Union[str, Runnable]:
-            """Function for dynamically constructing the end of the chain based on the model-selected tool."""
-            tool = tool_map[tool_invocation["type"]]
-            return RunnablePassthrough.assign(output=itemgetter("args") | tool)
+        if not self.is_intro_text:
+            return
 
-        # .map() allows us to apply a function to a list of inputs.
-        call_tool_list = RunnableLambda(call_tool).map()
-        chain = model_with_tools | JsonOutputToolsParser() | call_tool_list
+        bt.logging.trace("Run intro text")
 
-        return chain.ainvoke(content)
+        tool_names = ", ".join(tool_names)
 
-        # try:
-        #     # Step 1: send the conversation and available functions to the model
-        #     messages = [{"role": "user", "content": content}]
-        #     response = self.client.chat.completions.create(
-        #         model=self.model,
-        #         messages=messages,
-        #         # tools=sesport newslf.tools,
-        #         tool_choice=tool_choice,  # auto is default, but we'll be explicit
-        #     )
-        #     response_message = response.choices[0].message
-        #     tool_calls = response_message.tool_calls
-        #     # Step 2: check if the model wanted to call a function
-        #     if tool_calls:
-        #         # Step 3: call the function
-        #         # Note: the JSON response may not always be valid; be sure to handle errors
-        #         messages.append(
-        #             response_message
-        #         )  # extend conversation with assistant's reply
-        #         # Step 4: send the info for each function call and function response to the model
-        #         for tool_call in tool_calls:
-        #             function_name = tool_call.function.name
-        #             function_to_call = self.available_functions[function_name]
-        #             function_args = json.loads(tool_call.function.arguments)
-        #             function_response = function_to_call(
-        #                 location=function_args.get("location"),
-        #                 unit=function_args.get("unit"),
-        #             )
-        #             messages.append(
-        #                 {
-        #                     "tool_call_id": tool_call.id,
-        #                     "role": "tool",
-        #                     "name": function_name,
-        #                     "content": function_response,
-        #                 }
-        #             )  # extend conversation with function response
-        #         second_response = self.client.chat.completions.create(
-        #             model="gpt-3.5-turbo-1106",
-        #             messages=messages,
-        #         )  # get a new response from the model where it can see the function response
-        #         return second_response
-        # except Exception as err:
-        #     print(err)
-        #     raise err
+        content = f"""
+        Generate introduction for that prompt: "{self.prompt}".
+        You are going to use {tool_names} to fetch information.
 
+        Something like it: "To effectively address your query, my approach involves a comprehensive analysis and integration of relevant Twitter and Google web search data. Here's how it works:
 
-if __name__ == "__main__":
+        Question or Topic Analysis: I start by thoroughly examining your question or topic to understand the core of your inquiry or the specific area you're interested in.
 
-    async def run_tool_manager():
-        mg = ToolManager()
-        await mg.run("What are the latest AI trends on Twitter?")
+        Twitter Data Search: Next, I delve into Twitter, seeking out information, discussions, and insights that directly relate to your prompt.
+        Google search: Next, I search Google, seeking out information, discussions, and insights that directly relate to your prompt.
 
-    run_tool_manager()
+        Synthesis and Response: After gathering and analyzing this data, I compile my findings and craft a detailed response, which will be presented below"        
+        
+        Output: Just return only introduction text without your comment
+        """
+        messages = [{"role": "user", "content": content}]
+        response = await client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.4,
+            stream=True,
+        )
+
+        response_streamer = ResponseStreamer(send=self.send)
+        await response_streamer.stream_response(
+            response=response, role=ScraperTextRole.INTRO, wait_time=0.1
+        )
+
+        return response_streamer.get_full_text()
+
+    async def finalize_summary_and_stream(self, information):
+        content = f"""
+            In <UserPrompt> provided User's prompt (Question).
+            In <Information>, provided highlighted key information and relevant links from Twitter and Google Search.
+            
+            <UserPrompt>
+            {self.prompt}
+            </UserPrompt>
+
+                Output Guidelines (Tasks):
+                1. Summary: Conduct a thorough analysis of <TwitterData> in relation to <UserPrompt> and generate a comprehensive summary.
+                2. Relevant Links: Provide a selection of Twitter links that directly correspond to the <UserPrompt>. For each link, include a concise explanation that connects its relevance to the user's question.
+                Synthesize insights from both the <UserPrompt> and the <TwitterData> to formulate a well-rounded response. But don't provide any twitter link, which is not related to <UserPrompt>.
+                3. Highlight Key Information: Identify and emphasize any crucial information that will be beneficial to the user.
+                4. You would explain how you did retrieve data based on <PromptAnalysis>.
+
+            <Information>
+            {information}
+            </Information>
+        """
+
+        system_message = """As a summary analyst, your task is to provide users with a clear and concise summary derived from the given information and the user's query.
+
+        Output Guidelines (Tasks):
+        1. Summary: Conduct a thorough analysis of <Information> in relation to <UserPrompt> and generate a comprehensive summary.
+
+        Operational Rules:
+        1. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
+        2. Seamless Integration: Avoid explicitly stating "Based on the provided <Information>" in responses. Assume user awareness of the data integration process.
+        3. Not return text like <UserPrompt> to your response, make response easy to understand to any user.
+        4. Start text with bold text "Summary:".
+        """
+
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": content},
+        ]
+
+        response = await client.chat.completions.create(
+            model=self.openai_summary_model,
+            messages=messages,
+            temperature=0.1,
+            stream=True,
+        )
+
+        await self.response_streamer.stream_response(
+            response=response, role=ScraperTextRole.FINAL_SUMMARY
+        )
+
+        bt.logging.info(
+            "================================== Completion Response ==================================="
+        )
+        bt.logging.info(
+            f"{self.response_streamer.get_full_text()}"
+        )  # Print the full text at the end
+        bt.logging.info(
+            "================================== Completion Response ==================================="
+        )

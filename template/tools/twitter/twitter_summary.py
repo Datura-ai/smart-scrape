@@ -35,6 +35,7 @@ async def summarize_twitter_data(
     filtered_tweets,
     prompt_analysis: TwitterPromptAnalysisResult,
 ):
+
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
     In <PromptAnalysis> I analyze that prompts and generate query for API, keywords, hashtags, user_mentions.
@@ -66,3 +67,31 @@ async def summarize_twitter_data(
     )
 
     return res, ScraperTextRole.TWITTER_SUMMARY
+
+
+def prepare_tweets_data_for_summary(tweets):
+    data = []
+
+    users = tweets.get("includes", {}).get("users", [])
+
+    for tweet in tweets.get("data", []):
+        author_id = tweet.get("author_id")
+
+        author = (
+            next((user for user in users if user.get("id") == author_id), None) or {}
+        )
+
+        data.append(
+            {
+                "id": tweet.get("id"),
+                "text": tweet.get("text"),
+                "author_id": tweet.get("author_id"),
+                "created_at": tweet.get("created_at"),
+                "url": "https://twitter.com/{}/status/{}".format(
+                    author.get("username"), tweet.get("id")
+                ),
+                "username": author.get("username"),
+            }
+        )
+
+    return data

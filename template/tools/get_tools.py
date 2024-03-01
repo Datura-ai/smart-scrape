@@ -1,9 +1,9 @@
 from typing import List
 from template.tools.base import BaseToolkit, BaseTool
-from template.tools.serp.serp_google_search_toolkit import SerpGoogleSearchToolkit
 from template.tools.twitter.twitter_toolkit import TwitterToolkit
+from template.tools.search.search_toolkit import SearchToolkit
 
-TOOLKITS: List[BaseToolkit] = [SerpGoogleSearchToolkit(), TwitterToolkit()]
+TOOLKITS: List[BaseToolkit] = [SearchToolkit(), TwitterToolkit()]
 
 
 def get_all_tools():
@@ -17,16 +17,11 @@ def get_all_tools():
     return result
 
 
-def get_avalaible_functions():
-    """Return a list of all avalaible functions."""
-    result = []
+def find_toolkit_by_tool_name(tool_name: str):
+    """Return the toolkit that contains the tool with the given name."""
     for toolkit in TOOLKITS:
-        tools = [
-            {
-                tool.slug: tool._run,
-            }
-            for tool in toolkit.get_tools()
-        ]
-        result.extend(tools)
+        for tool in toolkit.get_tools():
+            if tool.name == tool_name:
+                return toolkit
 
-    return result
+    return None

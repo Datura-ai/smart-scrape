@@ -1,9 +1,9 @@
+import json
 from typing import Type
-
+import bittensor as bt
 from pydantic import BaseModel, Field
-
+from starlette.types import Send
 from template.tools.base import BaseTool
-
 from template.services.twitter_api_wrapper import TwitterAPIClient
 
 
@@ -17,7 +17,7 @@ class GetRecentTweetsToolSchema(BaseModel):
 class GetRecentTweetsTool(BaseTool):
     """Tool that gets recent tweets from Twitter."""
 
-    name = "Get Recent Tweets"
+    name = "Recent Tweets"
 
     slug = "get_recent_tweets"
 
@@ -36,7 +36,54 @@ class GetRecentTweetsTool(BaseTool):
     ) -> str:
         """Tweet message and return."""
         client = TwitterAPIClient()
-        result = await client.analyse_prompt_and_fetch_tweets(
+
+        result, prompt_analysis = await client.analyse_prompt_and_fetch_tweets(
             query, is_recent_tweets=True
         )
-        return result
+
+        bt.logging.info(
+            "================================== Prompt analysis ==================================="
+        )
+        bt.logging.info(prompt_analysis)
+        bt.logging.info(
+            "================================== Prompt analysis ===================================="
+        )
+
+        return (result, prompt_analysis)
+
+    async def send_event(self, send: Send, response_streamer, data):
+        if not data:
+            return
+
+        tweets, prompt_analysis = data
+
+        # Send prompt_analysis
+        if prompt_analysis:
+            prompt_analysis_response_body = {
+                "type": "prompt_analysis",
+                "content": prompt_analysis.dict(),
+            }
+
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": json.dumps(prompt_analysis_response_body).encode("utf-8"),
+                    "more_body": True,
+                }
+            )
+            bt.logging.info("Prompt Analysis sent")
+
+        if tweets:
+            tweets_amount = tweets.get("meta", {}).get("result_count", 0)
+
+            tweets_response_body = {"type": "tweets", "content": tweets}
+            response_streamer.more_body = False
+
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": json.dumps(tweets_response_body).encode("utf-8"),
+                    "more_body": False,
+                }
+            )
+            bt.logging.info(f"Tweet data sent. Number of tweets: {tweets_amount}")

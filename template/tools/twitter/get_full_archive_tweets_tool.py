@@ -1,5 +1,5 @@
 from typing import Type
-
+from starlette.types import Send
 from pydantic import BaseModel, Field
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from template.tools.base import BaseTool
@@ -15,7 +15,7 @@ class GetFullArchiveTweetsSchema(BaseModel):
 class GetFullArchiveTweetsTool(BaseTool):
     """Tool that gets full tweet archive from Twitter."""
 
-    name = "Get Full Tweets Archive"
+    name = "Full Archive Tweets"
 
     slug = "get_full_archive_tweets"
 
@@ -33,7 +33,12 @@ class GetFullArchiveTweetsTool(BaseTool):
         query: str,  # run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         client = TwitterAPIClient()
-        result = await client.analyse_prompt_and_fetch_tweets(
+
+        result, prompt_analysis = await client.analyse_prompt_and_fetch_tweets(
             query, is_recent_tweets=False
         )
-        return result
+
+        return (result, prompt_analysis)
+
+    async def send_event(self, send: Send, response_streamer, data):
+        pass

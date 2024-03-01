@@ -103,6 +103,7 @@ class ScraperValidator:
         is_only_allowed_miner=True,
         is_intro_text=False,
         specified_uids=None,
+        tools=[],
     ):
         task_name = task.task_name
         prompt = task.compose_prompt()
@@ -126,6 +127,7 @@ class ScraperValidator:
             model=self.model,
             seed=self.seed,
             is_intro_text=is_intro_text,
+            tools=tools,
         )
 
         # Make calls to the network with the prompt.
@@ -329,6 +331,8 @@ class ScraperValidator:
     async def organic(self, query):
         try:
             prompt = query["content"]
+            tools = query.get("tools", [])
+
             task_name = "augment"
             task = TwitterTask(
                 base_text=prompt,
@@ -346,6 +350,7 @@ class ScraperValidator:
                 strategy=QUERY_MINERS.RANDOM,
                 is_only_allowed_miner=True,
                 is_intro_text=True,
+                tools=tools,
             )
             final_synapses = []
             for response in async_responses:
@@ -373,6 +378,7 @@ class ScraperValidator:
     async def organic_specified(self, query, specified_uids=None):
         try:
             prompt = query["content"]
+            tools = query.get("tools", [])
 
             task_name = "augment"
             task = TwitterTask(
@@ -392,6 +398,7 @@ class ScraperValidator:
                 strategy=QUERY_MINERS.ALL,
                 is_only_allowed_miner=False,
                 specified_uids=specified_uids,
+                tools=tools,
             )
 
             final_synapses = []
