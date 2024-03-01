@@ -313,7 +313,7 @@ async def save_logs(prompt, logs):
 async def save_logs_from_miner(
     self, synapse, prompt, completion, prompt_analysis, data
 ):
-    if not self.miner.config.miner.save_logs:
+    if not self.miner.config.miner.save_logs or not prompt_analysis or not data:
         return
 
     asyncio.create_task(

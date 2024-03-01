@@ -8,6 +8,7 @@ from template.protocol import ScraperTextRole
 class BaseTool(LangChainBaseTool):
     tool_id: str
     slug: Optional[str] = None
+    tool_manager: Any = None
 
     @abstractmethod
     async def send_event(self, send, response_streamer, data):

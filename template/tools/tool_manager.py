@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Optional, Any
 from openai import OpenAI
 import asyncio
 import os
@@ -12,8 +12,12 @@ from langchain.tools.render import render_text_description
 from template.protocol import ScraperTextRole
 from openai import AsyncOpenAI
 from template.tools.response_streamer import ResponseStreamer
+from template.protocol import TwitterPromptAnalysisResult
 
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
+
+if not OpenAI.api_key:
+    raise ValueError("Please set the OPENAI_API_KEY environment variable.")
 
 
 TEMPLATE = """Answer the following questions as best you can. You have access to the following tools:
@@ -55,6 +59,9 @@ class ToolManager:
     is_intro_text: bool
     miner: any
 
+    twitter_prompt_analysis: Optional[TwitterPromptAnalysisResult]
+    twitter_data: Optional[Dict[str, Any]]
+
     def __init__(self, prompt, manual_tool_names, send, model, is_intro_text, miner):
         self.prompt = prompt
         self.manual_tool_names = manual_tool_names
@@ -68,6 +75,8 @@ class ToolManager:
 
         self.all_tools = get_all_tools()
         self.tool_name_to_instance = {tool.name: tool for tool in self.all_tools}
+        self.twitter_prompt_analysis = None
+        self.twitter_data = None
 
     async def run(self):
         actions = await self.detect_tools_to_use()
@@ -134,19 +143,18 @@ class ToolManager:
         tool_args = action.get("args")
         tool_instance = self.tool_name_to_instance.get(tool_name)
 
-        print("Running tool: ", tool_name)
-
         if not tool_instance:
             return
 
-        print("Fetching data from tool: ", tool_name)
+        bt.logging.info(f"Running tool: {tool_name} with args: {tool_args}")
+
+        tool_instance.tool_manager = self
 
         result = await tool_instance.ainvoke(tool_args)
 
-        print("Data fetched from tool: ", tool_name)
-
         if tool_instance.send_event:
-            print(f"Sending event from {tool_name} tool")
+            bt.logging.info(f"Sending event with data from {tool_name} tool")
+
             await tool_instance.send_event(
                 send=self.send,
                 response_streamer=self.response_streamer,

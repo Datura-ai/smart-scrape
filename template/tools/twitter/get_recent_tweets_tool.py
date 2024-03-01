@@ -35,7 +35,15 @@ class GetRecentTweetsTool(BaseTool):
         query: str,  # run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         """Tweet message and return."""
-        client = TwitterAPIClient()
+        openai_query_model = self.tool_manager.miner.config.miner.openai_query_model
+        openai_fix_query_model = (
+            self.tool_manager.miner.config.miner.openai_fix_query_model
+        )
+
+        client = TwitterAPIClient(
+            openai_query_model=openai_query_model,
+            openai_fix_query_model=openai_fix_query_model,
+        )
 
         result, prompt_analysis = await client.analyse_prompt_and_fetch_tweets(
             query, is_recent_tweets=True
@@ -48,6 +56,10 @@ class GetRecentTweetsTool(BaseTool):
         bt.logging.info(
             "================================== Prompt analysis ===================================="
         )
+
+        if self.tool_manager:
+            self.tool_manager.twitter_data = result
+            self.tool_manager.twitter_prompt_analysis = prompt_analysis
 
         return (result, prompt_analysis)
 
