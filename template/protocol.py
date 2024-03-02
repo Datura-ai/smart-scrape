@@ -147,6 +147,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="The model that which to use when calling openai for your response.",
     )
 
+    tools: Optional[List[str]] = pydantic.Field(
+        default_factory=list,
+        title="Tools",
+        description="A list of tools specified by user to use to answer question.",
+    )
+
     prompt_analysis: TwitterPromptAnalysisResult = pydantic.Field(
         default_factory=lambda: TwitterPromptAnalysisResult(),
         title="Prompt Analysis",
@@ -223,7 +229,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                                     self.texts[role] = text_content
 
                             self.completion += text_content
-                            yield text_content
+                            yield json.dumps({"type": "text", "content": text_content})
 
                         elif content_type == "prompt_analysis":
                             prompt_analysis_json = json_data.get("content", "{}")
@@ -234,10 +240,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                         elif content_type == "tweets":
                             tweets_json = json_data.get("content", "[]")
                             self.miner_tweets = tweets_json
+                            yield json.dumps({"type": "tweets", "content": tweets_json})
 
                         elif content_type == "search":
                             search_json = json_data.get("content", "{}")
                             self.search_results = search_json
+                            yield json.dumps({"type": "search", "content": search_json})
                 except json.JSONDecodeError as e:
                     bt.logging.debug(
                         f"process_streaming_response json.JSONDecodeError: {e}"

@@ -1,7 +1,10 @@
 import os
+import json
+import bittensor as bt
 from typing import Type
 from pydantic import BaseModel, Field
 from template.tools.base import BaseTool
+from starlette.types import Send
 from .serp_api_wrapper import SerpAPIWrapper
 
 
@@ -21,7 +24,7 @@ class SerpGoogleSearchSchema(BaseModel):
 
 
 class SerpGoogleSearchTool(BaseTool):
-    name = "Serp Google Search"
+    name = "Web Search"
 
     slug = "serp_google_search"
 
@@ -52,3 +55,24 @@ class SerpGoogleSearchTool(BaseTool):
                 return "Serp API Key is invalid"
 
             return "Could not search Google. Please try again later."
+
+    async def send_event(self, send: Send, response_streamer, data):
+        if not data:
+            return
+
+        search_results_response_body = {
+            "type": "search",
+            "content": data,
+        }
+
+        response_streamer.more_body = False
+
+        await send(
+            {
+                "type": "http.response.body",
+                "body": json.dumps(search_results_response_body).encode("utf-8"),
+                "more_body": False,
+            }
+        )
+
+        bt.logging.info("Web search results data sent")
