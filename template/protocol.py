@@ -20,6 +20,7 @@ class IsAlive(bt.Synapse):
         description="Completion status of the current StreamPrompting object. This attribute is mutable and can be updated.",
     )
 
+
 class TwitterPromptAnalysisResult(BaseModel):
     api_params: Dict[str, Any] = {}
     keywords: List[str] = []
@@ -177,10 +178,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="A list of JSON objects representing the extracted links content from the tweets.",
     )
 
-    search_results: Optional[Dict[str, Any]] = pydantic.Field(
-        default_factory=dict,
-        title="Search Results",
-        description="Optional JSON object containing search results from SERP",
+    search_results: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = (
+        pydantic.Field(
+            default_factory=dict,
+            title="Search Results",
+            description="Optional JSON object containing search results from SERP",
+        )
     )
 
     is_intro_text: bool = pydantic.Field(
@@ -201,9 +204,9 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     def set_tweets(self, data: any):
         self.tweets = data
 
-    def get_twitter_completion(self) -> Optional[str]: 
-        return self.texts.get(ScraperTextRole.TWITTER_SUMMARY.value, '')
-    
+    def get_twitter_completion(self) -> Optional[str]:
+        return self.texts.get(ScraperTextRole.TWITTER_SUMMARY.value, "")
+
     async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:
             self.completion = ""
@@ -268,7 +271,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                 for key, value in headers.items()
                 if key.startswith(prefix)
             }
-        
+
         completion_links = TwitterUtils.find_twitter_links(self.completion)
 
         return {
@@ -283,7 +286,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "miner_tweets": self.miner_tweets,
             "search_results": self.search_results,
             "prompt_analysis": self.prompt_analysis.dict(),
-            "completion_links": completion_links
+            "completion_links": completion_links,
         }
 
     class Config:

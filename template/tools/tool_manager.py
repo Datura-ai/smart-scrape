@@ -6,7 +6,11 @@ import json
 import bittensor as bt
 from langchain_openai import ChatOpenAI
 from template.tools.base import BaseTool
-from template.tools.get_tools import get_all_tools, find_toolkit_by_tool_name
+from template.tools.get_tools import (
+    get_all_tools,
+    find_toolkit_by_tool_name,
+    find_toolkit_by_name,
+)
 from langchain_core.prompts import PromptTemplate
 from langchain.tools.render import render_text_description
 from template.protocol import ScraperTextRole
@@ -90,8 +94,22 @@ class ToolManager:
 
         await intro_text_task
 
+        toolkit_results = {}
+
         for completed_task in asyncio.as_completed(tasks):
-            response, role = await completed_task
+            result, toolkit_name, tool_name = await completed_task
+
+            if result is not None:
+                if toolkit_name not in toolkit_results:
+                    toolkit_results[toolkit_name] = ""
+
+                toolkit_results[toolkit_name] += f"{tool_name} results: {result}\n\n"
+
+        for toolkit_name, results in toolkit_results.items():
+            response, role = await find_toolkit_by_name(toolkit_name).summarize(
+                prompt=self.prompt, model=self.model, data=results
+            )
+
             await self.response_streamer.stream_response(response=response, role=role)
 
         await self.finalize_summary_and_stream(
@@ -117,7 +135,7 @@ class ToolManager:
 
         # Otherwise identify tools to use based on prompt
         # TODO model
-        llm = ChatOpenAI(model_name="gpt-4", temperature=0.2)
+        llm = ChatOpenAI(model_name="gpt-4-0125-preview", temperature=0.2)
         chain = prompt_template | llm
 
         tools_description = render_text_description(self.all_tools)
@@ -161,9 +179,7 @@ class ToolManager:
                 data=result,
             )
 
-        return await find_toolkit_by_tool_name(tool_name).summarize(
-            prompt=self.prompt, model=self.model, data=result
-        )
+        return result, find_toolkit_by_tool_name(tool_name).name, tool_name
 
     async def intro_text(self, model, tool_names):
         bt.logging.trace("miner.intro_text => ", self.miner.config.miner.intro_text)
