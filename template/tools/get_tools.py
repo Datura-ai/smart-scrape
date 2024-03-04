@@ -25,3 +25,12 @@ def find_toolkit_by_tool_name(tool_name: str):
                 return toolkit
 
     return None
+
+
+def find_toolkit_by_name(toolkit_name: str):
+    """Return the toolkit with the given name."""
+    for toolkit in TOOLKITS:
+        if toolkit.name == toolkit_name:
+            return toolkit
+
+    return None
