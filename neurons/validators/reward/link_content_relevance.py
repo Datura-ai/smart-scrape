@@ -268,6 +268,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             val_score_responses = asyncio.get_event_loop().run_until_complete(
                 self.process_tweets(prompt=prompt, responses=responses)
             )
+            bt.logging.info(f"LinkContentRelevanceModel | PROMPT: {prompt}")
             bt.logging.info(
                 f"LinkContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
             )
