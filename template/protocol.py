@@ -115,35 +115,35 @@ class TwitterScraperMedia(BaseModel):
 
 
 class TwitterScraperUser(BaseModel):
-    id: str = ""
-    url: str = ""
-    username: str = ""
-    description: str = ""
-    created_at: str = ""
-    favourites_count: int = 0
-    followers_count: int = 0
-    listed_count: int = 0
-    media_count: int = 0
-    name: str = ""
-    profile_image_url: str = ""
-    statuses_count: int = 0
-    verified: bool = False
+    id: Optional[str] = ""
+    url: Optional[str] = ""
+    username: Optional[str] = ""
+    description: Optional[str] = ""
+    created_at: Optional[str] = ""
+    favourites_count: Optional[int] = 0
+    followers_count: Optional[int] = 0
+    listed_count: Optional[int] = 0
+    media_count: Optional[int] = 0
+    name: Optional[str] = ""
+    profile_image_url: Optional[str] = ""
+    statuses_count: Optional[int] = 0
+    verified: Optional[bool] = False
 
 
 class TwitterScraperTweet(BaseModel):
-    user: TwitterScraperUser = TwitterScraperUser()
-    id: str = ""
-    full_text: str = ""
-    reply_count: int = 0
-    retweet_count: int = 0
-    like_count: int = 0
-    view_count: int = 0
-    quote_count: int = 0
-    url: str = ""
-    created_at: str = ""
-    is_quote_tweet: bool = False
-    is_retweet: bool = False
-    media: List[TwitterScraperMedia] = []
+    user: Optional[TwitterScraperUser] = TwitterScraperUser()
+    id: Optional[str] = ""
+    full_text: Optional[str] = ""
+    reply_count: Optional[int] = 0
+    retweet_count: Optional[int] = 0
+    like_count: Optional[int] = 0
+    view_count: Optional[int] = 0
+    quote_count: Optional[int] = 0
+    url: Optional[str] = ""
+    created_at: Optional[str] = ""
+    is_quote_tweet: Optional[bool] = False
+    is_retweet: Optional[bool] = False
+    media: Optional[List[TwitterScraperMedia]] = []
 
 
 class ScraperStreamingSynapse(bt.StreamingSynapse):

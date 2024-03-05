@@ -1,5 +1,8 @@
 import os
 from typing import List
+
+# DEALINGS IN THE SOFTWARE.p
+import traceback
 import bittensor as bt
 from apify_client import ApifyClientAsync
 from template.protocol import (
@@ -7,6 +10,7 @@ from template.protocol import (
     TwitterScraperMedia,
     TwitterScraperUser,
 )
+
 
 APIFY_API_KEY = os.environ.get("APIFY_API_KEY")
 
@@ -86,5 +90,7 @@ class TwitterScraperActor:
 
             return tweets
         except Exception as e:
-            bt.logging.warning(f"Failed to scrape tweets: {e}")
+            error_message = f"Twitter Scraper Actor: {str(e)}"
+            tb_str = traceback.format_exception(type(e), e, e.__traceback__)
+            bt.logging.warning("\n".join(tb_str) + error_message)
             return []
