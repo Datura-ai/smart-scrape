@@ -11,6 +11,7 @@ from template.tools.get_tools import (
     find_toolkit_by_tool_name,
     find_toolkit_by_name,
 )
+from template.tools.twitter.twitter_toolkit import TwitterToolkit
 from langchain_core.prompts import PromptTemplate
 from langchain.tools.render import render_text_description
 from template.protocol import ScraperTextRole
@@ -24,7 +25,10 @@ if not OpenAI.api_key:
     raise ValueError("Please set the OPENAI_API_KEY environment variable.")
 
 
-TEMPLATE = """Answer the following questions as best you can. You have access to the following tools:
+TEMPLATE = """Answer the following question as best you can.
+User Question: {input}
+
+You have access to the following tools:
 {tools}
 
 You can use multiple tools to answer the question. Order of tools does not matter.
@@ -44,8 +48,6 @@ Here is example of JSON array format to return. Keep in mind that this is exampl
     }}
   }}
 ]
-
-User Question: {input}
 """
 
 prompt_template = PromptTemplate.from_template(TEMPLATE)
@@ -100,10 +102,15 @@ class ToolManager:
             result, toolkit_name, tool_name = await completed_task
 
             if result is not None:
-                if toolkit_name not in toolkit_results:
-                    toolkit_results[toolkit_name] = ""
+                if toolkit_name == TwitterToolkit().name:
+                    toolkit_results[toolkit_name] = result
+                else:
+                    if toolkit_name not in toolkit_results:
+                        toolkit_results[toolkit_name] = ""
 
-                toolkit_results[toolkit_name] += f"{tool_name} results: {result}\n\n"
+                    toolkit_results[
+                        toolkit_name
+                    ] += f"{tool_name} results: {result}\n\n"
 
         for toolkit_name, results in toolkit_results.items():
             response, role = await find_toolkit_by_name(toolkit_name).summarize(
