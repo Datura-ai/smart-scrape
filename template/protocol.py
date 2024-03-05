@@ -13,6 +13,7 @@ from template.services.twitter_utils import TwitterUtils
 from template.services.web_search_utils import WebSearchUtils
 
 
+
 class IsAlive(bt.Synapse):
     answer: typing.Optional[str] = None
     completion: str = pydantic.Field(
@@ -42,70 +43,40 @@ class TwitterPromptAnalysisResult(BaseModel):
         return f"Query String: {self.api_params}, Keywords: {self.keywords}, Hashtags: {self.hashtags}, User Mentions: {self.user_mentions}"
 
 
-class TwitterScraperTweetURL(BaseModel):
-    url: str = ""
-    expanded_url: str = ""
-    display_url: str = ""
-
-
-class TwitterScraperUserMention(BaseModel):
-    id_str: str = ""
-    name: str = ""
-    screen_name: str = ""
-    profile: str = ""
-
-
 class TwitterScraperMedia(BaseModel):
     media_url: str = ""
     type: str = ""
 
 
 class TwitterScraperUser(BaseModel):
-    id_str: str = ""
-    created_at: str = ""
-    default_profile_image: bool = False
+    id: str = ""
+    url: str = ""
+    username: str = ""
     description: str = ""
-    fast_followers_count: int = 0
+    created_at: str = ""
     favourites_count: int = 0
     followers_count: int = 0
-    friends_count: int = 0
-    normal_followers_count: int = 0
     listed_count: int = 0
-    location: str = ""
     media_count: int = 0
-    has_custom_timelines: bool = False
-    is_translator: bool = False
     name: str = ""
-    possibly_sensitive: bool = False
-    profile_banner_url: str = ""
-    profile_image_url_https: str = ""
-    screen_name: str = ""
+    profile_image_url: str = ""
     statuses_count: int = 0
-    translator_type: str = ""
     verified: bool = False
-    withheld_in_countries: List[str] = []
 
 
 class TwitterScraperTweet(BaseModel):
     user: TwitterScraperUser = TwitterScraperUser()
     id: str = ""
-    conversation_id: str = ""
     full_text: str = ""
     reply_count: int = 0
     retweet_count: int = 0
-    favorite_count: int = 0
+    like_count: int = 0
     view_count: int = 0
     quote_count: int = 0
     url: str = ""
     created_at: str = ""
     is_quote_tweet: bool = False
     is_retweet: bool = False
-    is_pinned: bool = False
-    is_truncated: bool = False
-    hashtags: List[str] = []
-    symbols: List[str] = []
-    user_mentions: List[TwitterScraperUserMention] = []
-    urls: List[TwitterScraperTweetURL] = []
     media: List[TwitterScraperMedia] = []
 
 
