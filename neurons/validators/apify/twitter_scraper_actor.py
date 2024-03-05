@@ -11,6 +11,7 @@ from template.protocol import (
     TwitterScraperUser,
 )
 
+
 APIFY_API_KEY = os.environ.get("APIFY_API_KEY")
 
 # todo at ths moment just warning, later it will be required

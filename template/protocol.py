@@ -47,7 +47,6 @@ class TwitterScraperMedia(BaseModel):
     media_url: str = ""
     type: str = ""
 
-
 class TwitterScraperUser(BaseModel):
     id: Optional[str] = ""
     url: Optional[str] = ""
