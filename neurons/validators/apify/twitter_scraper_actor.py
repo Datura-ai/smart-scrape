@@ -11,10 +11,10 @@ from template.protocol import (
 APIFY_API_KEY = os.environ.get("APIFY_API_KEY")
 
 # todo at ths moment just warning, later it will be required
-# if not APIFY_API_KEY:
-#     raise ValueError(
-#         "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md"
-#     )
+if not APIFY_API_KEY:
+    raise ValueError(
+        "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md"
+    )
 
 
 class TwitterScraperActor:
