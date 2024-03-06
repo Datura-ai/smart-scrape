@@ -262,7 +262,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
         except Exception as e:
             error_message = f"Error in Prompt reward method: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
-            bt.logging.error("\n".join(tb_str) + error_message)
+            bt.logging.warning("\n".join(tb_str) + error_message)
             return None
 
     def get_rewards(
