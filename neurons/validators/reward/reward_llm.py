@@ -309,7 +309,7 @@ class RewardLLM:
                     break
                 else:
                     bt.logging.info(
-                        f"OpenAI Attempt for scoring. Remaining messages: {len(messages)}"
+                        f"{source} Attempt for scoring. Remaining messages: {len(messages)}"
                     )
             else:
                 bt.logging.info(
