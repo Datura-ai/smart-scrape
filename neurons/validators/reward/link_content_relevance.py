@@ -80,12 +80,13 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 link
                 for response in responses
                 if response.completion_links
-                for link in random.sample(response.completion_links, min(2, len(response.completion_links)))
+                for link in random.sample(
+                    response.completion_links, min(3, len(response.completion_links))
+                )
             ]
             unique_links = list(
                 set(all_links)
             )  # Remove duplicates to avoid redundant tasks
-
             if len(unique_links) == 0:
                 bt.logging.info("No unique links found to process.")
                 return
@@ -259,7 +260,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 {"role": "system", "content": scoring_prompt.get_system_message()},
             ]
         except Exception as e:
-            bt.logging.error(f"Error in Prompt reward method: {str(e)}")
+            error_message = f"Error in Prompt reward method: {str(e)}"
+            tb_str = traceback.format_exception(type(e), e, e.__traceback__)
+            bt.logging.error("\n".join(tb_str) + error_message)
             return None
 
     def get_rewards(
