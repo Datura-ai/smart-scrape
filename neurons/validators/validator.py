@@ -19,7 +19,7 @@ from traceback import print_exception
 from base_validator import AbstractNeuron
 from template import QUERY_MINERS
 from template.misc import ttl_get_block
-from template.utils import resync_metagraph, save_logs
+from template.utils import resync_metagraph, save_logs_in_chunks
 
 
 class Neuron(AbstractNeuron):
@@ -196,44 +196,6 @@ class Neuron(AbstractNeuron):
         # uid_list = list(available_uids.keys())
         return uids.to(self.config.neuron.device)
 
-    async def save_logs_in_chunks(self, prompt, responses, uids, rewards):
-        try:
-            weights = get_weights(self)
-
-            logs = [
-                {
-                    "completion": response.completion,
-                    "prompt_analysis": response.prompt_analysis.dict(),
-                    "data": response.miner_tweets,
-                    "miner_uid": uid,
-                    "score": reward,
-                    "hotkey": response.axon.hotkey,
-                    "coldkey": next(
-                        (axon.coldkey for axon in self.metagraph.axons if axon.hotkey == response.axon.hotkey),
-                        None  # Provide a default value here, such as None or an appropriate placeholder
-                    ),
-                    "weight": weights.get(str(uid)),
-                }
-                for response, uid, reward in zip(
-                    responses, uids.tolist(), rewards.tolist()
-                )
-            ]
-        
-            chunk_size = 50
-
-            log_chunks = [
-                logs[i : i + chunk_size] for i in range(0, len(logs), chunk_size)
-            ]
-
-            for chunk in log_chunks:
-                await save_logs(
-                    prompt=prompt,
-                    logs=chunk,
-                )
-        except Exception as e:
-            bt.logging.error(f"Error in save_logs_in_chunks: {e}")
-            raise e
-
     async def update_scores(self, wandb_data, prompt, responses, uids, rewards):
         try:
             if self.config.wandb_on:
@@ -241,11 +203,13 @@ class Neuron(AbstractNeuron):
 
             if self.config.neuron.save_logs:
                 asyncio.create_task(
-                    self.save_logs_in_chunks(
+                    save_logs_in_chunks(
+                        self,
                         prompt=prompt,
-                        responses=responses, 
-                        uids=uids, 
-                        rewards=rewards
+                        responses=responses,
+                        uids=uids,
+                        rewards=rewards,
+                        weights=get_weights(self),
                     )
                 )
         except Exception as e:
@@ -296,9 +260,12 @@ class Neuron(AbstractNeuron):
         bt.logging.info(f"Starting run_synthetic_queries with strategy={strategy}")
         total_start_time = time.time()
         try:
+
             async def run_forward():
                 start_time = time.time()
-                bt.logging.info(f"Running step forward for query_synapse, Step: {self.step}")
+                bt.logging.info(
+                    f"Running step forward for query_synapse, Step: {self.step}"
+                )
                 coroutines = [self.query_synapse(strategy) for _ in range(1)]
                 await asyncio.gather(*coroutines)
                 end_time = time.time()
@@ -328,7 +295,9 @@ class Neuron(AbstractNeuron):
         finally:
             total_end_time = time.time()
             total_execution_time = (total_end_time - total_start_time) / 60
-            bt.logging.info(f"Total execution time for run_synthetic_queries: {total_execution_time:.2f} minutes")
+            bt.logging.info(
+                f"Total execution time for run_synthetic_queries: {total_execution_time:.2f} minutes"
+            )
 
     def sync(self):
         """

@@ -41,8 +41,8 @@ class BaseRewardEvent:
         ]
         reward_event = dict(zip(field_names, list(zip(*reward_events))))
         return reward_event
-
-pattern_to_check = r"<Question>|</Question>|<Answer>|</Answer>|<Score>|</Score>|----|SM_SCS_RDD|SM_SCS_PNK|SM_SCS_BLE|SM_SCS_GRY|SM_SCS_GRN|SM-SCS-RDD|SM-SCS-PNK|SM-SCS-BLE|SM-SCS-GRY|SM-SCS-GRN|SM SCS RDD|SM SCS PNK|SM SCS BLE|SM SCS GRY|SM SCS GRN|SM RDD|SM SCS PNK|SM SCS BLE|SM SCS GRY|SM SCS GRN"
+    
+pattern_to_check = r"<(?:Question|/Question|Answer|/Answer|Score|/Score)>|SM(?:[-_ ]SCS)?[-_ ]?(?:RDD|PNK|BLE|GRY|GRN)"
 
 class BaseRewardModel:
     @property
@@ -100,6 +100,7 @@ class BaseRewardModel:
             #     return None
 
             if re.search(pattern_to_check, successful_completion, flags=re.IGNORECASE):
+                bt.logging.info(f"Pattern validation issue Hotkey ID: {response.axon.hotkey}.")
                 return None
             
             return successful_completion.strip()
@@ -158,3 +159,6 @@ class BaseRewardModel:
 
         # Return the filled rewards.
         return filled_rewards_normalized, reward_events
+
+
+

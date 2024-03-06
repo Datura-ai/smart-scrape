@@ -224,7 +224,7 @@ def set_weights(self):
     # Log the weights dictionary
     bt.logging.info(f"Attempting to set weights action for {weights_dict}")
 
-    bt.logging.info(f"Attempting to set weights details begins: ================")
+    bt.logging.info(f"Attempting to set weights details begins: ================ for {len(processed_weight_uids)} UIDs")
     uids_weights = [
         f"UID - {uid.item()} = Weight - {weight.item()}"
         for uid, weight in zip(processed_weight_uids, processed_weights)
