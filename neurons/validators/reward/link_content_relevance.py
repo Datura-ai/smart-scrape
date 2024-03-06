@@ -252,8 +252,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
 
             scoring_prompt = LinkContentPrompt()
 
-            if not scoring_prompt_text:
-                scoring_prompt_text = scoring_prompt.text(prompt, content)
+            if content is None:
+                bt.logging.error("Prompt or content is None, which is not expected.")
+                return None
 
             return scoring_prompt, [
                 {"role": "user", "content": scoring_prompt_text},
