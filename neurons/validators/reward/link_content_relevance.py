@@ -77,9 +77,10 @@ class LinkContentRelevanceModel(BaseRewardModel):
             non_fetched_links = {}
             start_time = time.time()
             all_links = [
-                random.choice(response.completion_links)
+                link
                 for response in responses
                 if response.completion_links
+                for link in random.sample(response.completion_links, min(2, len(response.completion_links)))
             ]
             unique_links = list(
                 set(all_links)
