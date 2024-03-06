@@ -44,12 +44,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
     def name(self) -> str:
         return RewardModelType.summary_relavance_match.value
 
-    def __init__(
-        self,
-        device: str,
-        scoring_type: None,
-        llm_reward : RewardLLM
-    ):
+    def __init__(self, device: str, scoring_type: None, llm_reward: RewardLLM):
         super().__init__()
         self.device = device
         self.reward_llm = llm_reward
@@ -94,18 +89,19 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 scoring_prompt_text = scoring_prompt.text(prompt, completion)
 
             return scoring_prompt, [
-                {"role": "user", "content": scoring_prompt_text},    
-                {"role": "system", "content": scoring_prompt.get_system_message()},  
+                {"role": "user", "content": scoring_prompt_text},
+                {"role": "system", "content": scoring_prompt.get_system_message()},
             ]
         except Exception as e:
             bt.logging.error(f"Summary Relevance get_scoring_text: {str(e)}")
             return None
-        
+
     def get_rewards(
         self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
             completions: List[str] = self.get_successful_completions(responses)
+            bt.logging.info(f"SummaryRelevanceRewardModel | PROMPT: {prompt}")
             bt.logging.debug(
                 f"SummaryRelevanceRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
             )
@@ -131,7 +127,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             scores = {}
             score_text = {}
             if messages:
-                bt.logging.info(f"Executing llm_processing on {len(messages)} summary relevance messages.")
+                bt.logging.info(
+                    f"Executing llm_processing on {len(messages)} summary relevance messages."
+                )
                 score_responses = self.reward_llm.llm_processing(messages)
                 if score_responses:
                     for (key, score_result), (scoring_prompt, _) in zip(
@@ -145,7 +143,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
             # Iterate over responses and assign rewards based on scores
             reward_events = []
-           
+
             # Initialize dictionaries to store zero and non-zero scores separately
             zero_scores = {}
             non_zero_scores = {}
@@ -162,9 +160,13 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 else:
                     non_zero_scores[uid] = score
 
-            bt.logging.info(f"==================================Summary Relevance scoring Zero Scores  ({len(zero_scores)} cases)==================================")
+            bt.logging.info(
+                f"==================================Summary Relevance scoring Zero Scores  ({len(zero_scores)} cases)=================================="
+            )
             bt.logging.info(json.dumps(zero_scores))
-            bt.logging.info(f"==================================Summary Relevance scoring Non-Zero Scores ({len(non_zero_scores)} cases)==================================")
+            bt.logging.info(
+                f"==================================Summary Relevance scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
+            )
             bt.logging.info(json.dumps(non_zero_scores))
 
             return reward_events
