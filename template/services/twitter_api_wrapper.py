@@ -1,15 +1,11 @@
-import requests
+import aiohttp
 import os
 import json
 import asyncio
-import re
 import random
-from datetime import datetime
 from template.utils import call_openai
 from template.protocol import TwitterPromptAnalysisResult
 import bittensor as bt
-from typing import List, Dict, Any
-from urllib.parse import urlparse
 from template.dataset import MockTwitterQuestionsDataset
 from template.services.twitter_utils import TwitterUtils
 
@@ -64,7 +60,7 @@ query_examples = [
     '("artificial intelligence" OR "machine learning" OR "AI applications" OR "data science") (#AI OR #ArtificialIntelligence OR #MachineLearning OR #AIApplications OR #DataScience)',
 ]
 
-bad_query_examples = f"""
+bad_query_examples = """
     (horrible OR worst OR sucks OR bad OR disappointing) (place_country:US OR place_country:MX OR place_country:CA
     #Explanation: There were errors processing your request: missing EOF at ')' (at position 51)
 
@@ -102,12 +98,12 @@ bad_query_examples = f"""
 def get_query_gen_prompt(prompt, is_accuracy=True):
     accuracy_text = ""
     if is_accuracy:
-        accuracy_text = f"""   
+        accuracy_text = """   
         RULES:
             1. Accurately generate keywords, hashtags, and mentions based solely on text that is unequivocally relevant to the user's prompt and after generate Twitter API query
         """
     else:
-        accuracy_text = f"""   
+        accuracy_text = """   
         RULES:
             1. Similiar Generate keywords, hashtags, and mentions that are closely related to the user's prompt and after generate Twitter API query
         """
@@ -215,55 +211,55 @@ class TwitterAPIClient:
         openai_query_model="gpt-3.5-turbo-1106",
         openai_fix_query_model="gpt-4-1106-preview",
     ):
-        # self.bearer_token = os.environ.get("BEARER_TOKEN")
         self.bearer_token = BEARER_TOKEN
         self.utils = TwitterUtils()
         self.openai_query_model = openai_query_model
         self.openai_fix_query_model = openai_fix_query_model
 
-    def bearer_oauth(self, r):
-        """
-        Method required by bearer token authentication.
-        """
-        r.headers["Authorization"] = f"Bearer {self.bearer_token}"
-        r.headers["User-Agent"] = "v2RecentSearchPython"
-        return r
+    async def bearer_oauth(self, session: aiohttp.ClientSession):
+        session.headers["Authorization"] = f"Bearer {self.bearer_token}"
+        session.headers["User-Agent"] = "v2RecentSearchPython"
 
-    def connect_to_endpoint(self, url, params):
-        response = requests.get(url, auth=self.bearer_oauth, params=params)
+    async def connect_to_endpoint(self, url, params):
+        async with aiohttp.ClientSession() as session:
+            await self.bearer_oauth(session)
+            async with session.get(url, params=params) as response:
+                if response.status in [401, 403]:
+                    bt.logging.error(
+                        f"Critical Twitter API Request error occurred: {await response.text()}"
+                    )
+                    os._exit(1)
 
-        if response.status_code in [401, 403]:
-            bt.logging.error(
-                f"Critical Twitter API Ruquest error occurred: {response.text}"
-            )
-            os._exit(1)
+                json_data = None
 
-        return response
+                try:
+                    json_data = await response.json()
+                except aiohttp.ContentTypeError:
+                    pass
 
-    def get_tweet_by_id(self, tweet_id):
+                response_text = await response.text()
+                return json_data, response.status, response_text
+
+    async def get_tweet_by_id(self, tweet_id):
         tweet_url = f"https://api.twitter.com/2/tweets/{tweet_id}"
-        response = self.connect_to_endpoint(tweet_url, {})
-        if response.status_code != 200:
-            return None
-        return response.json()
+        response_json, status_code = await self.connect_to_endpoint(tweet_url, {})
+        return response_json
 
-    def get_tweets_by_ids(self, tweet_ids):
+    async def get_tweets_by_ids(self, tweet_ids):
         ids = ",".join(tweet_ids)  # Combine all tweet IDs into a comma-separated string
         tweets_url = f"https://api.twitter.com/2/tweets?ids={ids}"
-        response = self.connect_to_endpoint(tweets_url, {})
-        if response.status_code != 200:
+        response_json, status_code = await self.connect_to_endpoint(tweets_url, {})
+        if status_code != 200:
             return []
-        return response.json()
+        return response_json
 
-    def get_recent_tweets(self, query_params):
+    async def get_recent_tweets(self, query_params):
         search_url = "https://api.twitter.com/2/tweets/search/recent"
-        response = self.connect_to_endpoint(search_url, query_params)
-        return response
+        return await self.connect_to_endpoint(search_url, query_params)
 
-    def get_full_archive_tweets(self, query_params):
+    async def get_full_archive_tweets(self, query_params):
         search_url = "https://api.twitter.com/2/tweets/search/all"
-        response = self.connect_to_endpoint(search_url, query_params)
-        return response
+        return await self.connect_to_endpoint(search_url, query_params)
 
     async def generate_query_params_from_prompt(self, prompt, is_accuracy=True):
         """
@@ -319,62 +315,66 @@ class TwitterAPIClient:
             bt.logging.info(e)
             return [], None
 
-    def get_tweets(
+    async def get_tweets(
         self, prompt_analysis: TwitterPromptAnalysisResult, is_recent_tweets=True
     ):
         if is_recent_tweets:
-            return self.get_recent_tweets(prompt_analysis.api_params)
+            return await self.get_recent_tweets(prompt_analysis.api_params)
         else:
-            return self.get_full_archive_tweets(prompt_analysis.api_params)
+            return await self.get_full_archive_tweets(prompt_analysis.api_params)
 
     async def analyse_prompt_and_fetch_tweets(self, prompt, is_recent_tweets=True):
         try:
-            result = {}
             query, prompt_analysis = await self.generate_and_analyze_query(prompt)
 
-            response = self.get_tweets(prompt_analysis, is_recent_tweets)
+            result_json, status_code, response_text = await self.get_tweets(
+                prompt_analysis, is_recent_tweets
+            )
 
-            if response.status_code in [429, 502, 503, 504]:
+            if status_code in [429, 502, 503, 504]:
                 bt.logging.warning(
-                    f"analyse_prompt_and_fetch_tweets status_code: {response.status_code} ===========, {response.text}"
+                    f"analyse_prompt_and_fetch_tweets status_code: {status_code} ===========, {response_text}"
                 )
                 await asyncio.sleep(
                     random.randint(15, 30)
                 )  # Wait for a random time between 15 to 25 seconds before retrying
-                response = self.get_tweets(
+                result_json, status_code, response_text = await self.get_tweets(
                     prompt_analysis, is_recent_tweets
                 )  # Retry fetching tweets
 
-            if response.status_code == 400:
+            if status_code == 400:
                 bt.logging.info(
-                    f"analyse_prompt_and_fetch_tweets: Try to fix bad tweets Query ============, {response.text}"
+                    f"analyse_prompt_and_fetch_tweets: Try to fix bad tweets Query ============, {response_text}"
                 )
-                response, prompt_analysis = await self.retry_with_fixed_query(
-                    prompt=prompt,
-                    old_query=prompt_analysis,
-                    error=response.text,
-                    is_recent_tweets=is_recent_tweets,
+                result_json, status_code, response_text, prompt_analysis = (
+                    await self.retry_with_fixed_query(
+                        prompt=prompt,
+                        old_query=prompt_analysis,
+                        error=response_text,
+                        is_recent_tweets=is_recent_tweets,
+                    )
                 )
 
-            if response.status_code != 200:
+            if status_code != 200:
                 bt.logging.error(
-                    f"Tweets Query ===================================================, {response.text}"
+                    f"Tweets Query ===================================================, {response_text}"
                 )
-                raise Exception(f"analyse_prompt_and_fetch_tweets: {response.text}")
+                raise Exception(f"analyse_prompt_and_fetch_tweets: {response_text}")
 
-            result_json = response.json()
             tweets_amount = result_json.get("meta", {}).get("result_count", 0)
+
             if tweets_amount == 0:
                 bt.logging.info(
                     "analyse_prompt_and_fetch_tweets: No tweets found, attempting next query."
                 )
-                response, prompt_analysis = await self.retry_with_fixed_query(
-                    prompt,
-                    old_query=prompt_analysis,
-                    is_accuracy=False,
-                    is_recent_tweets=is_recent_tweets,
+                result_json, status_code, response_text, prompt_analysis = (
+                    await self.retry_with_fixed_query(
+                        prompt,
+                        old_query=prompt_analysis,
+                        is_accuracy=False,
+                        is_recent_tweets=is_recent_tweets,
+                    )
                 )
-                result_json = response.json()
 
             bt.logging.info(
                 "Tweets fetched ==================================================="
@@ -421,11 +421,14 @@ class TwitterAPIClient:
                 prompt_analysis = TwitterPromptAnalysisResult()
                 prompt_analysis.fill(new_query)
                 self.set_max_results(prompt_analysis.api_params)
-                result = self.get_tweets(prompt_analysis, is_recent_tweets)
-                if result.status_code == 400:
-                    raise result.text
+                result_json, status_code, response_text = await self.get_tweets(
+                    prompt_analysis, is_recent_tweets
+                )
 
-                return result, prompt_analysis
+                if status_code == 400:
+                    raise response_text
+
+                return result_json, status_code, response_text, prompt_analysis
             except Exception as e:
                 bt.logging.info(
                     f"retry_with_fixed_query Attempt {attempt + 1} failed with error: {e}"
@@ -439,6 +442,7 @@ class TwitterAPIClient:
                     bt.logging.info(
                         f"retry_with_fixed_query Retrying... Attempt {attempt + 2}"
                     )
+
 
 if __name__ == "__main__":
     client = TwitterAPIClient()

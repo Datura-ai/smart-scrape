@@ -232,7 +232,9 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                                     self.texts[role] = text_content
 
                             self.completion += text_content
-                            yield json.dumps({"type": "text", "content": text_content})
+                            yield json.dumps(
+                                {"type": "text", "role": role, "content": text_content}
+                            )
 
                         elif content_type == "prompt_analysis":
                             prompt_analysis_json = json_data.get("content", "{}")
