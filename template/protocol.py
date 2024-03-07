@@ -178,12 +178,10 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="A list of JSON objects representing the extracted links content from the tweets.",
     )
 
-    search_results: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = (
-        pydantic.Field(
-            default_factory=dict,
-            title="Search Results",
-            description="Optional JSON object containing search results from SERP",
-        )
+    search_results: Optional[Any] = pydantic.Field(
+        default_factory=dict,
+        title="Search Results",
+        description="Optional JSON object containing search results from SERP",
     )
 
     is_intro_text: bool = pydantic.Field(
