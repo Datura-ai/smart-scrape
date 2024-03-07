@@ -7,9 +7,8 @@ import bittensor as bt
 
 class ResponseStreamer:
     def __init__(self, send: Send) -> None:
-        self.buffer = []  # Reset buffer for finalizing data responses
-        self.N = 1
-        self.full_text = []  # Initialize a list to store all chunks of text
+        self.texts = {}
+        self.role_order = []
         self.more_body = True
         self.send = send
 
@@ -17,7 +16,6 @@ class ResponseStreamer:
         text_data_json = json.dumps(
             {"type": "text", "role": role.value, "content": text}
         )
-
         await self.send(
             {
                 "type": "http.response.body",
@@ -27,22 +25,29 @@ class ResponseStreamer:
         )
 
     async def stream_response(self, response, role: ScraperTextRole, wait_time=None):
-        await self.send_text_event(text="\n\n", role=role)
+        if role not in self.role_order:
+            self.role_order.append(role)
+
+        if role not in self.texts:
+            await self.send_text_event(text="\n\n", role=role)
+            self.texts[role] = ["\n\n"]
 
         async for chunk in response:
             token = chunk.choices[0].delta.content or ""
-            self.buffer.append(token)
-            self.full_text.append(token)  # Append the token to the full_text list
+            self.texts[role].append(token)
 
-            if len(self.buffer) == self.N:
-                joined_buffer = "".join(self.buffer)
-                await self.send_text_event(text=joined_buffer, role=role)
+            await self.send_text_event(text=token, role=role)
 
-                if wait_time is not None:
-                    await asyncio.sleep(wait_time)
+            if wait_time is not None:
+                await asyncio.sleep(wait_time)
 
-                bt.logging.trace(f"Streamed tokens: {joined_buffer}")
-                self.buffer = []  # Clear the buffer for the next set of tokens
+            bt.logging.trace(f"Streamed tokens: {token}")
 
     def get_full_text(self):
-        return "".join(self.full_text)
+        full_text = []
+
+        for role in self.role_order:
+            if role in self.texts:
+                full_text.append("".join(self.texts[role]))
+
+        return "".join(full_text)

@@ -87,14 +87,14 @@ class ToolManager:
     async def run(self):
         actions = await self.detect_tools_to_use()
 
-        intro_text_task = self.intro_text(
-            model="gpt-3.5-turbo",
-            tool_names=[action["action"] for action in actions],
-        )
+        # intro_text_task = self.intro_text(
+        #     model="gpt-3.5-turbo",
+        #     tool_names=[action["action"] for action in actions],
+        # )
 
         tasks = [asyncio.create_task(self.run_tool(action)) for action in actions]
 
-        await intro_text_task
+        # await intro_text_task
 
         toolkit_results = {}
 
@@ -112,12 +112,20 @@ class ToolManager:
                         toolkit_name
                     ] += f"{tool_name} results: {result}\n\n"
 
+        streaming_tasks = []
+
         for toolkit_name, results in toolkit_results.items():
             response, role = await find_toolkit_by_name(toolkit_name).summarize(
                 prompt=self.prompt, model=self.model, data=results
             )
 
-            await self.response_streamer.stream_response(response=response, role=role)
+            streaming_task = asyncio.create_task(
+                self.response_streamer.stream_response(response=response, role=role)
+            )
+
+            streaming_tasks.append(streaming_task)
+
+        await asyncio.gather(*streaming_tasks)
 
         await self.finalize_summary_and_stream(
             self.response_streamer.get_full_text(),
