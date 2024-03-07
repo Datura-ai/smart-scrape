@@ -9,29 +9,31 @@ class SerpAPIWrapper(LangChainSerpAPIWrapper):
         """Process response from SerpAPI."""
         if "error" in res.keys():
             raise ValueError(f"Got error from SerpAPI: {res['error']}")
-        if "answer_box_list" in res.keys():
-            res["answer_box"] = res["answer_box_list"]
-        if "answer_box" in res.keys():
-            answer_box = res["answer_box"]
-            if isinstance(answer_box, list):
-                answer_box = answer_box[0]
-            if "result" in answer_box.keys():
-                return answer_box["result"]
-            elif "answer" in answer_box.keys():
-                return answer_box["answer"]
-            elif "snippet" in answer_box.keys():
-                return answer_box["snippet"]
-            elif "snippet_highlighted_words" in answer_box.keys():
-                return answer_box["snippet_highlighted_words"]
-            else:
-                answer = {}
-                for key, value in answer_box.items():
-                    if not isinstance(value, (list, dict)) and not (
-                        isinstance(value, str) and value.startswith("http")
-                    ):
-                        answer[key] = value
-                return str(answer)
-        elif "events_results" in res.keys():
+
+        # TODO use answer box later to display in UI
+        # if "answer_box_list" in res.keys():
+        #     res["answer_box"] = res["answer_box_list"]
+        # if "answer_box" in res.keys():
+        #     answer_box = res["answer_box"]
+        #     if isinstance(answer_box, list):
+        #         answer_box = answer_box[0]
+        #     if "result" in answer_box.keys():
+        #         return answer_box["result"]
+        #     elif "answer" in answer_box.keys():
+        #         return answer_box["answer"]
+        #     elif "snippet" in answer_box.keys():
+        #         return answer_box["snippet"]
+        #     elif "snippet_highlighted_words" in answer_box.keys():
+        #         return answer_box["snippet_highlighted_words"]
+        #     else:
+        #         answer = {}
+        #         for key, value in answer_box.items():
+        #             if not isinstance(value, (list, dict)) and not (
+        #                 isinstance(value, str) and value.startswith("http")
+        #             ):
+        #                 answer[key] = value
+        #         return str(answer)
+        if "events_results" in res.keys():
             return res["events_results"][:10]
         elif "sports_results" in res.keys():
             return res["sports_results"]
