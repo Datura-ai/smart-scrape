@@ -69,7 +69,10 @@ class LinkContentRelevanceModel(BaseRewardModel):
             if result:
                 scoring_prompt, scoring_text = result
                 scoring_messages.append({str(val_tweet_id): scoring_text})
-        score_responses = self.reward_llm.llm_processing(scoring_messages)
+        if scoring_messages:
+            score_responses = self.reward_llm.llm_processing(scoring_messages)
+        else:
+            score_responses = {}
         return score_responses
 
     async def process_tweets(self, prompt, responses):
@@ -332,7 +335,10 @@ class LinkContentRelevanceModel(BaseRewardModel):
             bt.logging.info(
                 f"Executing llm_processing on {len(scoring_messages)} Link Content Relevance messages."
             )
-            score_responses = self.reward_llm.llm_processing(scoring_messages)
+            if scoring_messages:
+                score_responses = self.reward_llm.llm_processing(scoring_messages)
+            else:
+                score_responses = {}
             reward_events = []
             scoring_prompt = ScoringPrompt()
             for apify_score, response, uid_tensor in zip(
