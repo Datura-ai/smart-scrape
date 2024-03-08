@@ -33,7 +33,7 @@ from neurons.validators.utils.prompts import (
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
-from neurons.validators.reward.reward_llm import RewardLLM
+from neurons.validators.reward.reward_llm import RewardLLM, ScoringSource
 import json
 
 
@@ -130,7 +130,25 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 bt.logging.info(
                     f"Executing llm_processing on {len(messages)} summary relevance messages."
                 )
-                score_responses = self.reward_llm.llm_processing(messages)
+                        # Define the order of scoring sources to be used
+                scoring_sources = [
+                    ScoringSource.Subnet18,  # First attempt with Subnet 18
+                    ScoringSource.Subnet18,  # First attempt with Subnet 18
+                    ScoringSource.Subnet18,  # First attempt with Subnet 18
+                    ScoringSource.Subnet18,  # First attempt with Subnet 18
+                    ScoringSource.Subnet18,  # First attempt with Subnet 18
+                    ScoringSource.Subnet18,  # First attempt with Subnet 18
+                    ScoringSource.Subnet18,  # First attempt with Subnet 18
+                    ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
+                    ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail                    
+                ]
+
+                
+
+                score_responses = self.reward_llm.llm_processing(
+                    messages=messages,
+                    scoring_sources=scoring_sources
+                    )
                 if score_responses:
                     for (key, score_result), (scoring_prompt, _) in zip(
                         score_responses.items(), filter_scoring_messages

@@ -31,6 +31,13 @@ class ScoringSource(Enum):
     LocalZephyr = 4
 
 
+# Define the order of scoring sources to be used
+default_scoring_sources = [
+    ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
+    ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
+    # ScoringSource.Subnet18,  # First attempt with Subnet 18
+]
+
 class RewardLLM:
     def __init__(self):
         self.tokenizer = None
@@ -87,7 +94,7 @@ class RewardLLM:
 
         return text
 
-    def call_to_subnet_18_scoring(self, data):
+    def call_to_subnet_18_scoring(self, messages):
         start_time = time.time()  # Start timing for execution
         try:
             if not URL_SUBNET_18:
@@ -103,8 +110,10 @@ class RewardLLM:
             response = requests.post(
                 url=f"{URL_SUBNET_18}/text-validator/",
                 headers=headers,
-                json=data,
-                timeout=10 * 60,  # Timeout after 10 minutes
+                json={
+                    "messages": messages
+                },
+                timeout=20 * 60,  # Timeout after 10 minutes
             )  # Using json parameter to automatically set the content-type to application/json
 
             if response.status_code in [401, 403]:
@@ -270,16 +279,10 @@ class RewardLLM:
         else:
             return self.get_score_by_llm(messages=messages)
 
-    def llm_processing(self, messages):
+    def llm_processing(self, messages: List[dict], 
+                       scoring_sources: List[ScoringSource] = default_scoring_sources) -> dict:
         # Initialize score_responses as an empty dictionary to hold the scoring results
         score_responses = {}
-
-        # Define the order of scoring sources to be used
-        scoring_sources = [
-            ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
-            ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
-            # ScoringSource.Subnet18,  # First attempt with Subnet 18
-        ]
 
         # Attempt to score messages using the defined sources in order
         for source in scoring_sources:
