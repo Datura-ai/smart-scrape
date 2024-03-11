@@ -284,48 +284,6 @@ class LinkContentRelevanceModel(BaseRewardModel):
             ]
 
             reward_events = []
-            scoring_messages = []
-            for apify_score, response, uid_tensor in zip(
-                scores, responses, uids
-            ):  # Fixed variable name from 'response' to 'responses'
-                # bt.logging.info(f"Processing score for response with miner tweets.")
-                uid = uid_tensor.item()
-                miner_tweets = response.miner_tweets
-                miner_tweets_data = miner_tweets.get("data", [])
-
-                if not len(response.validator_tweets):
-                    for link in random.sample(
-                        response.completion_links,
-                        (
-                            1
-                            if len(response.completion_links) > 1
-                            else len(response.completion_links)
-                        ),
-                    ):
-                        tweet_id = self.tw_client.utils.extract_tweet_id(link)
-                        miner_tweet = next(
-                            (
-                                tweet
-                                for tweet in miner_tweets_data
-                                if tweet["id"] == tweet_id
-                            ),
-                            None,
-                        )
-                        if miner_tweet:
-                            miner_tweet_text = miner_tweet["text"]
-                            if miner_tweet_text:
-                                result = self.get_scoring_text(
-                                    prompt, miner_tweet_text, response
-                                )
-                                if result:
-                                    scoring_prompt, scoring_text = result
-                                    scoring_messages.append({str(uid): scoring_text})
-
-            bt.logging.info(
-                f"Executing llm_processing on {len(scoring_messages)} Link Content Relevance messages."
-            )
-            score_responses = self.reward_llm.llm_processing(scoring_messages)
-            reward_events = []
             scoring_prompt = ScoringPrompt()
             for apify_score, response, uid_tensor in zip(
                 scores, responses, uids
@@ -340,9 +298,6 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     val_tweet_id = val_tweet.id
                     if val_score_responses:
                         score_result = val_score_responses.get(str(val_tweet_id), None)
-                else:
-                    if score_responses:
-                        score_result = score_responses.get(str(uid), None)
                 if score_result is None:
                     bt.logging.info(
                         f"Link Content Relevance get_rewards: No score response for UID '{uid}'"
@@ -363,7 +318,6 @@ class LinkContentRelevanceModel(BaseRewardModel):
             ):
                 uid = uid_tensor.item()
                 if reward_e.reward == 0:
-                    # score_explain = score_responses.get(str(uid), "")
                     zero_scores[uid] = reward_e.reward
                 else:
                     non_zero_scores[uid] = reward_e.reward
