@@ -20,6 +20,9 @@ from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardMo
 from neurons.validators.reward.link_content_relevance import (
     LinkContentRelevanceModel,
 )
+from neurons.validators.reward.search_summary_relevance import (
+    SearchSummaryRelevanceModel,
+)
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask
 
@@ -50,6 +53,7 @@ class ScraperValidator:
             [
                 self.neuron.config.reward.summary_relevance_weight,
                 self.neuron.config.reward.link_content_weight,
+                self.neuron.config.reward.search_summary_relevance_weight,
             ],
             dtype=torch.float32,
         ).to(self.neuron.config.neuron.device)
@@ -87,6 +91,17 @@ class ScraperValidator:
                 )
                 if self.neuron.config.reward.link_content_weight > 0
                 else MockRewardModel(RewardModelType.link_content_match.value)
+            ),
+            (
+                SearchSummaryRelevanceModel(
+                    device=self.neuron.config.neuron.device,
+                    scoring_type=RewardScoringType.search_summary_relevance_score_template,
+                    llm_reward=self.reward_llm,
+                )
+                if self.neuron.config.reward.search_summary_relevance_weight > 0
+                else MockRewardModel(
+                    RewardModelType.search_summary_relevance_match.value
+                )
             ),
         ]
 
@@ -150,7 +165,7 @@ class ScraperValidator:
                 return
 
             bt.logging.info("Computing rewards and penalties")
-            
+
             rewards = torch.zeros(len(responses), dtype=torch.float32).to(
                 self.neuron.config.neuron.device
             )

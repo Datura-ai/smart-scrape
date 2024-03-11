@@ -3,10 +3,9 @@ from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
 
 VALID_DOMAINS = ["twitter.com", "x.com"]
 
+
 class TwitterUtils:
-    def __init__(
-        self
-    ):
+    def __init__(self):
         self.twitter_link_regex = re.compile(
             r"https?://(?:"
             + "|".join(re.escape(domain) for domain in VALID_DOMAINS)
@@ -27,7 +26,7 @@ class TwitterUtils:
         """
         match = re.search(r"/status(?:es)?/(\d+)", url)
         return match.group(1) if match else None
-    
+
     @staticmethod
     def is_valid_twitter_link(self, url: str) -> bool:
         """
@@ -42,7 +41,6 @@ class TwitterUtils:
         parsed_url = urlparse(url)
         return parsed_url.netloc.lower() in VALID_DOMAINS
 
-    @staticmethod
     def find_twitter_links(self, text: str) -> List[str]:
         """
         Find all Twitter links in the given text.

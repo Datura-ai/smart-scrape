@@ -10,6 +10,7 @@ from enum import Enum
 
 from aiohttp import ClientResponse
 from template.services.twitter_utils import TwitterUtils
+from template.services.web_search_utils import WebSearchUtils
 
 
 class IsAlive(bt.Synapse):
@@ -166,10 +167,20 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Fetched Tweets Data.",
     )
 
+    validator_links: Optional[List[Dict]] = pydantic.Field(
+        default_factory=list, title="Links", description="Fetched Links Data."
+    )
+
     miner_tweets: Optional[Dict[str, Any]] = pydantic.Field(
         default_factory=dict,
         title="Miner Tweets",
         description="Optional JSON object containing tweets data from the miner.",
+    )
+
+    search_completion_links: Optional[List[str]] = pydantic.Field(
+        default_factory=list,
+        title="Links Content",
+        description="A list of links extracted from search summary text.",
     )
 
     completion_links: Optional[List[str]] = pydantic.Field(
@@ -205,6 +216,9 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     def get_twitter_completion(self) -> Optional[str]:
         return self.texts.get(ScraperTextRole.TWITTER_SUMMARY.value, "")
 
+    def get_search_summary_completion(self) -> Optional[str]:
+        return self.texts.get(ScraperTextRole.SEARCH_SUMMARY.value, "")
+
     async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:
             self.completion = ""
@@ -229,11 +243,16 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                                 else:
                                     self.texts[role] = text_content
 
-                            self.completion += text_content
                             yield json.dumps(
                                 {"type": "text", "role": role, "content": text_content}
                             )
+                        elif content_type == "completion":
+                            completion = json_data.get("content", "")
+                            self.completion = completion
 
+                            yield json.dumps(
+                                {"type": "completion", "content": completion}
+                            )
                         elif content_type == "prompt_analysis":
                             prompt_analysis_json = json_data.get("content", "{}")
                             prompt_analysis = TwitterPromptAnalysisResult()
@@ -272,7 +291,11 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                 if key.startswith(prefix)
             }
 
-        completion_links = TwitterUtils.find_twitter_links(self.completion)
+        completion_links = TwitterUtils().find_twitter_links(self.completion)
+        
+        search_completion_links = WebSearchUtils().find_links(
+            self.get_search_summary_completion()
+        )
 
         return {
             "name": headers.get("name", ""),
@@ -287,6 +310,8 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "search_results": self.search_results,
             "prompt_analysis": self.prompt_analysis.dict(),
             "completion_links": completion_links,
+            "search_completion_links": search_completion_links,
+            "texts": self.texts,
         }
 
     class Config:

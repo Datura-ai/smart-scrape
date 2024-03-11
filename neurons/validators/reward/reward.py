@@ -24,6 +24,7 @@ from dataclasses import dataclass, asdict, fields
 from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
 import re
 
+
 @dataclass
 class BaseRewardEvent:
     reward: float = 1.0
@@ -42,8 +43,10 @@ class BaseRewardEvent:
         ]
         reward_event = dict(zip(field_names, list(zip(*reward_events))))
         return reward_event
-    
+
+
 pattern_to_check = r"<(?:Question|/Question|Answer|/Answer|Score|/Score)>|SM(?:[-_ ]SCS)?[-_ ]?(?:RDD|PNK|BLE|GRY|GRN)"
+
 
 class BaseRewardModel:
     @property
@@ -84,12 +87,14 @@ class BaseRewardModel:
             successful_completion = response.completion.strip()
 
             if re.search(pattern_to_check, successful_completion, flags=re.IGNORECASE):
-                bt.logging.info(f"Pattern validation issue Hotkey ID: {response.axon.hotkey}.")
+                bt.logging.info(
+                    f"Pattern validation issue Hotkey ID: {response.axon.hotkey}."
+                )
                 return None
-            
+
             return successful_completion.strip()
         return None
-    
+
     def get_successful_twitter_completion(self, response: ScraperStreamingSynapse):
         # Check if the response is successful.
         if response.dendrite.status_code == 200 and response.completion_links:
@@ -97,9 +102,29 @@ class BaseRewardModel:
             successful_completion = response.get_twitter_completion().strip()
 
             if re.search(pattern_to_check, successful_completion, flags=re.IGNORECASE):
-                bt.logging.info(f"Pattern validation issue Hotkey ID: {response.axon.hotkey}.")
+                bt.logging.info(
+                    f"Pattern validation issue Hotkey ID: {response.axon.hotkey}."
+                )
                 return None
-            
+
+            return successful_completion.strip()
+        return None
+
+    def get_successful_search_summary_completion(
+        self, response: ScraperStreamingSynapse
+    ):
+        # Check if the response is successful.
+        search_completion = response.get_search_summary_completion()
+        if response.dendrite.status_code == 200 and search_completion:
+            # Get the completion from the successful response.
+            successful_completion = search_completion.strip()
+
+            if re.search(pattern_to_check, successful_completion, flags=re.IGNORECASE):
+                bt.logging.info(
+                    f"Pattern validation issue Hotkey ID: {response.axon.hotkey}."
+                )
+                return None
+
             return successful_completion.strip()
         return None
 
@@ -156,6 +181,3 @@ class BaseRewardModel:
 
         # Return the filled rewards.
         return filled_rewards_normalized, reward_events
-
-
-
