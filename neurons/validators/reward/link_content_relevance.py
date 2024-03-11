@@ -298,6 +298,9 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     val_tweet_id = val_tweet.id
                     if val_score_responses:
                         score_result = val_score_responses.get(str(val_tweet_id), None)
+                else:
+                    bt.logging.info(f"UID '{uid}' has no validator tweets.")
+
                 if score_result is None:
                     bt.logging.info(
                         f"Link Content Relevance get_rewards: No score response for UID '{uid}'"
