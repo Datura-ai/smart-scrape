@@ -1,4 +1,3 @@
-
 from typing import List
 import torch
 import random
@@ -21,8 +20,9 @@ from transformers import pipeline
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-EXPECTED_ACCESS_KEY = os.environ.get('EXPECTED_ACCESS_KEY', 'hello')
-URL_SUBNET_18 = os.environ.get('URL_SUBNET_18')
+EXPECTED_ACCESS_KEY = os.environ.get("EXPECTED_ACCESS_KEY", "hello")
+URL_SUBNET_18 = os.environ.get("URL_SUBNET_18")
+
 
 class ScoringSource(Enum):
     Subnet18 = 1
@@ -42,9 +42,7 @@ class RewardLLM:
     def init_tokenizer(self, device, model_name):
         # https://huggingface.co/VMware/open-llama-7b-open-instruct
         # Fast tokenizer results in incorrect encoding, set the use_fast = False parameter.
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_name, use_fast=False
-        )
+        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
         # Generative default expects most recent token on right-hand side with padding on left.
         # https://github.com/huggingface/transformers/pull/10552
         tokenizer.padding_side = "left"
@@ -61,9 +59,14 @@ class RewardLLM:
         self.device = device
 
         return tokenizer, model
-    
+
     def init_pipe_zephyr(self):
-        pipe = pipeline("text-generation", model="HuggingFaceH4/zephyr-7b-alpha", torch_dtype=torch.bfloat16, device_map="auto")
+        pipe = pipeline(
+            "text-generation",
+            model="HuggingFaceH4/zephyr-7b-alpha",
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
         self.pipe = pipe
         return pipe
 
@@ -72,34 +75,52 @@ class RewardLLM:
         text = text.replace("\n", " ")
 
         # Remove URLs
-        text = re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', text)
+        text = re.sub(
+            r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+",
+            "",
+            text,
+        )
 
         # Keep hashtags, alphanumeric characters, and spaces
         # Remove other special characters but ensure to keep structured elements like <Question>, <Answer>, etc., intact
-        text = re.sub(r'(?<![\w<>#])[^\w\s#<>]+', '', text)
+        text = re.sub(r"(?<![\w<>#])[^\w\s#<>]+", "", text)
 
         return text
 
     def call_to_subnet_18_scoring(self, data):
+        start_time = time.time()  # Start timing for execution
         try:
             if not URL_SUBNET_18:
-                bt.logging.warning("Please set the URL_SUBNET_18 environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md")
+                bt.logging.warning(
+                    "Please set the URL_SUBNET_18 environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md"
+                )
                 return None
-            
+
             headers = {
                 "access-key": EXPECTED_ACCESS_KEY,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
-            response = requests.post(url=f"{URL_SUBNET_18}/text-validator/", 
-                                    headers=headers, 
-                                    json=data)  # Using json parameter to automatically set the content-type to application/json
+            response = requests.post(
+                url=f"{URL_SUBNET_18}/text-validator/",
+                headers=headers,
+                json=data,
+                timeout=10 * 60,  # Timeout after 10 minutes
+            )  # Using json parameter to automatically set the content-type to application/json
 
             if response.status_code in [401, 403]:
                 bt.logging.error(f"Connection issue with Subnet 18: {response.text}")
                 return {}
             if response.status_code != 200:
-                bt.logging.error(f"ERROR connect to Subnet 18: Status code: {response.status_code}")
+                bt.logging.error(
+                    f"ERROR connect to Subnet 18: Status code: {response.status_code}"
+                )
                 return None
+            execution_time = (
+                time.time() - start_time
+            ) / 60  # Calculate execution time in minutes
+            bt.logging.info(
+                f"Subnet 18 scoring call execution time: {execution_time:.2f} minutes"
+            )
             return response
         except Exception as e:
             bt.logging.warning(f"Error calling Subnet 18 scoring: {e}")
@@ -144,7 +165,6 @@ class RewardLLM:
         except Exception as e:
             print(f"Error processing OpenAI queries: {e}")
             return None
-        
 
     def get_score_by_llm(self, messages):
         result = {}
@@ -155,9 +175,9 @@ class RewardLLM:
 
                 with torch.no_grad():
                     # Choose correct scoring prompt for request type.
-                    scoring_prompt_text = self.clean_text(message_list[-1][
-                        "content"
-                    ])  # Determine the scoring prompt based on the provided name or the default scoring type.
+                    scoring_prompt_text = self.clean_text(
+                        message_list[-1]["content"]
+                    )  # Determine the scoring prompt based on the provided name or the default scoring type.
 
                     # Tokenize formatted scoring prompt.
                     encodings_dict = self.tokenizer(
@@ -195,7 +215,7 @@ class RewardLLM:
             bt.logging.error(f"Error in get_score_by_llm: {e}")
             return None
         return result
-    
+
     def get_score_by_zephyer(self, messages):
         result = {}
         total_start_time = time.time()  # Start timing for total execution
@@ -205,13 +225,22 @@ class RewardLLM:
             keys = []
             for message_dict in messages:  # Iterate over each dictionary in the list
                 ((key, message_list),) = message_dict.items()
-                prompt = self.pipe.tokenizer.apply_chat_template(message_list, tokenize=False, add_generation_prompt=True)
+                prompt = self.pipe.tokenizer.apply_chat_template(
+                    message_list, tokenize=False, add_generation_prompt=True
+                )
                 prompts.append(prompt)
                 keys.append(key)
-            
+
             # Process batch
-            outputs = self.pipe(prompts, max_new_tokens=50, do_sample=True, temperature=0.2, top_k=50, top_p=0.95)
-            
+            outputs = self.pipe(
+                prompts,
+                max_new_tokens=50,
+                do_sample=True,
+                temperature=0.2,
+                top_k=50,
+                top_p=0.95,
+            )
+
             # Process outputs
             for key, output in zip(keys, outputs):
                 generated_text = output[0]["generated_text"]
@@ -219,13 +248,17 @@ class RewardLLM:
                 score_text = extract_score_and_explanation(generated_text)
                 result[key] = score_text
 
-            total_duration = time.time() - total_start_time  # Calculate total execution time
-            bt.logging.info(f"Total execution time for get_score_by_zephyer: {total_duration} seconds")
+            total_duration = (
+                time.time() - total_start_time
+            )  # Calculate total execution time
+            bt.logging.info(
+                f"Total execution time for get_score_by_zephyer: {total_duration} seconds"
+            )
         except Exception as e:
             bt.logging.error(f"Error in get_score_by_zephyer: {e}")
             return None
         return result
-    
+
     def get_score_by_source(self, messages, source: ScoringSource):
         if source == ScoringSource.LocalZephyr:
             return self.get_score_by_zephyer(messages)
@@ -236,7 +269,7 @@ class RewardLLM:
             return loop.run_until_complete(self.get_score_by_openai(messages=messages))
         else:
             return self.get_score_by_llm(messages=messages)
-    
+
     def llm_processing(self, messages):
         # Initialize score_responses as an empty dictionary to hold the scoring results
         score_responses = {}
@@ -261,7 +294,9 @@ class RewardLLM:
                 # Filter messages that still need scoring (i.e., messages that did not receive a score)
                 messages = [
                     message
-                    for (key, score_text), message in zip(current_score_responses.items(), messages)
+                    for (key, score_text), message in zip(
+                        current_score_responses.items(), messages
+                    )
                     if not any(char.isdigit() for char in score_text)
                 ]
                 # messages = [
@@ -273,11 +308,12 @@ class RewardLLM:
                 if not messages:
                     break
                 else:
-                    bt.logging.info(f"OpenAI Attempt for scoring. Remaining messages: {len(messages)}")
+                    bt.logging.info(
+                        f"{source} Attempt for scoring. Remaining messages: {len(messages)}"
+                    )
             else:
                 bt.logging.info(
                     f"Scoring with {source} failed or returned no results. Attempting next source."
                 )
 
         return score_responses
-

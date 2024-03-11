@@ -53,6 +53,7 @@ class BasePrompt:
         index = self.template.find("{")
         return input_text[:index] == self.template[:index]
 
+
 class ScoringPrompt(BasePrompt):
     def __init__(self):
         super().__init__()
@@ -78,7 +79,7 @@ class ScoringPrompt(BasePrompt):
             "SM_SCS_PNK": 2,
             "SM_SCS_BLE": 5,
             "SM_SCS_GRY": 8,
-            "SM_SCS_GRN": 10
+            "SM_SCS_GRN": 10,
         }
 
         # Check for special codes in the response
@@ -96,7 +97,7 @@ class ScoringPrompt(BasePrompt):
             except ValueError:
                 return 0
         return 0
-    
+
     @staticmethod
     def mock_response():
         r"""Mock responses to a followup prompt, for use in MockDendritePool."""
@@ -115,6 +116,7 @@ class SummaryRelevancePrompt(ScoringPrompt):
     def get_system_message(self):
         return system_summary_relevance_scoring_template
 
+
 class LinkContentPrompt(ScoringPrompt):
     r"""Scores a summary on a scale from 0 to 10, given a context."""
 
@@ -125,6 +127,18 @@ class LinkContentPrompt(ScoringPrompt):
     def get_system_message(self):
         return system_link_content_relevance_template
 
+
+class SearchSummaryRelevancePrompt(ScoringPrompt):
+    r"""Scores a summary on a scale from 0 to 10, given a context."""
+
+    def __init__(self):
+        super().__init__()
+        self.template = user_search_summary_relevance_scoring_template
+
+    def get_system_message(self):
+        return system_search_summary_relevance_scoring_template
+
+
 def find_unique_tags(input_text: str):
     r"""Find all substrings that match the pattern '<...>'."""
     matches = re.findall("<([^>]*)>", input_text)
@@ -134,7 +148,9 @@ def find_unique_tags(input_text: str):
 
 def extract_score_and_explanation(generated_text):
     # Regular expression to find the text after "<|assistant|>".
-    explanation_match = re.search(r'<\|assistant\|>(.*)', generated_text, re.DOTALL | re.MULTILINE)
+    explanation_match = re.search(
+        r"<\|assistant\|>(.*)", generated_text, re.DOTALL | re.MULTILINE
+    )
 
     if explanation_match:
         # Extract everything after "<|assistant|>".
@@ -189,7 +205,6 @@ user_summary_relevance_scoring_template = """
 """
 
 
-
 user_link_content_relevance_template = """
 <Question>
 {}
@@ -218,4 +233,34 @@ SM_SCS_PNK, Explanation: is not related to the question
 
 Output:
 Only MUST Generate one of from [SM_SCS_PNK, SM_SCS_BLE, SM_SCS_GRN]:
+"""
+
+system_search_summary_relevance_scoring_template = """
+Evaluate the relevance of the web link content in response to a specific question. The score is determined based on the level of relevance the link content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
+
+Return one of them:
+- Assign SM_SCS_PNK if the web link content fails to mention any keywords or topics related to the question, indicating a lack of relevance.
+- Assign SM_SCS_BLE if the web link content mentions at least one keyword or topic from the question but either engages with the question's core topics superficially or only tangentially.
+- Assign SM_SCS_GRN if the web link content is highly relevant, incorporating multiple keywords or topics from the question and engaging deeply and meaningfully with the question's core topics.
+
+Important scoring rules:
+- Identify keywords or topics from the question that are essential for the answer.
+- Evaluate the web link content to determine its level of engagement with these keywords or topics.
+- Assign a score based on the criteria above.
+
+OUTPUT EXAMPLE FORMAT:
+SM_SCS_PNK, Explanation: is not related to the question
+
+Output:
+Only MUST Generate one of from [SM_SCS_PNK, SM_SCS_BLE, SM_SCS_GRN]:
+"""
+
+user_search_summary_relevance_scoring_template = """
+<Question>
+{}
+</Question>
+
+<Answer>
+{}
+</Answer>
 """

@@ -131,6 +131,18 @@ class ToolManager:
             self.response_streamer.get_full_text(),
         )
 
+        completion_response_body = {
+            "type": "completion",
+            "content": self.response_streamer.get_full_text(),
+        }
+
+        await self.send(
+            {
+                "type": "http.response.body",
+                "body": json.dumps(completion_response_body).encode("utf-8"),
+            }
+        )
+
         if self.response_streamer.more_body:
             await self.send(
                 {

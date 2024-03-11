@@ -20,6 +20,9 @@ from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardMo
 from neurons.validators.reward.link_content_relevance import (
     LinkContentRelevanceModel,
 )
+from neurons.validators.reward.search_summary_relevance import (
+    SearchSummaryRelevanceModel,
+)
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask
 
@@ -39,6 +42,7 @@ class ScraperValidator:
         self.seed = 1234
         self.neuron = neuron
         self.timeout = 120
+        self.tools = ["Recent Tweets", "Web Search", "Wikipedia Search", "ArXiv Search", "Youtube Search"]
 
         # Init device.
         bt.logging.debug("loading", "device")
@@ -50,6 +54,7 @@ class ScraperValidator:
             [
                 self.neuron.config.reward.summary_relevance_weight,
                 self.neuron.config.reward.link_content_weight,
+                self.neuron.config.reward.search_summary_relevance_weight,
             ],
             dtype=torch.float32,
         ).to(self.neuron.config.neuron.device)
@@ -88,11 +93,22 @@ class ScraperValidator:
                 if self.neuron.config.reward.link_content_weight > 0
                 else MockRewardModel(RewardModelType.link_content_match.value)
             ),
+            (
+                SearchSummaryRelevanceModel(
+                    device=self.neuron.config.neuron.device,
+                    scoring_type=RewardScoringType.search_summary_relevance_score_template,
+                    llm_reward=self.reward_llm,
+                )
+                if self.neuron.config.reward.search_summary_relevance_weight > 0
+                else MockRewardModel(
+                    RewardModelType.search_summary_relevance_match.value
+                )
+            ),
         ]
 
         self.penalty_functions = [
             # LinkValidationPenaltyModel(max_penalty=0.7),
-            AccuracyPenaltyModel(max_penalty=1),
+            # AccuracyPenaltyModel(max_penalty=1),
         ]
         self.twitter_api = TwitterAPIClient()
 
@@ -150,7 +166,7 @@ class ScraperValidator:
                 return
 
             bt.logging.info("Computing rewards and penalties")
-            
+
             rewards = torch.zeros(len(responses), dtype=torch.float32).to(
                 self.neuron.config.neuron.device
             )
@@ -294,7 +310,10 @@ class ScraperValidator:
                 return
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
-                task=task, strategy=strategy, is_only_allowed_miner=False
+                task=task, 
+                strategy=strategy,
+                is_only_allowed_miner=False,
+                tools=self.tools
             )
 
             final_synapses = []
@@ -386,7 +405,7 @@ class ScraperValidator:
                 strategy=QUERY_MINERS.ALL,
                 is_only_allowed_miner=False,
                 specified_uids=specified_uids,
-                tools=tools,
+                tools=self.tools,
             )
 
             final_synapses = []

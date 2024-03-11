@@ -10,6 +10,8 @@ from enum import Enum
 
 from aiohttp import ClientResponse
 from template.services.twitter_utils import TwitterUtils
+from template.services.web_search_utils import WebSearchUtils
+
 
 
 class IsAlive(bt.Synapse):
@@ -41,71 +43,41 @@ class TwitterPromptAnalysisResult(BaseModel):
         return f"Query String: {self.api_params}, Keywords: {self.keywords}, Hashtags: {self.hashtags}, User Mentions: {self.user_mentions}"
 
 
-class TwitterScraperTweetURL(BaseModel):
-    url: str = ""
-    expanded_url: str = ""
-    display_url: str = ""
-
-
-class TwitterScraperUserMention(BaseModel):
-    id_str: str = ""
-    name: str = ""
-    screen_name: str = ""
-    profile: str = ""
-
-
 class TwitterScraperMedia(BaseModel):
     media_url: str = ""
     type: str = ""
 
 
 class TwitterScraperUser(BaseModel):
-    id_str: str = ""
-    created_at: str = ""
-    default_profile_image: bool = False
-    description: str = ""
-    fast_followers_count: int = 0
-    favourites_count: int = 0
-    followers_count: int = 0
-    friends_count: int = 0
-    normal_followers_count: int = 0
-    listed_count: int = 0
-    location: str = ""
-    media_count: int = 0
-    has_custom_timelines: bool = False
-    is_translator: bool = False
-    name: str = ""
-    possibly_sensitive: bool = False
-    profile_banner_url: str = ""
-    profile_image_url_https: str = ""
-    screen_name: str = ""
-    statuses_count: int = 0
-    translator_type: str = ""
-    verified: bool = False
-    withheld_in_countries: List[str] = []
+    id: Optional[str] = ""
+    url: Optional[str] = ""
+    username: Optional[str] = ""
+    description: Optional[str] = ""
+    created_at: Optional[str] = ""
+    favourites_count: Optional[int] = 0
+    followers_count: Optional[int] = 0
+    listed_count: Optional[int] = 0
+    media_count: Optional[int] = 0
+    name: Optional[str] = ""
+    profile_image_url: Optional[str] = ""
+    statuses_count: Optional[int] = 0
+    verified: Optional[bool] = False
 
 
 class TwitterScraperTweet(BaseModel):
-    user: TwitterScraperUser = TwitterScraperUser()
-    id: str = ""
-    conversation_id: str = ""
-    full_text: str = ""
-    reply_count: int = 0
-    retweet_count: int = 0
-    favorite_count: int = 0
-    view_count: int = 0
-    quote_count: int = 0
-    url: str = ""
-    created_at: str = ""
-    is_quote_tweet: bool = False
-    is_retweet: bool = False
-    is_pinned: bool = False
-    is_truncated: bool = False
-    hashtags: List[str] = []
-    symbols: List[str] = []
-    user_mentions: List[TwitterScraperUserMention] = []
-    urls: List[TwitterScraperTweetURL] = []
-    media: List[TwitterScraperMedia] = []
+    user: Optional[TwitterScraperUser] = TwitterScraperUser()
+    id: Optional[str] = ""
+    full_text: Optional[str] = ""
+    reply_count: Optional[int] = 0
+    retweet_count: Optional[int] = 0
+    like_count: Optional[int] = 0
+    view_count: Optional[int] = 0
+    quote_count: Optional[int] = 0
+    url: Optional[str] = ""
+    created_at: Optional[str] = ""
+    is_quote_tweet: Optional[bool] = False
+    is_retweet: Optional[bool] = False
+    media: Optional[List[TwitterScraperMedia]] = []
 
 
 class ScraperTextRole(str, Enum):
@@ -166,10 +138,20 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Fetched Tweets Data.",
     )
 
+    validator_links: Optional[List[Dict]] = pydantic.Field(
+        default_factory=list, title="Links", description="Fetched Links Data."
+    )
+
     miner_tweets: Optional[Dict[str, Any]] = pydantic.Field(
         default_factory=dict,
         title="Miner Tweets",
         description="Optional JSON object containing tweets data from the miner.",
+    )
+
+    search_completion_links: Optional[List[str]] = pydantic.Field(
+        default_factory=list,
+        title="Links Content",
+        description="A list of links extracted from search summary text.",
     )
 
     completion_links: Optional[List[str]] = pydantic.Field(
@@ -205,6 +187,9 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     def get_twitter_completion(self) -> Optional[str]:
         return self.texts.get(ScraperTextRole.TWITTER_SUMMARY.value, "")
 
+    def get_search_summary_completion(self) -> Optional[str]:
+        return self.texts.get(ScraperTextRole.SEARCH_SUMMARY.value, "")
+
     async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:
             self.completion = ""
@@ -229,11 +214,16 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                                 else:
                                     self.texts[role] = text_content
 
-                            self.completion += text_content
                             yield json.dumps(
                                 {"type": "text", "role": role, "content": text_content}
                             )
+                        elif content_type == "completion":
+                            completion = json_data.get("content", "")
+                            self.completion = completion
 
+                            yield json.dumps(
+                                {"type": "completion", "content": completion}
+                            )
                         elif content_type == "prompt_analysis":
                             prompt_analysis_json = json_data.get("content", "{}")
                             prompt_analysis = TwitterPromptAnalysisResult()
@@ -272,7 +262,11 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                 if key.startswith(prefix)
             }
 
-        completion_links = TwitterUtils.find_twitter_links(self.completion)
+        completion_links = TwitterUtils().find_twitter_links(self.completion)
+        
+        search_completion_links = WebSearchUtils().find_links(
+            self.get_search_summary_completion()
+        )
 
         return {
             "name": headers.get("name", ""),
@@ -287,6 +281,8 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "search_results": self.search_results,
             "prompt_analysis": self.prompt_analysis.dict(),
             "completion_links": completion_links,
+            "search_completion_links": search_completion_links,
+            "texts": self.texts,
         }
 
     class Config:
@@ -304,17 +300,21 @@ def extract_json_chunk(chunk):
                 start_index = i
             stack.append(char)
         elif char == "}":
-            stack.pop()
-            if not stack and start_index is not None:
-                json_str = chunk[start_index : i + 1]
-                try:
-                    json_obj = json.loads(json_str)
-                    json_objects.append(json_obj)
-                    start_index = None
-                except json.JSONDecodeError as e:
-                    # Handle the case where json_str is not a valid JSON object
-                    continue
+            if stack:  # Check if the stack is not empty before popping
+                stack.pop()
+                if not stack and start_index is not None:
+                    json_str = chunk[start_index : i + 1]
+                    try:
+                        json_obj = json.loads(json_str)
+                        json_objects.append(json_obj)
+                        start_index = None
+                    except json.JSONDecodeError as e:
+                        bt.logging.debug(f"Failed to decode JSON object: {e} - JSON string: {json_str}")
+                        continue
+            else:
+                bt.logging.debug("Unmatched closing brace encountered in JSON chunk parsing.")
 
-    remaining_chunk = chunk[i + 1 :] if start_index is None else chunk[start_index:]
+    # Adjust the calculation of remaining_chunk to ensure it's correct
+    remaining_chunk = chunk[start_index:] if start_index is not None else ""
 
     return json_objects, remaining_chunk
