@@ -94,6 +94,10 @@ class BaseRewardModel:
 
             return successful_completion.strip()
         return None
+    
+    def get_successful_completions(self, responses: List[ScraperStreamingSynapse]):
+        successful_completions = [self.get_successful_completion(response) for response in responses]
+        return [completion for completion in successful_completions if completion is not None]
 
     def get_successful_twitter_completion(self, response: ScraperStreamingSynapse):
         # Check if the response is successful.

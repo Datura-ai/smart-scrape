@@ -117,7 +117,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             non_fetched_links = [
                 link
                 for link in unique_links
-                if self.tw_client.extract_tweet_id(link) not in fetched_tweet_ids
+                if self.tw_client.utils.extract_tweet_id(link) not in fetched_tweet_ids
             ]
 
             bt.logging.info(
@@ -330,7 +330,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             )
             bt.logging.info(json.dumps(zero_scores))
             bt.logging.info(
-                f"==================================Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
+                f"==================================Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)==========================="
             )
             bt.logging.info(json.dumps(non_zero_scores))
             return reward_events

@@ -195,10 +195,7 @@ class SearchSummaryRelevanceModel(BaseRewardModel):
                     score = scoring_prompt.extract_score(score_result)
                     score /= 10.0
                     reward_event.reward = score
-                if apify_score:
-                    reward_event.reward = min(reward_event.reward * apify_score, 1)
-                else:
-                    reward_event.reward /= 3
+                reward_event.reward = min(reward_event.reward * apify_score, 1)
                 reward_events.append(reward_event)
 
                 zero_scores = {}

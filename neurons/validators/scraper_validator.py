@@ -42,6 +42,7 @@ class ScraperValidator:
         self.seed = 1234
         self.neuron = neuron
         self.timeout = 120
+        self.tools = ["Recent Tweets", "Web Search", "Wikipedia Search", "ArXiv Search", "Youtube Search"]
 
         # Init device.
         bt.logging.debug("loading", "device")
@@ -309,7 +310,10 @@ class ScraperValidator:
                 return
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
-                task=task, strategy=strategy, is_only_allowed_miner=False
+                task=task, 
+                strategy=strategy,
+                is_only_allowed_miner=False,
+                tools=self.tools
             )
 
             final_synapses = []
@@ -401,7 +405,7 @@ class ScraperValidator:
                 strategy=QUERY_MINERS.ALL,
                 is_only_allowed_miner=False,
                 specified_uids=specified_uids,
-                tools=tools,
+                tools=self.tools,
             )
 
             final_synapses = []
