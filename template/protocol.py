@@ -294,17 +294,21 @@ def extract_json_chunk(chunk):
                 start_index = i
             stack.append(char)
         elif char == "}":
-            stack.pop()
-            if not stack and start_index is not None:
-                json_str = chunk[start_index : i + 1]
-                try:
-                    json_obj = json.loads(json_str)
-                    json_objects.append(json_obj)
-                    start_index = None
-                except json.JSONDecodeError as e:
-                    # Handle the case where json_str is not a valid JSON object
-                    continue
+            if stack:  # Check if the stack is not empty before popping
+                stack.pop()
+                if not stack and start_index is not None:
+                    json_str = chunk[start_index : i + 1]
+                    try:
+                        json_obj = json.loads(json_str)
+                        json_objects.append(json_obj)
+                        start_index = None
+                    except json.JSONDecodeError as e:
+                        bt.logging.debug(f"Failed to decode JSON object: {e} - JSON string: {json_str}")
+                        continue
+            else:
+                bt.logging.debug("Unmatched closing brace encountered in JSON chunk parsing.")
 
-    remaining_chunk = chunk[i + 1 :] if start_index is None else chunk[start_index:]
+    # Adjust the calculation of remaining_chunk to ensure it's correct
+    remaining_chunk = chunk[start_index:] if start_index is not None else ""
 
     return json_objects, remaining_chunk
