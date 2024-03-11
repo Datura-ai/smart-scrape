@@ -139,6 +139,11 @@ class SearchSummaryRelevanceModel(BaseRewardModel):
 
                 if not completion:
                     return None
+                
+            if content is None:
+                bt.logging.error("Prompt or content is None, which is not expected.")
+                return None
+
 
             scoring_prompt_text = None
             scoring_prompt = SearchSummaryRelevancePrompt()
