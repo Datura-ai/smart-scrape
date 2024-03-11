@@ -107,7 +107,7 @@ class ScraperValidator:
 
         self.penalty_functions = [
             # LinkValidationPenaltyModel(max_penalty=0.7),
-            AccuracyPenaltyModel(max_penalty=1),
+            # AccuracyPenaltyModel(max_penalty=1),
         ]
         self.twitter_api = TwitterAPIClient()
 
