@@ -86,7 +86,7 @@ pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name valid
 - `--neuron.run_random_miner_syn_qs_interval`: Sets the interval, in seconds, for querying a random subset of miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.
 - `--neuron.run_all_miner_syn_qs_interval`: Sets the interval, in seconds, for querying all miners with synthetic questions. Set to a positive value to enable. A value of 0 disables this feature.
 - `--reward.summary_relevance_weight`: adjusts the influence of a scoring model that evaluates the accuracy and relevance of a node's responses to given prompts.
-- `--reward.link_content_weight`: Specifies the weight for the reward model that evaluates the relevance and quality of summary text in conjunction with linked content data.
+- `--reward.twitter_content_weight`: Specifies the weight for the reward model that evaluates the relevance and quality of summary text in conjunction with linked content data.
 - `--neuron.only_allowed_miners`: A list of miner identifiers, hotkey
 - `--neuron.disable_twitter_completion_links_fetch`: Enables the option to skip fetching content data for Twitter links, relying solely on the data provided by miners
 - `--neuron.update_weight_interval`:Defines the frequency (in seconds) at which the network's weight parameters are updated. The default interval is 1800 seconds (30 minutes).

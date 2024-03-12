@@ -43,7 +43,7 @@ from datetime import datetime
 import pytz
 
 
-class LinkContentRelevanceModel(BaseRewardModel):
+class TwitterContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
 
     @property
@@ -59,6 +59,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
         self.tw_client = TwitterAPIClient()
 
     async def llm_process_validator_tweets(self, prompt, tweets_list):
+        start_llm_time = time.time()
         scoring_messages = []
         for tweet in tweets_list:
             val_text = tweet.full_text
@@ -70,6 +71,12 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 scoring_prompt, scoring_text = result
                 scoring_messages.append({str(val_tweet_id): scoring_text})
         score_responses = self.reward_llm.llm_processing(scoring_messages)
+
+        end_llm_time = time.time()
+        llm_duration_minutes = (end_llm_time - start_llm_time) / 60
+        bt.logging.info(
+            f"TwitterContentRelevanceModel LLM process validator tweets took {llm_duration_minutes} minutes."
+        )
         return score_responses
 
     async def process_tweets(self, prompt, responses):
@@ -150,7 +157,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
         try:
             tweet_score = 0
 
-            completion = self.get_successful_twitter_completion(response=response)
+            completion = self.get_successful_completion(response=response)
             if not completion:
                 return 0
 
@@ -238,11 +245,11 @@ class LinkContentRelevanceModel(BaseRewardModel):
             return 0
 
     def get_scoring_text(
-        self, prompt: str, content: str, response: ScraperStreamingSynapse
+        self, prompt: str, content: str, response: bt.Synapse
     ) -> BaseRewardEvent:
         try:
             if response:
-                completion = self.get_successful_twitter_completion(response=response)
+                completion = self.get_successful_completion(response=response)
                 if not completion:
                     return None
 
@@ -269,48 +276,61 @@ class LinkContentRelevanceModel(BaseRewardModel):
             return None
 
     def get_rewards(
-        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
+        self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
+            completions: List[str] = self.get_successful_completions(responses)
+            bt.logging.debug(
+                f"TwitterContentRelevanceModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
+            )
+            bt.logging.trace(
+                f"TwitterContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
+            )
+
             val_score_responses = asyncio.get_event_loop().run_until_complete(
                 self.process_tweets(prompt=prompt, responses=responses)
             )
-            bt.logging.info(f"LinkContentRelevanceModel | PROMPT: {prompt}")
+            bt.logging.info(f"TwitterContentRelevanceModel | PROMPT: {prompt}")
             bt.logging.info(
-                f"LinkContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
+                f"TwitterContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
             )
-            scores = [
-                self.check_response_random_tweet(response) for response in responses
-            ]
+            # scores = [
+            #     self.check_response_random_tweet(response) for response in responses
+            # ]
 
             reward_events = []
             scoring_prompt = ScoringPrompt()
-            for apify_score, response, uid_tensor in zip(
-                scores, responses, uids
+            # apify_score,
+            for response, uid_tensor in zip(
+                # scores,
+                responses,
+                uids,
             ):  # Fixed variable name from 'response' to 'responses'
                 uid = uid_tensor.item()
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
 
                 score_result = None
+                total_score = 0
                 if len(response.validator_tweets):
-                    val_tweet = random.choice(response.validator_tweets)
-                    val_tweet_id = val_tweet.id
-                    if val_score_responses:
-                        score_result = val_score_responses.get(str(val_tweet_id), None)
+                    for val_tweet in response.validator_tweets:
+                        val_tweet_id = val_tweet.id
+                        if val_score_responses:
+                            score_result = val_score_responses.get(
+                                str(val_tweet_id), None
+                            )
+                            if score_result is not None:
+                                score = scoring_prompt.extract_score(score_result)
+                                total_score += (
+                                    score / 10.0
+                                )  # Adjust score scaling as needed
+                    if total_score > 0:
+                        average_score = total_score / len(response.validator_tweets)
+                        reward_event.reward = average_score
                 else:
                     bt.logging.info(f"UID '{uid}' has no validator tweets.")
-
-                if score_result is None:
-                    bt.logging.info(
-                        f"Link Content Relevance get_rewards: No score response for UID '{uid}'"
-                    )
-                    score = 0  # Default score or another logic to handle missing scores
-                else:
-                    score = scoring_prompt.extract_score(score_result)
-                    score /= 10.0
-                    reward_event.reward = score
-                reward_event.reward = min(reward_event.reward * apify_score, 1)
+                    reward_event.reward = 0  # Handle case with no validator tweets
+                # reward_event.reward = min(reward_event.reward * apify_score, 1)
                 reward_events.append(reward_event)
 
                 zero_scores = {}
@@ -330,7 +350,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             )
             bt.logging.info(json.dumps(zero_scores))
             bt.logging.info(
-                f"==================================Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)==========================="
+                f"==================================Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
             )
             bt.logging.info(json.dumps(non_zero_scores))
             return reward_events

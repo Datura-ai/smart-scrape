@@ -114,17 +114,17 @@ def add_args(cls, parser):
     )
 
     parser.add_argument(
-        "--reward.link_content_weight",
+        "--reward.twitter_content_weight",
         type=float,
         help="Specifies the weight for the reward model that evaluates the relevance and quality of summary text in conjunction with linked content data.",
-        default=DefaultRewardFrameworkConfig.link_content_weight,
+        default=DefaultRewardFrameworkConfig.twitter_content_weight,
     )
 
     parser.add_argument(
-        "--reward.search_summary_relevance_weight",
+        "--reward.web_search_relavance_weight",
         type=float,
         help="Specifies the weight for the reward model that evaluates the relevance and quality of search summary text in conjunction with linked content data.",
-        default=DefaultRewardFrameworkConfig.search_summary_relevance_weight,
+        default=DefaultRewardFrameworkConfig.web_search_relavance_weight,
     )
 
     parser.add_argument(

@@ -17,7 +17,7 @@ import json
 from neurons.validators.utils.prompts import ScoringPrompt, SearchSummaryRelevancePrompt
 
 
-class SearchSummaryRelevanceModel(BaseRewardModel):
+class WebSearchContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
 
     @property
@@ -121,7 +121,7 @@ class SearchSummaryRelevanceModel(BaseRewardModel):
             )
 
             if search_result_link:
-                link_score = 2
+                link_score = 1
 
             return link_score
         except Exception as e:
@@ -167,7 +167,7 @@ class SearchSummaryRelevanceModel(BaseRewardModel):
                 self.process_links(prompt=prompt, responses=responses)
             )
             bt.logging.info(
-                f"SearchSummaryRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
+                f"WebSearchContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
             )
             scores = [
                 self.check_response_random_link(response) for response in responses
@@ -181,25 +181,24 @@ class SearchSummaryRelevanceModel(BaseRewardModel):
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
 
-                score_result = None
+                total_score = 0
+                num_links = len(response.validator_links)
 
-                if len(response.validator_links):
-                    val_link = random.choice(response.validator_links)
-                    val_url = val_link.get("url")
-                    if val_score_responses:
-                        score_result = val_score_responses.get(val_url, None)
-                # else:
-                #     if score_responses:
-                #         score_result = score_responses.get(str(uid), None)
-                if score_result is None:
-                    bt.logging.info(
-                        f"Search Summary Relevance get_rewards: No score response for UID '{uid}'"
-                    )
-                    score = 0  # Default score or another logic to handle missing scores
+                if num_links > 0:
+                    for val_link in response.validator_links:
+                        val_url = val_link.get("url")
+                        if val_score_responses:
+                            score_result = val_score_responses.get(val_url, None)
+                            if score_result is not None:
+                                score = scoring_prompt.extract_score(score_result)
+                                total_score += score / 10.0  # Adjust score scaling as needed
+
+                    if total_score > 0:
+                        average_score = total_score / num_links
+                        reward_event.reward = average_score
                 else:
-                    score = scoring_prompt.extract_score(score_result)
-                    score /= 10.0
-                    reward_event.reward = score
+                    bt.logging.info(f"UID '{uid}' has no validator links.")
+                    reward_event.reward = 0  # Handle case with no validator links
                 reward_event.reward = min(reward_event.reward * apify_score, 1)
                 reward_events.append(reward_event)
 

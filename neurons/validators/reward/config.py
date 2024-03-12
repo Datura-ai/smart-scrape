@@ -31,7 +31,7 @@ class RewardModelType(Enum):
 class RewardScoringType(Enum):
     summary_relevance_score_template = "summary_relevance_score_template"
     link_content_relevance_template = "link_content_relevance_template"
-    search_summary_relevance_score_template = "search_summary_relevance_score_template"
+    search_relevance_score_template = "search_relevance_score_template"
 
 
 @dataclass(frozen=True)
@@ -40,6 +40,6 @@ class DefaultRewardFrameworkConfig:
     Note: All the weights should add up to 1.0.
     """
 
-    link_content_weight: float = 0.34
-    search_summary_relevance_weight: float = 0.33  # TODO change this to 0.33
-    summary_relevance_weight: float = 0.33
+    summary_relevance_weight: float = 0.25
+    twitter_content_weight: float = 0.45
+    web_search_relavance_weight: float = 0.30 
