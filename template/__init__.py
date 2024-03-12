@@ -70,6 +70,7 @@ valid_validators = [
     "5HbLYXUBy1snPR8nfioQ7GoA9x76EELzEq9j7F32vWUQHm1x",
     "5Dd8gaRNdhm1YP7G1hcB1N842ecAUQmbLjCRLqH5ycaTGrWv",
     "5FKstHjZkh4v3qAMSBa1oJcHCLjxYZ8SNTSz1opTv4hR7gVB",
+    "5DnXm2tBGAD57ySJv5SfpTfLcsQbSKKp6xZKFWABw3cYUgqg",
     "5DXTJSPVvf1sow1MU4npJPewEAwhPRb6CWsk4RX9RFt2PRbj",  # server
 ]
 
