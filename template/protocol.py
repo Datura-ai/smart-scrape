@@ -13,7 +13,6 @@ from template.services.twitter_utils import TwitterUtils
 from template.services.web_search_utils import WebSearchUtils
 
 
-
 class IsAlive(bt.Synapse):
     answer: typing.Optional[str] = None
     completion: str = pydantic.Field(
@@ -208,15 +207,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                             text_content = json_data.get("content", "")
                             role = json_data.get("role")
 
-                            if role:
-                                if self.texts.get(role):
-                                    self.texts[role] += text_content
-                                else:
-                                    self.texts[role] = text_content
-
                             yield json.dumps(
                                 {"type": "text", "role": role, "content": text_content}
                             )
+                        elif content_type == "texts":
+                            texts = json_data.get("content", "")
+                            self.texts = texts
                         elif content_type == "completion":
                             completion = json_data.get("content", "")
                             self.completion = completion
@@ -263,7 +259,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             }
 
         completion_links = TwitterUtils().find_twitter_links(self.completion)
-        
+
         search_completion_links = WebSearchUtils().find_links(
             self.get_search_summary_completion()
         )
@@ -309,10 +305,14 @@ def extract_json_chunk(chunk):
                         json_objects.append(json_obj)
                         start_index = None
                     except json.JSONDecodeError as e:
-                        bt.logging.debug(f"Failed to decode JSON object: {e} - JSON string: {json_str}")
+                        bt.logging.debug(
+                            f"Failed to decode JSON object: {e} - JSON string: {json_str}"
+                        )
                         continue
             else:
-                bt.logging.debug("Unmatched closing brace encountered in JSON chunk parsing.")
+                bt.logging.debug(
+                    "Unmatched closing brace encountered in JSON chunk parsing."
+                )
 
     # Adjust the calculation of remaining_chunk to ensure it's correct
     remaining_chunk = chunk[start_index:] if start_index is not None else ""

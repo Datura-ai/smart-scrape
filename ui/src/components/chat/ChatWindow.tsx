@@ -67,11 +67,11 @@ const ChatWindow: React.FC = () => {
 
     const onmessage = (event: EventSourceMessage) => {
       let data: { type: string; content: string; role?: string };
+
       try {
         data = JSON.parse(event.data);
       } catch (error) {
-        console.log(`Error parsing event to JSON`, event);
-        return;
+        data = { type: "text", content: event.data, role: "" };
       }
 
       if (data.type === "text") {
