@@ -43,6 +43,37 @@ class ResponseStreamer:
 
             bt.logging.trace(f"Streamed tokens: {token}")
 
+    async def send_texts_event(self):
+        texts = {}
+
+        for key in self.texts:
+            texts[key] = "".join(self.texts[key])
+
+        texts_response_body = {
+            "type": "texts",
+            "content": texts,
+        }
+
+        await self.send(
+            {
+                "type": "http.response.body",
+                "body": json.dumps(texts_response_body).encode("utf-8"),
+            }
+        )
+
+    async def send_completion_event(self):
+        completion_response_body = {
+            "type": "completion",
+            "content": self.get_full_text(),
+        }
+
+        await self.send(
+            {
+                "type": "http.response.body",
+                "body": json.dumps(completion_response_body).encode("utf-8"),
+            }
+        )
+
     def get_full_text(self):
         full_text = []
 

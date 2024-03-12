@@ -131,6 +131,9 @@ class ToolManager:
             self.response_streamer.get_full_text(),
         )
 
+        await self.response_streamer.send_texts_event()
+        await self.response_streamer.send_completion_event()
+
         completion_response_body = {
             "type": "completion",
             "content": self.response_streamer.get_full_text(),
