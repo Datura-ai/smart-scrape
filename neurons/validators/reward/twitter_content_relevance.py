@@ -260,7 +260,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             scoring_prompt = LinkContentPrompt()
 
             if content is None:
-                bt.logging.error("Prompt or content is None, which is not expected.")
+                bt.logging.debug("Twitter Content is empty")
                 return None
 
             scoring_prompt_text = scoring_prompt.text(prompt, content)
