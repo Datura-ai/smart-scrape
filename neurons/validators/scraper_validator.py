@@ -422,6 +422,7 @@ class ScraperValidator:
                 yield f"{response.completion}\n\n"
                 yield "\n\n======================================================================================================================================================\n\n"
 
+            yield "Initiating scoring system. Please wait for the response... \n\n"
             start_compute_time = time.time()
             rewards_task = asyncio.create_task(self.compute_rewards_and_penalties(
                 event=event,
