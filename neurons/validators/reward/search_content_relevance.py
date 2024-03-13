@@ -216,11 +216,11 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                     non_zero_scores[uid] = reward_e.reward
 
             bt.logging.info(
-                f"==================================Search Summary Relevance scoring Zero Scores  ({len(zero_scores)} cases)=================================="
+                f"==================================Web Search Content Relevance scoring Zero Scores  ({len(zero_scores)} cases)=================================="
             )
             bt.logging.info(json.dumps(zero_scores))
             bt.logging.info(
-                f"==================================Search Summary Relevance scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
+                f"==================================Web Search Content Relevance scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
             )
             bt.logging.info(json.dumps(non_zero_scores))
             return reward_events
