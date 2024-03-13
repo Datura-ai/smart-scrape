@@ -407,28 +407,45 @@ class ScraperValidator:
                 specified_uids=specified_uids,
                 tools=self.tools,
             )
+            
 
             final_synapses = []
-            async for value in process_async_responses(async_responses):
+            async for value in  process_async_responses(async_responses):
                 if isinstance(value, bt.Synapse):
                     final_synapses.append(value)
                 else:
                     pass
-            rewards = await self.compute_rewards_and_penalties(
+
+            for uid_tensor, response in zip(uids, final_synapses):
+                yield f"Miner ID: {uid_tensor.item()} Completion Output: \n\n"
+                yield "----------------------------------------\n\n"
+                yield f"{response.completion}\n\n"
+                yield "\n\n======================================================================================================================================================\n\n"
+
+            start_compute_time = time.time()
+            rewards_task = asyncio.create_task(self.compute_rewards_and_penalties(
                 event=event,
                 prompt=prompt,
                 task=task,
                 responses=final_synapses,
                 uids=uids,
                 start_time=start_time,
-            )
+            ))
+
+            while not rewards_task.done():
+                await asyncio.sleep(30)  # Check every 30 seconds if the task is done
+                elapsed_time = time.time() - start_compute_time
+                if elapsed_time > 60:  # If more than one minute has passed
+                    yield f"Waiting for reward scoring... {elapsed_time // 60} minutes elapsed.\n\n"
+                    start_compute_time = time.time()  # Reset the timer
+
+            rewards = await rewards_task
+
+            yield "\n\n======================================================================================================================================================\n\n"
             for uid_tensor, reward, response in zip(
                 uids, rewards.tolist(), final_synapses
             ):
                 yield f"Miner ID: {uid_tensor.item()} - Reward: {reward:.2f}\n\n"
-                yield "----------------------------------------\n\n"
-                yield f"Miner's Completion Output:\n{response.completion}\n\n"
-                yield "========================================\n\n"
 
             missing_uids = set(specified_uids) - set(uid.item() for uid in uids)
             for missing_uid in missing_uids:
