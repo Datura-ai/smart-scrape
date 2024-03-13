@@ -1,5 +1,6 @@
 import re
 from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
+from urllib.parse import urlparse
 
 VALID_DOMAINS = ["twitter.com", "x.com"]
 
