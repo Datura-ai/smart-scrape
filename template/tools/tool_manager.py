@@ -197,10 +197,14 @@ class ToolManager:
         bt.logging.info(f"Running tool: {tool_name} with args: {tool_args}")
 
         tool_instance.tool_manager = self
+        result = None
 
-        result = await tool_instance.ainvoke(tool_args)
+        try:
+            result = await tool_instance.ainvoke(tool_args)
+        except Exception as e:
+            bt.logging.error(f"Error running tool {tool_name}: {e}")
 
-        if tool_instance.send_event:
+        if tool_instance.send_event and result is not None:
             bt.logging.info(f"Sending event with data from {tool_name} tool")
 
             await tool_instance.send_event(
