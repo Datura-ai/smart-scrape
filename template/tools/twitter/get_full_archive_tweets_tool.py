@@ -3,7 +3,7 @@ import bittensor as bt
 from typing import Type
 from starlette.types import Send
 from pydantic import BaseModel, Field
-from template.services.twitter_api_wrapper import TwitterAPIClient
+from template.services.twitter_prompt_analyzer import TwitterPromptAnalyzer
 from template.tools.base import BaseTool
 
 
@@ -39,7 +39,7 @@ class GetFullArchiveTweetsTool(BaseTool):
             self.tool_manager.miner.config.miner.openai_fix_query_model
         )
 
-        client = TwitterAPIClient(
+        client = TwitterPromptAnalyzer(
             openai_query_model=openai_query_model,
             openai_fix_query_model=openai_fix_query_model,
         )

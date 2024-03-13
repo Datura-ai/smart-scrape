@@ -4,7 +4,7 @@ import bittensor as bt
 from pydantic import BaseModel, Field
 from starlette.types import Send
 from template.tools.base import BaseTool
-from template.services.twitter_api_wrapper import TwitterAPIClient
+from template.services.twitter_prompt_analyzer import TwitterPromptAnalyzer
 
 
 class GetRecentTweetsToolSchema(BaseModel):
@@ -40,7 +40,7 @@ class GetRecentTweetsTool(BaseTool):
             self.tool_manager.miner.config.miner.openai_fix_query_model
         )
 
-        client = TwitterAPIClient(
+        client = TwitterPromptAnalyzer(
             openai_query_model=openai_query_model,
             openai_fix_query_model=openai_fix_query_model,
         )
