@@ -33,7 +33,12 @@ from neurons.validators.utils.prompts import (
     extract_score_and_explanation,
 )
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
+from template.protocol import (
+    ScraperStreamingSynapse,
+    TwitterScraperTweet,
+    MinerTweet,
+    MinerTweetAuthor,
+)
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.reward_llm import RewardLLM
@@ -41,6 +46,7 @@ from neurons.validators.utils.prompts import ScoringPrompt
 import json
 from datetime import datetime
 import pytz
+from pydantic import ValidationError
 
 
 class TwitterContentRelevanceModel(BaseRewardModel):
@@ -165,7 +171,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
             miner_tweets_data = miner_tweets.get("data", [])
             # miner_tweets_meta = miner_tweets.get('meta', {})
-            # miner_tweets_users = miner_tweets.get('includes', {}).get('users', [])
+            miner_tweets_users = miner_tweets.get("includes", {}).get("users", [])
             miner_tweets_amount = miner_tweets.get("meta", {}).get("result_count", 0)
 
             # Assign completion links and validator tweets from the response
@@ -197,6 +203,13 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             )
             # If there is no corresponding miner tweet, append a score of 0
             if miner_tweet:
+                is_valid_miner_tweet = self.is_valid_miner_tweet(
+                    miner_tweet, miner_tweets_users
+                )
+
+                if not is_valid_miner_tweet:
+                    return 0
+
                 # If a corresponding miner tweet is found, extract its creation time and text
 
                 miner_tweet_text = miner_tweet["text"]
@@ -243,6 +256,38 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         except Exception as e:
             bt.logging.error(f"check_response_random_tweet: {str(e)}")
             return 0
+
+    def is_valid_miner_tweet(self, miner_tweet, miner_tweet_users):
+        try:
+            miner_tweet = MinerTweet(**miner_tweet)
+        except ValidationError as e:
+            bt.logging.error(f"Invalid miner tweet data: {e}")
+            return False
+
+        author = (
+            next(
+                (
+                    user
+                    for user in miner_tweet_users
+                    if user.get("id") == miner_tweet.author_id
+                ),
+                None,
+            )
+            or None
+        )
+
+        if not author:
+            return False
+
+        try:
+            miner_tweet_author = MinerTweetAuthor(**author)
+        except ValidationError as e:
+            bt.logging.error(
+                f"Invalid miner tweet author for tweet id {miner_tweet.id}: {e}"
+            )
+            return False
+
+        return True
 
     def get_scoring_text(
         self, prompt: str, content: str, response: bt.Synapse

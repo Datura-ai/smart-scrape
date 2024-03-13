@@ -13,7 +13,6 @@ from template.services.twitter_utils import TwitterUtils
 from template.services.web_search_utils import WebSearchUtils
 
 
-
 class IsAlive(bt.Synapse):
     answer: typing.Optional[str] = None
     completion: str = pydantic.Field(
@@ -46,6 +45,7 @@ class TwitterPromptAnalysisResult(BaseModel):
 class TwitterScraperMedia(BaseModel):
     media_url: str = ""
     type: str = ""
+
 
 class TwitterScraperUser(BaseModel):
     id: Optional[str] = ""
@@ -318,3 +318,20 @@ def extract_json_chunk(chunk):
     remaining_chunk = chunk[start_index:] if start_index is not None else ""
 
     return json_objects, remaining_chunk
+
+
+class MinerTweet(BaseModel):
+    id: str
+    author_id: str
+    text: str
+    possibly_sensitive: bool
+    edit_history_tweet_ids: List[str]
+    created_at: Optional[str] = ""
+    public_metrics: Dict[str, int]
+
+
+class MinerTweetAuthor(BaseModel):
+    id: str
+    name: str
+    username: str
+    created_at: str
