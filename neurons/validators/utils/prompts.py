@@ -219,9 +219,11 @@ system_link_content_relevance_template = """
 Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the level of relevance the tweet content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
 
 Return one of them:
-- Assign SM_SCS_PNK if the tweet content fails to mention any keywords or topics related to the question, indicating a lack of relevance.
-- Assign SM_SCS_BLE if the tweet content mentions at least one keyword or topic from the question but either engages with the question's core topics superficially or only tangentially.
-- Assign SM_SCS_GRN if the tweet content is highly relevant, incorporating multiple keywords or topics from the question and engaging deeply and meaningfully with the question's core topics.
+- Assign SM_SCS_PNK if the tweet content has no relevance to the question's topic, lacking any mention of keywords or themes related to the question. This score is for tweets that are completely unrelated to the question's topic, showing no connection or relevance to the intended subject matter.
+
+- Assign SM_SCS_BLE if the tweet content mentions at least one keyword or theme from the question but fails to provide meaningful engagement or insight into those topics. This includes superficial mentions that do not contribute to a deeper understanding or relevant discussion of the question. The content should have some connection to the topic but fails to provide meaningful insight or discussion related to the core questions.
+
+- Assign SM_SCS_GRN if the tweet content is directly relevant to the question, incorporating and engaging with multiple keywords or themes from the question in a way that provides depth, insight, or valuable information related to the question's core topics. The content should provide valuable insights, detailed discussion, or meaningful engagement with the question's main focus.
 
 Important scoring rules:
 - Identify keywords or topics from the question that are essential for the answer.
