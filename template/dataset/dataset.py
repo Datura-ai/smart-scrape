@@ -238,7 +238,7 @@ class MockTwitterQuestionsDataset:
             "global migration patterns",
             "venture capital",
             "space tourism",
-        ]®
+        ]
 
     def generate_question(self):
         # Randomly select a question template and a topic
