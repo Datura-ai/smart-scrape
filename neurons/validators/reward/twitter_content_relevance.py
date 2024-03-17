@@ -94,7 +94,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 for response in responses
                 if response.completion_links
                 for link in random.sample(
-                    response.completion_links, min(10, len(response.completion_links))
+                    response.completion_links, min(4, len(response.completion_links))
                 )
             ]
             unique_links = list(
