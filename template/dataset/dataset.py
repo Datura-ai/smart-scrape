@@ -245,7 +245,7 @@ class MockTwitterQuestionsDataset:
         topic = random.choice(self.topics)
 
         # Generate a question
-,        return template.format(topic)
+        return template.format(topic)
 
     def next(self):
         # Return a generated question
