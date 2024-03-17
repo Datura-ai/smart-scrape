@@ -325,7 +325,7 @@ class MinerTweet(BaseModel):
     id: str
     author_id: str
     text: str
-    possibly_sensitive: bool
+    possibly_sensitive: Optional[bool]
     edit_history_tweet_ids: List[str]
     created_at: Optional[str] = ""
     public_metrics: Dict[str, int]

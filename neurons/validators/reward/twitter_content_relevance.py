@@ -94,7 +94,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 for response in responses
                 if response.completion_links
                 for link in random.sample(
-                    response.completion_links, min(3, len(response.completion_links))
+                    response.completion_links, min(10, len(response.completion_links))
                 )
             ]
             unique_links = list(
@@ -301,8 +301,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             scoring_prompt_text = scoring_prompt.text(prompt, content)
 
             return scoring_prompt, [
-                {"role": "user", "content": scoring_prompt_text},
                 {"role": "system", "content": scoring_prompt.get_system_message()},
+                {"role": "user", "content": scoring_prompt_text},
             ]
         except Exception as e:
             error_message = f"Error in Prompt reward method: {str(e)}"
@@ -380,11 +380,11 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                     non_zero_scores[uid] = reward_e.reward
 
             bt.logging.info(
-                f"==================================Links Content scoring Zero Scores  ({len(zero_scores)} cases)=================================="
+                f"==================================Twitter Links Content scoring Zero Scores  ({len(zero_scores)} cases)=================================="
             )
             bt.logging.info(json.dumps(zero_scores))
             bt.logging.info(
-                f"==================================Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
+                f"==================================Twitter Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
             )
             bt.logging.info(json.dumps(non_zero_scores))
             return reward_events

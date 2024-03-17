@@ -152,8 +152,8 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 scoring_prompt_text = scoring_prompt.text(prompt, content)
 
             return scoring_prompt, [
-                {"role": "user", "content": scoring_prompt_text},
                 {"role": "system", "content": scoring_prompt.get_system_message()},
+                {"role": "user", "content": scoring_prompt_text},
             ]
         except Exception as e:
             bt.logging.error(f"Error in Prompt reward method: {str(e)}")

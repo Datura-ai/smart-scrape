@@ -333,11 +333,11 @@ class TwitterPromptAnalyzer:
                     )
                 )
 
-            bt.logging.info(
+            bt.logging.debug(
                 "Tweets fetched ==================================================="
             )
-            bt.logging.info(result_json)
-            bt.logging.info(
+            bt.logging.debug(result_json)
+            bt.logging.debug(
                 "================================================================"
             )
 
