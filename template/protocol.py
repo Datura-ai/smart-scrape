@@ -13,6 +13,7 @@ from template.services.twitter_utils import TwitterUtils
 from template.services.web_search_utils import WebSearchUtils
 
 
+
 class IsAlive(bt.Synapse):
     answer: typing.Optional[str] = None
     completion: str = pydantic.Field(
