@@ -11,8 +11,8 @@ class MockTwitterQuestionsDataset:
     def __init__(self):
         # Extended list of templates for questions
         self.question_templates = [
-            "What are the recent {} events?"
-            "Tell me the recent news about the {}"
+            "What are the recent {} events?",
+            "Tell me the recent news about the {}",
             "What's the current sentiment on Twitter about {}?",
             "Are there any breaking news tweets about {}?",
             "What are the latest viral tweets about {}?",
@@ -65,7 +65,7 @@ class MockTwitterQuestionsDataset:
             "What are the latest predictions for {} in the coming years?",
             "How is the {} addressing climate change?",
             "What are the emerging technologies in {}?",
-            "How is {} affecting international relations?",
+            # "How is {} affecting international relations?",
             "What are the current trends in {} investment?",
             "What's the future outlook for {}?",
         ]
@@ -245,7 +245,7 @@ class MockTwitterQuestionsDataset:
         topic = random.choice(self.topics)
 
         # Generate a question
-        return template.format(topic)
+,        return template.format(topic)
 
     def next(self):
         # Return a generated question
