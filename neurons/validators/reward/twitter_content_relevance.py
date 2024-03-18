@@ -94,7 +94,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 for response in responses
                 if response.completion_links
                 for link in random.sample(
-                    response.completion_links, min(4, len(response.completion_links))
+                    response.completion_links, min(5, len(response.completion_links))
                 )
             ]
             unique_links = list(
@@ -360,8 +360,11 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                                     score / 10.0
                                 )  # Adjust score scaling as needed
                     if total_score > 0:
-                        average_score = total_score / len(response.validator_tweets)
-                        reward_event.reward = average_score * apify_score
+                        average_score = total_score / 10 * apify_score # len(response.validator_tweets)
+                        reward_event.reward = self.calculate_adjusted_score(
+                            links_count=len(response.completion_links),
+                            score=average_score,
+                        )
                 else:
                     bt.logging.info(f"UID '{uid}' has no validator tweets.")
                     reward_event.reward = 0  # Handle case with no validator tweets

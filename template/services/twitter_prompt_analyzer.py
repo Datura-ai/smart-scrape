@@ -281,6 +281,7 @@ class TwitterPromptAnalyzer:
             )
 
     async def analyse_prompt_and_fetch_tweets(self, prompt, is_recent_tweets=True):
+        prompt_analysis = TwitterPromptAnalysisResult()  # Initialize prompt_analysis here
         try:
             query, prompt_analysis = await self.generate_and_analyze_query(prompt)
 
