@@ -163,7 +163,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         try:
             tweet_score = 0
 
-            completion = self.get_successful_completion(response=response)
+            completion = self.get_successful_twitter_completion(response=response)
             if not completion:
                 return 0
 
@@ -284,7 +284,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
     ) -> BaseRewardEvent:
         try:
             if response:
-                completion = self.get_successful_completion(response=response)
+                completion = self.get_successful_twitter_completion(response=response)
                 if not completion:
                     return None
 
@@ -314,7 +314,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
-            completions: List[str] = self.get_successful_completions(responses)
+            completions: List[str] = self.get_successful_twitter_completions(responses)
             bt.logging.debug(
                 f"TwitterContentRelevanceModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
             )

@@ -82,7 +82,7 @@ class BaseRewardModel:
 
     def get_successful_completion(self, response: ScraperStreamingSynapse):
         # Check if the response is successful.
-        if response.dendrite.status_code == 200 and response.completion_links:
+        if response.dendrite.status_code == 200:
             # Get the completion from the successful response.
             successful_completion = response.completion.strip()
 
@@ -98,6 +98,7 @@ class BaseRewardModel:
     def get_successful_completions(self, responses: List[ScraperStreamingSynapse]):
         successful_completions = [self.get_successful_completion(response) for response in responses]
         return [completion for completion in successful_completions if completion is not None]
+    
 
     def get_successful_twitter_completion(self, response: ScraperStreamingSynapse):
         # Check if the response is successful.
@@ -113,6 +114,10 @@ class BaseRewardModel:
 
             return successful_completion.strip()
         return None
+    
+    def get_successful_twitter_completions(self, responses: List[ScraperStreamingSynapse]):
+        successful_completions = [self.get_successful_twitter_completion(response) for response in responses]
+        return [completion for completion in successful_completions if completion is not None]
 
     def get_successful_search_summary_completion(
         self, response: ScraperStreamingSynapse
