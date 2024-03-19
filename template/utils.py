@@ -324,43 +324,84 @@ async def save_logs_from_miner(
                     "completion": completion,
                     "prompt_analysis": prompt_analysis.dict(),
                     "data": data,
-                    "miner_uid": self.miner.my_subnet_uid,
-                    "hotkey": synapse.axon.hotkey,
-                    "coldkey": next(
-                        (
-                            axon.coldkey
-                            for axon in self.miner.metagraph.axons
-                            if axon.hotkey == synapse.axon.hotkey
+                    "miner": {
+                        "uid": self.miner.my_subnet_uid,
+                        "hotkey": synapse.axon.hotkey,
+                        "coldkey": next(
+                            (
+                                axon.coldkey
+                                for axon in self.miner.metagraph.axons
+                                if axon.hotkey == synapse.axon.hotkey
+                            ),
+                            None,  # Provide a default value here, such as None or an appropriate placeholder
                         ),
-                        None,  # Provide a default value here, such as None or an appropriate placeholder
-                    ),
+                    },
                 }
             ],
         )
     )
 
 
-async def save_logs_in_chunks(self, prompt, responses, uids, rewards, weights):
+async def save_logs_in_chunks(
+    self,
+    prompt,
+    responses,
+    uids,
+    rewards,
+    summary_rewards,
+    twitter_rewards,
+    search_rewards,
+    tweet_scores,
+    search_scores,
+    weights,
+    neuron,
+):
     try:
         logs = [
             {
                 "completion": response.completion,
                 "prompt_analysis": response.prompt_analysis.dict(),
                 "data": response.miner_tweets,
-                "miner_uid": uid,
                 "score": reward,
-                "hotkey": response.axon.hotkey,
-                "coldkey": next(
-                    (
-                        axon.coldkey
-                        for axon in self.metagraph.axons
-                        if axon.hotkey == response.axon.hotkey
-                    ),
-                    None,  # Provide a default value here, such as None or an appropriate placeholder
-                ),
+                "summary_score": summary_reward,
+                "twitter_score": twitter_reward,
+                "search_score": search_reward,
+                "tweet_scores": tweet_scores,
+                "link_scores": search_scores,
                 "weight": weights.get(str(uid)),
+                "miner": {
+                    "uid": uid,
+                    "hotkey": response.axon.hotkey,
+                    "coldkey": next(
+                        (
+                            axon.coldkey
+                            for axon in self.metagraph.axons
+                            if axon.hotkey == response.axon.hotkey
+                        ),
+                        None,  # Provide a default value here, such as None or an appropriate placeholder
+                    ),
+                },
+                "validator": {
+                    "uid": neuron.uid,
+                    "hotkey": neuron.dendrite.keypair.ss58_address,
+                    "coldkey": next(
+                        (
+                            nr.coldkey
+                            for nr in self.metagraph.neurons
+                            if nr.hotkey == neuron.dendrite.keypair.ss58_address
+                        ),
+                        None,
+                    ),
+                },
             }
-            for response, uid, reward in zip(responses, uids.tolist(), rewards.tolist())
+            for response, uid, reward, summary_reward, twitter_reward, search_reward in zip(
+                responses,
+                uids.tolist(),
+                rewards.tolist(),
+                summary_rewards.tolist(),
+                twitter_rewards.tolist(),
+                search_rewards.tolist(),
+            )
         ]
 
         chunk_size = 50

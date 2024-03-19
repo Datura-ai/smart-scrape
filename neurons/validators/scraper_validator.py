@@ -42,7 +42,13 @@ class ScraperValidator:
         self.seed = 1234
         self.neuron = neuron
         self.timeout = 120
-        self.tools = ["Recent Tweets", "Web Search", "Wikipedia Search", "ArXiv Search", "Youtube Search"]
+        self.tools = [
+            "Recent Tweets",
+            "Web Search",
+            "Wikipedia Search",
+            "ArXiv Search",
+            "Youtube Search",
+        ]
 
         # Init device.
         bt.logging.debug("loading", "device")
@@ -170,13 +176,21 @@ class ScraperValidator:
             rewards = torch.zeros(len(responses), dtype=torch.float32).to(
                 self.neuron.config.neuron.device
             )
+
+            all_rewards = []
+            val_score_responses_list = []
+
             for weight_i, reward_fn_i in zip(
                 self.reward_weights, self.reward_functions
             ):
                 start_time = time.time()
-                reward_i_normalized, reward_event = reward_fn_i.apply(
-                    task.base_text, responses, task.task_name, uids
+                reward_i_normalized, reward_event, val_score_responses = (
+                    reward_fn_i.apply(task.base_text, responses, task.task_name, uids)
                 )
+
+                all_rewards.append(reward_i_normalized)
+                val_score_responses_list.append(val_score_responses)
+
                 rewards += weight_i * reward_i_normalized.to(
                     self.neuron.config.neuron.device
                 )
@@ -261,6 +275,9 @@ class ScraperValidator:
                 responses=responses,
                 uids=uids,
                 rewards=rewards,
+                all_rewards=all_rewards,
+                val_score_responses_list=val_score_responses_list,
+                neuron=self.neuron,
             )
 
             return rewards
@@ -310,10 +327,10 @@ class ScraperValidator:
                 return
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
-                task=task, 
+                task=task,
                 strategy=strategy,
                 is_only_allowed_miner=False,
-                tools=self.tools
+                tools=self.tools,
             )
 
             final_synapses = []
@@ -407,10 +424,9 @@ class ScraperValidator:
                 specified_uids=specified_uids,
                 tools=self.tools,
             )
-            
 
             final_synapses = []
-            async for value in  process_async_responses(async_responses):
+            async for value in process_async_responses(async_responses):
                 if isinstance(value, bt.Synapse):
                     final_synapses.append(value)
                 else:
@@ -424,14 +440,16 @@ class ScraperValidator:
 
             yield "Initiating scoring system. Please wait for the response... \n\n"
             start_compute_time = time.time()
-            rewards_task = asyncio.create_task(self.compute_rewards_and_penalties(
-                event=event,
-                prompt=prompt,
-                task=task,
-                responses=final_synapses,
-                uids=uids,
-                start_time=start_time,
-            ))
+            rewards_task = asyncio.create_task(
+                self.compute_rewards_and_penalties(
+                    event=event,
+                    prompt=prompt,
+                    task=task,
+                    responses=final_synapses,
+                    uids=uids,
+                    start_time=start_time,
+                )
+            )
 
             while not rewards_task.done():
                 await asyncio.sleep(30)  # Check every 30 seconds if the task is done

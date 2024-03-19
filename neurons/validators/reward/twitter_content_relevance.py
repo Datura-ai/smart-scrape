@@ -177,14 +177,15 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             # Assign completion links and validator tweets from the response
             completion_links = response.completion_links
 
-            if not completion_links \
-                or len(completion_links) < 2 \
-                or miner_tweets_amount == 0 \
-                or not response.validator_tweets:
+            if (
+                not completion_links
+                or len(completion_links) < 2
+                or miner_tweets_amount == 0
+                or not response.validator_tweets
+            ):
                 # Ensure there are at least two twitter links provided by miners and check for the presence of miner and validator tweets
                 return 0
 
-           
             # Initialize a list to hold scores for each validator tweet
             tweet_scores = []
             # Iterate over all validator tweets instead of selecting a random one
@@ -196,7 +197,11 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
                 # Find the corresponding miner tweet by ID
                 miner_tweet = next(
-                    (tweet for tweet in miner_tweets_data if tweet["id"] == val_tweet_id),
+                    (
+                        tweet
+                        for tweet in miner_tweets_data
+                        if tweet["id"] == val_tweet_id
+                    ),
                     None,
                 )
 
@@ -207,7 +212,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                     if not self.is_valid_miner_tweet(miner_tweet, miner_tweets_users):
                         tweet_scores.append(0)
                         continue
-                    
+
                     miner_tweet_text = miner_tweet["text"]
 
                     if not miner_tweet_text or re.search(
@@ -218,20 +223,27 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
                     # Prepare texts for comparison by normalizing them
                     miner_text_compared = self.format_text_for_match(miner_tweet_text)
-                    validator_text_compared = self.format_text_for_match(val_tweet_content)
+                    validator_text_compared = self.format_text_for_match(
+                        val_tweet_content
+                    )
 
                     if miner_text_compared == validator_text_compared:
                         tweet_score = 1
 
                     converted_val_tweet_created_at = (
-                        datetime.strptime(val_tweet_created_at, "%a %b %d %H:%M:%S %z %Y")
+                        datetime.strptime(
+                            val_tweet_created_at, "%a %b %d %H:%M:%S %z %Y"
+                        )
                         .astimezone(pytz.UTC)
                         .strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
                         + "Z"
                     )
 
-                    if not miner_tweet.get("created_at") == converted_val_tweet_created_at:
-                        tweet_score = 0.5 
+                    if (
+                        not miner_tweet.get("created_at")
+                        == converted_val_tweet_created_at
+                    ):
+                        tweet_score = 0.5
 
                 tweet_scores.append(tweet_score)
 
@@ -335,6 +347,16 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
             reward_events = []
             scoring_prompt = ScoringPrompt()
+
+            extracted_val_score_responses = (
+                {
+                    key: scoring_prompt.extract_score(val_score_responses[key])
+                    for key in val_score_responses.keys()
+                }
+                if val_score_responses
+                else {}
+            )
+
             # apify_score,
             for apify_score, response, uid_tensor in zip(
                 scores,
@@ -387,7 +409,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 f"==================================Twitter Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
             )
             bt.logging.info(json.dumps(non_zero_scores))
-            return reward_events
+            return reward_events, extracted_val_score_responses
         except Exception as e:
             error_message = f"Link Content Relevance get_rewards: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
@@ -397,4 +419,4 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
                 reward_events.append(reward_event)
-            return reward_events
+            return reward_events, {}

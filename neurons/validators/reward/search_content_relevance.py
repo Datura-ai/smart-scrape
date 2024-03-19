@@ -139,11 +139,10 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
                 if not completion:
                     return None
-                
+
             if content is None:
                 bt.logging.debug("Twitter Content is empty.")
                 return None
-
 
             scoring_prompt_text = None
             scoring_prompt = SearchSummaryRelevancePrompt()
@@ -166,6 +165,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             val_score_responses = asyncio.get_event_loop().run_until_complete(
                 self.process_links(prompt=prompt, responses=responses)
             )
+
             bt.logging.info(
                 f"WebSearchContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
             )
@@ -175,6 +175,15 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
             reward_events = []
             scoring_prompt = ScoringPrompt()
+
+            extracted_val_score_responses = (
+                {
+                    key: scoring_prompt.extract_score(val_score_responses[key])
+                    for key in val_score_responses.keys()
+                }
+                if val_score_responses
+                else {}
+            )
 
             for apify_score, response, uid_tensor in zip(scores, responses, uids):
                 uid = uid_tensor.item()
@@ -191,7 +200,9 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                             score_result = val_score_responses.get(val_url, None)
                             if score_result is not None:
                                 score = scoring_prompt.extract_score(score_result)
-                                total_score += score / 10.0  # Adjust score scaling as needed
+                                total_score += (
+                                    score / 10.0
+                                )  # Adjust score scaling as needed
 
                     if total_score > 0:
                         average_score = total_score / num_links
@@ -223,7 +234,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 f"==================================Web Search Content Relevance scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
             )
             bt.logging.info(json.dumps(non_zero_scores))
-            return reward_events
+            return reward_events, extracted_val_score_responses
         except Exception as e:
             error_message = f"Search Summary Relevance get_rewards: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
@@ -233,4 +244,4 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
                 reward_events.append(reward_event)
-            return reward_events
+            return reward_events, {}
