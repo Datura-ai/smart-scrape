@@ -111,16 +111,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
             random_link = random.choice(validator_links)
 
-            search_result_link = next(
-                (
-                    result
-                    for result in search_results["content"]
-                    if result["link"] == random_link["url"]
-                ),
-                None,
-            )
-
-            if search_result_link:
+            if random_link["url"] in str(search_results):
                 link_score = 1
 
             return link_score
@@ -139,11 +130,10 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
                 if not completion:
                     return None
-                
+
             if content is None:
                 bt.logging.debug("Twitter Content is empty.")
                 return None
-
 
             scoring_prompt_text = None
             scoring_prompt = SearchSummaryRelevancePrompt()
@@ -191,7 +181,9 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                             score_result = val_score_responses.get(val_url, None)
                             if score_result is not None:
                                 score = scoring_prompt.extract_score(score_result)
-                                total_score += score / 10.0  # Adjust score scaling as needed
+                                total_score += (
+                                    score / 10.0
+                                )  # Adjust score scaling as needed
 
                     if total_score > 0:
                         average_score = total_score / num_links
