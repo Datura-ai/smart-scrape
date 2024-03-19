@@ -37,7 +37,7 @@ class ScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
         self.streaming = True
         self.query_type = "text"
-        self.model = "gpt-4-1106-preview"
+        self.model = "gpt-3.5-turbo-0125"
         self.weight = 1
         self.seed = 1234
         self.neuron = neuron
