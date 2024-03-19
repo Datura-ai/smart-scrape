@@ -222,6 +222,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
                     if miner_text_compared == validator_text_compared:
                         tweet_score = 1
+                    else:
+                        tweet_score = 0
 
                     converted_val_tweet_created_at = (
                         datetime.strptime(val_tweet_created_at, "%a %b %d %H:%M:%S %z %Y")
@@ -231,7 +233,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                     )
 
                     if not miner_tweet.get("created_at") == converted_val_tweet_created_at:
-                        tweet_score = 0.5 
+                        tweet_score = 0 
 
                 tweet_scores.append(tweet_score)
 
