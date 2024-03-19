@@ -30,9 +30,8 @@ from neurons.validators.utils.prompts import (
     LinkContentPrompt,
     extract_score_and_explanation,
 )
-from transformers import AutoTokenizer, AutoModelForCausalLM
 
-from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
+from template.protocol import ScraperStreamingSynapse
 from neurons.validators.reward.reward_llm import RewardLLM
 import json
 
@@ -51,9 +50,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
         self.scoring_type = scoring_type
 
-    def get_scoring_text(self, prompt: str, response: bt.Synapse) -> BaseRewardEvent:
+    def get_scoring_text(self, prompt: str, response: ScraperStreamingSynapse) -> BaseRewardEvent:
         try:
-            completion = self.get_successful_completion(response=response)
+            completion = self.get_successful_twitter_completion(response=response)
 
             if not completion:
                 return None
@@ -89,18 +88,18 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 scoring_prompt_text = scoring_prompt.text(prompt, completion)
 
             return scoring_prompt, [
-                {"role": "user", "content": scoring_prompt_text},
                 {"role": "system", "content": scoring_prompt.get_system_message()},
+                {"role": "user", "content": scoring_prompt_text},
             ]
         except Exception as e:
             bt.logging.error(f"Summary Relevance get_scoring_text: {str(e)}")
             return None
 
     def get_rewards(
-        self, prompt: str, responses: List[bt.Synapse], name: str, uids
+        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
-            completions: List[str] = self.get_successful_completions(responses)
+            completions: List[str] = self.get_successful_twitter_completions(responses)
             bt.logging.info(f"SummaryRelevanceRewardModel | PROMPT: {prompt}")
             bt.logging.debug(
                 f"SummaryRelevanceRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
@@ -114,6 +113,12 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             filter_scoring_messages = [
                 msg for msg in scoring_messages if msg is not None
             ]
+            bt.logging.debug(
+                f"SummaryRelevanceRewardModel | Calculating {len(filter_scoring_messages)} rewards (typically < 1 sec/reward)."
+            )
+            bt.logging.trace(
+                f"SummaryRelevanceRewardModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
+            )
             # # Filter out None items from scoring_messages
             # messages = []
             # messages.extend({index: msg_content} for index, (_, msg_content) in enumerate(scoring_messages) if msg_content)

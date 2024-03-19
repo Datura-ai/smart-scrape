@@ -17,8 +17,11 @@ from neurons.validators.penalty import (
     LinkValidationPenaltyModel,
 )
 from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
-from neurons.validators.reward.link_content_relevance import (
-    LinkContentRelevanceModel,
+from neurons.validators.reward.twitter_content_relevance import (
+    TwitterContentRelevanceModel,
+)
+from neurons.validators.reward.search_content_relevance import (
+    WebSearchContentRelevanceModel,
 )
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask
@@ -38,7 +41,8 @@ class ScraperValidator:
         self.weight = 1
         self.seed = 1234
         self.neuron = neuron
-        self.timeout = 120
+        self.timeout = 150
+        self.tools = ["Recent Tweets", "Web Search", "Wikipedia Search", "ArXiv Search", "Youtube Search"]
 
         # Init device.
         bt.logging.debug("loading", "device")
@@ -49,7 +53,8 @@ class ScraperValidator:
         self.reward_weights = torch.tensor(
             [
                 self.neuron.config.reward.summary_relevance_weight,
-                self.neuron.config.reward.link_content_weight,
+                self.neuron.config.reward.twitter_content_weight,
+                self.neuron.config.reward.web_search_relavance_weight,
             ],
             dtype=torch.float32,
         ).to(self.neuron.config.neuron.device)
@@ -64,7 +69,7 @@ class ScraperValidator:
 
         self.reward_llm = RewardLLM()
         if (
-            self.neuron.config.reward.link_content_weight > 0
+            self.neuron.config.reward.twitter_content_weight > 0
             or self.neuron.config.reward.summary_relevance_weight > 0
         ) and not self.neuron.config.neuron.is_disable_tokenizer_reward:
             self.reward_llm.init_pipe_zephyr()
@@ -80,13 +85,24 @@ class ScraperValidator:
                 else MockRewardModel(RewardModelType.summary_relavance_match.value)
             ),
             (
-                LinkContentRelevanceModel(
+                TwitterContentRelevanceModel(
                     device=self.neuron.config.neuron.device,
                     scoring_type=RewardScoringType.summary_relevance_score_template,
                     llm_reward=self.reward_llm,
                 )
-                if self.neuron.config.reward.link_content_weight > 0
+                if self.neuron.config.reward.twitter_content_weight > 0
                 else MockRewardModel(RewardModelType.link_content_match.value)
+            ),
+            (
+                WebSearchContentRelevanceModel(
+                    device=self.neuron.config.neuron.device,
+                    scoring_type=RewardScoringType.search_relevance_score_template,
+                    llm_reward=self.reward_llm,
+                )
+                if self.neuron.config.reward.web_search_relavance_weight > 0
+                else MockRewardModel(
+                    RewardModelType.search_summary_relevance_match.value
+                )
             ),
         ]
 
@@ -103,6 +119,7 @@ class ScraperValidator:
         is_only_allowed_miner=True,
         is_intro_text=False,
         specified_uids=None,
+        tools=[],
     ):
         task_name = task.task_name
         prompt = task.compose_prompt()
@@ -126,6 +143,7 @@ class ScraperValidator:
             model=self.model,
             seed=self.seed,
             is_intro_text=is_intro_text,
+            tools=tools,
         )
 
         # Make calls to the network with the prompt.
@@ -139,15 +157,6 @@ class ScraperValidator:
 
         return async_responses, uids, event, start_time
 
-    def process_content_links(self, responses):
-        try:
-            for response in responses:
-                com_links = self.twitter_api.find_twitter_links(response.completion)
-                response.completion_links = com_links
-        except Exception as e:
-            bt.logging.error(f"Error in process_content_links: {e}")
-            return
-
     async def compute_rewards_and_penalties(
         self, event, prompt, task, responses, uids, start_time
     ):
@@ -157,9 +166,6 @@ class ScraperValidator:
                 return
 
             bt.logging.info("Computing rewards and penalties")
-
-            self.process_content_links(responses)
-            # await self.process_tweets(responses)
 
             rewards = torch.zeros(len(responses), dtype=torch.float32).to(
                 self.neuron.config.neuron.device
@@ -179,7 +185,7 @@ class ScraperValidator:
                 execution_time = time.time() - start_time
                 bt.logging.trace(str(reward_fn_i.name), reward_i_normalized.tolist())
                 bt.logging.info(
-                    f"Applied reward function: {reward_fn_i.name} with reward: {reward_event.get(reward_fn_i.name, 'N/A')} in {execution_time / 60:.2f} minutes"
+                    f"Applied reward function: {reward_fn_i.name} in {execution_time / 60:.2f} minutes"
                 )
 
             for penalty_fn_i in self.penalty_functions:
@@ -195,7 +201,7 @@ class ScraperValidator:
                     event[penalty_fn_i.name + "_applied"] = applied_penalty_i.tolist()
                 bt.logging.trace(str(penalty_fn_i.name), applied_penalty_i.tolist())
                 bt.logging.info(
-                    f"Applied penalty function: {penalty_fn_i.name} with reward: {adjusted_penalty_i.tolist()} in {penalty_execution_time:.2f} seconds"
+                    f"Applied penalty function: {penalty_fn_i.name} in {penalty_execution_time:.2f} seconds"
                 )
 
             scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)
@@ -278,14 +284,14 @@ class ScraperValidator:
         tasks = [resp for resp in async_responses]
         responses = await asyncio.gather(*tasks)
         for response in responses:
-            stream_text = ''.join([chunk[1] for chunk in response if not chunk[0]])
+            stream_text = "".join([chunk[1] for chunk in response if not chunk[0]])
             if stream_text:
                 yield stream_text  # Yield stream text as soon as it's available
             # Instead of returning, yield final synapse objects with a distinct flag
             final_synapse = next((chunk[1] for chunk in response if chunk[0]), None)
             if final_synapse:
                 yield (True, final_synapse)  # Yield final synapse with a flag
-                
+
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
             dataset = MockTwitterQuestionsDataset()
@@ -304,7 +310,10 @@ class ScraperValidator:
                 return
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
-                task=task, strategy=strategy, is_only_allowed_miner=False
+                task=task, 
+                strategy=strategy,
+                is_only_allowed_miner=False,
+                tools=self.tools
             )
 
             final_synapses = []
@@ -313,7 +322,7 @@ class ScraperValidator:
                     final_synapses.append(value)
                 else:
                     pass
-                    
+
             await self.compute_rewards_and_penalties(
                 event=event,
                 prompt=prompt,
@@ -329,6 +338,8 @@ class ScraperValidator:
     async def organic(self, query):
         try:
             prompt = query["content"]
+            tools = query.get("tools", [])
+
             task_name = "augment"
             task = TwitterTask(
                 base_text=prompt,
@@ -346,6 +357,7 @@ class ScraperValidator:
                 strategy=QUERY_MINERS.RANDOM,
                 is_only_allowed_miner=True,
                 is_intro_text=True,
+                tools=tools,
             )
             final_synapses = []
             for response in async_responses:
@@ -354,6 +366,7 @@ class ScraperValidator:
                         final_synapses.append(value)
                     else:
                         yield value
+
             async def process_and_score_responses():
                 await self.compute_rewards_and_penalties(
                     event=event,
@@ -372,6 +385,7 @@ class ScraperValidator:
     async def organic_specified(self, query, specified_uids=None):
         try:
             prompt = query["content"]
+            tools = query.get("tools", [])
 
             task_name = "augment"
             task = TwitterTask(
@@ -391,27 +405,48 @@ class ScraperValidator:
                 strategy=QUERY_MINERS.ALL,
                 is_only_allowed_miner=False,
                 specified_uids=specified_uids,
+                tools=self.tools,
             )
+            
 
             final_synapses = []
-            async for value in process_async_responses(async_responses):
+            async for value in  process_async_responses(async_responses):
                 if isinstance(value, bt.Synapse):
                     final_synapses.append(value)
                 else:
                     pass
-            rewards = await self.compute_rewards_and_penalties(
+
+            for uid_tensor, response in zip(uids, final_synapses):
+                yield f"Miner ID: {uid_tensor.item()} Completion Output: \n\n"
+                yield "----------------------------------------\n\n"
+                yield f"{response.completion}\n\n"
+                yield "\n\n======================================================================================================================================================\n\n"
+
+            yield "Initiating scoring system. Please wait for the response... \n\n"
+            start_compute_time = time.time()
+            rewards_task = asyncio.create_task(self.compute_rewards_and_penalties(
                 event=event,
                 prompt=prompt,
                 task=task,
                 responses=final_synapses,
                 uids=uids,
                 start_time=start_time,
-            )
-            for uid_tensor, reward, response in zip(uids, rewards.tolist(), final_synapses):
+            ))
+
+            while not rewards_task.done():
+                await asyncio.sleep(30)  # Check every 30 seconds if the task is done
+                elapsed_time = time.time() - start_compute_time
+                if elapsed_time > 60:  # If more than one minute has passed
+                    yield f"Waiting for reward scoring... {elapsed_time // 60} minutes elapsed.\n\n"
+                    start_compute_time = time.time()  # Reset the timer
+
+            rewards = await rewards_task
+
+            yield "\n\n======================================================================================================================================================\n\n"
+            for uid_tensor, reward, response in zip(
+                uids, rewards.tolist(), final_synapses
+            ):
                 yield f"Miner ID: {uid_tensor.item()} - Reward: {reward:.2f}\n\n"
-                yield "----------------------------------------\n\n"
-                yield f"Miner's Completion Output:\n{response.completion}\n\n"
-                yield "========================================\n\n"
 
             missing_uids = set(specified_uids) - set(uid.item() for uid in uids)
             for missing_uid in missing_uids:

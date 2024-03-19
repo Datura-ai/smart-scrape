@@ -59,6 +59,17 @@ class TwitterScraperActor:
                 author = item.get("author", {})
 
                 tweet = TwitterScraperTweet(
+                    id=item.get("id"),
+                    full_text=item.get("text"),
+                    reply_count=item.get("replyCount"),
+                    retweet_count=item.get("retweetCount"),
+                    like_count=item.get("likeCount"),
+                    quote_count=item.get("quoteCount"),
+                    url=item.get("url"),
+                    created_at=item.get("createdAt"),
+                    is_quote_tweet=item.get("isQuote"),
+                    is_retweet=item.get("isRetweet"),
+                    media=media_list,
                     user=TwitterScraperUser(
                         id=author.get("id"),
                         created_at=author.get("createdAt"),
@@ -73,17 +84,6 @@ class TwitterScraperActor:
                         name=author.get("name"),
                         username=author.get("userName"),
                     ),
-                    id=item.get("id"),
-                    full_text=item.get("text"),
-                    reply_count=item.get("replyCount"),
-                    retweet_count=item.get("retweetCount"),
-                    like_count=item.get("likeCount"),
-                    quote_count=item.get("quoteCount"),
-                    url=item.get("url"),
-                    created_at=item.get("createdAt"),
-                    is_quote_tweet=item.get("isQuote"),
-                    is_retweet=item.get("isRetweet"),
-                    media=media_list,
                 )
 
                 tweets.append(tweet)

@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import MessagesContainer from "./MessagesContainer";
 import InputBar from "./InputBar";
-import { fetchAnalyseTweetsSummaryMessage} from "../../services/api";
+import { fetchAnalyseTweetsSummaryMessage } from "../../services/api";
 import { EventSourceMessage } from "@microsoft/fetch-event-source";
 import { Message } from "../../types/Message";
 
 const ChatWindow: React.FC = () => {
   const [uids, setUids] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const texts = useRef<{ role: string; text: string }[]>([]);
+
   const [inputEnabled, setInputEnabled] = useState<boolean>(true);
 
   const controller = useRef<AbortController>(new AbortController());
@@ -24,6 +26,7 @@ const ChatWindow: React.FC = () => {
   // }, []);
 
   const handleSendMessage = (newMessage: string, variations: number) => {
+    texts.current = [];
     setMessages((prevState) => [
       ...prevState,
       { author: "user", text: newMessage, type: "text" },
@@ -63,13 +66,39 @@ const ChatWindow: React.FC = () => {
     };
 
     const onmessage = (event: EventSourceMessage) => {
-      setMessages((prevState) => [
-        ...prevState.slice(0, -1),
-        {
-          ...prevState[prevState.length - 1],
-          text: prevState[prevState.length - 1].text + event.data,
-        },
-      ]);
+      let data: { type: string; content: string; role?: string };
+
+      try {
+        data = JSON.parse(event.data);
+      } catch (error) {
+        data = { type: "text", content: event.data, role: "" };
+      }
+
+      if (data.type === "text") {
+        const role = data.role as string;
+
+        const textItem = texts.current.find((text) => text.role === role);
+
+        if (textItem) {
+          textItem.text += data.content as string;
+        } else {
+          texts.current.push({ role, text: data.content as string });
+        }
+
+        const text = texts.current.reduce((acc, text) => acc + text.text, "");
+
+        setMessages((prevState) => [
+          ...prevState.slice(0, -1),
+          {
+            ...prevState[prevState.length - 1],
+            text,
+          },
+        ]);
+      } else if (data.type === "tweets") {
+        console.log("Tweets: ", data);
+      } else if (data.type === "search") {
+        console.log("Search results: ", data);
+      }
     };
 
     const onerror = (err: any) => {
@@ -112,8 +141,9 @@ const ChatWindow: React.FC = () => {
     ) {
       let messagesToSend = [];
       messagesToSend.push({
-        role: 'user',
+        role: "user",
         content: messages[messages.length - 2].text,
+        tools: ["Recent Tweets", "Web Search"],
       });
 
       fetchAnalyseTweetsSummaryMessage(
@@ -130,7 +160,10 @@ const ChatWindow: React.FC = () => {
 
   return (
     <div className="flex-1 p:2 mr-2 sm:p-6 justify-between flex flex-col h-full w-full relative">
-      <MessagesContainer messages={messages} onSendMessage={handleSendMessage} />
+      <MessagesContainer
+        messages={messages}
+        onSendMessage={handleSendMessage}
+      />
       <InputBar
         onSendMessage={handleSendMessage}
         enabled={inputEnabled}

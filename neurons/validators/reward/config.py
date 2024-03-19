@@ -25,11 +25,13 @@ class RewardModelType(Enum):
     sentence_match_penalty = "sentence_match_penalty"
     summary_relavance_match = "summary_relavance_match"
     link_content_match = "link_content_match"
+    search_summary_relevance_match = "search_summary_relevance_match"
 
 
 class RewardScoringType(Enum):
     summary_relevance_score_template = "summary_relevance_score_template"
     link_content_relevance_template = "link_content_relevance_template"
+    search_relevance_score_template = "search_relevance_score_template"
 
 
 @dataclass(frozen=True)
@@ -38,5 +40,6 @@ class DefaultRewardFrameworkConfig:
     Note: All the weights should add up to 1.0.
     """
 
-    summary_relevance_weight: float = 0.5
-    link_content_weight: float = 0.5
+    summary_relevance_weight: float = 0.4
+    twitter_content_weight: float = 0.5
+    web_search_relavance_weight: float = 0.1

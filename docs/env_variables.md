@@ -5,42 +5,56 @@ This comprehensive guide is designed to assist you in configuring the environmen
 ## Detailed Steps for Environment Variable Configuration
 
 ### Prerequisites
+
 - Access to a terminal interface.
 - Accounts on OpenAI, Weights & Biases, and Twitter Developer Portal.
 
 ### Setting Up Variables
+
 Here's a breakdown of the environment variables necessary for the Smart-Scrape system, with detailed information on their significance for Validators and Miners:
 
 1. **OPENAI_API_KEY**
+
    - **Usage**: Authenticates with the OpenAI API.
    - **How to Obtain**: Sign up or log in at [OpenAI API](https://beta.openai.com/signup/), navigate to the API section, and generate a key.
    - **Required for**: Validator and Miners.
 
 2. **TWITTER_BEARER_TOKEN**
+
    - **Usage**: Grants access to the Twitter API.
    - **How to Obtain**: Create a Twitter Developer account, create an app at [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard), and generate a token.
    - **Required for**: Miners exclusively.
 
 3. **WANDB_API_KEY**
+
    - **Usage**: For experiment tracking with Weights & Biases.
    - **How to Obtain**: Sign up or log in at [Weights & Biases](https://wandb.ai/), and generate a key in your account settings.
    - **Required for**: Validator and Miners.
 
 4. **EXPECTED_ACCESS_KEY**
+
    - **Usage**: Secures access to the validator service.
    - **How to Create**: Generate a unique, strong, and random string.
    - **Required for**: Validators exclusively.
 
 5. **APIFY_API_KEY**
+
    - **Usage**: Used for Apify actors
    - **How to Create**: Sign up or log in at [Apify](https://apify.com/), and generate a key in your account settings.
+
 6. **URL_SUBNET_18**
+
    - **Usage**: URL for Subnet 18, utilized for scoring the relevance of summaries.
    - **How to Create**: Generate a unique, strong, and random string.
    - **Required for**: Validators exclusively.
 
+7. **SERPAPI_API_KEY**
+   - **Usage**: Used to search web using Serp API
+   - **How to Create**: Sign up or log in at [Serp API](https://serpapi.com/), and generate a key in your account settings.
+   - **Required for**: Miners exclusively.
 
 ### Executing Commands for Setting Environment Variables
+
 To set the environment variables, open a terminal and replace `<your_key_here>` with your actual keys. For Validators, secure and authenticated access is crucial:
 
 ```bash
@@ -53,6 +67,7 @@ export URL_SUBNET_18=<your_url_subent_18>
 ```
 
 ### Setting Environment Variables Using `.bashrc`
+
 If you prefer to use `.bashrc` for setting up environment variables, execute these commands:
 
 ```bash

@@ -21,7 +21,9 @@ import bittensor as bt
 from typing import List, Union
 from abc import abstractmethod
 from dataclasses import dataclass, asdict, fields
+from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
 import re
+
 
 @dataclass
 class BaseRewardEvent:
@@ -41,8 +43,10 @@ class BaseRewardEvent:
         ]
         reward_event = dict(zip(field_names, list(zip(*reward_events))))
         return reward_event
-    
+
+
 pattern_to_check = r"<(?:Question|/Question|Answer|/Answer|Score|/Score)>|SM(?:[-_ ]SCS)?[-_ ]?(?:RDD|PNK|BLE|GRY|GRN)"
+
 
 class BaseRewardModel:
     @property
@@ -57,7 +61,7 @@ class BaseRewardModel:
 
     @abstractmethod
     def get_rewards(
-        self, prompt: str, responses: List[bt.Synapse], name: str, uids
+        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]: ...
 
     def __init__(self) -> None:
@@ -76,38 +80,65 @@ class BaseRewardModel:
 
         return rewards
 
-    def get_successful_completions(self, responses: List[bt.Synapse]):
-        successful_completions_indices: List[int] = [
-            idx
-            for idx, resp in enumerate(responses)
-            if resp.dendrite.status_code == 200 and resp.completion_links
-        ]
-
-        # Get all completions from responding calls.
-        successful_completions: List[str] = [
-            responses[idx].completion.strip() for idx in successful_completions_indices
-        ]
-
-        return successful_completions
-    
-    def get_successful_completion(self, response: bt.Synapse):
+    def get_successful_completion(self, response: ScraperStreamingSynapse):
         # Check if the response is successful.
-        if response.dendrite.status_code == 200 and response.completion_links:
+        if response.dendrite.status_code == 200:
             # Get the completion from the successful response.
             successful_completion = response.completion.strip()
 
-            # if any(re.search(pattern, successful_completion, flags=re.IGNORECASE) for pattern in patterns_to_remove):
-            #     return None
+            if re.search(pattern_to_check, successful_completion, flags=re.IGNORECASE):
+                bt.logging.info(
+                    f"Pattern validation issue Hotkey ID: {response.axon.hotkey}."
+                )
+                return None
+
+            return successful_completion.strip()
+        return None
+    
+    def get_successful_completions(self, responses: List[ScraperStreamingSynapse]):
+        successful_completions = [self.get_successful_completion(response) for response in responses]
+        return [completion for completion in successful_completions if completion is not None]
+    
+
+    def get_successful_twitter_completion(self, response: ScraperStreamingSynapse):
+        # Check if the response is successful.
+        if response.dendrite.status_code == 200 and response.completion_links:
+            # Get the completion from the successful response.
+            successful_completion = response.get_twitter_completion().strip()
 
             if re.search(pattern_to_check, successful_completion, flags=re.IGNORECASE):
-                bt.logging.info(f"Pattern validation issue Hotkey ID: {response.axon.hotkey}.")
+                bt.logging.info(
+                    f"Pattern validation issue Hotkey ID: {response.axon.hotkey}."
+                )
                 return None
-            
+
+            return successful_completion.strip()
+        return None
+    
+    def get_successful_twitter_completions(self, responses: List[ScraperStreamingSynapse]):
+        successful_completions = [self.get_successful_twitter_completion(response) for response in responses]
+        return [completion for completion in successful_completions if completion is not None]
+
+    def get_successful_search_summary_completion(
+        self, response: ScraperStreamingSynapse
+    ):
+        # Check if the response is successful.
+        search_completion = response.get_search_summary_completion()
+        if response.dendrite.status_code == 200 and search_completion:
+            # Get the completion from the successful response.
+            successful_completion = search_completion.strip()
+
+            if re.search(pattern_to_check, successful_completion, flags=re.IGNORECASE):
+                bt.logging.info(
+                    f"Pattern validation issue Hotkey ID: {response.axon.hotkey}."
+                )
+                return None
+
             return successful_completion.strip()
         return None
 
     def apply(
-        self, prompt: str, responses: List[bt.Synapse], name: str, uids
+        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]:
         """Applies the reward model across each call. Unsuccessful responses are zeroed."""
         # Get indices of correctly responding calls.
@@ -159,6 +190,30 @@ class BaseRewardModel:
 
         # Return the filled rewards.
         return filled_rewards_normalized, reward_events
+    
+    def calculate_adjusted_score(self, links_count: int, score: float, max_bonus: float = 0.2, link_sensitivity: int = 9) -> float:
+        """
+        Calculate the combined score by first applying a bonus based on the number of links and then adjusting
+        the score based on the number of completion links with a softer penalty for having fewer than 10 links.
 
+        Args:
+        - score (float): The original score ranging from 0.1 to 1.
+        - links_count (int): The number of links or completion links, capped at 10 for the adjustment logic.
+        - max_bonus (float): The maximum bonus to add to the score for the link count scenario. Default is 0.2.
+        - link_sensitivity (int): Controls how quickly the bonus grows with the number of links. Higher values mean slower growth.
 
+        Returns:
+        - float: The combined adjusted score considering the provided parameters.
+        """
+        # First, calculate the bonus based on the number of links
+        bonus = max_bonus * (1 - 1 / (1 + links_count / link_sensitivity))
+        intermediate_score = min(1, score + bonus)
 
+        # Then, adjust the intermediate score based on the number of completion links
+        # Cap the links_count at 10 for completion links logic
+        links_count = min(links_count, 10)
+        # Using square root to soften the penalty for having fewer than 10 links
+        penalty_factor = (links_count / 10) ** 0.5
+        adjusted_score = intermediate_score * penalty_factor
+
+        return adjusted_score

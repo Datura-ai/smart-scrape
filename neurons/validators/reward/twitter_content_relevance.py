@@ -33,7 +33,12 @@ from neurons.validators.utils.prompts import (
     extract_score_and_explanation,
 )
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
+from template.protocol import (
+    ScraperStreamingSynapse,
+    TwitterScraperTweet,
+    MinerTweet,
+    MinerTweetAuthor,
+)
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from template.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.reward_llm import RewardLLM
@@ -41,9 +46,10 @@ from neurons.validators.utils.prompts import ScoringPrompt
 import json
 from datetime import datetime
 import pytz
+from pydantic import ValidationError
 
 
-class LinkContentRelevanceModel(BaseRewardModel):
+class TwitterContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
 
     @property
@@ -59,6 +65,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
         self.tw_client = TwitterAPIClient()
 
     async def llm_process_validator_tweets(self, prompt, tweets_list):
+        start_llm_time = time.time()
         scoring_messages = []
         for tweet in tweets_list:
             val_text = tweet.full_text
@@ -70,6 +77,12 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 scoring_prompt, scoring_text = result
                 scoring_messages.append({str(val_tweet_id): scoring_text})
         score_responses = self.reward_llm.llm_processing(scoring_messages)
+
+        end_llm_time = time.time()
+        llm_duration_minutes = (end_llm_time - start_llm_time) / 60
+        bt.logging.info(
+            f"TwitterContentRelevanceModel LLM process validator tweets took {llm_duration_minutes} minutes."
+        )
         return score_responses
 
     async def process_tweets(self, prompt, responses):
@@ -81,7 +94,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
                 for response in responses
                 if response.completion_links
                 for link in random.sample(
-                    response.completion_links, min(3, len(response.completion_links))
+                    response.completion_links, min(5, len(response.completion_links))
                 )
             ]
             unique_links = list(
@@ -93,7 +106,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             tweets_list = await TwitterScraperActor().get_tweets(urls=unique_links)
             for response in responses:
                 ids = [
-                    self.tw_client.extract_tweet_id(link)
+                    self.tw_client.utils.extract_tweet_id(link)
                     for link in response.completion_links
                 ]
 
@@ -117,7 +130,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
             non_fetched_links = [
                 link
                 for link in unique_links
-                if self.tw_client.extract_tweet_id(link) not in fetched_tweet_ids
+                if self.tw_client.utils.extract_tweet_id(link) not in fetched_tweet_ids
             ]
 
             bt.logging.info(
@@ -150,7 +163,7 @@ class LinkContentRelevanceModel(BaseRewardModel):
         try:
             tweet_score = 0
 
-            completion = self.get_successful_completion(response=response)
+            completion = self.get_successful_twitter_completion(response=response)
             if not completion:
                 return 0
 
@@ -158,91 +171,120 @@ class LinkContentRelevanceModel(BaseRewardModel):
 
             miner_tweets_data = miner_tweets.get("data", [])
             # miner_tweets_meta = miner_tweets.get('meta', {})
-            # miner_tweets_users = miner_tweets.get('includes', {}).get('users', [])
+            miner_tweets_users = miner_tweets.get("includes", {}).get("users", [])
             miner_tweets_amount = miner_tweets.get("meta", {}).get("result_count", 0)
 
             # Assign completion links and validator tweets from the response
             completion_links = response.completion_links
 
-            if len(completion_links) < 2:
-                # at least miners should provide two twitter links
+            if not completion_links \
+                or len(completion_links) < 2 \
+                or miner_tweets_amount == 0 \
+                or not response.validator_tweets:
+                # Ensure there are at least two twitter links provided by miners and check for the presence of miner and validator tweets
                 return 0
 
-            # Check if there are no completion links, no miner tweets, or no validator tweets
-            if (
-                not completion_links
-                or miner_tweets_amount == 0
-                or not response.validator_tweets
-            ):
-                return 0
+           
+            # Initialize a list to hold scores for each validator tweet
+            tweet_scores = []
+            # Iterate over all validator tweets instead of selecting a random one
+            for val_tweet in response.validator_tweets:
+                # Extract content, ID, and creation time of the validator tweet
+                val_tweet_content = val_tweet.full_text
+                val_tweet_id = val_tweet.id
+                val_tweet_created_at = val_tweet.created_at
 
-            # Select a random tweet from the validator's tweets
-            val_tweet = random.choice(response.validator_tweets)
-
-            # Extract content, ID, and creation time of the validator tweet
-            val_tweet_content = val_tweet.full_text
-            val_tweet_id = val_tweet.id
-            val_tweet_created_at = val_tweet.created_at
-            # Find the corresponding miner tweet by ID
-            miner_tweet = next(
-                (tweet for tweet in miner_tweets_data if tweet["id"] == val_tweet_id),
-                None,
-            )
-            # If there is no corresponding miner tweet, append a score of 0
-            if miner_tweet:
-                # If a corresponding miner tweet is found, extract its creation time and text
-
-                miner_tweet_text = miner_tweet["text"]
-
-                if not miner_tweet_text or re.search(
-                    pattern_to_check, miner_tweet_text, flags=re.IGNORECASE
-                ):
-                    return 0
-
-                # Prepare texts for comparison by normalizing them
-                miner_text_compared = self.format_text_for_match(miner_tweet_text)
-                validator_text_compared = self.format_text_for_match(val_tweet_content)
-                # Compare the normalized texts and creation times of the tweets
-
-                if miner_text_compared == validator_text_compared:
-                    tweet_score = 1.5
-
-                converted_val_tweet_created_at = (
-                    datetime.strptime(val_tweet_created_at, "%a %b %d %H:%M:%S %z %Y")
-                    .astimezone(pytz.UTC)
-                    .strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
-                    + "Z"
+                # Find the corresponding miner tweet by ID
+                miner_tweet = next(
+                    (tweet for tweet in miner_tweets_data if tweet["id"] == val_tweet_id),
+                    None,
                 )
 
-                if miner_tweet.get("created_at") == converted_val_tweet_created_at:
-                    # If both match, append a score of 1
-                    tweet_score += 0.5
-
-                if tweet_score == 0:
-                    # If there is a discrepancy, log the details and append a score of 0
-                    bt.logging.info(
-                        f"Miner tweet - Created at: {miner_tweet.get('created_at', 'None')}, Text: {miner_text_compared}"
-                    )
-                    bt.logging.debug(
-                        f"Validator tweet - Created at: {val_tweet_created_at}, Text: {validator_text_compared}"
-                    )
-
-            else:
-                bt.logging.debug(
-                    "No corresponding miner tweet found for the validator tweet."
-                )
+                # Initialize the score for this iteration
                 tweet_score = 0
-            return tweet_score
+
+                if miner_tweet:
+                    if not self.is_valid_miner_tweet(miner_tweet, miner_tweets_users):
+                        tweet_scores.append(0)
+                        continue
+                    
+                    miner_tweet_text = miner_tweet["text"]
+
+                    if not miner_tweet_text or re.search(
+                        pattern_to_check, miner_tweet_text, flags=re.IGNORECASE
+                    ):
+                        tweet_scores.append(0)
+                        continue
+
+                    # Prepare texts for comparison by normalizing them
+                    miner_text_compared = self.format_text_for_match(miner_tweet_text)
+                    validator_text_compared = self.format_text_for_match(val_tweet_content)
+
+                    if miner_text_compared == validator_text_compared:
+                        tweet_score = 1
+
+                    converted_val_tweet_created_at = (
+                        datetime.strptime(val_tweet_created_at, "%a %b %d %H:%M:%S %z %Y")
+                        .astimezone(pytz.UTC)
+                        .strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
+                        + "Z"
+                    )
+
+                    if not miner_tweet.get("created_at") == converted_val_tweet_created_at:
+                        tweet_score = 0.5 
+
+                tweet_scores.append(tweet_score)
+
+            if tweet_scores:
+                # Calculate the average score
+                average_score = sum(tweet_scores) / len(tweet_scores)
+            else:
+                # If there are no scores, set average score to 0
+                average_score = 0
+
+            return average_score
         except Exception as e:
             bt.logging.error(f"check_response_random_tweet: {str(e)}")
             return 0
+
+    def is_valid_miner_tweet(self, miner_tweet, miner_tweet_users):
+        try:
+            miner_tweet = MinerTweet(**miner_tweet)
+        except ValidationError as e:
+            bt.logging.error(f"Invalid miner tweet data: {e}")
+            return False
+
+        author = (
+            next(
+                (
+                    user
+                    for user in miner_tweet_users
+                    if user.get("id") == miner_tweet.author_id
+                ),
+                None,
+            )
+            or None
+        )
+
+        if not author:
+            return False
+
+        try:
+            miner_tweet_author = MinerTweetAuthor(**author)
+        except ValidationError as e:
+            bt.logging.error(
+                f"Invalid miner tweet author for tweet id {miner_tweet.id}: {e}"
+            )
+            return False
+
+        return True
 
     def get_scoring_text(
         self, prompt: str, content: str, response: bt.Synapse
     ) -> BaseRewardEvent:
         try:
             if response:
-                completion = self.get_successful_completion(response=response)
+                completion = self.get_successful_twitter_completion(response=response)
                 if not completion:
                     return None
 
@@ -253,14 +295,14 @@ class LinkContentRelevanceModel(BaseRewardModel):
             scoring_prompt = LinkContentPrompt()
 
             if content is None:
-                bt.logging.error("Prompt or content is None, which is not expected.")
+                bt.logging.debug("Twitter Content is empty")
                 return None
 
             scoring_prompt_text = scoring_prompt.text(prompt, content)
 
             return scoring_prompt, [
-                {"role": "user", "content": scoring_prompt_text},
                 {"role": "system", "content": scoring_prompt.get_system_message()},
+                {"role": "user", "content": scoring_prompt_text},
             ]
         except Exception as e:
             error_message = f"Error in Prompt reward method: {str(e)}"
@@ -272,20 +314,20 @@ class LinkContentRelevanceModel(BaseRewardModel):
         self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
-            completions: List[str] = self.get_successful_completions(responses)
+            completions: List[str] = self.get_successful_twitter_completions(responses)
             bt.logging.debug(
-                f"LinkContentRelevanceModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
+                f"TwitterContentRelevanceModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
             )
             bt.logging.trace(
-                f"LinkContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
+                f"TwitterContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
             )
 
             val_score_responses = asyncio.get_event_loop().run_until_complete(
                 self.process_tweets(prompt=prompt, responses=responses)
             )
-            bt.logging.info(f"LinkContentRelevanceModel | PROMPT: {prompt}")
+            bt.logging.info(f"TwitterContentRelevanceModel | PROMPT: {prompt}")
             bt.logging.info(
-                f"LinkContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
+                f"TwitterContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
             )
             scores = [
                 self.check_response_random_tweet(response) for response in responses
@@ -293,32 +335,39 @@ class LinkContentRelevanceModel(BaseRewardModel):
 
             reward_events = []
             scoring_prompt = ScoringPrompt()
+            # apify_score,
             for apify_score, response, uid_tensor in zip(
-                scores, responses, uids
+                scores,
+                responses,
+                uids,
             ):  # Fixed variable name from 'response' to 'responses'
                 uid = uid_tensor.item()
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
 
                 score_result = None
+                total_score = 0
                 if len(response.validator_tweets):
-                    val_tweet = random.choice(response.validator_tweets)
-                    val_tweet_id = val_tweet.id
-                    if val_score_responses:
-                        score_result = val_score_responses.get(str(val_tweet_id), None)
+                    for val_tweet in response.validator_tweets:
+                        val_tweet_id = val_tweet.id
+                        if val_score_responses:
+                            score_result = val_score_responses.get(
+                                str(val_tweet_id), None
+                            )
+                            if score_result is not None:
+                                score = scoring_prompt.extract_score(score_result)
+                                total_score += (
+                                    score / 10.0
+                                )  # Adjust score scaling as needed
+                    if total_score > 0:
+                        average_score = total_score / 10 * apify_score # len(response.validator_tweets)
+                        reward_event.reward = self.calculate_adjusted_score(
+                            links_count=len(response.completion_links),
+                            score=average_score,
+                        )
                 else:
                     bt.logging.info(f"UID '{uid}' has no validator tweets.")
-
-                if score_result is None:
-                    bt.logging.info(
-                        f"Link Content Relevance get_rewards: No score response for UID '{uid}'"
-                    )
-                    score = 0  # Default score or another logic to handle missing scores
-                else:
-                    score = scoring_prompt.extract_score(score_result)
-                    score /= 10.0
-                    reward_event.reward = score
-                reward_event.reward = min(reward_event.reward * apify_score, 1)
+                    reward_event.reward = 0  # Handle case with no validator tweets
                 reward_events.append(reward_event)
 
                 zero_scores = {}
@@ -334,11 +383,11 @@ class LinkContentRelevanceModel(BaseRewardModel):
                     non_zero_scores[uid] = reward_e.reward
 
             bt.logging.info(
-                f"==================================Links Content scoring Zero Scores  ({len(zero_scores)} cases)=================================="
+                f"==================================Twitter Links Content scoring Zero Scores  ({len(zero_scores)} cases)=================================="
             )
             bt.logging.info(json.dumps(zero_scores))
             bt.logging.info(
-                f"==================================Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
+                f"==================================Twitter Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
             )
             bt.logging.info(json.dumps(non_zero_scores))
             return reward_events

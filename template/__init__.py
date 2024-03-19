@@ -19,7 +19,7 @@
 
 
 # version must stay on line 22
-__version__ = "0.0.56"
+__version__ = "0.0.57"
 version_split = __version__.split(".")
 __spec_version__ = (
     (1000 * int(version_split[0]))
@@ -68,10 +68,11 @@ valid_validators = [
     "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
     "5H66kJAzBCv2DC9poHATLQqyt3ag8FLSbHf6rMqTiRcS52rc",
     "5HbLYXUBy1snPR8nfioQ7GoA9x76EELzEq9j7F32vWUQHm1x",
-    "5Dd8gaRNdhm1YP7G1hcB1N842ecAUQmbLjCRLqH5ycaTGrWv",
     "5FKstHjZkh4v3qAMSBa1oJcHCLjxYZ8SNTSz1opTv4hR7gVB",
+    "5DXTJSPVvf1sow1MU4npJPewEAwhPRb6CWsk4RX9RFt2PRbj",
+    "5EsrMfo7UcPs6AqAotU47VmYGfLHntS9JzhEwbY2EJMcWQxQ",  # server
+    "5Dd8gaRNdhm1YP7G1hcB1N842ecAUQmbLjCRLqH5ycaTGrWv",
     "5DnXm2tBGAD57ySJv5SfpTfLcsQbSKKp6xZKFWABw3cYUgqg",
-    "5DXTJSPVvf1sow1MU4npJPewEAwhPRb6CWsk4RX9RFt2PRbj",  # server
 ]
 
 WHITELISTED_KEYS = testnet_key + test_key + valid_validators
@@ -91,3 +92,4 @@ from . import protocol
 from . import reward
 from . import utils
 from . import db
+from . import tools
