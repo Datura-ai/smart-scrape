@@ -56,7 +56,6 @@ client = AsyncOpenAI(timeout=60.0)
 
 
 class ToolManager:
-    model = "gpt-3.5-turbo-0125"
     openai_summary_model: str = "gpt-3.5-turbo-0125"
     all_tools: List[BaseTool]
     manual_tool_names: List[str]
@@ -68,7 +67,7 @@ class ToolManager:
     twitter_prompt_analysis: Optional[TwitterPromptAnalysisResult]
     twitter_data: Optional[Dict[str, Any]]
 
-    def __init__(self, prompt, manual_tool_names, send, model, is_intro_text, miner):
+    def __init__(self, prompt, manual_tool_names, send, is_intro_text, miner):
         self.prompt = prompt
         self.manual_tool_names = manual_tool_names
         self.miner = miner
@@ -76,7 +75,6 @@ class ToolManager:
 
         self.response_streamer = ResponseStreamer(send=send)
         self.send = send
-        self.model = model
         self.openai_summary_model = self.miner.config.miner.openai_summary_model
 
         self.all_tools = get_all_tools()
@@ -116,7 +114,7 @@ class ToolManager:
 
         for toolkit_name, results in toolkit_results.items():
             response, role = await find_toolkit_by_name(toolkit_name).summarize(
-                prompt=self.prompt, model=self.model, data=results
+                prompt=self.prompt, model=self.openai_summary_model, data=results
             )
 
             streaming_task = asyncio.create_task(
