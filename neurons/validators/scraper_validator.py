@@ -37,11 +37,11 @@ class ScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
         self.streaming = True
         self.query_type = "text"
-        self.model = "gpt-4-1106-preview"
+        self.model = "gpt-3.5-turbo-0125"
         self.weight = 1
         self.seed = 1234
         self.neuron = neuron
-        self.timeout = 120
+        self.timeout = 150
         self.tools = ["Recent Tweets", "Web Search", "Wikipedia Search", "ArXiv Search", "Youtube Search"]
 
         # Init device.
@@ -201,7 +201,7 @@ class ScraperValidator:
                     event[penalty_fn_i.name + "_applied"] = applied_penalty_i.tolist()
                 bt.logging.trace(str(penalty_fn_i.name), applied_penalty_i.tolist())
                 bt.logging.info(
-                    f"Applied penalty function: {penalty_fn_i.name} with reward: {adjusted_penalty_i.tolist()} in {penalty_execution_time:.2f} seconds"
+                    f"Applied penalty function: {penalty_fn_i.name} in {penalty_execution_time:.2f} seconds"
                 )
 
             scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)

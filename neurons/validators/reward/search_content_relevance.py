@@ -187,7 +187,10 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
                     if total_score > 0:
                         average_score = total_score / num_links
-                        reward_event.reward = average_score
+                        reward_event.reward = self.calculate_adjusted_score(
+                            links_count=len(response.search_completion_links),
+                            score=average_score,
+                        )
                 else:
                     bt.logging.info(f"UID '{uid}' has no validator links.")
                     reward_event.reward = 0  # Handle case with no validator links

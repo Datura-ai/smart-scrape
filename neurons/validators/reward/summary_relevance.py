@@ -99,7 +99,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
-            completions: List[str] = self.get_successful_completions(responses)
+            completions: List[str] = self.get_successful_twitter_completions(responses)
             bt.logging.info(f"SummaryRelevanceRewardModel | PROMPT: {prompt}")
             bt.logging.debug(
                 f"SummaryRelevanceRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
