@@ -191,7 +191,7 @@ class BaseRewardModel:
             filled_rewards_normalized = filled_rewards_normalized.nan_to_num_(nan=0.0)
 
         # Return the filled rewards.
-        return filled_rewards_normalized, reward_events
+        return filled_rewards_normalized, reward_events, val_score_responses
     
     def calculate_adjusted_score(self, links_count: int, score: float, max_bonus: float = 0.2, link_sensitivity: int = 9) -> float:
         """
