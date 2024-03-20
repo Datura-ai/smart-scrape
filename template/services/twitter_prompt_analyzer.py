@@ -205,7 +205,7 @@ def get_fix_query_prompt(prompt, old_query, error, is_accuracy=True):
 class TwitterPromptAnalyzer:
     def __init__(
         self,
-        openai_query_model="gpt-3.5-turbo-1106",
+        openai_query_model="gpt-3.5-turbo-0125",
         openai_fix_query_model="gpt-4-1106-preview",
     ):
         self.openai_query_model = openai_query_model
@@ -281,6 +281,7 @@ class TwitterPromptAnalyzer:
             )
 
     async def analyse_prompt_and_fetch_tweets(self, prompt, is_recent_tweets=True):
+        prompt_analysis = TwitterPromptAnalysisResult()  # Initialize prompt_analysis here
         try:
             query, prompt_analysis = await self.generate_and_analyze_query(prompt)
 

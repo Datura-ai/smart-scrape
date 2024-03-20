@@ -56,8 +56,8 @@ client = AsyncOpenAI(timeout=60.0)
 
 
 class ToolManager:
-    model = "gpt-3.5-turbo-1106"
-    openai_summary_model: str = "gpt-3.5-turbo-1106"
+    model = "gpt-3.5-turbo-0125"
+    openai_summary_model: str = "gpt-3.5-turbo-0125"
     all_tools: List[BaseTool]
     manual_tool_names: List[str]
     tool_name_to_instance: Dict[str, BaseTool]

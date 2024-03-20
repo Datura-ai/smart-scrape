@@ -26,6 +26,7 @@ Operational Rules:
 6. Not return text like <UserPrompt>, <PromptAnalysis>, <PromptAnalysis> to your response, make response easy to understand to any user.
 7. Make headers bold using Markdown.
 8. Start text with bold text "Twitter Summary:".
+9. Return up to 10 Twitter links if available.
 """
 
 

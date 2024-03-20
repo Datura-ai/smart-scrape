@@ -13,7 +13,6 @@ from template.services.twitter_utils import TwitterUtils
 from template.services.web_search_utils import WebSearchUtils
 
 
-
 class IsAlive(bt.Synapse):
     answer: typing.Optional[str] = None
     completion: str = pydantic.Field(
@@ -194,54 +193,59 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         if self.completion is None:
             self.completion = ""
 
+        buffer = ""  # Initialize an empty buffer to accumulate data across chunks
+
         try:
             async for chunk in response.content.iter_any():
                 # Decode the chunk from bytes to a string
                 chunk_str = chunk.decode("utf-8")
-                # Attempt to parse the chunk as JSON
-                try:
-                    json_objects, remaining_chunk = extract_json_chunk(chunk_str)
-                    for json_data in json_objects:
-                        content_type = json_data.get("type")
+                # Attempt to parse the chunk as JSON, updating the buffer with remaining incomplete JSON data
+                json_objects, buffer = extract_json_chunk(chunk_str, response, buffer)
+                for json_data in json_objects:
+                    content_type = json_data.get("type")
 
-                        if content_type == "text":
-                            text_content = json_data.get("content", "")
-                            role = json_data.get("role")
+                    if content_type == "text":
+                        text_content = json_data.get("content", "")
+                        role = json_data.get("role")
 
-                            yield json.dumps(
-                                {"type": "text", "role": role, "content": text_content}
-                            )
-                        elif content_type == "texts":
-                            texts = json_data.get("content", "")
-                            self.texts = texts
-                        elif content_type == "completion":
-                            completion = json_data.get("content", "")
-                            self.completion = completion
+                        yield json.dumps(
+                            {"type": "text", "role": role, "content": text_content}
+                        )
+                    elif content_type == "texts":
+                        texts = json_data.get("content", "")
+                        self.texts = texts
+                    elif content_type == "completion":
+                        completion = json_data.get("content", "")
+                        self.completion = completion
 
-                            yield json.dumps(
-                                {"type": "completion", "content": completion}
-                            )
-                        elif content_type == "prompt_analysis":
-                            prompt_analysis_json = json_data.get("content", "{}")
-                            prompt_analysis = TwitterPromptAnalysisResult()
-                            prompt_analysis.fill(prompt_analysis_json)
-                            self.set_prompt_analysis(prompt_analysis)
+                        yield json.dumps({"type": "completion", "content": completion})
+                    elif content_type == "prompt_analysis":
+                        prompt_analysis_json = json_data.get("content", "{}")
+                        prompt_analysis = TwitterPromptAnalysisResult()
+                        prompt_analysis.fill(prompt_analysis_json)
+                        self.set_prompt_analysis(prompt_analysis)
 
-                        elif content_type == "tweets":
-                            tweets_json = json_data.get("content", "[]")
-                            self.miner_tweets = tweets_json
-                            yield json.dumps({"type": "tweets", "content": tweets_json})
+                    elif content_type == "tweets":
+                        tweets_json = json_data.get("content", "[]")
+                        self.miner_tweets = tweets_json
+                        yield json.dumps({"type": "tweets", "content": tweets_json})
 
-                        elif content_type == "search":
-                            search_json = json_data.get("content", "{}")
-                            self.search_results = search_json
-                            yield json.dumps({"type": "search", "content": search_json})
-                except json.JSONDecodeError as e:
-                    bt.logging.debug(
-                        f"process_streaming_response json.JSONDecodeError: {e}"
-                    )
+                    elif content_type == "search":
+                        search_json = json_data.get("content", "{}")
+                        self.search_results = search_json
+                        yield json.dumps({"type": "search", "content": search_json})
+        except json.JSONDecodeError as e:
+            port = response.real_url.port
+            host = response.real_url.host
+            bt.logging.debug(
+                f"process_streaming_response Host: {host}:{port} ERROR: json.JSONDecodeError: {e}, "
+            )
         except Exception as e:
-            bt.logging.debug(f"process_streaming_response: {e}")
+            port = response.real_url.port
+            host = response.real_url.host
+            bt.logging.debug(
+                f"process_streaming_response: Host: {host}:{port} ERROR: {e}"
+            )
 
     def deserialize(self) -> str:
         return self.completion
@@ -286,39 +290,52 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         arbitrary_types_allowed = True
 
 
-def extract_json_chunk(chunk):
-    stack = []
-    start_index = None
+def extract_json_chunk(chunk, response, buffer=""):
+    """
+    Extracts JSON objects from a chunk of data, handling cases where JSON objects are split across multiple chunks.
+
+    :param chunk: The current chunk of data to process.
+    :param response: The response object, used for logging.
+    :param buffer: A buffer holding incomplete JSON data from previous chunks.
+    :return: A tuple containing a list of extracted JSON objects and the updated buffer.
+    """
+    buffer += chunk  # Add the current chunk to the buffer
     json_objects = []
+    start_index = None  # Initialize start_index for JSON object extraction
 
-    for i, char in enumerate(chunk):
-        if char == "{":
-            if not stack:
+    i = 0  # Start index for scanning the buffer
+    while i < len(buffer):
+        if buffer[i] == "{":
+            if start_index is None:  # Start of a new JSON object
                 start_index = i
-            stack.append(char)
-        elif char == "}":
-            if stack:  # Check if the stack is not empty before popping
-                stack.pop()
-                if not stack and start_index is not None:
-                    json_str = chunk[start_index : i + 1]
-                    try:
-                        json_obj = json.loads(json_str)
-                        json_objects.append(json_obj)
-                        start_index = None
-                    except json.JSONDecodeError as e:
-                        bt.logging.debug(
-                            f"Failed to decode JSON object: {e} - JSON string: {json_str}"
-                        )
-                        continue
-            else:
-                bt.logging.debug(
-                    "Unmatched closing brace encountered in JSON chunk parsing."
-                )
+            stack = 1  # Initialize stack to keep track of braces
+            i += 1
+            while i < len(buffer) and stack > 0:
+                if buffer[i] == "{":
+                    stack += 1
+                elif buffer[i] == "}":
+                    stack -= 1
+                i += 1
+            if stack == 0:  # Found a complete JSON object
+                json_str = buffer[start_index:i]
+                try:
+                    json_obj = json.loads(json_str)
+                    json_objects.append(json_obj)
+                    start_index = None  # Reset start_index for the next JSON object
+                except json.JSONDecodeError as e:
+                    port = response.real_url.port
+                    host = response.real_url.host
+                    bt.logging.debug(
+                        f"Host: {host}:{port}; Failed to decode JSON object: {e} - JSON string: {json_str}"
+                    )
+        else:
+            i += 1  # Move to the next character if not the start of a JSON object
 
-    # Adjust the calculation of remaining_chunk to ensure it's correct
-    remaining_chunk = chunk[start_index:] if start_index is not None else ""
+    remaining_buffer = (
+        buffer[start_index:] if start_index is not None else ""
+    )  # Remaining buffer after extracting JSON objects
 
-    return json_objects, remaining_chunk
+    return json_objects, remaining_buffer
 
 
 class MinerTweet(BaseModel):

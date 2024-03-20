@@ -416,3 +416,22 @@ async def save_logs_in_chunks(
     except Exception as e:
         bt.logging.error(f"Error in save_logs_in_chunks: {e}")
         raise e
+
+
+def calculate_bonus_score(original_score, link_count, max_bonus=0.2, link_sensitivity=2):
+    """
+    Calculate the new score with a bonus based on the number of links.
+
+    :param original_score: The original score ranging from 0.1 to 1.
+    :param link_count: The number of links in the tweet.
+    :param max_bonus: The maximum bonus to add to the score. Default is 0.2.
+    :param link_sensitivity: Controls how quickly the bonus grows with the number of links. Higher values mean slower growth.
+    :return: The new score with the bonus included.
+    """
+    # Calculate the bonus
+    bonus = max_bonus * (1 - 1 / (1 + link_count / link_sensitivity))
+    
+    # Ensure the total score does not exceed 1
+    new_score = min(1, original_score + bonus)
+    
+    return new_score

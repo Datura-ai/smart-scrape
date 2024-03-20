@@ -82,7 +82,7 @@ class BaseRewardModel:
 
     def get_successful_completion(self, response: ScraperStreamingSynapse):
         # Check if the response is successful.
-        if response.dendrite.status_code == 200 and response.completion_links:
+        if response.dendrite.status_code == 200:
             # Get the completion from the successful response.
             successful_completion = response.completion.strip()
 
@@ -96,14 +96,9 @@ class BaseRewardModel:
         return None
 
     def get_successful_completions(self, responses: List[ScraperStreamingSynapse]):
-        successful_completions = [
-            self.get_successful_completion(response) for response in responses
-        ]
-        return [
-            completion
-            for completion in successful_completions
-            if completion is not None
-        ]
+        successful_completions = [self.get_successful_completion(response) for response in responses]
+        return [completion for completion in successful_completions if completion is not None]
+    
 
     def get_successful_twitter_completion(self, response: ScraperStreamingSynapse):
         # Check if the response is successful.
@@ -119,6 +114,10 @@ class BaseRewardModel:
 
             return successful_completion.strip()
         return None
+    
+    def get_successful_twitter_completions(self, responses: List[ScraperStreamingSynapse]):
+        successful_completions = [self.get_successful_twitter_completion(response) for response in responses]
+        return [completion for completion in successful_completions if completion is not None]
 
     def get_successful_search_summary_completion(
         self, response: ScraperStreamingSynapse
@@ -192,4 +191,31 @@ class BaseRewardModel:
             filled_rewards_normalized = filled_rewards_normalized.nan_to_num_(nan=0.0)
 
         # Return the filled rewards.
-        return filled_rewards_normalized, reward_events, val_score_responses
+        return filled_rewards_normalized, reward_events
+    
+    def calculate_adjusted_score(self, links_count: int, score: float, max_bonus: float = 0.2, link_sensitivity: int = 9) -> float:
+        """
+        Calculate the combined score by first applying a bonus based on the number of links and then adjusting
+        the score based on the number of completion links with a softer penalty for having fewer than 10 links.
+
+        Args:
+        - score (float): The original score ranging from 0.1 to 1.
+        - links_count (int): The number of links or completion links, capped at 10 for the adjustment logic.
+        - max_bonus (float): The maximum bonus to add to the score for the link count scenario. Default is 0.2.
+        - link_sensitivity (int): Controls how quickly the bonus grows with the number of links. Higher values mean slower growth.
+
+        Returns:
+        - float: The combined adjusted score considering the provided parameters.
+        """
+        # First, calculate the bonus based on the number of links
+        bonus = max_bonus * (1 - 1 / (1 + links_count / link_sensitivity))
+        intermediate_score = min(1, score + bonus)
+
+        # Then, adjust the intermediate score based on the number of completion links
+        # Cap the links_count at 10 for completion links logic
+        links_count = min(links_count, 10)
+        # Using square root to soften the penalty for having fewer than 10 links
+        penalty_factor = (links_count / 10) ** 0.5
+        adjusted_score = intermediate_score * penalty_factor
+
+        return adjusted_score

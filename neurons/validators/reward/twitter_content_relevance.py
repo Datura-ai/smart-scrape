@@ -94,7 +94,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 for response in responses
                 if response.completion_links
                 for link in random.sample(
-                    response.completion_links, min(10, len(response.completion_links))
+                    response.completion_links, min(5, len(response.completion_links))
                 )
             ]
             unique_links = list(
@@ -163,7 +163,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         try:
             tweet_score = 0
 
-            completion = self.get_successful_completion(response=response)
+            completion = self.get_successful_twitter_completion(response=response)
             if not completion:
                 return 0
 
@@ -229,6 +229,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
                     if miner_text_compared == validator_text_compared:
                         tweet_score = 1
+                    else:
+                        tweet_score = 0
 
                     converted_val_tweet_created_at = (
                         datetime.strptime(
@@ -239,11 +241,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                         + "Z"
                     )
 
-                    if (
-                        not miner_tweet.get("created_at")
-                        == converted_val_tweet_created_at
-                    ):
-                        tweet_score = 0.5
+                    if not miner_tweet.get("created_at") == converted_val_tweet_created_at:
+                        tweet_score = 0 
 
                 tweet_scores.append(tweet_score)
 
@@ -296,7 +295,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
     ) -> BaseRewardEvent:
         try:
             if response:
-                completion = self.get_successful_completion(response=response)
+                completion = self.get_successful_twitter_completion(response=response)
                 if not completion:
                     return None
 
@@ -326,7 +325,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
-            completions: List[str] = self.get_successful_completions(responses)
+            completions: List[str] = self.get_successful_twitter_completions(responses)
             bt.logging.debug(
                 f"TwitterContentRelevanceModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
             )
@@ -382,8 +381,11 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                                     score / 10.0
                                 )  # Adjust score scaling as needed
                     if total_score > 0:
-                        average_score = total_score / len(response.validator_tweets)
-                        reward_event.reward = average_score * apify_score
+                        average_score = total_score / 10 * apify_score # len(response.validator_tweets)
+                        reward_event.reward = self.calculate_adjusted_score(
+                            links_count=len(response.completion_links),
+                            score=average_score,
+                        )
                 else:
                     bt.logging.info(f"UID '{uid}' has no validator tweets.")
                     reward_event.reward = 0  # Handle case with no validator tweets

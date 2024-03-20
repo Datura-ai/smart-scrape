@@ -79,6 +79,7 @@ class ScoringPrompt(BasePrompt):
             "SM_SCS_PNK": 2,
             "SM_SCS_BLE": 5,
             "SM_SCS_GRY": 8,
+            "SM_SCS_YAL": 9,
             "SM_SCS_GRN": 10,
         }
 
@@ -223,7 +224,7 @@ Return one of them:
 
 - Assign SM_SCS_BLE if the tweet content mentions at least one keyword or theme from the question but fails to provide meaningful engagement or insight into those topics. This includes superficial mentions that do not contribute to a deeper understanding or relevant discussion of the question. The content should have some connection to the topic but fails to provide meaningful insight or discussion related to the core questions.
 
-- Assign SM_SCS_GRN if the tweet content is directly relevant to the question, incorporating and engaging with multiple keywords or themes from the question in a way that provides depth, insight, or valuable information related to the question's core topics. The content should provide valuable insights, detailed discussion, or meaningful engagement with the question's main focus.
+- Assign SM_SCS_YAL if the tweet content is directly relevant to the question, incorporating and engaging with multiple keywords or themes from the question in a way that provides depth, insight, or valuable information related to the question's core topics. The content should provide valuable insights, detailed discussion, or meaningful engagement with the question's main focus.
 
 Important scoring rules:
 - Identify keywords or topics from the question that are essential for the answer.
@@ -234,7 +235,7 @@ OUTPUT EXAMPLE FORMAT:
 SM_SCS_PNK, Explanation: is not related to the question
 
 Output:
-Only MUST Generate one of from [SM_SCS_PNK, SM_SCS_BLE, SM_SCS_GRN]:
+Only MUST Generate one of from [SM_SCS_PNK, SM_SCS_BLE, SM_SCS_YAL]:
 """
 
 system_search_summary_relevance_scoring_template = """
@@ -243,7 +244,7 @@ Evaluate the relevance of the web link content in response to a specific questio
 Return one of them:
 - Assign SM_SCS_PNK if the web link content fails to mention any keywords or topics related to the question, indicating a lack of relevance.
 - Assign SM_SCS_BLE if the web link content mentions at least one keyword or topic from the question but either engages with the question's core topics superficially or only tangentially.
-- Assign SM_SCS_GRN if the web link content is highly relevant, incorporating multiple keywords or topics from the question and engaging deeply and meaningfully with the question's core topics.
+- Assign SM_SCS_YAL if the web link content is highly relevant, incorporating multiple keywords or topics from the question and engaging deeply and meaningfully with the question's core topics.
 
 Important scoring rules:
 - Identify keywords or topics from the question that are essential for the answer.
@@ -254,7 +255,7 @@ OUTPUT EXAMPLE FORMAT:
 SM_SCS_PNK, Explanation: is not related to the question
 
 Output:
-Only MUST Generate one of from [SM_SCS_PNK, SM_SCS_BLE, SM_SCS_GRN]:
+Only MUST Generate one of from [SM_SCS_PNK, SM_SCS_BLE, SM_SCS_YAL]:
 """
 
 user_search_summary_relevance_scoring_template = """
