@@ -167,20 +167,14 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             reward_events = []
             scoring_prompt = ScoringPrompt()
 
-            extracted_val_score_responses = (
-                {
-                    key: scoring_prompt.extract_score(val_score_responses[key])
-                    for key in val_score_responses.keys()
-                }
-                if val_score_responses
-                else {}
-            )
+            grouped_val_score_responses = []
 
             for apify_score, response, uid_tensor in zip(scores, responses, uids):
                 uid = uid_tensor.item()
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
 
+                response_scores = {}
                 total_score = 0
                 num_links = len(response.validator_links)
 
@@ -194,6 +188,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                                 total_score += (
                                     score / 10.0
                                 )  # Adjust score scaling as needed
+                                response_scores[val_url] = score
 
                     if total_score > 0:
                         average_score = total_score / num_links
@@ -206,6 +201,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                     reward_event.reward = 0  # Handle case with no validator links
                 reward_event.reward = min(reward_event.reward * apify_score, 1)
                 reward_events.append(reward_event)
+                grouped_val_score_responses.append(response_scores)
 
                 zero_scores = {}
                 non_zero_scores = {}
@@ -228,7 +224,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 f"==================================Web Search Content Relevance scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
             )
             bt.logging.info(json.dumps(non_zero_scores))
-            return reward_events, extracted_val_score_responses
+            return reward_events, grouped_val_score_responses
         except Exception as e:
             error_message = f"Search Summary Relevance get_rewards: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)

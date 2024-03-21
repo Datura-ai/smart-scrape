@@ -366,8 +366,8 @@ async def save_logs_in_chunks(
                 "summary_score": summary_reward,
                 "twitter_score": twitter_reward,
                 "search_score": search_reward,
-                "tweet_scores": tweet_scores,
-                "link_scores": search_scores,
+                "tweet_scores": tweet_score,
+                "link_scores": search_score,
                 "weight": weights.get(str(uid)),
                 "miner": {
                     "uid": uid,
@@ -394,13 +394,15 @@ async def save_logs_in_chunks(
                     ),
                 },
             }
-            for response, uid, reward, summary_reward, twitter_reward, search_reward in zip(
+            for response, uid, reward, summary_reward, twitter_reward, search_reward, tweet_score, search_score in zip(
                 responses,
                 uids.tolist(),
                 rewards.tolist(),
                 summary_rewards.tolist(),
                 twitter_rewards.tolist(),
                 search_rewards.tolist(),
+                tweet_scores,
+                search_scores,
             )
         ]
 
@@ -418,7 +420,9 @@ async def save_logs_in_chunks(
         raise e
 
 
-def calculate_bonus_score(original_score, link_count, max_bonus=0.2, link_sensitivity=2):
+def calculate_bonus_score(
+    original_score, link_count, max_bonus=0.2, link_sensitivity=2
+):
     """
     Calculate the new score with a bonus based on the number of links.
 
@@ -430,8 +434,8 @@ def calculate_bonus_score(original_score, link_count, max_bonus=0.2, link_sensit
     """
     # Calculate the bonus
     bonus = max_bonus * (1 - 1 / (1 + link_count / link_sensitivity))
-    
+
     # Ensure the total score does not exceed 1
     new_score = min(1, original_score + bonus)
-    
+
     return new_score

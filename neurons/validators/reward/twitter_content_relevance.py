@@ -89,6 +89,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         try:
             non_fetched_links = {}
             start_time = time.time()
+
             all_links = [
                 link
                 for response in responses
@@ -241,8 +242,11 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                         + "Z"
                     )
 
-                    if not miner_tweet.get("created_at") == converted_val_tweet_created_at:
-                        tweet_score = 0 
+                    if (
+                        not miner_tweet.get("created_at")
+                        == converted_val_tweet_created_at
+                    ):
+                        tweet_score = 0
 
                 tweet_scores.append(tweet_score)
 
@@ -347,26 +351,20 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             reward_events = []
             scoring_prompt = ScoringPrompt()
 
-            extracted_val_score_responses = (
-                {
-                    key: scoring_prompt.extract_score(val_score_responses[key])
-                    for key in val_score_responses.keys()
-                }
-                if val_score_responses
-                else {}
-            )
+            grouped_val_score_responses = []
 
             # apify_score,
             for apify_score, response, uid_tensor in zip(
                 scores,
                 responses,
                 uids,
-            ):  # Fixed variable name from 'response' to 'responses'
+            ):
                 uid = uid_tensor.item()
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
 
                 score_result = None
+                response_scores = {}
                 total_score = 0
                 if len(response.validator_tweets):
                     for val_tweet in response.validator_tweets:
@@ -380,8 +378,11 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                                 total_score += (
                                     score / 10.0
                                 )  # Adjust score scaling as needed
+                                response_scores[val_tweet_id] = score
                     if total_score > 0:
-                        average_score = total_score / 10 * apify_score # len(response.validator_tweets)
+                        average_score = (
+                            total_score / 10 * apify_score
+                        )  # len(response.validator_tweets)
                         reward_event.reward = self.calculate_adjusted_score(
                             links_count=len(response.completion_links),
                             score=average_score,
@@ -390,6 +391,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                     bt.logging.info(f"UID '{uid}' has no validator tweets.")
                     reward_event.reward = 0  # Handle case with no validator tweets
                 reward_events.append(reward_event)
+                grouped_val_score_responses.append(response_scores)
 
                 zero_scores = {}
                 non_zero_scores = {}
@@ -411,7 +413,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 f"==================================Twitter Links Content scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
             )
             bt.logging.info(json.dumps(non_zero_scores))
-            return reward_events, extracted_val_score_responses
+            return reward_events, grouped_val_score_responses
         except Exception as e:
             error_message = f"Link Content Relevance get_rewards: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
