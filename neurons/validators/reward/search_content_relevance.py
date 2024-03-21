@@ -132,7 +132,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                     return None
 
             if content is None:
-                bt.logging.debug("Twitter Content is empty.")
+                bt.logging.debug("Search Content is empty.")
                 return None
 
             scoring_prompt_text = None
