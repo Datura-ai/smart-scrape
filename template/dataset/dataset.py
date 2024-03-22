@@ -330,6 +330,22 @@ class StackOverflowDataset:
         return info
 
 
+class MockDiscordQuestionsDataset:
+    def __init__(self):
+        self.question_templates = [
+            "What are the recent announcements in datura discord channel?",
+            "What are the recent announcements in Bittensor?",
+            "Tell me the recent news about the sybil",
+        ]
+
+    def generate_question(self):
+        template = random.choice(self.question_templates)
+        return template
+
+    def next(self):
+        return self.generate_question()
+
+
 if __name__ == "__main__":
     # Example usage
     twitter_questions_dataset = MockTwitterQuestionsDataset()

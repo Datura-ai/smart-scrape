@@ -1,9 +1,10 @@
 from typing import List
 from template.tools.base import BaseToolkit, BaseTool
+from template.tools.discord.discord_toolkit import DiscordToolkit
 from template.tools.twitter.twitter_toolkit import TwitterToolkit
 from template.tools.search.search_toolkit import SearchToolkit
 
-TOOLKITS: List[BaseToolkit] = [SearchToolkit(), TwitterToolkit()]
+TOOLKITS: List[BaseToolkit] = [SearchToolkit(), TwitterToolkit(), DiscordToolkit()]
 
 
 def get_all_tools():
