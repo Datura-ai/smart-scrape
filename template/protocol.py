@@ -240,6 +240,10 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             bt.logging.debug(
                 f"process_streaming_response Host: {host}:{port} ERROR: json.JSONDecodeError: {e}, "
             )
+        except TimeoutError as e:
+            port = response.real_url.port
+            host = response.real_url.host
+            print(f"TimeoutError occurred: Host: {host}:{port}, Error: {e}")
         except Exception as e:
             port = response.real_url.port
             host = response.real_url.host
