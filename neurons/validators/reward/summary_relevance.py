@@ -181,7 +181,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             )
             bt.logging.info(json.dumps(non_zero_scores))
 
-            return reward_events
+            return reward_events, {}
         except Exception as e:
             error_message = f"Summary Relevanc Relevance get_rewards: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
@@ -191,4 +191,4 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
                 reward_events.append(reward_event)
-            return reward_events
+            return reward_events, {}

@@ -171,13 +171,21 @@ class ScraperValidator:
             rewards = torch.zeros(len(responses), dtype=torch.float32).to(
                 self.neuron.config.neuron.device
             )
+
+            all_rewards = []
+            val_score_responses_list = []
+
             for weight_i, reward_fn_i in zip(
                 self.reward_weights, self.reward_functions
             ):
                 start_time = time.time()
-                reward_i_normalized, reward_event = reward_fn_i.apply(
-                    task.base_text, responses, task.task_name, uids
+                reward_i_normalized, reward_event, val_score_responses = (
+                    reward_fn_i.apply(task.base_text, responses, task.task_name, uids)
                 )
+
+                all_rewards.append(reward_i_normalized)
+                val_score_responses_list.append(val_score_responses)
+
                 rewards += weight_i * reward_i_normalized.to(
                     self.neuron.config.neuron.device
                 )
@@ -262,6 +270,9 @@ class ScraperValidator:
                 responses=responses,
                 uids=uids,
                 rewards=rewards,
+                all_rewards=all_rewards,
+                val_score_responses_list=val_score_responses_list,
+                neuron=self.neuron,
             )
 
             return rewards
