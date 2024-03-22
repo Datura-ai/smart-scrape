@@ -48,5 +48,7 @@ class WebScraperActor:
 
             return result
         except Exception as e:
-            bt.logging.warning(f"Failed to scrape tweets: {e}")
+            bt.logging.warning(
+                f"WebScraperActor: Failed to scrape web links {urls}: {e}"
+            )
             return []
