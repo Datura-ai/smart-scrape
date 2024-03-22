@@ -137,6 +137,11 @@ class BaseRewardModel:
             return successful_completion.strip()
         return None
 
+    def get_successful_search_completions(self, responses: List[ScraperStreamingSynapse]):
+        successful_completions = [self.get_successful_search_summary_completion(response) for response in responses]
+        return [completion for completion in successful_completions if completion is not None]
+
+
     def apply(
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]:
