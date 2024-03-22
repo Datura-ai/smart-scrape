@@ -90,7 +90,9 @@ class TwitterScraperActor:
 
             return tweets
         except Exception as e:
-            error_message = f"Twitter Scraper Actor: {str(e)}"
+            error_message = (
+                f"TwitterScraperActor: Failed to scrape tweets {urls}: {str(e)}"
+            )
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.warning("\n".join(tb_str) + error_message)
             return []
