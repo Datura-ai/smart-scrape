@@ -240,6 +240,10 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             bt.logging.debug(
                 f"process_streaming_response Host: {host}:{port} ERROR: json.JSONDecodeError: {e}, "
             )
+        except TimeoutError as e:
+            port = response.real_url.port
+            host = response.real_url.host
+            print(f"TimeoutError occurred: Host: {host}:{port}, Error: {e}")
         except Exception as e:
             port = response.real_url.port
             host = response.real_url.host
@@ -326,7 +330,7 @@ def extract_json_chunk(chunk, response, buffer=""):
                     port = response.real_url.port
                     host = response.real_url.host
                     bt.logging.debug(
-                        f"Host: {host}:{port}; Failed to decode JSON object: {e} - JSON string: {json_str}"
+                        f"Host: {host}:{port}; Failed to decode JSON object: {e}"
                     )
         else:
             i += 1  # Move to the next character if not the start of a JSON object

@@ -15,6 +15,7 @@ from neurons.validators.utils.prompts import (
 import random
 import json
 from neurons.validators.utils.prompts import ScoringPrompt, SearchSummaryRelevancePrompt
+import time
 
 
 class WebSearchContentRelevanceModel(BaseRewardModel):
@@ -54,6 +55,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
         self, prompt: str, responses: List[ScraperStreamingSynapse]
     ):
         all_links = []
+        start_time = time.time()
 
         for response in responses:
             links = [
@@ -84,6 +86,23 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
         val_score_responses = await self.llm_process_validator_links(
             prompt, links_with_metadata
         )
+
+        end_time = time.time()
+        bt.logging.info(
+            f"Fetched Web links method took {end_time - start_time} seconds. "
+            f"All links count: {len(all_links)}, Unique links count: {len(unique_links)}, "
+            f"APIFY fetched web links count: {len(links_with_metadata)}"
+        )
+        fetched_links = {link.get("url") for link in links_with_metadata}
+        non_fetched_links = [link for link in unique_links if link not in fetched_links]
+
+        bt.logging.info(
+            f"Web links not fetched amount: {len(non_fetched_links)}; List: {non_fetched_links}; For prompt: [{prompt}]"
+        )
+        if len(non_fetched_links):
+            bt.logging.info(
+                f"Unique Web Links Amount: {len(unique_links)}; List: {unique_links};"
+            )
 
         return val_score_responses
 
@@ -132,7 +151,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                     return None
 
             if content is None:
-                bt.logging.debug("Twitter Content is empty.")
+                bt.logging.debug("Search Content is empty.")
                 return None
 
             scoring_prompt_text = None
@@ -153,9 +172,17 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
+            completions: List[str] = self.get_successful_search_completions(responses)
+            bt.logging.debug(
+                f"WebSearchContentRelevanceModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
+            )
+            bt.logging.trace(
+                f"WebSearchContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
+            )
             val_score_responses = asyncio.get_event_loop().run_until_complete(
                 self.process_links(prompt=prompt, responses=responses)
             )
+
             bt.logging.info(
                 f"WebSearchContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
             )
@@ -166,11 +193,14 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             reward_events = []
             scoring_prompt = ScoringPrompt()
 
+            grouped_val_score_responses = []
+
             for apify_score, response, uid_tensor in zip(scores, responses, uids):
                 uid = uid_tensor.item()
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
 
+                response_scores = {}
                 total_score = 0
                 num_links = len(response.validator_links)
 
@@ -184,6 +214,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                                 total_score += (
                                     score / 10.0
                                 )  # Adjust score scaling as needed
+                                response_scores[val_url] = score
 
                     if total_score > 0:
                         average_score = total_score / num_links
@@ -196,6 +227,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                     reward_event.reward = 0  # Handle case with no validator links
                 reward_event.reward = min(reward_event.reward * apify_score, 1)
                 reward_events.append(reward_event)
+                grouped_val_score_responses.append(response_scores)
 
                 zero_scores = {}
                 non_zero_scores = {}
@@ -218,7 +250,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 f"==================================Web Search Content Relevance scoring Non-Zero Scores ({len(non_zero_scores)} cases)=================================="
             )
             bt.logging.info(json.dumps(non_zero_scores))
-            return reward_events
+            return reward_events, grouped_val_score_responses
         except Exception as e:
             error_message = f"Search Summary Relevance get_rewards: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
@@ -228,4 +260,4 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
                 reward_events.append(reward_event)
-            return reward_events
+            return reward_events, {}

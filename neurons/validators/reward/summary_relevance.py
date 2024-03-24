@@ -50,7 +50,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
         self.scoring_type = scoring_type
 
-    def get_scoring_text(self, prompt: str, response: ScraperStreamingSynapse) -> BaseRewardEvent:
+    def get_scoring_text(
+        self, prompt: str, response: ScraperStreamingSynapse
+    ) -> BaseRewardEvent:
         try:
             completion = self.get_successful_twitter_completion(response=response)
 
@@ -136,15 +138,20 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     f"Executing llm_processing on {len(messages)} summary relevance messages."
                 )
                 score_responses = self.reward_llm.llm_processing(messages)
-                if score_responses:
+                if score_responses and isinstance(
+                    score_responses, dict
+                ):  # Ensure score_responses is a dictionary
                     for (key, score_result), (scoring_prompt, _) in zip(
                         score_responses.items(), filter_scoring_messages
                     ):
-                        score = scoring_prompt.extract_score(score_result)
-                        # Scale 0-10 score to 0-1 range.
-                        score /= 10.0
-                        scores[key] = score
-                        score_text[key] = score_result
+                        if (
+                            score_result is not None
+                        ):  # Check if score_result is not None
+                            score = scoring_prompt.extract_score(score_result)
+                            # Scale 0-10 score to 0-1 range.
+                            score /= 10.0
+                            scores[key] = score
+                            score_text[key] = score_result
 
             # Iterate over responses and assign rewards based on scores
             reward_events = []
@@ -174,7 +181,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             )
             bt.logging.info(json.dumps(non_zero_scores))
 
-            return reward_events
+            return reward_events, {}
         except Exception as e:
             error_message = f"Summary Relevanc Relevance get_rewards: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
@@ -184,4 +191,4 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
                 reward_events.append(reward_event)
-            return reward_events
+            return reward_events, {}

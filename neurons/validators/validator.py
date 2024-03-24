@@ -196,7 +196,17 @@ class Neuron(AbstractNeuron):
         # uid_list = list(available_uids.keys())
         return uids.to(self.config.neuron.device)
 
-    async def update_scores(self, wandb_data, prompt, responses, uids, rewards):
+    async def update_scores(
+        self,
+        wandb_data,
+        prompt,
+        responses,
+        uids,
+        rewards,
+        all_rewards,
+        val_score_responses_list,
+        neuron,
+    ):
         try:
             if self.config.wandb_on:
                 wandb.log(wandb_data)
@@ -209,7 +219,13 @@ class Neuron(AbstractNeuron):
                         responses=responses,
                         uids=uids,
                         rewards=rewards,
+                        summary_rewards=all_rewards[0],
+                        twitter_rewards=all_rewards[1],
+                        search_rewards=all_rewards[2],
+                        tweet_scores=val_score_responses_list[1],
+                        search_scores=val_score_responses_list[2],
                         weights=get_weights(self),
+                        neuron=neuron,
                     )
                 )
         except Exception as e:

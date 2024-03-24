@@ -324,43 +324,86 @@ async def save_logs_from_miner(
                     "completion": completion,
                     "prompt_analysis": prompt_analysis.dict(),
                     "data": data,
-                    "miner_uid": self.miner.my_subnet_uid,
-                    "hotkey": synapse.axon.hotkey,
-                    "coldkey": next(
-                        (
-                            axon.coldkey
-                            for axon in self.miner.metagraph.axons
-                            if axon.hotkey == synapse.axon.hotkey
+                    "miner": {
+                        "uid": self.miner.my_subnet_uid,
+                        "hotkey": synapse.axon.hotkey,
+                        "coldkey": next(
+                            (
+                                axon.coldkey
+                                for axon in self.miner.metagraph.axons
+                                if axon.hotkey == synapse.axon.hotkey
+                            ),
+                            None,  # Provide a default value here, such as None or an appropriate placeholder
                         ),
-                        None,  # Provide a default value here, such as None or an appropriate placeholder
-                    ),
+                    },
                 }
             ],
         )
     )
 
 
-async def save_logs_in_chunks(self, prompt, responses, uids, rewards, weights):
+async def save_logs_in_chunks(
+    self,
+    prompt,
+    responses,
+    uids,
+    rewards,
+    summary_rewards,
+    twitter_rewards,
+    search_rewards,
+    tweet_scores,
+    search_scores,
+    weights,
+    neuron,
+):
     try:
         logs = [
             {
                 "completion": response.completion,
                 "prompt_analysis": response.prompt_analysis.dict(),
                 "data": response.miner_tweets,
-                "miner_uid": uid,
                 "score": reward,
-                "hotkey": response.axon.hotkey,
-                "coldkey": next(
-                    (
-                        axon.coldkey
-                        for axon in self.metagraph.axons
-                        if axon.hotkey == response.axon.hotkey
-                    ),
-                    None,  # Provide a default value here, such as None or an appropriate placeholder
-                ),
+                "summary_score": summary_reward,
+                "twitter_score": twitter_reward,
+                "search_score": search_reward,
+                "tweet_scores": tweet_score,
+                "link_scores": search_score,
                 "weight": weights.get(str(uid)),
+                "miner": {
+                    "uid": uid,
+                    "hotkey": response.axon.hotkey,
+                    "coldkey": next(
+                        (
+                            axon.coldkey
+                            for axon in self.metagraph.axons
+                            if axon.hotkey == response.axon.hotkey
+                        ),
+                        None,  # Provide a default value here, such as None or an appropriate placeholder
+                    ),
+                },
+                "validator": {
+                    "uid": neuron.uid,
+                    "hotkey": neuron.dendrite.keypair.ss58_address,
+                    "coldkey": next(
+                        (
+                            nr.coldkey
+                            for nr in self.metagraph.neurons
+                            if nr.hotkey == neuron.dendrite.keypair.ss58_address
+                        ),
+                        None,
+                    ),
+                },
             }
-            for response, uid, reward in zip(responses, uids.tolist(), rewards.tolist())
+            for response, uid, reward, summary_reward, twitter_reward, search_reward, tweet_score, search_score in zip(
+                responses,
+                uids.tolist(),
+                rewards.tolist(),
+                summary_rewards.tolist(),
+                twitter_rewards.tolist(),
+                search_rewards.tolist(),
+                tweet_scores,
+                search_scores,
+            )
         ]
 
         chunk_size = 50
@@ -377,7 +420,9 @@ async def save_logs_in_chunks(self, prompt, responses, uids, rewards, weights):
         raise e
 
 
-def calculate_bonus_score(original_score, link_count, max_bonus=0.2, link_sensitivity=2):
+def calculate_bonus_score(
+    original_score, link_count, max_bonus=0.2, link_sensitivity=2
+):
     """
     Calculate the new score with a bonus based on the number of links.
 
@@ -389,8 +434,8 @@ def calculate_bonus_score(original_score, link_count, max_bonus=0.2, link_sensit
     """
     # Calculate the bonus
     bonus = max_bonus * (1 - 1 / (1 + link_count / link_sensitivity))
-    
+
     # Ensure the total score does not exceed 1
     new_score = min(1, original_score + bonus)
-    
+
     return new_score

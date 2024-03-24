@@ -94,7 +94,7 @@ class BaseRewardModel:
 
             return successful_completion.strip()
         return None
-    
+
     def get_successful_completions(self, responses: List[ScraperStreamingSynapse]):
         successful_completions = [self.get_successful_completion(response) for response in responses]
         return [completion for completion in successful_completions if completion is not None]
@@ -137,6 +137,11 @@ class BaseRewardModel:
             return successful_completion.strip()
         return None
 
+    def get_successful_search_completions(self, responses: List[ScraperStreamingSynapse]):
+        successful_completions = [self.get_successful_search_summary_completion(response) for response in responses]
+        return [completion for completion in successful_completions if completion is not None]
+
+
     def apply(
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]:
@@ -149,10 +154,12 @@ class BaseRewardModel:
             if resp.dendrite.status_code == 200 and resp.completion_links
         ]
 
-        # Reward each completion.
-        reward_events = BaseRewardEvent.parse_reward_events(
-            self.get_rewards(prompt, responses, name, uids)
+        reward_events, val_score_responses = self.get_rewards(
+            prompt, responses, name, uids
         )
+
+        # Reward each completion.
+        reward_events = BaseRewardEvent.parse_reward_events(reward_events)
         successful_rewards = reward_events
         successful_rewards = torch.tensor(
             reward_events.pop("reward"), dtype=torch.float32
@@ -189,7 +196,7 @@ class BaseRewardModel:
             filled_rewards_normalized = filled_rewards_normalized.nan_to_num_(nan=0.0)
 
         # Return the filled rewards.
-        return filled_rewards_normalized, reward_events
+        return filled_rewards_normalized, reward_events, val_score_responses
     
     def calculate_adjusted_score(self, links_count: int, score: float, max_bonus: float = 0.2, link_sensitivity: int = 9) -> float:
         """
