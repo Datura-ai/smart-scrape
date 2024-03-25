@@ -52,8 +52,10 @@ class SerpGoogleSearchTool(BaseTool):
             return await search.arun(query)
         except Exception as err:
             if "Invalid API key" in str(err):
-                return "Serp API Key is invalid"
+                bt.logging.error(f"SERP API Key is invalid: {err}")
+                return "SERP API Key is invalid"
 
+            bt.logging.error(f"Could not perform SERP Google Search: {err}")
             return "Could not search Google. Please try again later."
 
     async def send_event(self, send: Send, response_streamer, data):

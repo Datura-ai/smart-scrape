@@ -104,11 +104,9 @@ class ToolManager:
                     toolkit_results[toolkit_name] = result
                 else:
                     if toolkit_name not in toolkit_results:
-                        toolkit_results[toolkit_name] = ""
+                        toolkit_results[toolkit_name] = {}
 
-                    toolkit_results[
-                        toolkit_name
-                    ] += f"{tool_name} results: {result}\n\n"
+                    toolkit_results[toolkit_name][tool_name] = result
 
         streaming_tasks = []
 
