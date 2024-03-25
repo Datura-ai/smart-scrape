@@ -18,24 +18,60 @@ body_examples = [
     'from:theiskaa',
     'from:theiskaa,cosmicquantum',
     'from:cosmicquantum in:datura,sybil',
-    'before:2023-03-15'
-    'after:2023-03-15'
-    'during:2023-03-15'
-    'before_days:1d'
-    'phrase here'
-    'datura release'
-    'api discord datura'
-    'in:channel-name'
-    'in:server-name,second-server-name',
+    'from:cosmicquantum, in:datura,sybil after:2023-03-15',
+    'before:2023-03-15',
+    'after:2023-03-15',
+    'during:2023-03-15',
+    'before_days:1d',
+    'phrase here',
+    'in:datura release',
+    'discord api in:general',
+    'in:channel-name',
     'from:theiskaa before:2023-03-15 some keyword here',
     'urgent meeting',
     'from:user1,user2,user3',
-    'in:channel1,channel2,channel3'
+    'in:channel1,channel2,channel3',
+    'in:channel-name search phrase',
+    "after:2023/03/15 in:datura announcements",
+    'from:user1 in:channel1,channel2 before:25/03/2023',
+    'from:user2 after:01/04/2023 project updates',
+    'in:general,random during:2023-02-01',
+    'bug reports in:datura,general,sybil'
 ]
 
 bad_query_examples = """
     ""
-    #Explanation: Empty query string
+    #Explanation: Empty query string.
+
+    "from:"
+    #Explanation: Empty field for the 'from:' keyword. A username must be provided after the 'from:' keyword.
+
+    "in:"
+    #Explanation: Empty field for the 'in:' keyword. A channel name must be provided after the 'in:' keyword.
+
+    "after:march 25"
+    #Explanation: date should be formatted via dd/mm/yyyy format.
+
+    "before:march 25"
+    #Explanation: date should be formatted via dd/mm/yyyy format.
+
+    "before_days:two days"
+    #Explanation: before days field shouldn't contain words, it should have format like 1d and 2d.
+
+    "from:userid123"
+    #Explanation: User IDs cannot be used with the 'from:' keyword. Use usernames instead.
+
+    "in:serverid456"
+    #Explanation: Server/Guild IDs cannot be used with the 'in:' keyword. Use channel names instead.
+
+    "from:channel-name"
+    #Explanation: Channel names cannot be used with the 'from:' keyword. Use usernames instead.
+
+    "in:username-name"
+    #Explanation: User names cannot be used with the 'in:' keyword. Use channel names instead.
+
+    "Recent announcements in datura"
+    #Explanation: The query should be broken down into separate keywords and filters. For recent announcements in the datura channel, it should be 'in:datura after:<recent_date> announcements'.
 """
 
 
@@ -44,64 +80,65 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
     if is_accuracy:
         accuracy_text = """
         RULES:
-            1. Accurately generate keywords, phrases, dates based solely on text that is unequivocally relevant to the user's prompt and after generate Discord API query
-            2. Use 'from:' operator only with usernames, not channel names or IDs. If multiple users, separate them with commas (e.g., 'from:user1,user2,user3').
-            3. If no username is provided, omit the 'from:' operator.
-            4. Use 'in:' operator only with channel names, not usernames, guild/server names or IDs. If multiple channels, separate them with commas (e.g., 'in:channel1,channel2,channel3').
-            5. If no channel name is provided, omit the 'in:' operator.
-            6. If date/time is mentioned in the prompt (e.g., recent, today, yesterday), set 'before' and 'after' filters with appropriate dates.
+            1. Accurately generate keywords, phrases, dates, and 'from:' user mentions and 'in:' channel mentions that are closely related to the user's prompt. After generating these, construct a Discord API query.
         """
     else:
         accuracy_text = """
         RULES:
-            1. Similar Generate generate keywords, phrases, dates and from: user, in: channel mentions that are closely related to the user's prompt and after generate Discord API query
+            1. Generate keywords, phrases, dates, and 'from:' user mentions and 'in:' channel mentions that are similar but not necessarily closely related to the user's prompt. After generating these, construct a Discord API query.
         """
+
     content = f"""
-        Given the specific User's prompt:
-        <UserPrompt>
-        '{prompt}'
-        </UserPromot>
+    Given the specific user's prompt:
+    <UserPrompt>
+    '{prompt}'
+    </UserPrompt>
 
-        , please perform the following tasks and provide the results in a JSON object format:
+    Please perform the following tasks and provide the results in a JSON object format:
 
-        1. Identify and list the key keywords related to <UserPrompt>, focusing on specific subjects and relevant modifiers.
+    1. Break down the <UserPrompt> into separate keywords, phrases, and modifiers. Discard any unnecessary words or sentence structures.
 
-        4. Generate Discord API body params based on the refined keywords, channel mentions, from mentions (if any) and dates for a query related to <UserPrompt>. Incorporate filters to ensure relevance and specificity.
+    2. Identify and list the key keywords, focusing on specific subjects (e.g., channel names, user mentions, topics).
 
-        {accuracy_text}
+    4. Identify and list relevant modifiers (e.g., dates, filters like 'recent', 'latest', 'today', 'yesterday' and etc).,
 
-        Discord API:
-        1. Body Params: "{discord_api_query_example}"
+    5. Generate Discord API body params based on the refined keywords, channel mentions (if any), user mentions (if any), and dates for a query related to <UserPrompt>. Incorporate filters to ensure relevance and specificity.
 
-        2. Body Params correct examples:
-        <CORRECT_EXAMPLES>
-        {body_examples}
-        </CORRECT_EXAMPLES>
+    {accuracy_text}
 
-        3. body.query bad examples:
-        <BAD_QUERY_EXAMPES>
-           {bad_query_examples}
-        </BAD_QUERY_EXAMPES>
+    Discord API:
+    1. Body Params Example: {discord_api_query_example}
 
-        4. body fields rulesplink:
-            - limit set always 10
-        5. body.query rules:
-            - Enclose phrases consisting of two or more words in double quotes (e.g., "Coca Cola"). Do not use single quotes.
-            - If no channel name is provided, omit the 'in:' operator.
-            - If no username is provided, omit the 'from:' operator.
-            - from: operator only include possible usernames, doesn't need to be exact match of username. i.e from:theiskaa
-            - in: operator only include possible discord channel names, doesn't need to be exact match. i.e from:datura
-            - To construct effective queries, combine search terms using spaces. if user wants
-              search in specific channel or from specific user use in: and from: keywrods.
+    2. Correct Body Params Examples:
+    <CORRECT_EXAMPLES>
+    {body_examples}
+    </CORRECT_EXAMPLES>
 
-        Output example:
-        {{
-            "body": {{
-                "query": "constructed query based on phrases, keywords, and dates",
-                "limit": 10,
-                "page": 1,
-            }}
-        }}"
+    3. Bad 'body.query' Examples:
+    <BAD_QUERY_EXAMPLES>
+       {bad_query_examples}
+    </BAD_QUERY_EXAMPLES>
+
+    4. Body Fields Rules:
+        - Set 'limit' to 10 always.
+
+    5. 'body.query' Rules:
+          - Use 'in:' only with channel names, never usernames, server names, or IDs.
+          - Use 'from:' only with usernames, not channel names or IDs. Separate multiple users with commas (e.g., 'from:user1,user2,user3').
+          - Separate multiple channels with commas (e.g., 'in:channel1,channel2').
+          - Omit 'in:' if no channel is specified.
+          - Omit 'from:' if no username is specified.
+          - If a date/time is mentioned (e.g., recent, today, yesterday), set the 'before' and 'after' filters with dates in the format 'dd/mm/yyyy'.
+          - Combine search terms with spaces. Use 'in:' and 'from:' to search specific channels or users.
+
+    Output Example:
+    {{
+        "body": {{
+            "query": "in:datura after:2023-03-15 announcement",
+            "limit": 10,
+            "page": 1
+        }}
+    }}
     """
     bt.logging.trace("get_query_gen_prompt Start   ============================")
     bt.logging.trace(content)
@@ -168,12 +205,14 @@ class DiscordPromptAnalyzer:
             response_format={"type": "json_object"},
         )
         response_dict = json.loads(res)
-        bt.logging.trace("generate_query_params_from_prompt Content: ", response_dict)
+        bt.logging.trace(
+            "generate_query_params_from_prompt Content: ", response_dict)
         return self.fix_query_dict(response_dict)
 
     def fix_query_dict(self, response_dict):
         if "api_params" in response_dict and "query" in response_dict["body"]:
-            response_dict["body"]["query"] = (response_dict["body"]["query"].replace("'", '"'))
+            response_dict["body"]["query"] = (
+                response_dict["body"]["query"].replace("'", '"'))
         return response_dict
 
     async def fix_discord_query(self, prompt, query, error, is_accuracy=True):
@@ -242,9 +281,11 @@ class DiscordPromptAnalyzer:
                 bt.logging.error(
                     f"Discord Query ===================================================, {response_text}"
                 )
-                raise Exception(f"analyse_prompt_and_fetch_messages: {response_text}")
+                raise Exception(
+                    f"analyse_prompt_and_fetch_messages: {response_text}")
 
-            messages_amount = result_json.get("meta", {}).get("result_count", 0)
+            messages_amount = result_json.get(
+                "meta", {}).get("result_count", 0)
 
             if messages_amount == 0:
                 bt.logging.info(
@@ -266,7 +307,8 @@ class DiscordPromptAnalyzer:
                 "================================================================"
             )
 
-            bt.logging.info(f"Messages fetched amount ============= {messages_amount}")
+            bt.logging.info(
+                f"Messages fetched amount ============= {messages_amount}")
 
             return result_json
         except Exception as e:
@@ -327,39 +369,40 @@ class DiscordPromptAnalyzer:
 
 
 if __name__ == "__main__":
-   client = DiscordPromptAnalyzer()
+    client = DiscordPromptAnalyzer()
 
-   dt = MockDiscordQuestionsDataset()
-   questions = []
-   for topic in dt.topics:
-       questions = []
-       for template in dt.question_templates:
-           question = template.format(topic)
-           questions.append(question)
+    dt = MockDiscordQuestionsDataset()
+    questions = []
+    for topic in dt.topics:
+        questions = []
+        for template in dt.question_templates:
+            question = template.format(topic)
+            questions.append(question)
 
-       results = asyncio.run(
-           asyncio.gather(
-               *(
-                   client.analyse_prompt_and_fetch_messages(question)
-                   for question in questions
-               )
-           )
-       )
-       for (result_json, prompt_analysis), qs in zip(results, questions):
-           messages_amount = result_json.get("meta", {}).get("result_count", 0)
-           if messages_amount <= 0:
-               print(
-                   "=====================START result_json======================================="
-               )
-               print(messages_amount, "     ===  ", question)
-               print("   ")
-               print(
-                   "=====================START prompt_analysis ======================================="
-               )
-               print(prompt_analysis.api_params)
-               print(
-                   "=====================END prompt_analysis ======================================="
-               )
-               print(
-                   "=====================END result_json======================================="
-               )
+        results = asyncio.run(
+            asyncio.gather(
+                *(
+                    client.analyse_prompt_and_fetch_messages(question)
+                    for question in questions
+                )
+            )
+        )
+        for (result_json, prompt_analysis), qs in zip(results, questions):
+            messages_amount = result_json.get(
+                "meta", {}).get("result_count", 0)
+            if messages_amount <= 0:
+                print(
+                    "=====================START result_json======================================="
+                )
+                print(messages_amount, "     ===  ", question)
+                print("   ")
+                print(
+                    "=====================START prompt_analysis ======================================="
+                )
+                print(prompt_analysis.api_params)
+                print(
+                    "=====================END prompt_analysis ======================================="
+                )
+                print(
+                    "=====================END result_json======================================="
+                )

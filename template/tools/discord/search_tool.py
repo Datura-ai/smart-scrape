@@ -50,7 +50,7 @@ class SearchDiscordTool(BaseTool):
             "================================== Prompt analysis ===================================="
         )
 
-        return (result, prompt_analysis)
+        return result, prompt_analysis
 
     async def send_event(self, send: Send, response_streamer, data):
         if not data:

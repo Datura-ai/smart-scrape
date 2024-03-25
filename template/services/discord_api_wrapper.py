@@ -22,7 +22,7 @@ class DiscordAPIClient:
 
     async def connect_to_endpoint(self, url, params: Optional[str] = None, body: Optional[str] = None):
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params, body=body) as response:
+            async with session.get(url, params=params, json=body) as response:
                 if response.status in [401, 403]:
                     bt.logging.error(
                         f"Critical Discord API Request error occurred: {await response.text()}"

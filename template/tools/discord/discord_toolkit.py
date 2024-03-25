@@ -20,6 +20,6 @@ class DiscordToolkit(BaseToolkit, ABC):
         return await summarize_discord_data(
             prompt=prompt,
             model=model,
-            filtered_tweets=prepare_messages_data_for_summary(messages),
+            filtered_data=prepare_messages_data_for_summary(messages),
             prompt_analysis=prompt_analysis,
         )
