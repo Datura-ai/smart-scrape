@@ -5,7 +5,7 @@ from .serp_google_search_tool import SerpGoogleSearchTool
 from .wikipedia_search_tool import WikipediaSearchTool
 from .youtube_search_tool import YoutubeSearchTool
 from .arxiv_search_tool import ArxivSearchTool
-from .search_summary import summarize_search_data
+from .search_summary import summarize_search_data, prepare_search_data_for_summary
 
 
 class SearchToolkit(BaseToolkit, ABC):
@@ -26,4 +26,8 @@ class SearchToolkit(BaseToolkit, ABC):
         ]
 
     async def summarize(self, prompt, model, data):
-        return await summarize_search_data(prompt=prompt, model=model, data=data)
+        return await summarize_search_data(
+            prompt=prompt,
+            model=model,
+            data=prepare_search_data_for_summary(data),
+        )
