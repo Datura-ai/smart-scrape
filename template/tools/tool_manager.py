@@ -85,41 +85,35 @@ class ToolManager:
     async def run(self):
         actions = await self.detect_tools_to_use()
 
-        # intro_text_task = self.intro_text(
-        #     model="gpt-3.5-turbo",
-        #     tool_names=[action["action"] for action in actions],
-        # )
+        toolkit_actions = {}
+        for action in actions:
+            tool_name = action["action"]
+            toolkit_name = find_toolkit_by_tool_name(tool_name).name
+            if toolkit_name not in toolkit_actions:
+                toolkit_actions[toolkit_name] = []
+            toolkit_actions[toolkit_name].append(action)
 
-        tasks = [asyncio.create_task(self.run_tool(action)) for action in actions]
+        toolkit_tasks = []
 
-        # await intro_text_task
-
-        toolkit_results = {}
-
-        for completed_task in asyncio.as_completed(tasks):
-            result, toolkit_name, tool_name = await completed_task
-
-            if result is not None:
-                if toolkit_name == TwitterToolkit().name:
-                    toolkit_results[toolkit_name] = result
-                else:
-                    if toolkit_name not in toolkit_results:
-                        toolkit_results[toolkit_name] = {}
-
-                    toolkit_results[toolkit_name][tool_name] = result
+        for toolkit_name, actions in toolkit_actions.items():
+            toolkit_task = asyncio.create_task(self.run_toolkit(toolkit_name, actions))
+            toolkit_tasks.append(toolkit_task)
 
         streaming_tasks = []
 
-        for toolkit_name, results in toolkit_results.items():
-            response, role = await find_toolkit_by_name(toolkit_name).summarize(
-                prompt=self.prompt, model=self.openai_summary_model, data=results
-            )
+        for completed_task in asyncio.as_completed(toolkit_tasks):
+            toolkit_name, results = await completed_task
 
-            streaming_task = asyncio.create_task(
-                self.response_streamer.stream_response(response=response, role=role)
-            )
+            if results:
+                response, role = await find_toolkit_by_name(toolkit_name).summarize(
+                    prompt=self.prompt, model=self.openai_summary_model, data=results
+                )
 
-            streaming_tasks.append(streaming_task)
+                streaming_task = asyncio.create_task(
+                    self.response_streamer.stream_response(response=response, role=role)
+                )
+
+                streaming_tasks.append(streaming_task)
 
         await asyncio.gather(*streaming_tasks)
 
@@ -181,6 +175,19 @@ class ToolManager:
             print(e)
 
         return actions
+
+    async def run_toolkit(self, toolkit_name, actions):
+        tasks = [asyncio.create_task(self.run_tool(action)) for action in actions]
+
+        toolkit_results = {}
+
+        for completed_task in asyncio.as_completed(tasks):
+            result, _, tool_name = await completed_task
+
+            if result is not None:
+                toolkit_results[tool_name] = result
+
+        return toolkit_name, toolkit_results
 
     async def run_tool(self, action: Dict[str, str]):
         tool_name = action.get("action")

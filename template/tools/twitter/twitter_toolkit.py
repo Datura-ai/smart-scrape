@@ -16,6 +16,7 @@ class TwitterToolkit(BaseToolkit, ABC):
         return [GetRecentTweetsTool(), GetFullArchiveTweetsTool()]
 
     async def summarize(self, prompt, model, data):
+        data = next(iter(data.values()))
         tweets, prompt_analysis = data
 
         return await summarize_twitter_data(
