@@ -61,7 +61,7 @@ def prepare_search_data_for_summary(data):
     result = ""
 
     for tool_name in data.keys():
-        if tool_name == "Web Search":
+        if tool_name == "Google Search":
             res = data[tool_name]
 
             snippets = []

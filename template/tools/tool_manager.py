@@ -42,7 +42,7 @@ Here is example of JSON array format to return. Keep in mind that this is exampl
     }}
   }},
   {{
-    "action": "Web Search",
+    "action": "Google Search",
     "args": {{
       "query": "What are AI trends?"
     }}

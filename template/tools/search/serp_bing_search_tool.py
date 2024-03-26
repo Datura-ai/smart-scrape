@@ -16,26 +16,26 @@ if not SERPAPI_API_KEY:
     )
 
 
-class SerpGoogleSearchSchema(BaseModel):
+class SerpBingSearchSchema(BaseModel):
     query: str = Field(
         ...,
-        description="The search query for Google search.",
+        description="The search query for Bing search.",
     )
 
 
-class SerpGoogleSearchTool(BaseTool):
-    name = "Google Search"
+class SerpBingSearchTool(BaseTool):
+    name = "Bing Search"
 
-    slug = "serp_google_search"
+    slug = "serp_bing_search"
 
     description = (
-        "This tool performs Google searches and extracts relevant snippets and webpages. "
+        "This tool performs Bing searches and extracts relevant snippets and webpages. "
         "It's particularly useful for staying updated with current events and finding quick answers to your queries."
     )
 
-    args_schema: Type[SerpGoogleSearchSchema] = SerpGoogleSearchSchema
+    args_schema: Type[SerpBingSearchSchema] = SerpBingSearchSchema
 
-    tool_id = "a66b3b20-d0a2-4b53-a775-197bc492e816"
+    tool_id = "88be4eef-6d3c-4eaa-b7a5-a30dda650c14"
 
     def _run():
         pass
@@ -44,10 +44,10 @@ class SerpGoogleSearchTool(BaseTool):
         self,
         query: str,
     ):
-        """Search Google and return the results."""
+        """Search Bing and return the results."""
 
         search = SerpAPIWrapper(
-            serpapi_api_key=SERPAPI_API_KEY, params={"engine": "google"}
+            serpapi_api_key=SERPAPI_API_KEY, params={"engine": "bing"}
         )
 
         try:
@@ -57,8 +57,8 @@ class SerpGoogleSearchTool(BaseTool):
                 bt.logging.error(f"SERP API Key is invalid: {err}")
                 return "SERP API Key is invalid"
 
-            bt.logging.error(f"Could not perform SERP Google Search: {err}")
-            return "Could not search Google. Please try again later."
+            bt.logging.error(f"Could not perform SERP Bing Search: {err}")
+            return "Could not search Bing. Please try again later."
 
     async def send_event(self, send: Send, response_streamer, data):
         if not data:
