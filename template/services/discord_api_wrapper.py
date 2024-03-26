@@ -4,7 +4,7 @@ import bittensor as bt
 from typing import Optional
 
 
-BASE_URL = "http://daturadiscord.eu-north-1.elasticbeanstalk.com"
+BASE_URL = "daturadiscordapi.us-east-1.elasticbeanstalk.com"
 
 
 class DiscordAPIClient:
