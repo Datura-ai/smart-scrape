@@ -10,15 +10,11 @@ BASE_URL = "daturadiscordapi.us-east-1.elasticbeanstalk.com"
 class DiscordAPIClient:
     def __init__(
         self,
-        openai_query_model="gpt-3.5-turbo-0125",
-        openai_fix_query_model="gpt-4-1106-preview",
     ):
         self.url = BASE_URL,
         self.headers = {
             "Content-Type": "application/json",
         }
-        self.openai_query_model = openai_query_model
-        self.openai_fix_query_model = openai_fix_query_model
 
     async def connect_to_endpoint(self, url, params: Optional[str] = None, body: Optional[str] = None):
         async with aiohttp.ClientSession() as session:
@@ -38,14 +34,6 @@ class DiscordAPIClient:
 
                 response_text = await response.text()
                 return json_data, response.status, response_text
-
-    async def get_all_channels(self, query):
-        """
-        Retrieve all channels for a specified guild.
-        :return: A list of channel objects.
-        """
-        url = f"{self.url}/api/channels"
-        return await self.connect_to_endpoint(url, query)
 
     async def search_messages(self, body):
         """

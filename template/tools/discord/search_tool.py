@@ -7,20 +7,20 @@ from template.tools.base import BaseTool
 import bittensor as bt
 
 
-class SearchDiscordToolSchema(BaseModel):
+class DiscordSearchToolSchema(BaseModel):
     query: str = Field(
         ...,
         description="The search query for Discord messages.",
     )
 
 
-class SearchDiscordTool(BaseTool):
+class DiscordSearchTool(BaseTool):
     """Tool that searches for messages in Discord based on a query."""
 
-    name = "Search Discord"
+    name = "Discord Search"
     slug = "search_discord"
     description = "Search for messages in Discord for a given query."
-    args_scheme: Type[SearchDiscordToolSchema] = SearchDiscordToolSchema
+    args_scheme: Type[DiscordSearchToolSchema] = DiscordSearchToolSchema
     tool_id = "dd29715f-066f-4f8d-8adb-2dd005380f03"
 
     def _run():
@@ -41,33 +41,33 @@ class SearchDiscordTool(BaseTool):
             openai_fix_query_model=openai_fix_query_model,
         )
 
-        result, prompt_analysis = await client.analyse_prompt_and_fetch_messages(query)
+        result, discord_prompt_analysis = await client.analyse_prompt_and_fetch_messages(query)
         bt.logging.info(
-            "================================== Prompt analysis ==================================="
+            "================================== Discord Prompt analysis ==================================="
         )
-        bt.logging.info(prompt_analysis)
+        bt.logging.info(discord_prompt_analysis)
         bt.logging.info(
-            "================================== Prompt analysis ===================================="
+            "================================== Discord Prompt analysis ===================================="
         )
 
-        return result, prompt_analysis
+        return result, discord_prompt_analysis
 
     async def send_event(self, send: Send, response_streamer, data):
         if not data:
             return
 
-        messages, prompt_analysis = data
+        messages, discord_prompt_analysis = data
         # Send prompt_analysis
-        if prompt_analysis:
-            prompt_analysis_response_body = {
-                "type": "prompt_analysis",
-                "content": prompt_analysis.dict(),
+        if discord_prompt_analysis:
+            discord_prompt_analysis_response_body = {
+                "type": "discord_prompt_analysis",
+                "content": discord_prompt_analysis.dict(),
             }
 
             await send(
                 {
                     "type": "http.response.body",
-                    "body": json.dumps(prompt_analysis_response_body).encode("utf-8"),
+                    "body": json.dumps(discord_prompt_analysis_response_body).encode("utf-8"),
                     "more_body": True,
                 }
             )

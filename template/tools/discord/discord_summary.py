@@ -69,9 +69,4 @@ async def summarize_discord_data(
 
 
 def prepare_messages_data_for_summary(messages):
-    data = []
-
-    for message in messages.get("body", []):
-        data.append(message)
-
-    return data
+    return messages.get("body", [])
