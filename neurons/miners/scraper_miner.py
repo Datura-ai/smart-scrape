@@ -34,7 +34,6 @@ class ScraperMiner:
                 prompt=prompt,
                 manual_tool_names=tools,
                 send=send,
-                model=model,
                 is_intro_text=is_intro_text,
                 miner=self.miner,
             )

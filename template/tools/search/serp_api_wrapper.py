@@ -10,7 +10,10 @@ class SerpAPIWrapper(LangChainSerpAPIWrapper):
         if "error" in res.keys():
             raise ValueError(f"Got error from SerpAPI: {res['error']}")
 
-        # TODO use answer box later to display in UI
+        return res
+
+        # INFO: Parsing will be handled by the UI. I'll leave this here until we will parse job, top stories and etc...
+
         # if "answer_box_list" in res.keys():
         #     res["answer_box"] = res["answer_box_list"]
         # if "answer_box" in res.keys():
@@ -33,37 +36,41 @@ class SerpAPIWrapper(LangChainSerpAPIWrapper):
         #             ):
         #                 answer[key] = value
         #         return str(answer)
-        if "events_results" in res.keys():
-            return res["events_results"][:10]
-        elif "sports_results" in res.keys():
-            return res["sports_results"]
-        elif "top_stories" in res.keys():
-            return res["top_stories"]
-        elif "news_results" in res.keys():
-            return res["news_results"]
-        elif "jobs_results" in res.keys() and "jobs" in res["jobs_results"].keys():
-            return res["jobs_results"]["jobs"]
-        elif (
-            "shopping_results" in res.keys()
-            and "title" in res["shopping_results"][0].keys()
-        ):
-            return res["shopping_results"][:3]
-        elif "questions_and_answers" in res.keys():
-            return res["questions_and_answers"]
-        elif (
-            "popular_destinations" in res.keys()
-            and "destinations" in res["popular_destinations"].keys()
-        ):
-            return res["popular_destinations"]["destinations"]
-        elif "top_sights" in res.keys() and "sights" in res["top_sights"].keys():
-            return res["top_sights"]["sights"]
-        elif (
-            "images_results" in res.keys()
-            and "thumbnail" in res["images_results"][0].keys()
-        ):
-            return str([item["thumbnail"] for item in res["images_results"][:10]])
 
-        snippets = []
+        # if "events_results" in res.keys():
+        #     return res["events_results"][:10]
+        # elif "sports_results" in res.keys():
+        #     return res["sports_results"]
+        # elif "top_stories" in res.keys():
+        #     return res["top_stories"]
+        # elif "news_results" in res.keys():
+        #     return res["news_results"]
+        # elif "jobs_results" in res.keys() and "jobs" in res["jobs_results"].keys():
+        #     return {
+        #         "type": "jobs",
+        #         "content": res["jobs_results"]["jobs"],
+        #     }
+        # elif (
+        #     "shopping_results" in res.keys()
+        #     and "title" in res["shopping_results"][0].keys()
+        # ):
+        #     return res["shopping_results"][:3]
+        # elif "questions_and_answers" in res.keys():
+        #     return res["questions_and_answers"]
+        # elif (
+        #     "popular_destinations" in res.keys()
+        #     and "destinations" in res["popular_destinations"].keys()
+        # ):
+        #     return res["popular_destinations"]["destinations"]
+        # elif "top_sights" in res.keys() and "sights" in res["top_sights"].keys():
+        #     return res["top_sights"]["sights"]
+        # elif (
+        #     "images_results" in res.keys()
+        #     and "thumbnail" in res["images_results"][0].keys()
+        # ):
+        #     return str([item["thumbnail"] for item in res["images_results"][:10]])
+
+        # snippets = []
 
         # if "knowledge_graph" in res.keys():
         #     knowledge_graph = res["knowledge_graph"]
@@ -81,24 +88,24 @@ class SerpAPIWrapper(LangChainSerpAPIWrapper):
         #         ):
         #             snippets.append(f"{title} {key}: {value}.")
 
-        for organic_result in res.get("organic_results", []):
-            snippet_dict = {}
-            if "snippet" in organic_result:
-                snippet_dict["snippet"] = organic_result["snippet"]
-            if "snippet_highlighted_words" in organic_result:
-                snippet_dict["snippet_highlighted_words"] = organic_result[
-                    "snippet_highlighted_words"
-                ]
-            if "rich_snippet" in organic_result:
-                snippet_dict["rich_snippet"] = organic_result["rich_snippet"]
-            if "rich_snippet_table" in organic_result:
-                snippet_dict["rich_snippet_table"] = organic_result[
-                    "rich_snippet_table"
-                ]
-            if "link" in organic_result:
-                snippet_dict["link"] = organic_result["link"]
+        # for organic_result in res.get("organic_results", []):
+        #     snippet_dict = {}
+        #     if "snippet" in organic_result:
+        #         snippet_dict["snippet"] = organic_result["snippet"]
+        #     if "snippet_highlighted_words" in organic_result:
+        #         snippet_dict["snippet_highlighted_words"] = organic_result[
+        #             "snippet_highlighted_words"
+        #         ]
+        #     if "rich_snippet" in organic_result:
+        #         snippet_dict["rich_snippet"] = organic_result["rich_snippet"]
+        #     if "rich_snippet_table" in organic_result:
+        #         snippet_dict["rich_snippet_table"] = organic_result[
+        #             "rich_snippet_table"
+        #         ]
+        #     if "link" in organic_result:
+        #         snippet_dict["link"] = organic_result["link"]
 
-            snippets.append(snippet_dict)
+        #     snippets.append(snippet_dict)
 
         # if "buying_guide" in res.keys():
         #     snippets.append(res["buying_guide"])
@@ -111,7 +118,7 @@ class SerpAPIWrapper(LangChainSerpAPIWrapper):
         # ):
         #     snippets.append(res["local_results"]["places"])
 
-        if len(snippets) > 0:
-            return {"type": "organic", "content": snippets}
-        else:
-            return "No good search result found"
+        # if len(snippets) > 0:
+        #     return {"type": "organic", "content": snippets}
+        # else:
+        #     return "No good search result found"

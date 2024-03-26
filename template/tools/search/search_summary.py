@@ -55,3 +55,38 @@ async def summarize_search_data(prompt: str, model: str, data):
     )
 
     return res, ScraperTextRole.SEARCH_SUMMARY
+
+
+def prepare_search_data_for_summary(data):
+    result = ""
+
+    for tool_name in data.keys():
+        if tool_name == "Google Search":
+            res = data[tool_name]
+
+            snippets = []
+
+            for organic_result in res.get("organic_results", []):
+                snippet_dict = {}
+                if "snippet" in organic_result:
+                    snippet_dict["snippet"] = organic_result["snippet"]
+                if "snippet_highlighted_words" in organic_result:
+                    snippet_dict["snippet_highlighted_words"] = organic_result[
+                        "snippet_highlighted_words"
+                    ]
+                if "rich_snippet" in organic_result:
+                    snippet_dict["rich_snippet"] = organic_result["rich_snippet"]
+                if "rich_snippet_table" in organic_result:
+                    snippet_dict["rich_snippet_table"] = organic_result[
+                        "rich_snippet_table"
+                    ]
+                if "link" in organic_result:
+                    snippet_dict["link"] = organic_result["link"]
+
+                snippets.append(snippet_dict)
+
+            data[tool_name] = {"type": "organic", "content": snippets}
+
+        result += f"{tool_name} results: {data[tool_name]}\n\n"
+
+    return result

@@ -1,9 +1,9 @@
 from typing import Optional, Type
 
-from langchain_community.utilities import WikipediaAPIWrapper
 from langchain.callbacks.manager import CallbackManagerForToolRun
 from pydantic import BaseModel, Field
 
+from template.tools.search.wikipedia_api_wrapper import WikipediaAPIWrapper
 from template.tools.base import BaseTool
 
 
@@ -41,3 +41,9 @@ class WikipediaSearchTool(BaseTool):
 
     async def send_event(self, send, response_streamer, data):
         pass
+
+
+if __name__ == "__main__":
+    tool = WikipediaSearchTool()
+    result = tool._run("george washington")
+    print(result)
