@@ -15,28 +15,28 @@ discord_api_query_example = {
 }
 
 body_examples = [
-    'from:theiskaa',
-    'from:theiskaa,cosmicquantum',
-    'from:cosmicquantum in:datura,sybil',
-    'from:cosmicquantum, in:datura,sybil after:2023-03-15',
-    'before:2023-03-15',
-    'after:2023-03-15',
-    'during:2023-03-15',
-    'before_days:1d',
-    'phrase here',
-    'in:datura release',
-    'discord api in:general',
-    'in:channel-name',
-    'from:theiskaa before:2023-03-15 some keyword here',
-    'urgent meeting',
-    'from:user1,user2,user3',
-    'in:channel1,channel2,channel3',
-    'in:channel-name search phrase',
+    "from:theiskaa",
+    "from:theiskaa,cosmicquantum",
+    "from:cosmicquantum in:datura,sybil",
+    "from:cosmicquantum, in:datura,sybil after:2023-03-15",
+    "before:2023-03-15",
+    "after:2023-03-15",
+    "during:2023-03-15",
+    "before_days:1d",
+    "phrase here",
+    "in:datura release",
+    "discord api in:general",
+    "in:channel-name",
+    "from:theiskaa before:2023-03-15 some keyword here",
+    "urgent meeting",
+    "from:user1,user2,user3",
+    "in:channel1,channel2,channel3",
+    "in:channel-name search phrase",
     "after:2023/03/15 in:datura announcements",
-    'from:user1 in:channel1,channel2 before:25/03/2023',
-    'from:user2 after:01/04/2023 project updates',
-    'in:general,random during:2023-02-01',
-    'bug reports in:datura,general,sybil'
+    "from:user1 in:channel1,channel2 before:25/03/2023",
+    "from:user2 after:01/04/2023 project updates",
+    "in:general,random during:2023-02-01",
+    "bug reports in:datura,general,sybil",
 ]
 
 bad_query_examples = """
@@ -203,14 +203,14 @@ class DiscordPromptAnalyzer:
             response_format={"type": "json_object"},
         )
         response_dict = json.loads(res)
-        bt.logging.trace(
-            "generate_query_params_from_prompt Content: ", response_dict)
+        bt.logging.trace("generate_query_params_from_prompt Content: ", response_dict)
         return self.fix_query_dict(response_dict)
 
     def fix_query_dict(self, response_dict):
         if "api_params" in response_dict and "query" in response_dict["body"]:
-            response_dict["body"]["query"] = (
-                response_dict["body"]["query"].replace("'", '"'))
+            response_dict["body"]["query"] = response_dict["body"]["query"].replace(
+                "'", '"'
+            )
         return response_dict
 
     async def fix_discord_query(self, prompt, query, error, is_accuracy=True):
@@ -240,9 +240,7 @@ class DiscordPromptAnalyzer:
             bt.logging.info(e)
             return [], None
 
-    async def search_messages(
-        self, prompt_analysis: DiscordPromptAnalysisResult
-    ):
+    async def search_messages(self, prompt_analysis: DiscordPromptAnalysisResult):
         return await self.ds_client.search_messages(prompt_analysis.body)
 
     async def analyse_prompt_and_fetch_messages(self, prompt):
@@ -250,15 +248,15 @@ class DiscordPromptAnalyzer:
         try:
             _, prompt_analysis = await self.generate_and_analyze_query(prompt)
 
-            result_json, status_code, response_text = await self.search_messages(prompt_analysis)
+            result_json, status_code, response_text = await self.search_messages(
+                prompt_analysis
+            )
 
             if status_code in [429, 502, 503, 504]:
                 bt.logging.warning(
                     f"analyse_prompt_and_fetch_messages status_code: {status_code} ===========, {response_text}"
                 )
-                await asyncio.sleep(
-                    random.randint(15, 30)
-                )
+                await asyncio.sleep(random.randint(15, 30))
                 result_json, status_code, response_text = await self.search_messages(
                     prompt_analysis
                 )
@@ -279,10 +277,9 @@ class DiscordPromptAnalyzer:
                 bt.logging.error(
                     f"Discord Query ===================================================, {response_text}"
                 )
-                raise Exception(
-                    f"analyse_prompt_and_fetch_messages: {response_text}")
+                raise Exception(f"analyse_prompt_and_fetch_messages: {response_text}")
 
-            messages = result_json.get("body");
+            messages = result_json.get("body")
 
             if not messages:
                 bt.logging.info(
@@ -304,7 +301,7 @@ class DiscordPromptAnalyzer:
                 "================================================================"
             )
 
-            return result_json
+            return result_json, prompt_analysis
         except Exception as e:
             bt.logging.error(f"analyse_prompt_and_fetch_tweets, {e}")
             return {"meta": {"result_count": 0}}, prompt_analysis
@@ -382,8 +379,7 @@ if __name__ == "__main__":
             )
         )
         for (result_json, prompt_analysis), qs in zip(results, questions):
-            messages_amount = result_json.get(
-                "meta", {}).get("result_count", 0)
+            messages_amount = result_json.get("meta", {}).get("result_count", 0)
             if messages_amount <= 0:
                 print(
                     "=====================START result_json======================================="

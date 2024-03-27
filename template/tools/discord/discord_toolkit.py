@@ -1,8 +1,11 @@
 from abc import ABC
 from typing import List
 from template.tools.base import BaseToolkit, BaseTool
-from template.tools.discord.discord_summary import prepare_messages_data_for_summary, summarize_discord_data
-from template.tools.discord.search_tool import DiscordSearchTool
+from template.tools.discord.discord_summary import (
+    prepare_messages_data_for_summary,
+    summarize_discord_data,
+)
+from template.tools.discord.discord_search_tool import DiscordSearchTool
 
 
 class DiscordToolkit(BaseToolkit, ABC):
@@ -15,11 +18,12 @@ class DiscordToolkit(BaseToolkit, ABC):
         return [DiscordSearchTool()]
 
     async def summarize(self, prompt, model, data):
+        data = next(iter(data.values()))
         messages, prompt_analysis = data
 
         return await summarize_discord_data(
             prompt=prompt,
             model=model,
-            filtered_data=prepare_messages_data_for_summary(messages),
+            filtered_messages=prepare_messages_data_for_summary(messages),
             prompt_analysis=prompt_analysis,
         )

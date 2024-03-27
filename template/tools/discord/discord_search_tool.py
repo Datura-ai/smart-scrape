@@ -41,7 +41,9 @@ class DiscordSearchTool(BaseTool):
             openai_fix_query_model=openai_fix_query_model,
         )
 
-        result, discord_prompt_analysis = await client.analyse_prompt_and_fetch_messages(query)
+        result, discord_prompt_analysis = (
+            await client.analyse_prompt_and_fetch_messages(query)
+        )
         bt.logging.info(
             "================================== Discord Prompt analysis ==================================="
         )
@@ -50,7 +52,7 @@ class DiscordSearchTool(BaseTool):
             "================================== Discord Prompt analysis ===================================="
         )
 
-        return result, discord_prompt_analysis
+        return (result, discord_prompt_analysis)
 
     async def send_event(self, send: Send, response_streamer, data):
         if not data:
@@ -67,7 +69,9 @@ class DiscordSearchTool(BaseTool):
             await send(
                 {
                     "type": "http.response.body",
-                    "body": json.dumps(discord_prompt_analysis_response_body).encode("utf-8"),
+                    "body": json.dumps(discord_prompt_analysis_response_body).encode(
+                        "utf-8"
+                    ),
                     "more_body": True,
                 }
             )
