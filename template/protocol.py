@@ -83,6 +83,7 @@ class ScraperTextRole(str, Enum):
     INTRO = "intro"
     TWITTER_SUMMARY = "twitter_summary"
     SEARCH_SUMMARY = "search_summary"
+    DISCORD_SUMMARY = "discord_summary"
     FINAL_SUMMARY = "summary"
 
 
@@ -357,3 +358,14 @@ class MinerTweetAuthor(BaseModel):
     name: str
     username: str
     created_at: str
+
+
+class DiscordPromptAnalysisResult(BaseModel):
+    body: Dict[str, Any] = {}
+
+    def fill(self, response: Dict[str, Any]):
+        if "body" in response:
+            self.body = response["body"]
+
+    def __str__(self):
+        return f"Query String: {self.body}"

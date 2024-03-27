@@ -42,12 +42,12 @@ class ScraperValidator:
         self.seed = 1234
         self.neuron = neuron
         self.timeout = 150
-        # self.tools = ["Recent Tweets", "Google Search", "Wikipedia Search", "ArXiv Search", "Youtube Search"]
         self.tools = [
             "Recent Tweets",
             "Google Search",
             "ArXiv Search",
             "Youtube Search",
+            "Discord Search"
         ]
 
         # Init device.
