@@ -1,5 +1,5 @@
 import re
-from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
+from typing import List
 from urllib.parse import urlparse
 
 VALID_DOMAINS = ["twitter.com", "x.com"]
@@ -10,7 +10,8 @@ class TwitterUtils:
         self.twitter_link_regex = re.compile(
             r"https?://(?:"
             + "|".join(re.escape(domain) for domain in VALID_DOMAINS)
-            + r")/[\w/:%#\$&\?\(\)~\.=\+\-]+(?<=\d)",
+            + r")/(?![^/]*?(?:Twitter|Admin)[^/]*?/)"
+            r"(?P<username>[a-zA-Z0-9_]{1,15})/status/(?P<id>\d+)",
             re.IGNORECASE,
         )
 
@@ -52,4 +53,4 @@ class TwitterUtils:
         Returns:
             A list of found Twitter links.
         """
-        return self.twitter_link_regex.findall(text)
+        return [match.group() for match in self.twitter_link_regex.finditer(text)]
