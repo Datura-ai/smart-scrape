@@ -3,22 +3,19 @@ import aiohttp
 import bittensor as bt
 from typing import Optional
 
-
 BASE_URL = "http://daturadiscordapi.us-east-1.elasticbeanstalk.com"
-
 
 class DiscordAPIClient:
     def __init__(
         self,
     ):
-        self.url = BASE_URL,
         self.headers = {
             "Content-Type": "application/json",
         }
 
-    async def connect_to_endpoint(self, url, params: Optional[str] = None, body: Optional[str] = None):
+    async def connect_to_endpoint(self, url, body: Optional[str] = None):
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params, json=body) as response:
+            async with session.get(url, json=body) as response:
                 if response.status in [401, 403]:
                     bt.logging.error(
                         f"Critical Discord API Request error occurred: {await response.text()}"
@@ -42,5 +39,5 @@ class DiscordAPIClient:
 
         :return: A list of messages
         """
-        url = f"{self.url}/api/messages"
+        url = f"{BASE_URL}/api/messages"
         return await self.connect_to_endpoint(url, body)

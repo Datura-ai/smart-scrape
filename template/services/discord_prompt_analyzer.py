@@ -185,10 +185,7 @@ class DiscordPromptAnalyzer:
     ):
         self.openai_query_model = openai_query_model
         self.openai_fix_query_model = openai_fix_query_model
-        self.ds_client = DiscordAPIClient(
-            openai_query_model=openai_query_model,
-            openai_fix_query_model=openai_fix_query_model,
-        )
+        self.ds_client = DiscordAPIClient()
 
     async def generate_query_params_from_prompt(self, prompt, is_accuracy=True):
         """
@@ -285,10 +282,9 @@ class DiscordPromptAnalyzer:
                 raise Exception(
                     f"analyse_prompt_and_fetch_messages: {response_text}")
 
-            messages_amount = result_json.get(
-                "meta", {}).get("result_count", 0)
+            messages = result_json.get("body");
 
-            if messages_amount == 0:
+            if not messages:
                 bt.logging.info(
                     "analyse_prompt_and_fetch_messages: No messages found, attempting next query."
                 )
@@ -307,9 +303,6 @@ class DiscordPromptAnalyzer:
             bt.logging.debug(
                 "================================================================"
             )
-
-            bt.logging.info(
-                f"Messages fetched amount ============= {messages_amount}")
 
             return result_json
         except Exception as e:
