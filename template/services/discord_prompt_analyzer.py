@@ -70,7 +70,7 @@ bad_query_examples = """
     "in:username-name"
     #Explanation: User names cannot be used with the 'in:' keyword. Use channel names instead.
 
-    "Recent announcements in #alpa"
+    "Recent announcements in #alpha"
     #Explanation: The query should be broken down into separate keywords and filters. For recent announcements in the datura channel,
     it should be 'in:alpha after:<dd/mm/yyy conversion of date representation> announcements'.
 """
