@@ -63,34 +63,28 @@ with codecs.open(
     version_string = version_match.group(1)
 
 setup(
-    name="bittensor_subnet_template",  # TODO(developer): Change this value to your module subnet name.
+    name="smart_scrape",
     version=version_string,
-    description="bittensor_subnet_template",  # TODO(developer): Change this value to your module subnet description.
+    description="Decentralized API for Scraping",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/opentensor/bittensor-subnet-template",  # TODO(developer): Change this url to your module subnet github url.
-    author="bittensor.com",  # TODO(developer): Change this value to your module subnet author name.
+    url="https://github.com/Datura-ai/smart-scrape",
+    author="Fish",
     packages=find_packages(),
     include_package_data=True,
-    author_email="",  # TODO(developer): Change this value to your module subnet author email.
+    author_discord="p383_54249",
     license="MIT",
     python_requires=">=3.8",
     install_requires=requirements,
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
-        "Topic :: Software Development :: Build Tools",
-        # Pick your license as you wish
         "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
-        "Topic :: Scientific/Engineering",
-        "Topic :: Scientific/Engineering :: Mathematics",
-        "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",
-        "Topic :: Software Development :: Libraries",
-        "Topic :: Software Development :: Libraries :: Python Modules",
     ],
 )
