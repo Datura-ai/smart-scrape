@@ -70,9 +70,9 @@ bad_query_examples = """
     "in:username-name"
     #Explanation: User names cannot be used with the 'in:' keyword. Use channel names instead.
 
-    "Recent announcements in datura"
+    "Recent announcements in #alpa"
     #Explanation: The query should be broken down into separate keywords and filters. For recent announcements in the datura channel,
-     it should be 'in:datura after:<recent_date> announcements'.
+    it should be 'in:alpha after:<dd/mm/yyy conversion of date representation> announcements'.
 """
 
 
@@ -124,13 +124,12 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
         - Set 'limit' to 10 always.
 
     5. 'body.query' Rules:
-          - Use 'in:' only with channel names, never usernames, server names, or IDs.
-          - Use 'from:' only with usernames, not channel names or IDs. Separate multiple users with commas (e.g., 'from:user1,user2,user3').
-          - Separate multiple channels with commas (e.g., 'in:channel1,channel2').
-          - Omit 'in:' if no channel is specified.
-          - Omit 'from:' if no username is specified.
-          - If a date/time is mentioned (e.g., recent, today, yesterday), set the 'before' and 'after' filters with dates in the format 'dd/mm/yyyy'.
-          - Combine search terms with spaces. Use 'in:' and 'from:' to search specific channels or users.
+          - Use 'in:' followed by the channel name if the prompt contains '#channel_name'. For example, if the prompt is 'recent announcements in #general', use 'in:general'.
+          - Use 'from:' followed by the username if the prompt contains '@username'. For example, if the prompt is 'updates from @user1', use 'from:user1'.
+          - If multiple channels are mentioned, separate them with commas (e.g., 'in:channel1,channel2').
+          - If multiple users are mentioned, separate them with commas (e.g., 'from:user1,user2,user3').
+          - Omit 'in:' if no channel mention (starting with '#') is specified.
+          - Omit 'from:' if no username mention (starting with '@') is specified.
 
     Output Example:
     {{

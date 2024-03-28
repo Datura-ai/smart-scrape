@@ -10,8 +10,12 @@ async def main():
 
     for _ in range(len(dt.question_templates)):
         prompt = dt.next()
-        result = await client.analyse_prompt_and_fetch_messages(prompt)
-        bt.logging.warning(f"{result}")
+        _, prompt_analysis = await client.generate_and_analyze_query(prompt)
+
+        bt.logging.info("================================== Prompt analysis ==================================")
+        bt.logging.info(prompt)
+        bt.logging.info(prompt_analysis)
+        bt.logging.info("================================== Prompt analysis ==================================")
 
 
 if __name__ == "__main__":
