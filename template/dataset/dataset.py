@@ -333,11 +333,11 @@ class StackOverflowDataset:
 class MockDiscordQuestionsDataset:
     def __init__(self):
         self.question_templates = [
-            "What are the recent announcements in datura discord channel?",
-            "What are the recent announcements in Bittensor?",
-            "Tell me the recent news about the sybil",
-            "What @Professor asking about bittensor",
-            "What is latest release version of datura?",
+            "What are the recent announcements in #alpha",
+            "What are the recent announcements in #announcements",
+            "Tell me the recent news about bittensor",
+            "What @professor is asking in #general",
+            "What is latest release version of ?",
             "What are the Hyper parameters of subnet 22?",
             "What people are talking about TAO wallet?",
             "Axon configurations in translation subnet",
