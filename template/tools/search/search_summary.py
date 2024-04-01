@@ -92,6 +92,8 @@ def prepare_search_data_for_summary(data):
                 snippets.append(snippet_dict)
 
             data[tool_name] = {"type": "organic", "content": snippets}
+        elif tool_name == "Google Image Search":
+            continue
 
         result += f"{tool_name} results: {data[tool_name]}\n\n"
 

@@ -167,6 +167,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Optional JSON object containing search results from SERP",
     )
 
+    google_image_search_results: Optional[Any] = pydantic.Field(
+        default_factory=dict,
+        title="Google Image Search Results",
+        description="Optional JSON object containing image search results from SERP Google",
+    )
+
     is_intro_text: bool = pydantic.Field(
         False,
         title="Is Intro Text",
@@ -236,6 +242,13 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                         search_json = json_data.get("content", "{}")
                         self.search_results = search_json
                         yield json.dumps({"type": "search", "content": search_json})
+
+                    elif content_type == "google_image_search":
+                        search_json = json_data.get("content", "{}")
+                        self.google_image_search_results = search_json
+                        yield json.dumps(
+                            {"type": "google_image_search", "content": search_json}
+                        )
         except json.JSONDecodeError as e:
             port = response.real_url.port
             host = response.real_url.host
