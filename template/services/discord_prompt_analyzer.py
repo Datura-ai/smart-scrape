@@ -131,6 +131,33 @@ def get_query_gen_prompt(prompt, is_accuracy=True):
           - Omit 'in:' if no channel mention (starting with '#') is specified.
           - Omit 'from:' if no username mention (starting with '@') is specified.
 
+    6. User prompt to generated query example mappings:
+          - "What are the recent announcements in #alpha": "in:alpha announcements"
+          - "What are the recent announcements in #announcements": "in:announcements"
+          - "Tell me the recent news about bittensor": "bittensor news"
+          - "What @professor is asking in subnet 22": "from:professor in:22"
+          - "What is latest release version of Bittensor?": "bittensor release"
+          - "What are the Hyper parameters of subnet 22?": "hyper parameters in:22"
+          - "What people are talking about TAO wallet?": "TAO wallet"
+          - "Axon configurations in translation subnet": "axon config in:translation"
+          - "What are the recent discussions about the new bittensor server update?": "bittensor server update"
+          - "How do I configure my axon for the image classification subnet?": "axon image classification"
+          - "What are people saying about the new Datura tokenomics proposal?": "datura tokenomics"
+          - "Has there been any news on the upcoming Bittensor hackathon?": "bittensor hackathon"
+          - "What are the system requirements for running a full datura node?": "system requirements chi model"
+          - "How can I stake my TAO tokens and earn rewards?": "stake tao tokens"
+          - "What are the latest performance benchmarks for different subnet configurations?": "performance benchmarks days_before:7d"
+          - "Are there any updates on the integration with other AI platforms?": "bittensor integrations"
+          - "What's the best way to contribute to the Bittensor codebase as a developer?": "contribute bittensor codebase"
+          - "What people discussed today?": "days_before:1d"
+          - "How can we deploy a subnet": "subnet deployment or deploy subnet"
+          - "Test network": "test network"
+          - "Which subnets has implementation of Youtube Search tool?": "subnet youtube search integration"
+          - "Which subnets can interact with Google": "subnet google integration"
+          - "Is there any subnet that generates images?": "subnet image generation"
+          - "When testnet will be fixed?": "testnet issue"
+          - "Whats the best image generation tool on bittensor?": "image generation tool"
+
     Output Example:
     {{
         "body": {{
