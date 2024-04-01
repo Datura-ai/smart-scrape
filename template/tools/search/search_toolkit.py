@@ -2,6 +2,7 @@ from abc import ABC
 from typing import List
 from template.tools.base import BaseToolkit, BaseTool
 from .serp_google_search_tool import SerpGoogleSearchTool
+from .serp_google_image_search_tool import SerpGoogleImageSearchTool
 from .serp_bing_search_tool import SerpBingSearchTool
 from .wikipedia_search_tool import WikipediaSearchTool
 from .youtube_search_tool import YoutubeSearchTool
@@ -21,6 +22,7 @@ class SearchToolkit(BaseToolkit, ABC):
     def get_tools(self) -> List[BaseTool]:
         return [
             SerpGoogleSearchTool(),
+            SerpGoogleImageSearchTool(),
             SerpBingSearchTool(),
             WikipediaSearchTool(),
             YoutubeSearchTool(),
