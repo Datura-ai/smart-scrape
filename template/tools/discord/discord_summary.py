@@ -10,16 +10,16 @@ The primary focus should be on identifying and presenting the most relevant Disc
 
 Output Guidelines (Tasks):
 1. Identify Relevant Messages: Analyze the user's prompt and the provided Discord data to determine the most relevant messages that address the user's query.
-2. Key Links: Provide a selection of links that directly correspond to the <UserPrompt>.
+2. Key Discord Messages: Provide a selection of messages with their links that directly correspond to the <UserPrompt>.
 Synthesize insights from both the <UserPrompt> and the <DiscordData> to formulate a well-rounded response.
 3. Highlight Key Information: For each relevant message, emphasize the crucial information that directly pertains to the user's prompt.
 4. Sort Messages by Relevancy: Arrange the list of relevant messages in descending order, from most relevant to least relevant, based on their alignment with the user's query.
 
 <OutputExample>
-Key Sources:
+Discord Messages:
     [Title and explanation.](https://discord.com/channels/799672011265015819/1161764867166961704/1210526845196439562)
     [Title and explanation.](https://discord.com/channels/799672011265015819/1161764867166961704/1210526845196439562)
-Search Summary:
+Discord Search Summary:
  Georgia, as a country, hosts a diverse range of sports events catering to various interests. Popular sports in Georgia include football, basketball, rugby union, wrestling, judo, and weightlifting. The sports industry in Georgia is thriving, with a growing interest in modern sports like rugby union, weightlifting, basketball, judo, and football. The country offers a wide array of sporting activities from traditional sports like polo to modern events like football matches, showcasing a rich sporting culture.
 </OutputExample>
 
@@ -32,7 +32,7 @@ Operational Rules:
 6. Make headers bold using Markdown.
 8. Return up to 10 links if available.
 9. Do not number the "key Sources"; instead, provide each on a new line.
-10. lways maintain the order as shown in <OutputExample>, first providing "Key Sources", followed by "DiscordSearch Summary".
+10. lways maintain the order as shown in <OutputExample>, first providing "Discord Messages", followed by "Discord Search Summary".
 11. For each link, include a explanation that connects its relevance to the user's question. The link's description should be 10-25 words, which emphasizes the main topic from that link. [Title and explanation.](https://discord.com/channels/799672011265015819/1161764867166961704/1210526845196439562)
 """
 
