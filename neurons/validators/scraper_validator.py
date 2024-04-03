@@ -65,51 +65,51 @@ class ScraperValidator:
             dtype=torch.float32,
         ).to(self.neuron.config.neuron.device)
 
-        # if self.reward_weights.sum() != 1:
-        #     message = (
-        #         f"Reward function weights do not sum to 1 (Current sum: {self.reward_weights.sum()}.)"
-        #         f"Check your reward config file at `reward/config.py` or ensure that all your cli reward flags sum to 1."
-        #     )
-        #     bt.logging.error(message)
-        #     raise Exception(message)
+        if self.reward_weights.sum() != 1:
+            message = (
+                f"Reward function weights do not sum to 1 (Current sum: {self.reward_weights.sum()}.)"
+                f"Check your reward config file at `reward/config.py` or ensure that all your cli reward flags sum to 1."
+            )
+            bt.logging.error(message)
+            raise Exception(message)
 
-        # self.reward_llm = RewardLLM()
-        # if (
-        #     self.neuron.config.reward.twitter_content_weight > 0
-        #     or self.neuron.config.reward.summary_relevance_weight > 0
-        # ) and not self.neuron.config.neuron.is_disable_tokenizer_reward:
-        #     self.reward_llm.init_pipe_zephyr()
+        self.reward_llm = RewardLLM()
+        if (
+            self.neuron.config.reward.twitter_content_weight > 0
+            or self.neuron.config.reward.summary_relevance_weight > 0
+        ) and not self.neuron.config.neuron.is_disable_tokenizer_reward:
+            self.reward_llm.init_pipe_zephyr()
 
         self.reward_functions = [
-            # (
-            #     SummaryRelevanceRewardModel(
-            #         device=self.neuron.config.neuron.device,
-            #         scoring_type=RewardScoringType.summary_relevance_score_template,
-            #         llm_reward=self.reward_llm,
-            #     )
-            #     if self.neuron.config.reward.summary_relevance_weight > 0
-            #     else MockRewardModel(RewardModelType.summary_relavance_match.value)
-            # ),
-            # (
-            #     TwitterContentRelevanceModel(
-            #         device=self.neuron.config.neuron.device,
-            #         scoring_type=RewardScoringType.summary_relevance_score_template,
-            #         llm_reward=self.reward_llm,
-            #     )
-            #     if self.neuron.config.reward.twitter_content_weight > 0
-            #     else MockRewardModel(RewardModelType.link_content_match.value)
-            # ),
-            # (
-            #     WebSearchContentRelevanceModel(
-            #         device=self.neuron.config.neuron.device,
-            #         scoring_type=RewardScoringType.search_relevance_score_template,
-            #         llm_reward=self.reward_llm,
-            #     )
-            #     if self.neuron.config.reward.web_search_relavance_weight > 0
-            #     else MockRewardModel(
-            #         RewardModelType.search_summary_relevance_match.value
-            #     )
-            # ),
+            (
+                SummaryRelevanceRewardModel(
+                    device=self.neuron.config.neuron.device,
+                    scoring_type=RewardScoringType.summary_relevance_score_template,
+                    llm_reward=self.reward_llm,
+                )
+                if self.neuron.config.reward.summary_relevance_weight > 0
+                else MockRewardModel(RewardModelType.summary_relavance_match.value)
+            ),
+            (
+                TwitterContentRelevanceModel(
+                    device=self.neuron.config.neuron.device,
+                    scoring_type=RewardScoringType.summary_relevance_score_template,
+                    llm_reward=self.reward_llm,
+                )
+                if self.neuron.config.reward.twitter_content_weight > 0
+                else MockRewardModel(RewardModelType.link_content_match.value)
+            ),
+            (
+                WebSearchContentRelevanceModel(
+                    device=self.neuron.config.neuron.device,
+                    scoring_type=RewardScoringType.search_relevance_score_template,
+                    llm_reward=self.reward_llm,
+                )
+                if self.neuron.config.reward.web_search_relavance_weight > 0
+                else MockRewardModel(
+                    RewardModelType.search_summary_relevance_match.value
+                )
+            ),
         ]
 
         self.penalty_functions = [
