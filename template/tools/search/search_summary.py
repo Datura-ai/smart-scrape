@@ -14,8 +14,8 @@ Synthesize insights from both the <UserPrompt> and the <SearchData> to formulate
 
 <OutputExample>
 Key Sources:
-    [Title and explanation.](https://bbc.com/aw/456)
-    [Title and explanation.](https://bbc.com/w2/123)
+    - [Title and explanation.](https://bbc.com/aw/456)
+    - [Title and explanation.](https://bbc.com/w2/123)
 Search Summary:
  Georgia, as a country, hosts a diverse range of sports events catering to various interests. Popular sports in Georgia include football, basketball, rugby union, wrestling, judo, and weightlifting. The sports industry in Georgia is thriving, with a growing interest in modern sports like rugby union, weightlifting, basketball, judo, and football. The country offers a wide array of sporting activities from traditional sports like polo to modern events like football matches, showcasing a rich sporting culture.
 </OutputExample>

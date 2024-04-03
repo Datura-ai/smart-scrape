@@ -17,8 +17,8 @@ Synthesize insights from both the <UserPrompt> and the <DiscordData> to formulat
 
 <OutputExample>
 Discord Messages:
-    [Title and explanation.](https://discord.com/channels/799672011265015819/1161764867166961704/1210526845196439562)
-    [Title and explanation.](https://discord.com/channels/799672011265015819/1161764867166961704/1210526845196439562)
+    - [Title and explanation.](https://discord.com/channels/2/43)
+    - [Title and explanation.](https://discord.com/channels/31/21)
 Discord Search Summary:
  Georgia, as a country, hosts a diverse range of sports events catering to various interests. Popular sports in Georgia include football, basketball, rugby union, wrestling, judo, and weightlifting. The sports industry in Georgia is thriving, with a growing interest in modern sports like rugby union, weightlifting, basketball, judo, and football. The country offers a wide array of sporting activities from traditional sports like polo to modern events like football matches, showcasing a rich sporting culture.
 </OutputExample>
