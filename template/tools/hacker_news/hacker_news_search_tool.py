@@ -3,30 +3,32 @@ from typing import Optional, Type
 from langchain.callbacks.manager import CallbackManagerForToolRun
 from pydantic import BaseModel, Field
 
-from template.services.reddit_api_wrapper import RedditAPIWrapper
 from template.tools.search.serp_advanced_google_search import SerpAdvancedGoogleSearch
 from template.tools.base import BaseTool
+import json
 
 
-class RedditSearchSchema(BaseModel):
+class HackerNewsSearchSchema(BaseModel):
     query: str = Field(
         ...,
-        description="The search query for Reddit search.",
+        description="The search query for Hacker News search.",
     )
 
 
-class RedditSearchTool(BaseTool):
-    """Tool for the Reddit API."""
+class HackerNewsSearchTool(BaseTool):
+    """Tool for the HackerNews API."""
 
-    name = "Reddit Search"
+    name = "Hacker News Search"
 
-    slug = "reddit-search"
+    slug = "hacker-news-search"
 
-    description = "A wrapper around Reddit." "Useful for searching Reddit for posts."
+    description = (
+        "A wrapper around Hacker News. Useful for searching Hacker News for posts."
+    )
 
-    args_schema: Type[RedditSearchSchema] = RedditSearchSchema
+    args_schema: Type[HackerNewsSearchSchema] = HackerNewsSearchSchema
 
-    tool_id = "043489f8-ef05-4151-8849-7f954e4910be"
+    tool_id = "b6cf5471-2f58-4a86-b0de-b5b3653c086f"
 
     def _run():
         pass
@@ -34,9 +36,9 @@ class RedditSearchTool(BaseTool):
     async def _arun(
         self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
-        """Search Reddit and return the results."""
+        """Search Hacker News and return the results."""
         search = SerpAdvancedGoogleSearch(
-            site="reddit.com",
+            site="news.ycombinator.com",
             language=self.tool_manager.language,
             region=self.tool_manager.region,
             date_filter=self.tool_manager.date_filter,

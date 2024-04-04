@@ -36,6 +36,9 @@ class ScraperMiner:
                 send=send,
                 is_intro_text=is_intro_text,
                 miner=self.miner,
+                language=synapse.language,
+                region=synapse.region,
+                date_filter=synapse.date_filter,
             )
 
             await tool_manager.run()

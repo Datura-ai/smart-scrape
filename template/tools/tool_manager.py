@@ -63,15 +63,31 @@ class ToolManager:
 
     is_intro_text: bool
     miner: any
+    language: str
+    region: str
+    date_filter: str
 
     twitter_prompt_analysis: Optional[TwitterPromptAnalysisResult]
     twitter_data: Optional[Dict[str, Any]]
 
-    def __init__(self, prompt, manual_tool_names, send, is_intro_text, miner):
+    def __init__(
+        self,
+        prompt,
+        manual_tool_names,
+        send,
+        is_intro_text,
+        miner,
+        language,
+        region,
+        date_filter,
+    ):
         self.prompt = prompt
         self.manual_tool_names = manual_tool_names
         self.miner = miner
         self.is_intro_text = is_intro_text
+        self.language = language
+        self.region = region
+        self.date_filter = date_filter
 
         self.response_streamer = ResponseStreamer(send=send)
         self.send = send
