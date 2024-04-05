@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from template.tools.search.serp_advanced_google_search import SerpAdvancedGoogleSearch
 from template.tools.base import BaseTool
 import json
+import bittensor as bt
 
 
 class HackerNewsSearchSchema(BaseModel):
@@ -48,4 +49,22 @@ class HackerNewsSearchTool(BaseTool):
         return result
 
     async def send_event(self, send, response_streamer, data):
-        pass
+        if not data:
+            return
+
+        search_results_response_body = {
+            "type": "hacker_news_search",
+            "content": data,
+        }
+
+        response_streamer.more_body = False
+
+        await send(
+            {
+                "type": "http.response.body",
+                "body": json.dumps(search_results_response_body).encode("utf-8"),
+                "more_body": False,
+            }
+        )
+
+        bt.logging.info("Wikipedia search results data sent")

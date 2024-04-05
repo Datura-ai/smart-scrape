@@ -1,5 +1,7 @@
 from typing import Optional, Type
 
+import json
+import bittensor as bt
 from langchain.callbacks.manager import CallbackManagerForToolRun
 from langchain_community.utilities import ArxivAPIWrapper
 from pydantic import BaseModel, Field
@@ -57,4 +59,22 @@ class ArxivSearchTool(BaseTool):
         return results
 
     async def send_event(self, send, response_streamer, data):
-        pass
+        if not data:
+            return
+
+        search_results_response_body = {
+            "type": "arxiv_search",
+            "content": data,
+        }
+
+        response_streamer.more_body = False
+
+        await send(
+            {
+                "type": "http.response.body",
+                "body": json.dumps(search_results_response_body).encode("utf-8"),
+                "more_body": False,
+            }
+        )
+
+        bt.logging.info("ArXiv search results data sent")

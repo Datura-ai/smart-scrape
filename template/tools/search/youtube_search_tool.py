@@ -2,7 +2,8 @@ from typing import Optional, Type
 from langchain.callbacks.manager import CallbackManagerForToolRun
 from pydantic import BaseModel, Field
 from youtube_search import YoutubeSearch
-
+import json
+import bittensor as bt
 from template.tools.base import BaseTool
 
 
@@ -37,4 +38,22 @@ class YoutubeSearchTool(BaseTool):
         return result.videos
 
     async def send_event(self, send, response_streamer, data):
-        pass
+        if not data:
+            return
+
+        search_results_response_body = {
+            "type": "youtube_search",
+            "content": data,
+        }
+
+        response_streamer.more_body = False
+
+        await send(
+            {
+                "type": "http.response.body",
+                "body": json.dumps(search_results_response_body).encode("utf-8"),
+                "more_body": False,
+            }
+        )
+
+        bt.logging.info("Youtube search results data sent")

@@ -2,6 +2,8 @@ from typing import Optional, Type
 
 from langchain.callbacks.manager import CallbackManagerForToolRun
 from pydantic import BaseModel, Field
+import json
+import bittensor as bt
 
 from template.services.reddit_api_wrapper import RedditAPIWrapper
 from template.tools.search.serp_advanced_google_search import SerpAdvancedGoogleSearch
@@ -46,4 +48,22 @@ class RedditSearchTool(BaseTool):
         return result
 
     async def send_event(self, send, response_streamer, data):
-        pass
+        if not data:
+            return
+
+        search_results_response_body = {
+            "type": "reddit_search",
+            "content": data,
+        }
+
+        response_streamer.more_body = False
+
+        await send(
+            {
+                "type": "http.response.body",
+                "body": json.dumps(search_results_response_body).encode("utf-8"),
+                "more_body": False,
+            }
+        )
+
+        bt.logging.info("Reddit search results data sent")
