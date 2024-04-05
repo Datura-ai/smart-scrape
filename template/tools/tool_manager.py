@@ -102,8 +102,16 @@ class ToolManager:
         actions = await self.detect_tools_to_use()
 
         toolkit_actions = {}
+
+        independent_tools = []
+
         for action in actions:
             tool_name = action["action"]
+
+            if tool_name == "Google Image Search":
+                independent_tools.append(action)
+                continue
+
             toolkit_name = find_toolkit_by_tool_name(tool_name).name
             if toolkit_name not in toolkit_actions:
                 toolkit_actions[toolkit_name] = []
@@ -114,6 +122,12 @@ class ToolManager:
         for toolkit_name, actions in toolkit_actions.items():
             toolkit_task = asyncio.create_task(self.run_toolkit(toolkit_name, actions))
             toolkit_tasks.append(toolkit_task)
+
+        tool_tasks = []
+
+        for action in independent_tools:
+            tool_task = asyncio.create_task(self.run_tool(action))
+            tool_tasks.append(tool_task)
 
         streaming_tasks = []
 
@@ -139,6 +153,8 @@ class ToolManager:
 
         await self.response_streamer.send_texts_event()
         await self.response_streamer.send_completion_event()
+
+        await asyncio.gather(*tool_tasks)
 
         completion_response_body = {
             "type": "completion",
