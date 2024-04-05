@@ -192,6 +192,42 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Optional JSON object containing image search results from SERP Google",
     )
 
+    wikipedia_search_results: Optional[Any] = pydantic.Field(
+        default_factory=dict,
+        title="Wikipedia Search Results",
+        description="Optional JSON object containing search results from Wikipedia",
+    )
+
+    youtube_search_results: Optional[Any] = pydantic.Field(
+        default_factory=dict,
+        title="YouTube Search Results",
+        description="Optional JSON object containing search results from YouTube",
+    )
+
+    arxiv_search_results: Optional[Any] = pydantic.Field(
+        default_factory=dict,
+        title="Arxiv Search Results",
+        description="Optional JSON object containing search results from Arxiv",
+    )
+
+    reddit_search_results: Optional[Any] = pydantic.Field(
+        default_factory=dict,
+        title="Reddit Search Results",
+        description="Optional JSON object containing search results from Reddit",
+    )
+
+    hacker_news_search_results: Optional[Any] = pydantic.Field(
+        default_factory=dict,
+        title="Hacker News Search Results",
+        description="Optional JSON object containing search results from Hacker News",
+    )
+
+    discord_search_results: Optional[Any] = pydantic.Field(
+        default_factory=dict,
+        title="Discord Search Results",
+        description="Optional JSON object containing search results from Discord",
+    )
+
     is_intro_text: bool = pydantic.Field(
         False,
         title="Is Intro Text",
@@ -261,6 +297,48 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                         search_json = json_data.get("content", "{}")
                         self.search_results = search_json
                         yield json.dumps({"type": "search", "content": search_json})
+
+                    elif content_type == "wikipedia_search":
+                        search_json = json_data.get("content", "{}")
+                        self.wikipedia_search_results = search_json
+                        yield json.dumps(
+                            {"type": "wikipedia_search", "content": search_json}
+                        )
+
+                    elif content_type == "youtube_search":
+                        search_json = json_data.get("content", "{}")
+                        self.youtube_search_results = search_json
+                        yield json.dumps(
+                            {"type": "youtube_search", "content": search_json}
+                        )
+
+                    elif content_type == "arxiv_search":
+                        search_json = json_data.get("content", "{}")
+                        self.arxiv_search_results = search_json
+                        yield json.dumps(
+                            {"type": "arxiv_search", "content": search_json}
+                        )
+
+                    elif content_type == "reddit_search":
+                        search_json = json_data.get("content", "{}")
+                        self.reddit_search_results = search_json
+                        yield json.dumps(
+                            {"type": "reddit_search", "content": search_json}
+                        )
+
+                    elif content_type == "hacker_news_search":
+                        search_json = json_data.get("content", "{}")
+                        self.hacker_news_search_results = search_json
+                        yield json.dumps(
+                            {"type": "hacker_news_search", "content": search_json}
+                        )
+
+                    elif content_type == "discord_search":
+                        search_json = json_data.get("content", "{}")
+                        self.discord_search_results = search_json
+                        yield json.dumps(
+                            {"type": "discord_search", "content": search_json}
+                        )
 
                     elif content_type == "google_image_search":
                         search_json = json_data.get("content", "{}")

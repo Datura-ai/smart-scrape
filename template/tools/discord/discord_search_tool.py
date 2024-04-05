@@ -75,11 +75,14 @@ class DiscordSearchTool(BaseTool):
                     "more_body": True,
                 }
             )
-            bt.logging.info("Prompt Analysis sent")
+            bt.logging.info("Discord Prompt Analysis sent")
 
         if messages:
             # We may need more body here to continueslly fetch messages
-            messages_response_body = {"type": "discord_messages", "content": messages}
+            messages_response_body = {
+                "type": "discord_search",
+                "content": messages,
+            }
 
             await send(
                 {
@@ -88,4 +91,4 @@ class DiscordSearchTool(BaseTool):
                     "more_body": False,
                 }
             )
-            bt.logging.info(f"Discord search data sent")
+            bt.logging.info("Discord search results data sent")
