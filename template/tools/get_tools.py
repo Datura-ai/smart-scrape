@@ -4,12 +4,14 @@ from template.tools.twitter.twitter_toolkit import TwitterToolkit
 from template.tools.search.search_toolkit import SearchToolkit
 from template.tools.discord.discord_toolkit import DiscordToolkit
 from template.tools.reddit.reddit_toolkit import RedditToolkit
+from template.tools.hacker_news.hacker_news_toolkit import HackerNewsToolkit
 
 TOOLKITS: List[BaseToolkit] = [
     SearchToolkit(),
     TwitterToolkit(),
     DiscordToolkit(),
     RedditToolkit(),
+    HackerNewsToolkit(),
 ]
 
 

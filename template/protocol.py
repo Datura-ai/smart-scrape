@@ -85,6 +85,7 @@ class ScraperTextRole(str, Enum):
     SEARCH_SUMMARY = "search_summary"
     DISCORD_SUMMARY = "discord_summary"
     REDDIT_SUMMARY = "reddit_summary"
+    HACKER_NEWS_SUMMARY = "hacker_news_summary"
     FINAL_SUMMARY = "summary"
 
 
@@ -125,6 +126,24 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         default_factory=list,
         title="Tools",
         description="A list of tools specified by user to use to answer question.",
+    )
+
+    language: Optional[str] = pydantic.Field(
+        "en",
+        title="Language",
+        description="Language specified by user.",
+    )
+
+    region: Optional[str] = pydantic.Field(
+        "us",
+        title="Region",
+        description="Region specified by user.",
+    )
+
+    date_filter: Optional[str] = pydantic.Field(
+        "qdr:w",
+        title="Date Filter",
+        description="Date filter specified by user.",
     )
 
     prompt_analysis: TwitterPromptAnalysisResult = pydantic.Field(

@@ -47,8 +47,11 @@ class ScraperValidator:
             "Google Search",
             "ArXiv Search",
             "Youtube Search",
-            "Discord Search"
+            "Discord Search",
         ]
+        self.language = "en"
+        self.region = "us"
+        self.date_filter = "qdr:w"  # Past week
 
         # Init device.
         bt.logging.debug("loading", "device")
@@ -126,6 +129,9 @@ class ScraperValidator:
         is_intro_text=False,
         specified_uids=None,
         tools=[],
+        language="en",
+        region="us",
+        date_filter="qdr:w",
     ):
         task_name = task.task_name
         prompt = task.compose_prompt()
@@ -150,6 +156,9 @@ class ScraperValidator:
             seed=self.seed,
             is_intro_text=is_intro_text,
             tools=tools,
+            language=language,
+            region=region,
+            date_filter=date_filter,
         )
 
         # Make calls to the network with the prompt.
@@ -331,6 +340,9 @@ class ScraperValidator:
                 strategy=strategy,
                 is_only_allowed_miner=False,
                 tools=self.tools,
+                language=self.language,
+                region=self.region,
+                date_filter=self.date_filter,
             )
 
             final_synapses = []
@@ -375,6 +387,9 @@ class ScraperValidator:
                 is_only_allowed_miner=True,
                 is_intro_text=True,
                 tools=tools,
+                language=self.language,
+                region=self.region,
+                date_filter=self.date_filter,
             )
             final_synapses = []
             for response in async_responses:
@@ -423,6 +438,9 @@ class ScraperValidator:
                 is_only_allowed_miner=False,
                 specified_uids=specified_uids,
                 tools=self.tools,
+                language=self.language,
+                region=self.region,
+                date_filter=self.date_filter,
             )
 
             final_synapses = []

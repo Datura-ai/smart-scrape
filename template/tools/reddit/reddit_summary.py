@@ -14,8 +14,8 @@ Synthesize insights from both the <UserPrompt> and the <RedditData> to formulate
 
 <OutputExample>
 Key Posts:
-    - [Noah discusses how SportAccord can elevate the West Midlands brand globally, emphasizing its role in hosting high-profile sports events.](https://reddit.com/sportaccord/status/456)
-    - [SportAccord highlights the success of the Social in the City 2024 event, where Georgia Tech alumni gathered from across the country to celebrate their community spirit.](https://reddit.com/sportaccord/status/123)
+    - [Noah discusses how SportAccord can elevate the West Midlands brand globally, emphasizing its role in hosting high-profile sports events.](https://reddit.com/r/subreddit/comments/abc/sport-events)
+    - [SportAccord highlights the success of the Social in the City 2024 event, where Georgia Tech alumni gathered from across the country to celebrate their community spirit.](https://reddit.com/r/subreddit/comments/abc/sport-events)
 Reddit Summary:
  Georgia, as a country, hosts a diverse range of sports events catering to various interests. Popular sports in Georgia include football, basketball, rugby union, wrestling, judo, and weightlifting. The sports industry in Georgia is thriving, with a growing interest in modern sports like rugby union, weightlifting, basketball, judo, and football. The country offers a wide array of sporting activities from traditional sports like polo to modern events like football matches, showcasing a rich sporting culture.
 </OutputExample>
@@ -25,7 +25,7 @@ Operational Rules:
 2. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
 3. Seamless Integration: Avoid explicitly stating "Based on the provided <RedditData>" in responses. Assume user awareness of the data integration process.
 4. Please separate your responses into sections for easy reading.
-5. For each link title, include a concise explanation that connects its relevance to the user's question. Use <RedditData>.url for generate tweet link, example: [username and explanation](<RedditData>.url)
+5. For each link title, include a concise explanation that connects its relevance to the user's question. Use <RedditData>.url for link
 6. Not return text like <UserPrompt>, <PromptAnalysis>, <PromptAnalysis> to your response, make response easy to understand to any user.
 7. Make headers bold using Markdown.
 8. Return up to 10 Reddit links if available.
