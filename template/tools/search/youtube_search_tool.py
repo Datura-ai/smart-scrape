@@ -35,7 +35,13 @@ class YoutubeSearchTool(BaseTool):
     ) -> str:
         """Search Youtube and return the results."""
         result = YoutubeSearch(search_terms=query, max_results=10)
-        return result.videos
+
+        videos = [
+            {"url": f"https://www.youtube.com{video['url_suffix']}", **video}
+            for video in result.videos
+        ]
+
+        return videos
 
     async def send_event(self, send, response_streamer, data):
         if not data:
