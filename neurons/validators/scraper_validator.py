@@ -48,6 +48,10 @@ class ScraperValidator:
             "ArXiv Search",
             "Youtube Search",
             "Discord Search",
+            "Wikipedia Search",
+            "Reddit Search",
+            "Hacker News Search",
+            "Google Image Search"
         ]
         self.language = "en"
         self.region = "us"

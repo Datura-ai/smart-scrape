@@ -28,9 +28,9 @@ Operational Rules:
 5. For each link title, include a concise explanation that connects its relevance to the user's question. Use <TwitterData>.url for generate tweet link, example: [username and explanation](<TwitterData>.url)
 6. Not return text like <UserPrompt>, <PromptAnalysis>, <PromptAnalysis> to your response, make response easy to understand to any user.
 7. Make headers bold using Markdown.
-8. Return up to 10 Twitter links if available.
-9. Do not number the "key tweets"; instead, provide each on a new line.
-10. Always maintain the order as shown in <OutputExample>, first providing "Key Tweets", followed by "Twitter Summary".
+8. Do not number the "key tweets"; instead, provide each on a new line.
+9. Always maintain the order as shown in <OutputExample>, first providing "Key Tweets", followed by "Twitter Summary".
+10. Always return 10 links if available
 """
 
 

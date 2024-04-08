@@ -27,9 +27,9 @@ Operational Rules:
 4. Please separate your responses into sections for easy reading.
 5. Not return text like <UserPrompt> to your response, make response easy to understand to any user.
 6. Make headers bold using Markdown.
-8. Return up to 10 links if available.
+8. Always return 10 links if available
 9. Do not number the "key Sources"; instead, provide each on a new line.
-10. lways maintain the order as shown in <OutputExample>, first providing "Key Sources", followed by "Search Summary".
+10. always maintain the order as shown in <OutputExample>, first providing "Key Sources", followed by "Search Summary".
 11. For each link, include a explanation that connects its relevance to the user's question. The link's description should be 10-25 words, which emphasizes the main topic from that link. [Title and explanation.](https://bbc.com/w2/123)
 """
 
@@ -63,7 +63,7 @@ async def summarize_search_data(prompt: str, model: str, data):
     return res, ScraperTextRole.SEARCH_SUMMARY
 
 
-def prepare_search_data_for_summary(data):
+def prepare_search_data_for_summary_old(data):
     result = ""
 
     for tool_name in data.keys():
@@ -98,3 +98,65 @@ def prepare_search_data_for_summary(data):
         result += f"{tool_name} results: {data[tool_name]}\n\n"
 
     return result
+
+
+def prepare_search_data_for_summary(data):
+    standardized_results = []
+
+    # Google Search
+    if 'Google Search' in data:
+        for result in data['Google Search'].get('organic_results', []):
+            standardized_results.append({
+                'title': result.get('title'),
+                'link': result.get('link'),
+                'snippet': result.get('snippet'),
+                # 'source': 'Google Search'
+            })
+
+    # Google News Search
+    if 'Google News Search' in data:
+        for result in data['Google News Search'].get('news_results', []):
+            standardized_results.append({
+                'title': result.get('title'),
+                'link': result.get('link'),
+                'snippet': result.get('snippet'),  # Using title as snippet due to lack of snippet in news results
+                # 'source': result.get('source', {}).get('title', 'Unknown')  # Extracting source title, default to 'Unknown'
+            })
+
+    # YouTube Search
+    if 'Youtube Search' in data:
+        for result in data.get('Youtube Search', []):
+            # Use url_suffix to construct the full YouTube video URL
+            video_url = f"https://www.youtube.com{result.get('url_suffix')}"
+
+            # Use the video title as the snippet if 'long_desc' is None or not provided
+            snippet = result.get('long_desc') if result.get('long_desc') else result.get('channel')
+
+            standardized_results.append({
+                'title': result.get('title'),
+                'link': video_url,
+                'snippet': snippet,
+                # 'source': 'Youtube'
+            })
+
+    # Arxiv Search
+    if 'ArXiv Search' in data:
+        for result in data.get('ArXiv Search', []):
+            standardized_results.append({
+                'title': result.get('title'),
+                'link': result.get('arxiv_url'),
+                'snippet': result.get('title'),  # Using title as snippet, assuming no separate snippet available
+                # 'source': 'Arxiv'
+            })
+
+    # Wikipedia Search
+    if 'Wikipedia Search' in data:
+        for result in data.get('Wikipedia Search', []):
+            standardized_results.append({
+                'title': result.get('title'),
+                'link': result.get('link'),
+                'snippet': result.get('snippet'),
+                'source': 'Wikipedia'
+            })
+
+    return standardized_results

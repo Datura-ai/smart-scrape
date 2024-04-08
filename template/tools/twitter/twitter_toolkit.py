@@ -5,6 +5,7 @@ from template.tools.twitter.get_recent_tweets_tool import GetRecentTweetsTool
 from template.tools.twitter.get_full_archive_tweets_tool import GetFullArchiveTweetsTool
 from .twitter_summary import summarize_twitter_data, prepare_tweets_data_for_summary
 
+TOOLS = [GetRecentTweetsTool(), GetFullArchiveTweetsTool()]
 
 class TwitterToolkit(BaseToolkit, ABC):
     name: str = "Twitter Toolkit"
@@ -13,7 +14,7 @@ class TwitterToolkit(BaseToolkit, ABC):
     toolkit_id = "0e0ae6fb-0f1c-4d00-bc84-1feb2a6824c6"
 
     def get_tools(self) -> List[BaseTool]:
-        return [GetRecentTweetsTool(), GetFullArchiveTweetsTool()]
+        return TOOLS
 
     async def summarize(self, prompt, model, data):
         data = next(iter(data.values()))

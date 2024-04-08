@@ -112,10 +112,14 @@ class ToolManager:
                 independent_tools.append(action)
                 continue
 
-            toolkit_name = find_toolkit_by_tool_name(tool_name).name
-            if toolkit_name not in toolkit_actions:
-                toolkit_actions[toolkit_name] = []
-            toolkit_actions[toolkit_name].append(action)
+            toolkit = find_toolkit_by_tool_name(tool_name)
+            if toolkit:
+                toolkit_name = toolkit.name      
+                if toolkit_name not in toolkit_actions:
+                    toolkit_actions[toolkit_name] = []
+                toolkit_actions[toolkit_name].append(action)
+            else:
+                bt.log(f"Tool {tool_name} does not belong to any toolkit and is not an independent tool.")
 
         toolkit_tasks = []
 
