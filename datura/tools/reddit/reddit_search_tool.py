@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 import json
 import bittensor as bt
 
-from datura.services.reddit_api_wrapper import RedditAPIWrapper
+# from datura.services.reddit_api_wrapper import RedditAPIWrapper
 from datura.tools.search.serp_advanced_google_search import SerpAdvancedGoogleSearch
 from datura.tools.base import BaseTool
 

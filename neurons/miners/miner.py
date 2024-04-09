@@ -6,7 +6,7 @@ import wandb
 import json
 import pathlib
 import asyncio
-import template
+import datura
 import argparse
 import threading
 import traceback

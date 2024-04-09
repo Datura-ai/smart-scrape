@@ -3,7 +3,7 @@ import time
 import wandb
 import json
 import traceback
-import template
+import datura
 import argparse
 import bittensor as bt
 from datura.utils import get_version

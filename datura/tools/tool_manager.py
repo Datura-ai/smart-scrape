@@ -50,7 +50,7 @@ Here is example of JSON array format to return. Keep in mind that this is exampl
 ]
 """
 
-prompt_template = Promptdatura.from_template(TEMPLATE)
+prompt_template = PromptTemplate.from_template(TEMPLATE)
 
 client = AsyncOpenAI(timeout=60.0)
 

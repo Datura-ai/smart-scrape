@@ -21,7 +21,7 @@
 import wandb
 import torch
 import bittensor as bt
-import template
+import datura
 import multiprocessing
 import time
 
