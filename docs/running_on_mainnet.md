@@ -2,7 +2,7 @@
 This tutorial shows how to use the bittensor mainnetwork to create a subnetwork and connect your mechanism to it. It is highly recommended that you run mainnet first before mainnet. 
 ## Steps
 
-1. Clone and Install Bittensor and the Bittensor Subnet Template.
+1. Clone and Install Bittensor and the Bittensor Subnet datura.
 This clones and installs the template if you dont already have it (if you do, skip this step)
 ```bash
 cd .. # back out of the subtensor repo

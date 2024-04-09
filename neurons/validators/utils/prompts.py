@@ -28,13 +28,13 @@ class BasePrompt:
         self.extract_pattern = ""
 
     def text(self, *args) -> str:
-        r"""Sanitize input strings and format prompt template."""
+        r"""Sanitize input strings and format prompt datura."""
         sanitized = args
         tags = find_unique_tags(self.template)
         for tag in tags:
             sanitized = [arg.replace(tag, "") for arg in sanitized]
 
-        return self.template.format(*sanitized)
+        return self.datura.format(*sanitized)
 
     def extract(self, response: str):
         r"""Search for the extract pattern in the text using regex."""
@@ -49,8 +49,8 @@ class BasePrompt:
         return None
 
     def matches_template(self, input_text) -> bool:
-        r"""Checks if the input_text matches the first unformatted part of the prompt template."""
-        index = self.template.find("{")
+        r"""Checks if the input_text matches the first unformatted part of the prompt datura."""
+        index = self.datura.find("{")
         return input_text[:index] == self.template[:index]
 
 

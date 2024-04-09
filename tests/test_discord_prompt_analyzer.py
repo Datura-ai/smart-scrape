@@ -1,9 +1,9 @@
 import asyncio
-from template.dataset.dataset import MockDiscordQuestionsDataset
-from template.services.discord_prompt_analyzer import DiscordPromptAnalyzer
+from datura.dataset.dataset import MockDiscordQuestionsDataset
+from datura.services.discord_prompt_analyzer import DiscordPromptAnalyzer
 import bittensor as bt
 
-from template.tools.discord.discord_summary import summarize_discord_data
+from datura.tools.discord.discord_summary import summarize_discord_data
 
 
 async def main():
@@ -12,8 +12,12 @@ async def main():
 
     for _ in range(len(dt.question_templates)):
         prompt = dt.next()
-        result_json, prompt_analysis = await client.analyse_prompt_and_fetch_messages(prompt)
-        res, role = await summarize_discord_data(prompt, 'gpt-3.5-turbo-0125', result_json, prompt_analysis)
+        result_json, prompt_analysis = await client.analyse_prompt_and_fetch_messages(
+            prompt
+        )
+        res, role = await summarize_discord_data(
+            prompt, "gpt-3.5-turbo-0125", result_json, prompt_analysis
+        )
         bt.logging.info("===================================================")
         bt.logging.info(f"Messages {result_json}")
         bt.logging.info("===================================================")

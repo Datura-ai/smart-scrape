@@ -1,10 +1,10 @@
 import torch
 import re
 from typing import List
-from template.protocol import TwitterPromptAnalysisResult
+from datura.protocol import TwitterPromptAnalysisResult
 from neurons.validators.utils.tasks import TwitterTask
 from neurons.validators.penalty import PenaltyModelType, BasePenaltyModel
-from template.protocol import ScraperStreamingSynapse
+from datura.protocol import ScraperStreamingSynapse
 
 
 class AccuracyPenaltyModel(BasePenaltyModel):

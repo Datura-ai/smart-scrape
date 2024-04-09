@@ -21,7 +21,7 @@ import bittensor as bt
 from typing import List, Union
 from abc import abstractmethod
 from dataclasses import dataclass, asdict, fields
-from template.protocol import ScraperStreamingSynapse, TwitterScraperTweet
+from datura.protocol import ScraperStreamingSynapse, TwitterScraperTweet
 import re
 
 
@@ -96,9 +96,14 @@ class BaseRewardModel:
         return None
 
     def get_successful_completions(self, responses: List[ScraperStreamingSynapse]):
-        successful_completions = [self.get_successful_completion(response) for response in responses]
-        return [completion for completion in successful_completions if completion is not None]
-    
+        successful_completions = [
+            self.get_successful_completion(response) for response in responses
+        ]
+        return [
+            completion
+            for completion in successful_completions
+            if completion is not None
+        ]
 
     def get_successful_twitter_completion(self, response: ScraperStreamingSynapse):
         # Check if the response is successful.
@@ -114,10 +119,18 @@ class BaseRewardModel:
 
             return successful_completion.strip()
         return None
-    
-    def get_successful_twitter_completions(self, responses: List[ScraperStreamingSynapse]):
-        successful_completions = [self.get_successful_twitter_completion(response) for response in responses]
-        return [completion for completion in successful_completions if completion is not None]
+
+    def get_successful_twitter_completions(
+        self, responses: List[ScraperStreamingSynapse]
+    ):
+        successful_completions = [
+            self.get_successful_twitter_completion(response) for response in responses
+        ]
+        return [
+            completion
+            for completion in successful_completions
+            if completion is not None
+        ]
 
     def get_successful_search_summary_completion(
         self, response: ScraperStreamingSynapse
@@ -137,10 +150,18 @@ class BaseRewardModel:
             return successful_completion.strip()
         return None
 
-    def get_successful_search_completions(self, responses: List[ScraperStreamingSynapse]):
-        successful_completions = [self.get_successful_search_summary_completion(response) for response in responses]
-        return [completion for completion in successful_completions if completion is not None]
-
+    def get_successful_search_completions(
+        self, responses: List[ScraperStreamingSynapse]
+    ):
+        successful_completions = [
+            self.get_successful_search_summary_completion(response)
+            for response in responses
+        ]
+        return [
+            completion
+            for completion in successful_completions
+            if completion is not None
+        ]
 
     def apply(
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
@@ -197,8 +218,14 @@ class BaseRewardModel:
 
         # Return the filled rewards.
         return filled_rewards_normalized, reward_events, val_score_responses
-    
-    def calculate_adjusted_score(self, links_count: int, score: float, max_bonus: float = 0.2, link_sensitivity: int = 9) -> float:
+
+    def calculate_adjusted_score(
+        self,
+        links_count: int,
+        score: float,
+        max_bonus: float = 0.2,
+        link_sensitivity: int = 9,
+    ) -> float:
         """
         Calculate the combined score by first applying a bonus based on the number of links and then adjusting
         the score based on the number of completion links with a softer penalty for having fewer than 10 links.

@@ -31,7 +31,7 @@ from neurons.validators.utils.prompts import (
     extract_score_and_explanation,
 )
 
-from template.protocol import ScraperStreamingSynapse
+from datura.protocol import ScraperStreamingSynapse
 from neurons.validators.reward.reward_llm import RewardLLM
 import json
 
@@ -68,12 +68,12 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             scoring_prompt_text = None
             if (
                 self.scoring_type.value
-                == RewardScoringType.summary_relevance_score_template.value
+                == RewardScoringType.summary_relevance_score_datura.value
             ):
                 scoring_prompt = SummaryRelevancePrompt()
             elif (
                 self.scoring_type.value
-                == RewardScoringType.link_content_relevance_template.value
+                == RewardScoringType.link_content_relevance_datura.value
             ):
                 scoring_prompt = LinkContentPrompt()
                 # Convert list of links content to string before passing to the prompt

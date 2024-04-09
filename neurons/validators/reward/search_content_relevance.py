@@ -2,7 +2,7 @@ from typing import List
 from .reward import BaseRewardModel, BaseRewardEvent
 from .config import RewardModelType
 from neurons.validators.reward.reward_llm import RewardLLM
-from template.protocol import ScraperStreamingSynapse, ScraperTextRole
+from datura.protocol import ScraperStreamingSynapse, ScraperTextRole
 import traceback
 import bittensor as bt
 from neurons.validators.apify.web_scraper_actor import WebScraperActor

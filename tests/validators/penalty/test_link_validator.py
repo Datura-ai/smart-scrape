@@ -1,7 +1,7 @@
 import unittest
 from neurons.validators.penalty.link_validation import LinkValidationPenaltyModel
 from neurons.validators.utils.tasks import TwitterTask
-from template.protocol import ScraperStreamingSynapse
+from datura.protocol import ScraperStreamingSynapse
 
 completion1 = f"""
 Last year's recipe trends from verified accounts highlighted veganism, innovative food products, and sustainable agriculture. Key insights are supported by these specific Twitter links:

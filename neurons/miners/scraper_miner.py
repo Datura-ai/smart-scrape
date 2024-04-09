@@ -1,11 +1,11 @@
 import traceback
 import bittensor as bt
 from starlette.types import Send
-from template.protocol import (
+from datura.protocol import (
     ScraperStreamingSynapse,
 )
-from template.tools.tool_manager import ToolManager
-from template.utils import save_logs_from_miner
+from datura.tools.tool_manager import ToolManager
+from datura.utils import save_logs_from_miner
 
 
 class ScraperMiner:

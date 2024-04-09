@@ -5,8 +5,8 @@ import random
 import json
 import bittensor as bt
 from base_validator import AbstractNeuron
-from template.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult
-from template.stream import process_async_responses, process_single_response
+from datura.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult
+from datura.stream import process_async_responses, process_single_response
 from reward import RewardModelType, RewardScoringType
 from typing import List
 from utils.mock import MockRewardModel
@@ -26,9 +26,9 @@ from neurons.validators.reward.search_content_relevance import (
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask
 
-from template.dataset import MockTwitterQuestionsDataset
-from template.services.twitter_api_wrapper import TwitterAPIClient
-from template.utils import save_logs
+from datura.dataset import MockTwitterQuestionsDataset
+from datura.services.twitter_api_wrapper import TwitterAPIClient
+from datura.utils import save_logs
 from template import QUERY_MINERS
 import asyncio
 
@@ -51,7 +51,7 @@ class ScraperValidator:
             "Wikipedia Search",
             "Reddit Search",
             "Hacker News Search",
-            "Google Image Search"
+            "Google Image Search",
         ]
         self.language = "en"
         self.region = "us"
