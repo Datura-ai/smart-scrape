@@ -19,8 +19,11 @@ class DiscordToolkit(BaseToolkit, ABC):
 
     async def summarize(self, prompt, model, data):
         data = next(iter(data.values()))
+        messages, prompt_analysis = data
+
         return await summarize_discord_data(
             prompt=prompt,
             model=model,
-            filtered_messages=prepare_messages_data_for_summary(data),
+            filtered_messages=prepare_messages_data_for_summary(messages),
+            prompt_analysis=prompt_analysis,
         )

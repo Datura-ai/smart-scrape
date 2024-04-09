@@ -3,7 +3,7 @@ import aiohttp
 import bittensor as bt
 from typing import Optional
 
-BASE_URL = "http://0.0.0.0:80"
+BASE_URL = "http://api-discord.datura.ai"
 
 class DiscordAPIClient:
     def __init__(

@@ -1,40 +1,39 @@
 from openai import AsyncOpenAI
-from datura.protocol import ScraperTextRole
+from datura.protocol import DiscordPromptAnalysisResult, ScraperTextRole
 
 client = AsyncOpenAI(timeout=60.0)
 
 
 SYSTEM_MESSAGE = """
-As a Discord data analyst, your task is to provide users with a clear and concise summary derived from the given Discord data (including replies) and the user's query. The primary focus should be on identifying and presenting the most relevant Discord messages and their replies that align with the user's prompt.
+As a Discord data analyst, your task is to provide users with a clear and concise summary derived from the given Discord data and the user's query.
+The primary focus should be on identifying and presenting the most relevant Discord messages that align with the user's prompt.
 
 Output Guidelines (Tasks):
-1. Identify Relevant Messages and Replies: Analyze the user's prompt and the provided Discord data (including replies) to determine the most relevant messages and replies that address the user's query.
-2. Key Discord Messages and Replies: Provide a selection of up to 20(if available) relevant messages with their links and relevant replies that directly correspond to the user's prompt. Emphasize the crucial information that directly pertains to the user's prompt for each message and reply.
-3. Sort Messages by Relevancy: Arrange the list of relevant messages and replies in descending order, from most relevant to least relevant, based on their alignment with the user's query.
-4. Discord Search Summary: Synthesize insights from both the user's prompt and the Discord data (including replies) to formulate a well-rounded response.
+1. Identify Relevant Messages: Analyze the user's prompt and the provided Discord data to determine the most relevant messages that address the user's query.
+2. Key Discord Messages: Provide a selection of messages with their links that directly correspond to the <UserPrompt>.
+Synthesize insights from both the <UserPrompt> and the <DiscordData> to formulate a well-rounded response.
+3. Highlight Key Information: For each relevant message, emphasize the crucial information that directly pertains to the user's prompt.
+4. Sort Messages by Relevancy: Arrange the list of relevant messages in descending order, from most relevant to least relevant, based on their alignment with the user's query.
 
 <OutputExample>
-**Discord Messages:**
-- [Message Content and explanation](https://discord.com/channels/2/43)
-    - [Reply Content and explanation](https://discord.com/channels/2/43/456)
-    - [Reply Content and explanation](https://discord.com/channels/2/43/789)
-- [Message Content and explanation](https://discord.com/channels/31/21)
-
-**Discord Search Summary:**
-Georgia, as a country, hosts a diverse range of sports events catering to various interests. Popular sports in Georgia include football, basketball, rugby union, wrestling, judo, and weightlifting. The sports industry in Georgia is thriving, with a growing interest in modern sports like rugby union, weightlifting, basketball, judo, and football. The country offers a wide array of sporting activities from traditional sports like polo to modern events like football matches, showcasing a rich sporting culture.
+Discord Messages:
+    - [Title and explanation.](https://discord.com/channels/2/43)
+    - [Title and explanation.](https://discord.com/channels/31/21)
+Discord Search Summary:
+ Georgia, as a country, hosts a diverse range of sports events catering to various interests. Popular sports in Georgia include football, basketball, rugby union, wrestling, judo, and weightlifting. The sports industry in Georgia is thriving, with a growing interest in modern sports like rugby union, weightlifting, basketball, judo, and football. The country offers a wide array of sporting activities from traditional sports like polo to modern events like football matches, showcasing a rich sporting culture.
 </OutputExample>
 
 Operational Rules:
-1. No Discord Data Scenario: If no Discord data is provided, inform the user that current insights related to their topic are unavailable.
+1. No <DiscordData> Scenario: If no DiscordData is provided, inform the user that current insights related to their topic are unavailable.
 2. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
-3. Seamless Integration: Avoid explicitly stating "Based on the provided Discord data" in responses. Assume user awareness of the data integration process.
-4. Structure Responses: Separate responses into sections for easy reading.
-5. User-Friendly Language: Do not return text like <UserPrompt>; make responses easy to understand for any user.
-6. Use Markdown: Make headers bold using Markdown.
-7. Provide Links: Return up to 20 messages with their links if available.
-8. Formatting: Do not number the "key Sources"; instead, provide each on a new line.
-9. Maintain Order: Always maintain the order as shown in <OutputExample>, first providing "Discord Messages" (with replies), followed by "Discord Search Summary".
-10. Include Explanations: For each message content and reply, include an explanation that connects its relevance to the user's question. The link's description should be 10-25 words, emphasizing the main topic from that link.
+3. Seamless Integration: Avoid explicitly stating "Based on the provided <DiscordData>" in responses. Assume user awareness of the data integration process.
+4. Please separate your responses into sections for easy reading.
+5. Not return text like <UserPrompt> to your response, make response easy to understand to any user.
+6. Make headers bold using Markdown.
+8. Return up to 10 links if available.
+9. Do not number the "key Sources"; instead, provide each on a new line.
+10. lways maintain the order as shown in <OutputExample>, first providing "Discord Messages", followed by "Discord Search Summary".
+11. For each link, include a explanation that connects its relevance to the user's question. The link's description should be 10-25 words, which emphasizes the main topic from that link. [Title and explanation.](https://discord.com/channels/799672011265015819/1161764867166961704/1210526845196439562)
 """
 
 
@@ -42,6 +41,7 @@ async def summarize_discord_data(
     prompt: str,
     model: str,
     filtered_messages,
+    prompt_analysis: DiscordPromptAnalysisResult,
 ):
 
     content = f"""
@@ -56,6 +56,10 @@ async def summarize_discord_data(
     <DiscordData>
     {filtered_messages}
     </DiscordData>
+
+    <PromptAnalysis>
+    {prompt_analysis}
+    </PromptAnalysis>
     """
 
     messages = [
