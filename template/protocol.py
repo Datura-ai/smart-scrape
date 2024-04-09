@@ -420,41 +420,30 @@ def extract_json_chunk(chunk, response, buffer=""):
     """
     buffer += chunk  # Add the current chunk to the buffer
     json_objects = []
-    start_index = None  # Initialize start_index for JSON object extraction
 
-    i = 0  # Start index for scanning the buffer
-    while i < len(buffer):
-        if buffer[i] == "{":
-            if start_index is None:  # Start of a new JSON object
-                start_index = i
-            stack = 1  # Initialize stack to keep track of braces
-            i += 1
-            while i < len(buffer) and stack > 0:
-                if buffer[i] == "{":
-                    stack += 1
-                elif buffer[i] == "}":
-                    stack -= 1
-                i += 1
-            if stack == 0:  # Found a complete JSON object
-                json_str = buffer[start_index:i]
-                try:
-                    json_obj = json.loads(json_str)
-                    json_objects.append(json_obj)
-                    start_index = None  # Reset start_index for the next JSON object
-                except json.JSONDecodeError as e:
-                    port = response.real_url.port
-                    host = response.real_url.host
-                    bt.logging.debug(
-                        f"Host: {host}:{port}; Failed to decode JSON object: {e}"
-                    )
-        else:
-            i += 1  # Move to the next character if not the start of a JSON object
+    while True:
+        try:
+            json_obj, end = json.JSONDecoder().raw_decode(buffer)
+            json_objects.append(json_obj)
+            buffer = buffer[end:]
+        except json.JSONDecodeError as e:
+            if e.pos == len(buffer):
+                # Reached the end of the buffer without finding a complete JSON object
+                break
+            elif e.msg.startswith("Unterminated string"):
+                # Incomplete JSON object at the end of the chunk
+                break
+            else:
+                # Invalid JSON data encountered
+                port = response.real_url.port
+                host = response.real_url.host
+                bt.logging.debug(
+                    f"Host: {host}:{port}; Failed to decode JSON object: {e} from {buffer}"
+                )
+                bt.logging.debug(f"Chunk: {chunk}")
+                break
 
-    remaining_buffer = (
-        buffer[start_index:] if start_index is not None else ""
-    )  # Remaining buffer after extracting JSON objects
-
-    return json_objects, remaining_buffer
+    return json_objects, buffer
 
 
 class MinerTweet(BaseModel):
