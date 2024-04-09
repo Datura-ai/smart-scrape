@@ -1,6 +1,6 @@
 validators/state.json
 bittensor_subnet_datura.egg-info/
-template/__pycache__/
+datura/__pycache__/
 __pycache__/
 *.pyc
 wandb/

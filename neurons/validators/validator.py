@@ -17,7 +17,7 @@ from config import add_args, check_config, config
 from weights import init_wandb, set_weights, get_weights
 from traceback import print_exception
 from base_validator import AbstractNeuron
-from template import QUERY_MINERS
+from datura import QUERY_MINERS
 from datura.misc import ttl_get_block
 from datura.utils import resync_metagraph, save_logs_in_chunks
 

@@ -5,7 +5,7 @@ script="neurons/validators/api.py"
 autoRunLoc=$(readlink -f "$0")
 proc_name="smart_scrape_validators_api_main_process" 
 args=()
-version_location="./template/__init__.py"
+version_location="./datura/__init__.py"
 version="__version__"
 
 old_args=$@
@@ -229,7 +229,7 @@ if [ "$?" -eq 1 ]; then
         if [ -d "./.git" ]; then
 
             # check value on github remotely
-            latest_version=$(check_variable_value_on_github "surcyf123/smart-scrape" "template/__init__.py" "__version__ ")
+            latest_version=$(check_variable_value_on_github "datura-ai/smart-scrape" "datura/__init__.py" "__version__ ")
 
             # If the file has been updated
             if version_less_than $current_version $latest_version; then

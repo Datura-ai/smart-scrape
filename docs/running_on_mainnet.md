@@ -3,10 +3,10 @@ This tutorial shows how to use the bittensor mainnetwork to create a subnetwork 
 ## Steps
 
 1. Clone and Install Bittensor and the Bittensor Subnet datura.
-This clones and installs the template if you dont already have it (if you do, skip this step)
+This clones and installs the datura if you dont already have it (if you do, skip this step)
 ```bash
 cd .. # back out of the subtensor repo
-git clone https://github.com/surcyf123/smart-scrape.git # Clone the smart-scrape repo
+git clone https://github.com/datura-ai/smart-scrape.git # Clone the smart-scrape repo
 cd smart-scrape # Enter the  smart-scrape  repo
 python -m pip install -e . # Install the  smart-scrape  package
 ```
@@ -101,7 +101,7 @@ miner    default  1      True   0.00000  0.00000  0.00000    0.00000    0.00000 
                                                                           Wallet balance: τ0.0   
 ```
 
-10. Edit the default `NETUID=1` and `CHAIN_ENDPOINT=ws://127.0.0.1:9946` arguments in `template/__init__.py` to match your created subnetwork.
+10. Edit the default `NETUID=1` and `CHAIN_ENDPOINT=ws://127.0.0.1:9946` arguments in `datura/__init__.py` to match your created subnetwork.
 Or run the miner and validator directly with the netuid and chain_endpoint arguments.
 ```bash
 # Run the miner with the netuid and chain_endpoint arguments.

@@ -393,7 +393,7 @@ if __name__ == "__main__":
     for topic in dt.topics:
         questions = []
         for template in dt.question_templates:
-            question = datura.format(topic)
+            question = template.format(topic)
             questions.append(question)
 
         results = asyncio.run(
