@@ -186,6 +186,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Optional JSON object containing search results from SERP",
     )
 
+    google_news_search_results: Optional[Any] = pydantic.Field(
+        default_factory=dict,
+        title="Google News Search Results",
+        description="Optional JSON object containing search results from SERP Google News",
+    )
+
     google_image_search_results: Optional[Any] = pydantic.Field(
         default_factory=dict,
         title="Google Image Search Results",
@@ -298,6 +304,13 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                         self.search_results = search_json
                         yield json.dumps({"type": "search", "content": search_json})
 
+                    elif content_type == "google_search_news":
+                        search_json = json_data.get("content", "{}")
+                        self.google_news_search_results = search_json
+                        yield json.dumps(
+                            {"type": "google_search_news", "content": search_json}
+                        )
+
                     elif content_type == "wikipedia_search":
                         search_json = json_data.get("content", "{}")
                         self.wikipedia_search_results = search_json
@@ -396,6 +409,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "completion": self.completion,
             "miner_tweets": self.miner_tweets,
             "search_results": self.search_results,
+            "google_news_search_results": self.google_news_search_results,
             "wikipedia_search_results": self.wikipedia_search_results,
             "youtube_search_results": self.youtube_search_results,
             "arxiv_search_results": self.arxiv_search_results,

@@ -134,6 +134,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 response.arxiv_search_results,
                 response.youtube_search_results,
                 response.wikipedia_search_results,
+                response.google_news_search_results,
             ]
 
             results = " ".join([str(result) for result in results if result])
