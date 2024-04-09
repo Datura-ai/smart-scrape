@@ -156,7 +156,7 @@ def prepare_search_data_for_summary(data):
                 'title': result.get('title'),
                 'link': result.get('link'),
                 'snippet': result.get('snippet'),
-                'source': 'Wikipedia'
+                # 'source': 'Wikipedia'
             })
 
     return standardized_results

@@ -1,12 +1,22 @@
 from langchain_community.utilities.serpapi import (
     SerpAPIWrapper as LangChainSerpAPIWrapper,
 )
+from typing import Any, Dict, Optional, Tuple
 
 
 class SerpAPIWrapper(LangChainSerpAPIWrapper):
+
+    async def arun(self, query: str, **kwargs: Any) -> str:
+        """Run query through SerpAPI and parse result async."""
+        result = await self.aresults(query)
+        return self._process_response(result)
+
     @staticmethod
     def _process_response(res: dict) -> str:
         """Process response from SerpAPI."""
+        if "error" in res.keys() and res['error'] == "Google hasn't returned any results for this query.":
+            return {}
+        
         if "error" in res.keys():
             raise ValueError(f"Got error from SerpAPI: {res['error']}")
 

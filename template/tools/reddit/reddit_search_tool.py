@@ -44,6 +44,8 @@ class RedditSearchTool(BaseTool):
             date_filter=self.tool_manager.date_filter,
         )
         result = await search.run(query)
+        if not result or  result == 'Could not search Google. Please try again later.':
+            return []
         result = search.process_response(result)
         return result
 

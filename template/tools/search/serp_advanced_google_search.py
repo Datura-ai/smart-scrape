@@ -31,13 +31,14 @@ class SerpAdvancedGoogleSearch:
         query = f"{query} site:{self.site}"
 
         try:
-            return await search.arun(query)
+            result =  await search.arun(query)
+            return result
         except Exception as err:
             if "Invalid API key" in str(err):
                 bt.logging.error(f"SERP API Key is invalid: {err}")
                 return "SERP API Key is invalid"
 
-            bt.logging.error(f"Could not perform SERP Google Search: {err}")
+            bt.logging.warning(f"Could not perform SERP Google Search: {err}")
             return "Could not search Google. Please try again later."
 
     def process_response(self, response):
