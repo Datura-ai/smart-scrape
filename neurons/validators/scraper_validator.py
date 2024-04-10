@@ -419,6 +419,11 @@ class ScraperValidator:
             raise e
 
     async def organic_specified(self, query, specified_uids=None):
+        def format_response(uid, text):
+            return json.dumps(
+                {"uid": uid, "type": "text", "content": text, "role": text}
+            )
+
         try:
             prompt = query["content"]
             tools = query.get("tools", [])
@@ -435,33 +440,42 @@ class ScraperValidator:
                 bt.logging.info("Not available uids")
                 raise StopAsyncIteration("Not available uids")
 
-            yield f"Contacting miner IDs: {'; '.join(map(str, specified_uids))} \n\n\n"
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=QUERY_MINERS.ALL,
                 is_only_allowed_miner=False,
                 specified_uids=specified_uids,
-                tools=self.tools,
+                tools=tools,
                 language=self.language,
                 region=self.region,
                 date_filter=self.date_filter,
             )
 
             final_synapses = []
-            async for value in process_async_responses(async_responses):
-                if isinstance(value, bt.Synapse):
-                    final_synapses.append(value)
-                else:
-                    pass
+            for uid_tensor, response in zip(uids, async_responses):
+                uid = uid_tensor.item()
+                yield format_response(uid, f"\nMiner UID {uid}\n")
+                yield format_response(
+                    uid, "----------------------------------------\n\n"
+                )
+
+                async for value in response:
+                    if isinstance(value, bt.Synapse):
+                        final_synapses.append(value)
+                    else:
+                        yield json.dumps({"uid": uid, **json.loads(value)})
 
             for uid_tensor, response in zip(uids, final_synapses):
-                yield f"Miner ID: {uid_tensor.item()} Completion Output: \n\n"
-                yield "----------------------------------------\n\n"
-                yield f"{response.completion}\n\n"
-                yield "\n\n======================================================================================================================================================\n\n"
+                uid = uid_tensor.item()
+                yield format_response(
+                    uid, "\n\n----------------------------------------\n"
+                )
+                yield format_response(
+                    uid, f"Scoring Miner UID {uid}. Please wait for the score...\n"
+                )
 
-            yield "Initiating scoring system. Please wait for the response... \n\n"
             start_compute_time = time.time()
+
             rewards_task = asyncio.create_task(
                 self.compute_rewards_and_penalties(
                     event=event,
@@ -482,16 +496,20 @@ class ScraperValidator:
 
             rewards = await rewards_task
 
-            yield "\n\n======================================================================================================================================================\n\n"
             for uid_tensor, reward, response in zip(
                 uids, rewards.tolist(), final_synapses
             ):
-                yield f"Miner ID: {uid_tensor.item()} - Reward: {reward:.2f}\n\n"
+                uid = uid_tensor.item()
+                yield format_response(
+                    uid, "----------------------------------------\n\n\n"
+                )
+                yield format_response(uid, f"Miner UID {uid} Reward: {reward:.2f}")
 
             missing_uids = set(specified_uids) - set(uid.item() for uid in uids)
             for missing_uid in missing_uids:
-                yield f"No response from Miner ID: {missing_uid}\n"
-                yield "----------------------------------------\n\n\n"
+                yield format_response(
+                    missing_uid, f"No response from Miner ID: {missing_uid}\n"
+                )
 
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")
