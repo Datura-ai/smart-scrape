@@ -42,12 +42,15 @@ class SerpAdvancedGoogleSearch:
             return "Could not search Google. Please try again later."
 
     def process_response(self, response):
-        results = [
-            {
-                "title": result["title"],
-                "url": result["link"],
-            }
-            for result in response["organic_results"]
-        ]
+        if "organic_results" in response:
+            results = [
+                {
+                    "title": result["title"],
+                    "url": result["link"],
+                }
+                for result in response["organic_results"]
+            ]
+        else:
+            results = []
 
         return results
