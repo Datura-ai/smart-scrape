@@ -31,6 +31,7 @@ from datura.services.twitter_api_wrapper import TwitterAPIClient
 from datura.utils import save_logs
 from datura import QUERY_MINERS
 import asyncio
+from aiostream import stream
 
 
 class ScraperValidator:
@@ -451,19 +452,33 @@ class ScraperValidator:
                 date_filter=self.date_filter,
             )
 
-            final_synapses = []
-            for uid_tensor, response in zip(uids, async_responses):
-                uid = uid_tensor.item()
-                yield format_response(uid, f"\nMiner UID {uid}\n")
+            async def stream_response(uid, async_response):
+                yield format_response(uid, f"\n\nMiner UID {uid}\n")
                 yield format_response(
                     uid, "----------------------------------------\n\n"
                 )
 
-                async for value in response:
+                async for value in async_response:
+                    if isinstance(value, bt.Synapse):
+                        yield value
+                    else:
+                        yield json.dumps({"uid": uid, **json.loads(value)})
+
+            async_responses_with_uid = [
+                stream_response(uid.item(), response)
+                for uid, response in zip(uids, async_responses)
+            ]
+
+            merged_stream_with_uid = stream.merge(*async_responses_with_uid)
+
+            final_synapses = []
+
+            async with merged_stream_with_uid.stream() as streamer:
+                async for value in streamer:
                     if isinstance(value, bt.Synapse):
                         final_synapses.append(value)
                     else:
-                        yield json.dumps({"uid": uid, **json.loads(value)})
+                        yield value
 
             for uid_tensor, response in zip(uids, final_synapses):
                 uid = uid_tensor.item()
