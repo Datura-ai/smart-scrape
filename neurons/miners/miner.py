@@ -99,7 +99,21 @@ class StreamMiner(ABC):
             bt.logging.info(f"Running miner on uid: {self.my_subnet_uid}")
 
         # The axon handles request processing, allowing validators to send this process requests.
-        self.axon = axon or bt.axon(wallet=self.wallet, port=self.config.axon.port)
+        if axon is not None:
+            self.axon = axon
+        elif self.config.axon.external_ip is not None:
+            bt.logging.debug(
+                f"Starting axon on port {self.config.axon.port} and external ip {self.config.axon.external_ip}"
+            )
+            self.axon = bt.axon(
+                wallet=self.wallet,
+                port=self.config.axon.port,
+                external_ip=self.config.axon.external_ip,
+            )
+        else:
+            bt.logging.debug(f"Starting axon on port {self.config.axon.port}")
+            self.axon = bt.axon(wallet=self.wallet, port=self.config.axon.port)
+            
         # Attach determiners which functions are called when servicing a request.
         bt.logging.info(f"Attaching forward function to axon.")
         print(f"Attaching forward function to axon. {self._is_alive}")
