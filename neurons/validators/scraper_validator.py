@@ -42,7 +42,7 @@ class ScraperValidator:
         self.weight = 1
         self.seed = 1234
         self.neuron = neuron
-        self.timeout = 150
+        self.timeout = 160
         self.tools = [
             "Recent Tweets",
             "Google Search",
