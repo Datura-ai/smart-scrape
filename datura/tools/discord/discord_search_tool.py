@@ -1,10 +1,10 @@
 import json
+import bittensor as bt
 from typing import Type
 from pydantic import BaseModel, Field
 from starlette.types import Send
-from datura.services.discord_prompt_analyzer import DiscordPromptAnalyzer
 from datura.tools.base import BaseTool
-import bittensor as bt
+from datura.services.discord_api_wrapper import DiscordAPIClient
 
 
 class DiscordSearchToolSchema(BaseModel):
@@ -31,57 +31,35 @@ class DiscordSearchTool(BaseTool):
         query: str,
     ) -> str:
         """Search Discord messages and return results."""
-        openai_query_model = self.tool_manager.miner.config.miner.openai_query_model
-        openai_fix_query_model = (
-            self.tool_manager.miner.config.miner.openai_fix_query_model
-        )
+        client = DiscordAPIClient()
 
-        client = DiscordPromptAnalyzer(
-            openai_query_model=openai_query_model,
-            openai_fix_query_model=openai_fix_query_model,
-        )
+        body = {
+            "query": query,
+            "limit": 10,
+            "page": 1,
+            "nest_level": 2,
+            "only_parsable": True,
+        }
 
-        result, discord_prompt_analysis = (
-            await client.analyse_prompt_and_fetch_messages(query)
-        )
+        (result, _, _) = await client.search_messages(body)
         bt.logging.info(
-            "================================== Discord Prompt analysis ==================================="
+            "================================== Discord Result ==================================="
         )
-        bt.logging.info(discord_prompt_analysis)
+        bt.logging.info(result)
         bt.logging.info(
-            "================================== Discord Prompt analysis ===================================="
+            "================================== Discord Result ===================================="
         )
 
-        return (result, discord_prompt_analysis)
+        return result
 
     async def send_event(self, send: Send, response_streamer, data):
         if not data:
             return
 
-        messages, discord_prompt_analysis = data
-        # Send prompt_analysis
-        if discord_prompt_analysis:
-            discord_prompt_analysis_response_body = {
-                "type": "discord_prompt_analysis",
-                "content": discord_prompt_analysis.dict(),
-            }
-
-            await send(
-                {
-                    "type": "http.response.body",
-                    "body": json.dumps(discord_prompt_analysis_response_body).encode(
-                        "utf-8"
-                    ),
-                    "more_body": True,
-                }
-            )
-            bt.logging.info("Discord Prompt Analysis sent")
-
-        if messages:
-            # We may need more body here to continueslly fetch messages
+        if data:
             messages_response_body = {
                 "type": "discord_search",
-                "content": messages,
+                "content": data,
             }
 
             await send(
