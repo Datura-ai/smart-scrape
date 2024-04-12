@@ -1,5 +1,5 @@
 validators/state.json
-bittensor_subnet_datura.egg-info/
+bittensor_subnet_template.egg-info/
 datura/__pycache__/
 __pycache__/
 *.pyc

@@ -68,12 +68,12 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             scoring_prompt_text = None
             if (
                 self.scoring_type.value
-                == RewardScoringType.summary_relevance_score_datura.value
+                == RewardScoringType.summary_relevance_score_template.value
             ):
                 scoring_prompt = SummaryRelevancePrompt()
             elif (
                 self.scoring_type.value
-                == RewardScoringType.link_content_relevance_datura.value
+                == RewardScoringType.link_content_relevance_template.value
             ):
                 scoring_prompt = LinkContentPrompt()
                 # Convert list of links content to string before passing to the prompt

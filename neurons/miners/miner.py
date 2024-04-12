@@ -19,7 +19,7 @@ from openai import AsyncOpenAI
 from starlette.types import Send
 from abc import ABC, abstractmethod
 from transformers import GPT2Tokenizer
-from config import get_config, check_config
+from neurons.miners.config import get_config, check_config
 from typing import List, Dict, Tuple
 
 from datura.utils import get_version
