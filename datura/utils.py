@@ -310,38 +310,6 @@ async def save_logs(prompt, logs):
         )
 
 
-async def save_logs_from_miner(
-    self, synapse, prompt, completion, prompt_analysis, data
-):
-    if not self.miner.config.miner.save_logs or not prompt_analysis or not data:
-        return
-
-    asyncio.create_task(
-        save_logs(
-            prompt=prompt,
-            logs=[
-                {
-                    "completion": completion,
-                    "prompt_analysis": prompt_analysis.dict(),
-                    "data": data,
-                    "miner": {
-                        "uid": self.miner.my_subnet_uid,
-                        "hotkey": synapse.axon.hotkey,
-                        "coldkey": next(
-                            (
-                                axon.coldkey
-                                for axon in self.miner.metagraph.axons
-                                if axon.hotkey == synapse.axon.hotkey
-                            ),
-                            None,  # Provide a default value here, such as None or an appropriate placeholder
-                        ),
-                    },
-                }
-            ],
-        )
-    )
-
-
 async def save_logs_in_chunks(
     self,
     prompt,

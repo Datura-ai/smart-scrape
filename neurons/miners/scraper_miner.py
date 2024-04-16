@@ -5,7 +5,6 @@ from datura.protocol import (
     ScraperStreamingSynapse,
 )
 from datura.tools.tool_manager import ToolManager
-from datura.utils import save_logs_from_miner
 
 
 class ScraperMiner:
@@ -42,15 +41,6 @@ class ScraperMiner:
             )
 
             await tool_manager.run()
-
-            await save_logs_from_miner(
-                self,
-                synapse=synapse,
-                prompt=prompt,
-                completion=tool_manager.response_streamer.get_full_text(),
-                prompt_analysis=tool_manager.twitter_prompt_analysis,
-                data=tool_manager.twitter_data,
-            )
 
             bt.logging.info("End of Streaming")
 
