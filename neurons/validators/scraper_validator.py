@@ -48,7 +48,7 @@ class ScraperValidator:
             "Google Search",
             "ArXiv Search",
             "Youtube Search",
-            "Discord Search",
+            # "Discord Search",
             "Wikipedia Search",
             "Reddit Search",
             "Hacker News Search",
