@@ -119,7 +119,7 @@ class ToolManager:
                     toolkit_actions[toolkit_name] = []
                 toolkit_actions[toolkit_name].append(action)
             else:
-                bt.log(
+                bt.logging.info(
                     f"Tool {tool_name} does not belong to any toolkit and is not an independent tool."
                 )
 
