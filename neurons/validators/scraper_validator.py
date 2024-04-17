@@ -28,7 +28,6 @@ from neurons.validators.utils.tasks import TwitterTask
 
 from datura.dataset import MockTwitterQuestionsDataset
 from datura.services.twitter_api_wrapper import TwitterAPIClient
-from datura.utils import save_logs
 from datura import QUERY_MINERS
 import asyncio
 from aiostream import stream
