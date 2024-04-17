@@ -2,7 +2,7 @@ from typing import List
 from .reward import BaseRewardModel, BaseRewardEvent
 from .config import RewardModelType
 from neurons.validators.reward.reward_llm import RewardLLM
-from template.protocol import ScraperStreamingSynapse, ScraperTextRole
+from datura.protocol import ScraperStreamingSynapse, ScraperTextRole
 import traceback
 import bittensor as bt
 from neurons.validators.apify.web_scraper_actor import WebScraperActor
@@ -118,10 +118,9 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 return 0
 
             search_completion_links = response.search_completion_links
-            search_results = response.search_results
             validator_links = response.validator_links
 
-            if not search_completion_links or not search_results or not validator_links:
+            if not search_completion_links or not validator_links:
                 return 0
 
             if len(search_completion_links) < 2:
@@ -130,7 +129,17 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
             random_link = random.choice(validator_links)
 
-            if random_link["url"] in str(search_results):
+            results = [
+                response.search_results,
+                response.arxiv_search_results,
+                response.youtube_search_results,
+                response.wikipedia_search_results,
+                response.google_news_search_results,
+            ]
+
+            results = " ".join([str(result) for result in results if result])
+
+            if random_link["url"] in results:
                 link_score = 1
 
             return link_score

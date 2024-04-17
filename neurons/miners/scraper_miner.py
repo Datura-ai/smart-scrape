@@ -1,11 +1,10 @@
 import traceback
 import bittensor as bt
 from starlette.types import Send
-from template.protocol import (
+from datura.protocol import (
     ScraperStreamingSynapse,
 )
-from template.tools.tool_manager import ToolManager
-from template.utils import save_logs_from_miner
+from datura.tools.tool_manager import ToolManager
 
 
 class ScraperMiner:
@@ -36,18 +35,12 @@ class ScraperMiner:
                 send=send,
                 is_intro_text=is_intro_text,
                 miner=self.miner,
+                language=synapse.language,
+                region=synapse.region,
+                date_filter=synapse.date_filter,
             )
 
             await tool_manager.run()
-
-            await save_logs_from_miner(
-                self,
-                synapse=synapse,
-                prompt=prompt,
-                completion=tool_manager.response_streamer.get_full_text(),
-                prompt_analysis=tool_manager.twitter_prompt_analysis,
-                data=tool_manager.twitter_data,
-            )
 
             bt.logging.info("End of Streaming")
 

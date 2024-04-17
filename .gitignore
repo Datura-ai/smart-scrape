@@ -1,6 +1,6 @@
 validators/state.json
 bittensor_subnet_template.egg-info/
-template/__pycache__/
+datura/__pycache__/
 __pycache__/
 *.pyc
 wandb/
@@ -10,3 +10,6 @@ wandb/
 state.json
 
 app.config.js
+
+.DS_Store
+Makefile

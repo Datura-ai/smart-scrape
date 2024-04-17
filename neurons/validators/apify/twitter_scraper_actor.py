@@ -5,7 +5,7 @@ from typing import List
 import traceback
 import bittensor as bt
 from apify_client import ApifyClientAsync
-from template.protocol import (
+from datura.protocol import (
     TwitterScraperTweet,
     TwitterScraperMedia,
     TwitterScraperUser,

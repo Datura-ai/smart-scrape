@@ -31,7 +31,7 @@ from neurons.validators.utils.prompts import (
     extract_score_and_explanation,
 )
 
-from template.protocol import ScraperStreamingSynapse
+from datura.protocol import ScraperStreamingSynapse
 from neurons.validators.reward.reward_llm import RewardLLM
 import json
 

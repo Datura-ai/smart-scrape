@@ -1,5 +1,5 @@
 import bittensor as bt
-from template.protocol import ScraperStreamingSynapse
+from datura.protocol import ScraperStreamingSynapse
 import json
 import asyncio
 import sys  # Import the sys module to access command-line arguments

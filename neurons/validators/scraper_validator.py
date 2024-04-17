@@ -5,8 +5,8 @@ import random
 import json
 import bittensor as bt
 from base_validator import AbstractNeuron
-from template.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult
-from template.stream import process_async_responses, process_single_response
+from datura.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult
+from datura.stream import process_async_responses, process_single_response
 from reward import RewardModelType, RewardScoringType
 from typing import List
 from utils.mock import MockRewardModel
@@ -26,11 +26,11 @@ from neurons.validators.reward.search_content_relevance import (
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask
 
-from template.dataset import MockTwitterQuestionsDataset
-from template.services.twitter_api_wrapper import TwitterAPIClient
-from template.utils import save_logs
-from template import QUERY_MINERS
+from datura.dataset import MockTwitterQuestionsDataset
+from datura.services.twitter_api_wrapper import TwitterAPIClient
+from datura import QUERY_MINERS
 import asyncio
+from aiostream import stream
 
 
 class ScraperValidator:
@@ -41,9 +41,21 @@ class ScraperValidator:
         self.weight = 1
         self.seed = 1234
         self.neuron = neuron
-        self.timeout = 150
-        # self.tools = ["Recent Tweets", "Web Search", "Wikipedia Search", "ArXiv Search", "Youtube Search"]
-        self.tools = ["Recent Tweets", "Web Search", "ArXiv Search", "Youtube Search"]
+        self.timeout = 180
+        self.tools = [
+            "Recent Tweets",
+            "Google Search",
+            "ArXiv Search",
+            "Youtube Search",
+            # "Discord Search",
+            "Wikipedia Search",
+            "Reddit Search",
+            "Hacker News Search",
+            "Google Image Search",
+        ]
+        self.language = "en"
+        self.region = "us"
+        self.date_filter = "qdr:w"  # Past week
 
         # Init device.
         bt.logging.debug("loading", "device")
@@ -121,6 +133,9 @@ class ScraperValidator:
         is_intro_text=False,
         specified_uids=None,
         tools=[],
+        language="en",
+        region="us",
+        date_filter="qdr:w",
     ):
         task_name = task.task_name
         prompt = task.compose_prompt()
@@ -145,6 +160,9 @@ class ScraperValidator:
             seed=self.seed,
             is_intro_text=is_intro_text,
             tools=tools,
+            language=language,
+            region=region,
+            date_filter=date_filter,
         )
 
         # Make calls to the network with the prompt.
@@ -326,6 +344,9 @@ class ScraperValidator:
                 strategy=strategy,
                 is_only_allowed_miner=False,
                 tools=self.tools,
+                language=self.language,
+                region=self.region,
+                date_filter=self.date_filter,
             )
 
             final_synapses = []
@@ -370,6 +391,9 @@ class ScraperValidator:
                 is_only_allowed_miner=True,
                 is_intro_text=True,
                 tools=tools,
+                language=self.language,
+                region=self.region,
+                date_filter=self.date_filter,
             )
             final_synapses = []
             for response in async_responses:
@@ -395,6 +419,11 @@ class ScraperValidator:
             raise e
 
     async def organic_specified(self, query, specified_uids=None):
+        def format_response(uid, text):
+            return json.dumps(
+                {"uid": uid, "type": "text", "content": text, "role": text}
+            )
+
         try:
             prompt = query["content"]
             tools = query.get("tools", [])
@@ -411,30 +440,56 @@ class ScraperValidator:
                 bt.logging.info("Not available uids")
                 raise StopAsyncIteration("Not available uids")
 
-            yield f"Contacting miner IDs: {'; '.join(map(str, specified_uids))} \n\n\n"
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=QUERY_MINERS.ALL,
                 is_only_allowed_miner=False,
                 specified_uids=specified_uids,
-                tools=self.tools,
+                tools=tools,
+                language=self.language,
+                region=self.region,
+                date_filter=self.date_filter,
             )
 
+            async def stream_response(uid, async_response):
+                yield format_response(uid, f"\n\nMiner UID {uid}\n")
+                yield format_response(
+                    uid, "----------------------------------------\n\n"
+                )
+
+                async for value in async_response:
+                    if isinstance(value, bt.Synapse):
+                        yield value
+                    else:
+                        yield json.dumps({"uid": uid, **json.loads(value)})
+
+            async_responses_with_uid = [
+                stream_response(uid.item(), response)
+                for uid, response in zip(uids, async_responses)
+            ]
+
+            merged_stream_with_uid = stream.merge(*async_responses_with_uid)
+
             final_synapses = []
-            async for value in process_async_responses(async_responses):
-                if isinstance(value, bt.Synapse):
-                    final_synapses.append(value)
-                else:
-                    pass
+
+            async with merged_stream_with_uid.stream() as streamer:
+                async for value in streamer:
+                    if isinstance(value, bt.Synapse):
+                        final_synapses.append(value)
+                    else:
+                        yield value
 
             for uid_tensor, response in zip(uids, final_synapses):
-                yield f"Miner ID: {uid_tensor.item()} Completion Output: \n\n"
-                yield "----------------------------------------\n\n"
-                yield f"{response.completion}\n\n"
-                yield "\n\n======================================================================================================================================================\n\n"
+                uid = uid_tensor.item()
+                yield format_response(
+                    uid, "\n\n----------------------------------------\n"
+                )
+                yield format_response(
+                    uid, f"Scoring Miner UID {uid}. Please wait for the score...\n"
+                )
 
-            yield "Initiating scoring system. Please wait for the response... \n\n"
             start_compute_time = time.time()
+
             rewards_task = asyncio.create_task(
                 self.compute_rewards_and_penalties(
                     event=event,
@@ -455,16 +510,20 @@ class ScraperValidator:
 
             rewards = await rewards_task
 
-            yield "\n\n======================================================================================================================================================\n\n"
             for uid_tensor, reward, response in zip(
                 uids, rewards.tolist(), final_synapses
             ):
-                yield f"Miner ID: {uid_tensor.item()} - Reward: {reward:.2f}\n\n"
+                uid = uid_tensor.item()
+                yield format_response(
+                    uid, "----------------------------------------\n\n\n"
+                )
+                yield format_response(uid, f"Miner UID {uid} Reward: {reward:.2f}")
 
             missing_uids = set(specified_uids) - set(uid.item() for uid in uids)
             for missing_uid in missing_uids:
-                yield f"No response from Miner ID: {missing_uid}\n"
-                yield "----------------------------------------\n\n\n"
+                yield format_response(
+                    missing_uid, f"No response from Miner ID: {missing_uid}\n"
+                )
 
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")

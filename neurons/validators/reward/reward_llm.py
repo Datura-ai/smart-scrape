@@ -7,7 +7,7 @@ import asyncio
 import bittensor as bt
 import re
 import time
-from template.utils import call_openai
+from datura.utils import call_openai
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from neurons.validators.utils.prompts import (
     extract_score_and_explanation,

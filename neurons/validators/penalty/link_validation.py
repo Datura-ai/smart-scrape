@@ -6,8 +6,8 @@ from typing import List
 from urllib.parse import urlparse
 from neurons.validators.utils.tasks import TwitterTask
 from neurons.validators.penalty import BasePenaltyModel, PenaltyModelType
-from template.protocol import ScraperStreamingSynapse
-from template.services.twitter_api_wrapper import TwitterAPIClient, VALID_DOMAINS
+from datura.protocol import ScraperStreamingSynapse
+from datura.services.twitter_api_wrapper import TwitterAPIClient, VALID_DOMAINS
 
 
 class LinkValidationPenaltyModel(BasePenaltyModel):

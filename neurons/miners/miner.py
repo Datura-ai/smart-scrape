@@ -6,7 +6,7 @@ import wandb
 import json
 import pathlib
 import asyncio
-import template
+import datura
 import argparse
 import threading
 import traceback
@@ -19,14 +19,14 @@ from openai import AsyncOpenAI
 from starlette.types import Send
 from abc import ABC, abstractmethod
 from transformers import GPT2Tokenizer
-from config import get_config, check_config
+from neurons.miners.config import get_config, check_config
 from typing import List, Dict, Tuple
 
-from template.utils import get_version
+from datura.utils import get_version
 
-from template.protocol import IsAlive, ScraperStreamingSynapse
-from template.services.twitter_api_wrapper import TwitterAPIClient
-from template.db import DBClient, get_random_tweets
+from datura.protocol import IsAlive, ScraperStreamingSynapse
+from datura.services.twitter_api_wrapper import TwitterAPIClient
+from datura.db import DBClient, get_random_tweets
 from neurons.miners.scraper_miner import ScraperMiner
 
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
@@ -99,7 +99,21 @@ class StreamMiner(ABC):
             bt.logging.info(f"Running miner on uid: {self.my_subnet_uid}")
 
         # The axon handles request processing, allowing validators to send this process requests.
-        self.axon = axon or bt.axon(wallet=self.wallet, port=self.config.axon.port)
+        if axon is not None:
+            self.axon = axon
+        elif self.config.axon.external_ip is not None:
+            bt.logging.debug(
+                f"Starting axon on port {self.config.axon.port} and external ip {self.config.axon.external_ip}"
+            )
+            self.axon = bt.axon(
+                wallet=self.wallet,
+                port=self.config.axon.port,
+                external_ip=self.config.axon.external_ip,
+            )
+        else:
+            bt.logging.debug(f"Starting axon on port {self.config.axon.port}")
+            self.axon = bt.axon(wallet=self.wallet, port=self.config.axon.port)
+            
         # Attach determiners which functions are called when servicing a request.
         bt.logging.info(f"Attaching forward function to axon.")
         print(f"Attaching forward function to axon. {self._is_alive}")
@@ -134,10 +148,10 @@ class StreamMiner(ABC):
             hotkey = synapse.dendrite.hotkey
             synapse_type = type(synapse).__name__
 
-            if hotkey in template.WHITELISTED_KEYS:
+            if hotkey in datura.WHITELISTED_KEYS:
                 return False, f"accepting {synapse_type} request from {hotkey}"
 
-            if hotkey not in template.valid_validators:
+            if hotkey not in datura.valid_validators:
                 return (
                     True,
                     f"Blacklisted a {synapse_type} request from a non-valid hotkey: {hotkey}",
@@ -151,7 +165,7 @@ class StreamMiner(ABC):
                     axon = _axon
                     break
 
-            if uid is None and template.ALLOW_NON_REGISTERED == False:
+            if uid is None and datura.ALLOW_NON_REGISTERED == False:
                 return (
                     True,
                     f"Blacklisted a non registered hotkey's {synapse_type} request from {hotkey}",
@@ -166,7 +180,7 @@ class StreamMiner(ABC):
                     f"Blacklisted a low stake {synapse_type} request: {tao} < {blacklist_amt} from {hotkey}",
                 )
 
-            time_window = template.MIN_REQUEST_PERIOD * 60
+            time_window = datura.MIN_REQUEST_PERIOD * 60
             current_time = time.time()
 
             if hotkey not in self.request_timestamps:
@@ -180,10 +194,10 @@ class StreamMiner(ABC):
                 self.request_timestamps[hotkey].popleft()
 
             # Check if the number of requests exceeds the limit
-            if len(self.request_timestamps[hotkey]) >= template.MAX_REQUESTS:
+            if len(self.request_timestamps[hotkey]) >= datura.MAX_REQUESTS:
                 return (
                     True,
-                    f"Request frequency for {hotkey} exceeded: {len(self.request_timestamps[hotkey])} requests in {template.MIN_REQUEST_PERIOD} minutes. Limit is {template.MAX_REQUESTS} requests.",
+                    f"Request frequency for {hotkey} exceeded: {len(self.request_timestamps[hotkey])} requests in {datura.MIN_REQUEST_PERIOD} minutes. Limit is {datura.MAX_REQUESTS} requests.",
                 )
 
             self.request_timestamps[hotkey].append(current_time)
@@ -194,7 +208,7 @@ class StreamMiner(ABC):
             bt.logging.error(f"errror in blacklist {traceback.format_exc()}")
 
     def blacklist_is_alive(self, synapse: IsAlive) -> Tuple[bool, str]:
-        blacklist = self.base_blacklist(synapse, template.ISALIVE_BLACKLIST_STAKE)
+        blacklist = self.base_blacklist(synapse, datura.ISALIVE_BLACKLIST_STAKE)
         bt.logging.debug(blacklist[1])
         return blacklist
 
@@ -202,7 +216,7 @@ class StreamMiner(ABC):
         self, synapse: ScraperStreamingSynapse
     ) -> Tuple[bool, str]:
         blacklist = self.base_blacklist(
-            synapse, template.TWITTER_SCRAPPER_BLACKLIST_STAKE
+            synapse, datura.TWITTER_SCRAPPER_BLACKLIST_STAKE
         )
         bt.logging.info(blacklist[1])
         return blacklist
@@ -342,7 +356,7 @@ def get_valid_hotkeys(config):
     while True:
         metagraph = subtensor.metagraph(18)
         try:
-            runs = api.runs(f"{template.ENTITY}/{template.PROJECT_NAME}")
+            runs = api.runs(f"{datura.ENTITY}/{datura.PROJECT_NAME}")
             latest_version = get_version()
             for run in runs:
                 if run.state == "running":

@@ -28,7 +28,7 @@ class BasePrompt:
         self.extract_pattern = ""
 
     def text(self, *args) -> str:
-        r"""Sanitize input strings and format prompt template."""
+        r"""Sanitize input strings and format prompt datura."""
         sanitized = args
         tags = find_unique_tags(self.template)
         for tag in tags:
@@ -49,7 +49,7 @@ class BasePrompt:
         return None
 
     def matches_template(self, input_text) -> bool:
-        r"""Checks if the input_text matches the first unformatted part of the prompt template."""
+        r"""Checks if the input_text matches the first unformatted part of the prompt datura."""
         index = self.template.find("{")
         return input_text[:index] == self.template[:index]
 

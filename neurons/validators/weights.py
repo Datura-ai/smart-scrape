@@ -21,7 +21,7 @@
 import wandb
 import torch
 import bittensor as bt
-import template
+import datura
 import multiprocessing
 import time
 
@@ -32,18 +32,18 @@ from multiprocessing import Queue
 def init_wandb(self):
     try:
         if self.config.wandb_on:
-            run_name = f"validator-{self.uid}-{template.__version__}"
+            run_name = f"validator-{self.uid}-{datura.__version__}"
             self.config.uid = self.uid
             self.config.hotkey = self.wallet.hotkey.ss58_address
             self.config.run_name = run_name
-            self.config.version = template.__version__
+            self.config.version = datura.__version__
             self.config.type = "validator"
 
             # Initialize the wandb run for the single project
             run = wandb.init(
                 name=run_name,
-                project=template.PROJECT_NAME,
-                entity=template.ENTITY,
+                project=datura.PROJECT_NAME,
+                entity=datura.ENTITY,
                 config=self.config,
                 dir=self.config.full_path,
                 reinit=True,
@@ -54,9 +54,7 @@ def init_wandb(self):
             self.config.signature = signature
             wandb.config.update(self.config, allow_val_change=True)
 
-            bt.logging.success(
-                f"Started wandb run for project '{template.PROJECT_NAME}'"
-            )
+            bt.logging.success(f"Started wandb run for project '{datura.PROJECT_NAME}'")
     except Exception as e:
         bt.logging.error(f"Error in init_wandb: {e}")
         raise
@@ -71,9 +69,7 @@ def on_retry(exception, tries_remaining, delay):
     bt.logging.info(f"Retry attempt {attempt}, will retry in {delay} seconds...")
 
 
-def set_weights_subtensor(
-    queue, wallet, netuid, uids, weights, config, version_key
-):
+def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_key):
     try:
         subtensor = bt.subtensor(config=config)
         success, message = subtensor.set_weights(
@@ -112,7 +108,7 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
                 processed_weight_uids,
                 processed_weights,
                 self.config,
-                template.__weights_version__
+                datura.__weights_version__,
             ),
         )
         process.start()
@@ -142,9 +138,13 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
                     # Handle the case where the return value is not a tuple (e.g., a boolean)
                     success = queue_success
                     if success:
-                        bt.logging.success(f"Set Weights Completed set weights action successfully, Response: {success}")
+                        bt.logging.success(
+                            f"Set Weights Completed set weights action successfully, Response: {success}"
+                        )
                     else:
-                        bt.logging.info(f"Set Weights Attempt failed. retrying in {retry_delay} seconds..., Response: {success}")
+                        bt.logging.info(
+                            f"Set Weights Attempt failed. retrying in {retry_delay} seconds..., Response: {success}"
+                        )
             else:
                 bt.logging.info(
                     f"Set Weights Attempt {attempt + 1} failed, no response received, retrying in {retry_delay} seconds..."
@@ -160,10 +160,14 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
         else:
             break  # Exit the retry loop on success
     if success:
-        bt.logging.success(f"Final Result: Successfully set weights after {attempt + 1} attempts.")
+        bt.logging.success(
+            f"Final Result: Successfully set weights after {attempt + 1} attempts."
+        )
     else:
-        bt.logging.error(f"Final Result: Failed to set weights after {attempt + 1} attempts.")
-        
+        bt.logging.error(
+            f"Final Result: Failed to set weights after {attempt + 1} attempts."
+        )
+
     return success
 
 
@@ -224,7 +228,9 @@ def set_weights(self):
     # Log the weights dictionary
     bt.logging.info(f"Attempting to set weights action for {weights_dict}")
 
-    bt.logging.info(f"Attempting to set weights details begins: ================ for {len(processed_weight_uids)} UIDs")
+    bt.logging.info(
+        f"Attempting to set weights details begins: ================ for {len(processed_weight_uids)} UIDs"
+    )
     uids_weights = [
         f"UID - {uid.item()} = Weight - {weight.item()}"
         for uid, weight in zip(processed_weight_uids, processed_weights)

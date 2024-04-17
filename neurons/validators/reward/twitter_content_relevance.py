@@ -33,14 +33,14 @@ from neurons.validators.utils.prompts import (
     extract_score_and_explanation,
 )
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from template.protocol import (
+from datura.protocol import (
     ScraperStreamingSynapse,
     TwitterScraperTweet,
     MinerTweet,
     MinerTweetAuthor,
 )
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
-from template.services.twitter_api_wrapper import TwitterAPIClient
+from datura.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.prompts import ScoringPrompt
 import json

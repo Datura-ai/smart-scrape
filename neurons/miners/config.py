@@ -3,6 +3,7 @@ import argparse
 import os
 from distutils.util import strtobool
 
+
 def str2bool(v):
     return bool(strtobool(v))
 
@@ -27,6 +28,10 @@ def get_config() -> "bt.Config":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--axon.port", type=int, default=8098, help="Port to run the axon on."
+    )
+    # External IP 
+    parser.add_argument(
+        "--axon.external_ip", type=str, default=bt.utils.networking.get_external_ip(), help="IP for the metagraph"
     )
     # Subtensor network to connect to
     parser.add_argument(
@@ -64,27 +69,27 @@ def get_config() -> "bt.Config":
         default=100,
     )
 
-    # Mocks.    
+    # Mocks.
     parser.add_argument(
         "--miner.mock_dataset",
         type=str2bool,
         help="If True, the miner will retrieve data from mock dataset",
-        default=False
+        default=False,
     )
 
-    # Mocks.    
+    # Mocks.
     parser.add_argument(
         "--miner.intro_text",
         type=str2bool,
         help="If True, the miner will return intro text",
-        default=True
+        default=True,
     )
 
     parser.add_argument(
         "--miner.save_logs",
         type=str2bool,
         help="If True, the miner will save logs",
-        default=False
+        default=False,
     )
 
     parser.add_argument(
@@ -118,7 +123,7 @@ def get_config() -> "bt.Config":
     bt.axon.add_args(parser)
 
     # Activating the parser to read any command-line inputs.
-    # To print help message, run python3 template/miner.py --help
+    # To print help message, run python3 datura/miner.py --help
     config = bt.config(parser)
 
     # Logging captures events for diagnosis or understanding miner's behavior.

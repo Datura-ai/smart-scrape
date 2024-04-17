@@ -6,20 +6,20 @@ import traceback
 import random
 import copy
 import bittensor as bt
-import template.utils as utils
+import datura.utils as utils
 import os
 import time
 import sys
 from typing import List
-from template.protocol import IsAlive
+from datura.protocol import IsAlive
 from neurons.validators.scraper_validator import ScraperValidator
 from config import add_args, check_config, config
 from weights import init_wandb, set_weights, get_weights
 from traceback import print_exception
 from base_validator import AbstractNeuron
-from template import QUERY_MINERS
-from template.misc import ttl_get_block
-from template.utils import resync_metagraph, save_logs_in_chunks
+from datura import QUERY_MINERS
+from datura.misc import ttl_get_block
+from datura.utils import resync_metagraph, save_logs_in_chunks
 
 
 class Neuron(AbstractNeuron):
