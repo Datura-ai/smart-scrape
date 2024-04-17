@@ -294,8 +294,13 @@ def resync_metagraph(self):
     self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
 
-async def save_logs(prompt, logs):
-    logging_endpoint_url = os.environ.get("LOGGING_ENDPOINT_URL")
+async def save_logs(prompt, logs, network):
+    logging_endpoint_url = None
+
+    if network == "test":
+        logging_endpoint_url = "https://api-logs-dev.smartscrape.ai"
+    elif network == "finney":
+        logging_endpoint_url = "https://api-logs.smartscrape.ai"
 
     if not logging_endpoint_url:
         return
@@ -382,6 +387,7 @@ async def save_logs_in_chunks(
             await save_logs(
                 prompt=prompt,
                 logs=chunk,
+                network=neuron.metagraph.network,
             )
     except Exception as e:
         bt.logging.error(f"Error in save_logs_in_chunks: {e}")
