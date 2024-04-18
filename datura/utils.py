@@ -306,13 +306,18 @@ async def save_logs(prompt, logs, network):
         return
 
     async with aiohttp.ClientSession() as session:
-        await session.post(
-            logging_endpoint_url,
-            json={
-                "prompt": prompt,
-                "logs": logs,
-            },
-        )
+        try:
+            result = await session.post(
+                logging_endpoint_url,
+                json={
+                    "prompt": prompt,
+                    "logs": logs,
+                },
+            )
+
+            bt.logging.debug(f"Executed save_logs, got result: {await result.text()}")
+        except Exception as e:
+            bt.logging.debug(f"Error in save_logs: {e}")
 
 
 async def save_logs_in_chunks(

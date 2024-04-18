@@ -104,7 +104,7 @@ class ScraperValidator:
                     llm_reward=self.reward_llm,
                 )
                 if self.neuron.config.reward.twitter_content_weight > 0
-                else MockRewardModel(RewardModelType.link_content_match.value)
+                else MockRewardModel(RewardModelType.twitter_content_relevance.value)
             ),
             (
                 WebSearchContentRelevanceModel(
@@ -114,7 +114,7 @@ class ScraperValidator:
                 )
                 if self.neuron.config.reward.web_search_relavance_weight > 0
                 else MockRewardModel(
-                    RewardModelType.search_summary_relevance_match.value
+                    RewardModelType.search_content_relevance.value
                 )
             ),
         ]
@@ -293,7 +293,7 @@ class ScraperValidator:
                 neuron=self.neuron,
             )
 
-            return rewards
+            return rewards, uids, val_score_responses_list, event
         except Exception as e:
             bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
             raise e
@@ -418,6 +418,15 @@ class ScraperValidator:
             bt.logging.error(f"Error in organic: {e}")
             raise e
 
+    def format_val_score_responses(self, val_score_responses_list):
+        formatted_scores = []
+        for response_dict in val_score_responses_list:
+            if response_dict:  # Check if the dictionary is not empty
+                formatted_scores.append(json.dumps(response_dict, indent=4))
+            else:
+                formatted_scores.append("{}")  # Empty dictionary
+        return "\n".join(formatted_scores)
+
     async def organic_specified(self, query, specified_uids=None):
         def format_response(uid, text):
             return json.dumps(
@@ -508,16 +517,31 @@ class ScraperValidator:
                     yield f"Waiting for reward scoring... {elapsed_time // 60} minutes elapsed.\n\n"
                     start_compute_time = time.time()  # Reset the timer
 
-            rewards = await rewards_task
-
-            for uid_tensor, reward, response in zip(
-                uids, rewards.tolist(), final_synapses
-            ):
+            rewards, uids, val_score_responses_list, event = await rewards_task
+            for i, uid_tensor in enumerate(uids):
                 uid = uid_tensor.item()
+                reward = rewards[i].item()
+                response = final_synapses[i]
+
+
+                # val_score_response = self.format_val_score_responses([val_score_responses_list[i]])
+
+                tweet_details = val_score_responses_list[1][i]
+                web_details = val_score_responses_list[2][i]
+                
+                search_content_relevance = event.get('search_content_relevance', [None])[i]
+                twitter_content_relevance = event.get('twitter_content_relevance', [None])[i]
+                summary_relevance = event.get('summary_relavance_match', [None])[i]
+                
                 yield format_response(
                     uid, "----------------------------------------\n\n\n"
                 )
-                yield format_response(uid, f"Miner UID {uid} Reward: {reward:.2f}")
+                yield format_response(uid, f"Miner UID {uid} Reward: {reward:.2f}\n\n\n")
+                yield format_response(uid, f"Summary score: {summary_relevance:.4f}\n\n\n")
+                yield format_response(uid, f"Twitter Score: {twitter_content_relevance:.4f}\n\n\n")
+                yield format_response(uid, f"Web Score: {search_content_relevance}\n\n\n")
+                yield format_response(uid, f"Tweet details: {tweet_details}\n\n\n")
+                yield format_response(uid, f"Web details: {web_details}\n\n\n")
 
             missing_uids = set(specified_uids) - set(uid.item() for uid in uids)
             for missing_uid in missing_uids:

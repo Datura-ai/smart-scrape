@@ -200,7 +200,7 @@ def add_args(cls, parser):
         "--neuron.save_logs",
         type=str2bool,
         help="If True, the miner will save logs",
-        default=False,
+        default=True,
     )
 
 
