@@ -23,7 +23,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
     @property
     def name(self) -> str:
-        return RewardModelType.search_summary_relevance_match.value
+        return RewardModelType.search_content_relevance.value
 
     def __init__(self, device: str, scoring_type: None, llm_reward: RewardLLM):
         super().__init__()

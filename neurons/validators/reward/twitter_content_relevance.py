@@ -54,7 +54,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
     @property
     def name(self) -> str:
-        return RewardModelType.link_content_match.value
+        return RewardModelType.twitter_content_relevance.value
 
     def __init__(self, device: str, scoring_type: None, llm_reward: RewardLLM):
         super().__init__()

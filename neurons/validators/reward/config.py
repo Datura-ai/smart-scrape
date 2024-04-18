@@ -24,8 +24,8 @@ class RewardModelType(Enum):
     accuracy_match = "keyword_match_penalty"
     sentence_match_penalty = "sentence_match_penalty"
     summary_relavance_match = "summary_relavance_match"
-    link_content_match = "link_content_match"
-    search_summary_relevance_match = "search_summary_relevance_match"
+    twitter_content_relevance = "twitter_content_relevance"
+    search_content_relevance = "search_content_relevance"
 
 
 class RewardScoringType(Enum):
