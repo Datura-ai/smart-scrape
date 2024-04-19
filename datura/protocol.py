@@ -449,12 +449,12 @@ def extract_json_chunk(chunk, response, buffer=""):
                 break
             else:
                 # Invalid JSON data encountered
-                port = response.real_url.port
-                host = response.real_url.host
-                bt.logging.debug(
-                    f"Host: {host}:{port}; Failed to decode JSON object: {e} from {buffer}"
-                )
-                bt.logging.debug(f"Chunk: {chunk}")
+                # port = response.real_url.port
+                # host = response.real_url.host
+                # bt.logging.debug(
+                #     f"Host: {host}:{port}; Failed to decode JSON object: {e} from {buffer}"
+                # )
+                # bt.logging.debug(f"Chunk: {chunk}")
                 break
 
     return json_objects, buffer
