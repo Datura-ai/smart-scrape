@@ -437,7 +437,7 @@ def extract_json_chunk(chunk, response, buffer=""):
 
     while True:
         try:
-            json_obj, end = json.JSONDecoder().raw_decode(buffer)
+            json_obj, end = json.JSONDecoder(strict=False).raw_decode(buffer)
             json_objects.append(json_obj)
             buffer = buffer[end:]
         except json.JSONDecodeError as e:
@@ -451,10 +451,9 @@ def extract_json_chunk(chunk, response, buffer=""):
                 # Invalid JSON data encountered
                 port = response.real_url.port
                 host = response.real_url.host
-                bt.logging.debug(
+                bt.logging.trace(
                     f"Host: {host}:{port}; Failed to decode JSON object: {e} from {buffer}"
                 )
-                bt.logging.debug(f"Chunk: {chunk}")
                 break
 
     return json_objects, buffer
@@ -475,4 +474,3 @@ class MinerTweetAuthor(BaseModel):
     name: str
     username: str
     created_at: str
-
