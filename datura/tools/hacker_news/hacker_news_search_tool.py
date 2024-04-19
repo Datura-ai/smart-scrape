@@ -40,9 +40,11 @@ class HackerNewsSearchTool(BaseTool):
         """Search Hacker News and return the results."""
         search = SerpAdvancedGoogleSearch(
             site="news.ycombinator.com",
-            language=self.tool_manager.language,
-            region=self.tool_manager.region,
-            date_filter=self.tool_manager.date_filter,
+            language=self.tool_manager.language if self.tool_manager else "en",
+            region=self.tool_manager.region if self.tool_manager else "us",
+            date_filter=(
+                self.tool_manager.date_filter if self.tool_manager else "qdr:w"
+            ),
         )
         result = await search.run(query)
         result = search.process_response(result)
