@@ -437,7 +437,7 @@ def extract_json_chunk(chunk, response, buffer=""):
 
     while True:
         try:
-            json_obj, end = json.JSONDecoder().raw_decode(buffer)
+            json_obj, end = json.JSONDecoder(strict=False).raw_decode(buffer)
             json_objects.append(json_obj)
             buffer = buffer[end:]
         except json.JSONDecodeError as e:
@@ -475,4 +475,3 @@ class MinerTweetAuthor(BaseModel):
     name: str
     username: str
     created_at: str
-
