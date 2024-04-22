@@ -211,23 +211,23 @@ class Neuron(AbstractNeuron):
             if self.config.wandb_on:
                 wandb.log(wandb_data)
 
-            if self.config.neuron.save_logs:
-                asyncio.create_task(
-                    save_logs_in_chunks(
-                        self,
-                        prompt=prompt,
-                        responses=responses,
-                        uids=uids,
-                        rewards=rewards,
-                        summary_rewards=all_rewards[0],
-                        twitter_rewards=all_rewards[1],
-                        search_rewards=all_rewards[2],
-                        tweet_scores=val_score_responses_list[1],
-                        search_scores=val_score_responses_list[2],
-                        weights=get_weights(self),
-                        neuron=neuron,
-                    )
+            asyncio.create_task(
+                save_logs_in_chunks(
+                    self,
+                    prompt=prompt,
+                    responses=responses,
+                    uids=uids,
+                    rewards=rewards,
+                    summary_rewards=all_rewards[0],
+                    twitter_rewards=all_rewards[1],
+                    search_rewards=all_rewards[2],
+                    tweet_scores=val_score_responses_list[1],
+                    search_scores=val_score_responses_list[2],
+                    weights=get_weights(self),
+                    neuron=neuron,
+                    netuid=self.config.netuid
                 )
+            )
         except Exception as e:
             bt.logging.error(f"Error in update_scores: {e}")
             raise e

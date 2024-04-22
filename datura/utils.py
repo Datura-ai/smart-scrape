@@ -294,19 +294,16 @@ def resync_metagraph(self):
     self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
 
-async def save_logs(prompt, logs, network):
+async def save_logs(prompt, logs, netuid):
     logging_endpoint_url = None
 
-    if network == "test":
-        logging_endpoint_url = "https://api-logs-dev.smartscrape.ai"
-    elif network == "finney":
+    if netuid == 22:
         logging_endpoint_url = "https://api-logs.smartscrape.ai"
+    else:
+        logging_endpoint_url = "https://api-logs-dev.smartscrape.ai"
 
-    if not logging_endpoint_url:
-        return
-
-    async with aiohttp.ClientSession() as session:
-        try:
+    try:
+        async with aiohttp.ClientSession() as session:
             result = await session.post(
                 logging_endpoint_url,
                 json={
@@ -314,10 +311,11 @@ async def save_logs(prompt, logs, network):
                     "logs": logs,
                 },
             )
-
             bt.logging.debug(f"Executed save_logs, got result: {await result.text()}")
-        except Exception as e:
-            bt.logging.debug(f"Error in save_logs: {e}")
+    except aiohttp.ClientError as e:
+        bt.logging.error(f"Error in save_logs: {e}")
+    except Exception as e:
+        bt.logging.error(f"Unexpected error in save_logs: {e}")
 
 
 async def save_logs_in_chunks(
@@ -333,6 +331,7 @@ async def save_logs_in_chunks(
     search_scores,
     weights,
     neuron,
+    netuid
 ):
     try:
         logs = [
@@ -392,7 +391,7 @@ async def save_logs_in_chunks(
             await save_logs(
                 prompt=prompt,
                 logs=chunk,
-                network=neuron.metagraph.network,
+                netuid=netuid,
             )
     except Exception as e:
         bt.logging.error(f"Error in save_logs_in_chunks: {e}")
