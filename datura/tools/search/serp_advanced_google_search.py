@@ -31,7 +31,7 @@ class SerpAdvancedGoogleSearch:
         query = f"{query} site:{self.site}"
 
         try:
-            result =  await search.arun(query)
+            result = await search.arun(query)
             return result
         except Exception as err:
             if "Invalid API key" in str(err):
@@ -47,6 +47,7 @@ class SerpAdvancedGoogleSearch:
                 {
                     "title": result["title"],
                     "url": result["link"],
+                    "snippet": result.get("snippet", ""),
                 }
                 for result in response["organic_results"]
             ]
