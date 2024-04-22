@@ -11,6 +11,7 @@ from enum import Enum
 from aiohttp import ClientResponse
 from datura.services.twitter_utils import TwitterUtils
 from datura.services.web_search_utils import WebSearchUtils
+import random
 
 
 class IsAlive(bt.Synapse):
@@ -393,9 +394,15 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             }
 
         completion_links = TwitterUtils().find_twitter_links(self.completion)
+        completion_links = random.sample(
+            completion_links, min(10, len(completion_links))
+        )
 
         search_completion_links = WebSearchUtils().find_links(
             self.get_search_summary_completion()
+        )
+        search_completion_links = random.sample(
+            search_completion_links, min(10, len(search_completion_links))
         )
 
         return {

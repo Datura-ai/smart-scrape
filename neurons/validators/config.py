@@ -196,12 +196,12 @@ def add_args(cls, parser):
         default=False,
     )
 
-    parser.add_argument(
-        "--neuron.save_logs",
-        type=str2bool,
-        help="If True, the miner will save logs",
-        default=True,
-    )
+    # parser.add_argument(
+    #     "--neuron.save_logs",
+    #     type=str2bool,
+    #     help="If True, the miner will save logs",
+    #     default=True,
+    # )
 
 
 def config(cls):

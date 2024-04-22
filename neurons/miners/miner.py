@@ -26,7 +26,6 @@ from datura.utils import get_version
 
 from datura.protocol import IsAlive, ScraperStreamingSynapse
 from datura.services.twitter_api_wrapper import TwitterAPIClient
-from datura.db import DBClient, get_random_tweets
 from neurons.miners.scraper_miner import ScraperMiner
 
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
@@ -113,7 +112,7 @@ class StreamMiner(ABC):
         else:
             bt.logging.debug(f"Starting axon on port {self.config.axon.port}")
             self.axon = bt.axon(wallet=self.wallet, port=self.config.axon.port)
-            
+
         # Attach determiners which functions are called when servicing a request.
         bt.logging.info(f"Attaching forward function to axon.")
         print(f"Attaching forward function to axon. {self._is_alive}")
