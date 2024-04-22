@@ -93,5 +93,4 @@ class QUERY_MINERS(Enum):
 from . import protocol
 from . import reward
 from . import utils
-from . import db
 from . import tools
