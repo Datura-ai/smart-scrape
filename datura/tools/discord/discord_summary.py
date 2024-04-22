@@ -81,11 +81,15 @@ def prepare_message(message):
 
 
 def prepare_messages_data_for_summary(messages):
-    messages = messages.get("body", [])
+    body = messages.get("body", [])
+
+    # Error handling
+    if isinstance(body, str):
+        return []
 
     normalized_messages = []
 
-    for message in messages:
+    for message in body:
         normalized_messages.append(
             {
                 **prepare_message(message),
