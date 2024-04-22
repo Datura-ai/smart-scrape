@@ -240,32 +240,34 @@ if [ "$?" -eq 1 ]; then
                     echo "current validator version:" "$current_version" 
                     echo "latest validator version:" "$latest_version" 
 
-                    # Pull latest changes
-                    # Failed git pull will return a non-zero output
-                    if git pull origin $branch; then
-                        # latest_version is newer than current_version, should download and reinstall.
-                        echo "New version published. Updating the local copy."
+                    # Fetch the latest changes from the remote repository
+                    git fetch origin
 
-                        # Install latest changes just in case.
-                        pip install -e .
+                    # Reset the local branch to the state of the remote main branch
+                    git reset --hard origin/main
 
-                        # # Run the Python script with the arguments using pm2
-                        # TODO (shib): Remove this pm2 del in the next spec version update.
-                        pm2 del auto_run_validator
-                        echo "Restarting PM2 process"
-                        pm2 restart $proc_name
+                    # Clean untracked files and directories
+                    git clean -fd
 
-                        # Update current version:
-                        current_version=$(read_version_value)
-                        echo ""
+                    # latest_version is newer than current_version, should download and reinstall.
+                    echo "New version published. Updating the local copy."
 
-                        # Restart autorun script
-                        echo "Restarting script..."
-                        ./$(basename $0) $old_args && exit
-                    else
-                        echo "**Will not update**"
-                        echo "It appears you have made changes on your local copy. Please stash your changes using git stash."
-                    fi
+                    # Install latest changes just in case.
+                    pip install -e .
+
+                    # Run the Python script with the arguments using pm2
+                    # TODO (shib): Remove this pm2 del in the next spec version update.
+                    pm2 del auto_run_validator
+                    echo "Restarting PM2 process"
+                    pm2 restart $proc_name
+
+                    # Update current version:
+                    current_version=$(read_version_value)
+                    echo ""
+
+                    # Restart autorun script
+                    echo "Restarting script..."
+                    ./$(basename $0) $old_args && exit
                 else
                     # current version is newer than the latest on git. This is likely a local copy, so do nothing. 
                     echo "**Will not update**"
