@@ -42,7 +42,6 @@ async def summarize_discord_data(
     model: str,
     filtered_messages,
 ):
-
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
     In <PromptAnalysis> I analyze that prompts and generate query for API, keywords, hashtags, user_mentions.
@@ -72,5 +71,32 @@ async def summarize_discord_data(
     return res, ScraperTextRole.DISCORD_SUMMARY
 
 
+def prepare_message(message):
+    return {
+        "content": message.get("content", ""),
+        "channel": message.get("channel", ""),
+        "author": message.get("author", ""),
+        "link": message.get("link", ""),
+    }
+
+
 def prepare_messages_data_for_summary(messages):
-    return messages.get("body", [])
+    messages = messages.get("body", [])
+
+    normalized_messages = []
+
+    for message in messages:
+        normalized_messages.append(
+            {
+                **prepare_message(message),
+                "replies": [
+                    prepare_message(reply) for reply in message.get("replies", [])
+                ],
+                "possible_replies": [
+                    prepare_message(reply)
+                    for reply in message.get("possible_replies", [])
+                ],
+            }
+        )
+
+    return normalized_messages
