@@ -87,6 +87,7 @@ class ScraperTextRole(str, Enum):
     DISCORD_SUMMARY = "discord_summary"
     REDDIT_SUMMARY = "reddit_summary"
     HACKER_NEWS_SUMMARY = "hacker_news_summary"
+    BITTENSOR_SUMMARY = "bittensor_summary"
     FINAL_SUMMARY = "summary"
 
 
