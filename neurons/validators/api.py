@@ -11,10 +11,10 @@ import time
 import asyncio
 from fastapi.middleware.cors import CORSMiddleware
 import json
-from datura.tools.search.serp_google_search_tool import SerpGoogleSearchTool
-from datura.tools.search.serp_google_image_search_tool import SerpGoogleImageSearchTool
-from datura.tools.hacker_news.hacker_news_search_tool import HackerNewsSearchTool
-from datura.tools.reddit.reddit_search_tool import RedditSearchTool
+# from datura.tools.search.serp_google_search_tool import SerpGoogleSearchTool
+# from datura.tools.search.serp_google_image_search_tool import SerpGoogleImageSearchTool
+# from datura.tools.hacker_news.hacker_news_search_tool import HackerNewsSearchTool
+# from datura.tools.reddit.reddit_search_tool import RedditSearchTool
 
 app = FastAPI()
 
@@ -108,10 +108,10 @@ class SearchRequest(BaseModel):
 
 
 available_tools = [
-    SerpGoogleSearchTool(),
-    SerpGoogleImageSearchTool(),
-    HackerNewsSearchTool(),
-    RedditSearchTool(),
+    # SerpGoogleSearchTool(),
+    # SerpGoogleImageSearchTool(),
+    # HackerNewsSearchTool(),
+    # RedditSearchTool(),
 ]
 
 
