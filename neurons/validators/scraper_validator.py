@@ -56,6 +56,7 @@ class ScraperValidator:
         self.language = "en"
         self.region = "us"
         self.date_filter = "qdr:w"  # Past week
+        self.max_tools_result_amount = 10
 
         # Init device.
         bt.logging.debug("loading", "device")
@@ -113,9 +114,7 @@ class ScraperValidator:
                     llm_reward=self.reward_llm,
                 )
                 if self.neuron.config.reward.web_search_relavance_weight > 0
-                else MockRewardModel(
-                    RewardModelType.search_content_relevance.value
-                )
+                else MockRewardModel(RewardModelType.search_content_relevance.value)
             ),
         ]
 
@@ -479,7 +478,6 @@ class ScraperValidator:
 
             if len(async_responses_with_uid) > 0:
                 merged_stream_with_uid = stream.merge(*async_responses_with_uid)
-                
 
                 final_synapses = []
 
@@ -513,7 +511,9 @@ class ScraperValidator:
                 )
 
                 while not rewards_task.done():
-                    await asyncio.sleep(30)  # Check every 30 seconds if the task is done
+                    await asyncio.sleep(
+                        30
+                    )  # Check every 30 seconds if the task is done
                     elapsed_time = time.time() - start_compute_time
                     if elapsed_time > 60:  # If more than one minute has passed
                         yield f"Waiting for reward scoring... {elapsed_time // 60} minutes elapsed.\n\n"
@@ -525,23 +525,34 @@ class ScraperValidator:
                     reward = rewards[i].item()
                     response = final_synapses[i]
 
-
                     # val_score_response = self.format_val_score_responses([val_score_responses_list[i]])
 
                     tweet_details = val_score_responses_list[1][i]
                     web_details = val_score_responses_list[2][i]
-                    
-                    search_content_relevance = event.get('search_content_relevance', [None])[i]
-                    twitter_content_relevance = event.get('twitter_content_relevance', [None])[i]
-                    summary_relevance = event.get('summary_relavance_match', [None])[i]
-                    
+
+                    search_content_relevance = event.get(
+                        "search_content_relevance", [None]
+                    )[i]
+                    twitter_content_relevance = event.get(
+                        "twitter_content_relevance", [None]
+                    )[i]
+                    summary_relevance = event.get("summary_relavance_match", [None])[i]
+
                     yield format_response(
                         uid, "----------------------------------------\n\n\n"
                     )
-                    yield format_response(uid, f"Miner UID {uid} Reward: {reward:.2f}\n\n\n")
-                    yield format_response(uid, f"Summary score: {summary_relevance:.4f}\n\n\n")
-                    yield format_response(uid, f"Twitter Score: {twitter_content_relevance:.4f}\n\n\n")
-                    yield format_response(uid, f"Web Score: {search_content_relevance}\n\n\n")
+                    yield format_response(
+                        uid, f"Miner UID {uid} Reward: {reward:.2f}\n\n\n"
+                    )
+                    yield format_response(
+                        uid, f"Summary score: {summary_relevance:.4f}\n\n\n"
+                    )
+                    yield format_response(
+                        uid, f"Twitter Score: {twitter_content_relevance:.4f}\n\n\n"
+                    )
+                    yield format_response(
+                        uid, f"Web Score: {search_content_relevance}\n\n\n"
+                    )
                     yield format_response(uid, f"Tweet details: {tweet_details}\n\n\n")
                     yield format_response(uid, f"Web details: {web_details}\n\n\n")
 
@@ -549,7 +560,7 @@ class ScraperValidator:
                 for missing_uid in missing_uids:
                     yield format_response(
                         missing_uid, f"No response from Miner ID: {missing_uid}\n"
-                    ) 
+                    )
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")
             raise e
