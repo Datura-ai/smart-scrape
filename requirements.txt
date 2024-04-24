@@ -22,3 +22,7 @@ arxiv==2.1.0
 accelerate==0.27.2
 asyncpraw==7.7.1
 aiostream==0.5.2
+llama-index==0.10.28
+llama-index-vector-stores-pinecone==0.1.4
+llama-index-embeddings-openai
+pinecone-client

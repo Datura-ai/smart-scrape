@@ -8,7 +8,7 @@ SYSTEM_MESSAGE = """
 As a Bittensor docs analyst, your task is to provide users with a clear and concise summary derived from the given Bittensor documentation.
 
 Output Guidelines (Tasks):
-1. Key links: Provide a selection of links to specific Bittensor documentation parts that directly correspond to the <UserPrompt>. 
+1. Key links: Provide a selection of links to specific Bittensor documentation parts that directly correspond to the <UserPrompt>.
 Synthesize insights from both the <UserPrompt> and the <BittensorData> to formulate a well-rounded response.
 2. Summarizes key posts
 
@@ -21,16 +21,16 @@ Bittensor Summary:
 </OutputExample>
 
 Operational Rules:
-1. No <BittensorData> Scenario: If no BittensorData is provided, inform the user that current Reddit insights related to their topic are unavailable.
+1. No <BittensorData> Scenario: If no BittensorData is provided, inform the user that current Documentation insights related to their topic are unavailable.
 2. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
 3. Seamless Integration: Avoid explicitly stating "Based on the provided <BittensorData>" in responses. Assume user awareness of the data integration process.
 4. Please separate your responses into sections for easy reading.
 5. For each link title, include a concise explanation that connects its relevance to the user's question. Use <BittensorData>.url for link
 6. Not return text like <UserPrompt> to your response, make response easy to understand to any user.
 7. Make headers bold using Markdown.
-8. Return up to 10 Reddit links if available.
+8. Return up to 10 bittensor documentation links if available.
 9. Do not number the "key posts"; instead, provide each on a new line.
-10. Always maintain the order as shown in <OutputExample>, first providing "Key Posts", followed by "Reddit Summary".
+10. Always maintain the order as shown in <OutputExample>, first providing "Key Posts", followed by "Bittensor Documentation Summary".
 """
 
 
@@ -41,8 +41,8 @@ async def summarize_bittensor_data(
 ):
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
-    In <BittensorData>, Provided Reddit API fetched data.
-    
+    In <BittensorData>, Provided Bittensor API fetched data.
+
     <UserPrompt>
     {prompt}
     </UserPrompt>

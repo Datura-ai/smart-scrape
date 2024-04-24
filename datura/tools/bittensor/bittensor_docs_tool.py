@@ -1,10 +1,10 @@
 import json
 import bittensor as bt
 from typing import Type
+from datura.tools.bittensor.pinecone_indexer import PineconeIndexer
 from pydantic import BaseModel, Field
 from starlette.types import Send
 from datura.tools.base import BaseTool
-from datura.services.discord_api_wrapper import DiscordAPIClient
 
 
 class BittensorDocsToolSchema(BaseModel):
@@ -30,18 +30,10 @@ class BittensorDocsTool(BaseTool):
         self,
         query: str,
     ) -> str:
-        """Search Discord messages and return results."""
-        client = DiscordAPIClient()
+        """Search Bittensor Documentation and return results."""
+        client = PineconeIndexer()
 
-        body = {
-            "query": query,
-            "limit": 10,
-            "page": 1,
-            "nest_level": 2,
-            "only_parsable": True,
-        }
-
-        (docs, _, _) = await client.search_docs(body)
+        docs = client.retrieve(query, 15)
         bt.logging.info(
             "================================== Bittensor Docs Result ==================================="
         )
@@ -56,17 +48,17 @@ class BittensorDocsTool(BaseTool):
         if not data:
             return
 
-        # if data:
-        #     messages_response_body = {
-        #         "type": "discord_search",
-        #         "content": data,
-        #     }
+        if data:
+            response_body = {
+                "type": "bittensor_summary",
+                "content": data,
+            }
 
-        #     await send(
-        #         {
-        #             "type": "http.response.body",
-        #             "body": json.dumps(messages_response_body).encode("utf-8"),
-        #             "more_body": False,
-        #         }
-        #     )
-        #     bt.logging.info("Discord search results data sent")
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": json.dumps(response_body).encode("utf-8"),
+                    "more_body": False,
+                }
+            )
+            bt.logging.info("Bittensor Documentation search results data sent")
