@@ -97,8 +97,6 @@ class PineconeIndexer:
     ) -> List[dict]:
         data = []
         for node in nodes:
-            data.append({
-                'content': node.node.text,
-            })
+            data.append({'content': node.node.text})
 
         return data
