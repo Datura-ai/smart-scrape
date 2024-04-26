@@ -35,7 +35,7 @@ class DiscordSearchTool(BaseTool):
 
         body = {
             "query": query,
-            "limit": 10,
+            "limit": 8,
             "page": 1,
             "nest_level": 2,
             "only_parsable": True,
