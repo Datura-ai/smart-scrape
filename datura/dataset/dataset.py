@@ -368,6 +368,29 @@ class MockDiscordQuestionsDataset:
         return self.generate_question()
 
 
+class MockBittensiorQuestionsDataset:
+    def __init__(self):
+        self.question_templates = [
+            "How to install Bittensor?",
+            "How to install Bittensor on M2?",
+            "How can i use Bittensor CLI?",
+            "What is purpose of subnet 22?",
+            "How to create a wallet with bittensor CLI?",
+            "How emissions works on Bittensor?",
+            "What is Yuma Consensus, and how it works",
+            "How the Senate operates?",
+            "List basic subnet tutorials",
+            "What are subtensor node requirements?",
+        ]
+
+    def generate_question(self):
+        template = random.choice(self.question_templates)
+        return template
+
+    def next(self):
+        return self.generate_question()
+
+
 if __name__ == "__main__":
     # Example usage
     twitter_questions_dataset = MockTwitterQuestionsDataset()
