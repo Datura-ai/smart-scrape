@@ -2,6 +2,7 @@ validators/state.json
 bittensor_subnet_template.egg-info/
 
 smart_scrape_template.egg-info/
+smart_scrape.egg-info/
 datura/__pycache__/
 __pycache__/
 *.pyc
