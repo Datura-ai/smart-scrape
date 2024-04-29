@@ -35,10 +35,8 @@ class DiscordSearchTool(BaseTool):
 
         body = {
             "query": query,
-            "limit": 8,
-            "page": 1,
-            "nest_level": 2,
-            "only_parsable": True,
+            "limit": 5,
+            "possible_reply_limit": 8,
         }
 
         (result, _, _) = await client.search_messages(body)
