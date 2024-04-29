@@ -212,6 +212,11 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 response_scores = {}
                 total_score = 0
                 num_links = len(response.validator_links)
+                max_links_considered = (
+                    len(response.validator_links)
+                    if len(response.validator_links) > 10
+                    else 10
+                )
 
                 if num_links > 0:
                     for val_link in response.validator_links:
@@ -226,7 +231,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                                 response_scores[val_url] = score
 
                     if total_score > 0:
-                        average_score = total_score / num_links
+                        average_score = total_score / max_links_considered
                         reward_event.reward = self.calculate_adjusted_score(
                             links_count=len(response.search_completion_links),
                             score=average_score,

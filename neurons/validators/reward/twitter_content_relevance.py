@@ -366,6 +366,11 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 score_result = None
                 response_scores = {}
                 total_score = 0
+                max_links_considered = (
+                    len(response.validator_tweets)
+                    if len(response.validator_tweets) > 10
+                    else 10
+                )
                 if len(response.validator_tweets):
                     for val_tweet in response.validator_tweets:
                         val_tweet_id = val_tweet.id
@@ -381,7 +386,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                                 response_scores[val_tweet_id] = score
                     if total_score > 0:
                         average_score = (
-                            total_score / 10 * apify_score
+                            total_score / max_links_considered * apify_score
                         )  # len(response.validator_tweets)
                         reward_event.reward = self.calculate_adjusted_score(
                             links_count=len(response.completion_links),
