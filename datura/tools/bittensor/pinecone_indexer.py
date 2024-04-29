@@ -1,6 +1,8 @@
 import os
+import json
 from typing import List
 from pinecone import Pinecone
+import asyncio
 from llama_index.core.storage.index_store.utils import json_to_index_struct
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.vector_stores.pinecone import PineconeVectorStore
@@ -25,11 +27,9 @@ class PineconeIndexer:
         description match in dict.
         """
 
-        return {
-            "documentation": {
-                "bittensor-documentation": "Provides information about technical documentation of bittensor"
-            }
-        }
+        file_path = os.path.join(os.path.dirname(__file__), "pinecone_indexes.json")
+        with open(file_path, "r") as file:
+            return json.load(file)
 
     def create_json_to_index_struct(self, index: str):
         return json_to_index_struct(
@@ -64,6 +64,7 @@ class PineconeIndexer:
                             similarity_top_k=similarity_top_k,
                         ),
                         description=description,
+                        name=namespace
                     )
                     retriever_tools.append(retriever_tool)
                 except Exception as e:
@@ -79,13 +80,40 @@ class PineconeIndexer:
             select_multi=True,
         )
 
-    def retrieve(
+    async def retrieve(
         self,
         query: str,
         similarity_top_k: int,
-    ) -> List[NodeWithScore]:
-        all_results = self.router.retrieve(query)
+    ):
+        router = self.get_router_retriever()
+        all_results = await router.aretrieve(query)
         all_results.sort(key=lambda x: x.score, reverse=True)
+        if similarity_top_k > len(all_results):
+            return self.nodes_to_json(all_results)
+
+        return self.nodes_to_json(all_results[:similarity_top_k])
+
+    async def retrieve_with_index_names(
+        self, query: str, similarity_top_k: int, index_names: List[str]
+    ):
+        retriever_tools = self.get_retriever_tools(similarity_top_k)
+
+        async def retrieve_from_index(index_name):
+            for retriever_tool in retriever_tools:
+                if retriever_tool.metadata.name == index_name:
+                    print(f'>>> Calling {index_name}')
+                    return await retriever_tool.retriever.aretrieve(query)
+            return []
+
+        tasks = [retrieve_from_index(index_name) for index_name in index_names]
+        results = await asyncio.gather(*tasks)
+
+        all_results = []
+        for result in results:
+            all_results.extend(result)
+
+        all_results.sort(key=lambda x: x.score, reverse=True)
+
         if similarity_top_k > len(all_results):
             return self.nodes_to_json(all_results)
 

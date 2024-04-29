@@ -1,3 +1,4 @@
+import re
 import json
 import bittensor as bt
 from typing import Type
@@ -26,6 +27,27 @@ class BittensorDocsTool(BaseTool):
     def _run():
         pass
 
+    def extract_channels_from_query(self, query: str):
+        channels = []
+
+        # Pattern 1: #\[channel\](channel)
+        pattern1 = r"#\[(\w+(-\w+)*)\]\(\w+(-\w+)*\)"
+        matches1 = re.findall(pattern1, query)
+        channels.extend([match[0] for match in matches1])
+
+        # Pattern 2: #channel
+        pattern2 = r"#(\w+(?:-\w+)*)"
+        matches2 = re.findall(pattern2, query)
+        channels.extend(matches2)
+
+        # Remove channel names from the query text
+        query = re.sub(pattern1, "", query)
+        query = re.sub(pattern2, "", query)
+
+        # Remove extra whitespace from the query text
+        query = re.sub(r"\s+", " ", query).strip()
+        return channels, query
+
     async def _arun(
         self,
         query: str,
@@ -33,7 +55,18 @@ class BittensorDocsTool(BaseTool):
         """Search Bittensor Documentation and return results."""
         client = PineconeIndexer()
 
-        docs = client.retrieve(query, 15)
+        limit = 15
+        index_names, query = self.extract_channels_from_query(query)
+
+        print(f'>>> Index names: {index_names}')
+
+        if index_names:
+            docs = await client.retrieve_with_index_names(
+                query, limit, index_names
+            )
+        else:
+            docs = await client.retrieve(query, limit)
+
         bt.logging.info(
             "================================== Bittensor Docs Result ==================================="
         )
