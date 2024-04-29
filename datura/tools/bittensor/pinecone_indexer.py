@@ -101,7 +101,6 @@ class PineconeIndexer:
         async def retrieve_from_index(index_name):
             for retriever_tool in retriever_tools:
                 if retriever_tool.metadata.name == index_name:
-                    print(f'>>> Calling {index_name}')
                     return await retriever_tool.retriever.aretrieve(query)
             return []
 
