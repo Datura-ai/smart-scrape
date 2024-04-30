@@ -47,7 +47,7 @@ Operational Rules:
 3. Seamless Integration: Avoid explicitly stating "Based on the provided Bittensor Documentation data" in responses. Assume user awareness of the data integration process.
 5. User-Friendly Language: Do not return text like <UserPrompt>; make responses easy to understand for any user.
 6. Use Markdown: Make headers bold using Markdown, code blocks with markdown code blocks.
-7. Provide Links with Titles: Include links to relevant resources or information. And, always include the current Bittensor document's original URL link for reference.
+7. Provide Links with appropriate titles: Include links to relevant resources or information. And, always include the current document's original URL link for reference.
 """
 
 
