@@ -83,7 +83,6 @@ class PineconeIndexer:
     async def general_retrieve(
         self,
         query: str,
-        modified_query: str,
         similarity_top_k: int,
         index_names: List[str],
     ):
@@ -91,7 +90,7 @@ class PineconeIndexer:
             return await self.retrieve(query, similarity_top_k)
 
         docs = await self.retrieve_with_index_names(
-            modified_query,
+            query,
             similarity_top_k,
             index_names
         )

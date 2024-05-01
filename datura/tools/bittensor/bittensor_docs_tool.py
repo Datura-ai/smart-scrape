@@ -56,9 +56,9 @@ class BittensorDocsTool(BaseTool):
         client = PineconeIndexer()
 
         limit = 15
-        index_names, modified_query = self.extract_channels_from_query(query)
+        index_names, query = self.extract_channels_from_query(query)
 
-        docs = await client.general_retrieve(query, modified_query, limit, index_names)
+        docs = await client.general_retrieve(query, limit, index_names)
 
         bt.logging.info(
             "================================== Bittensor Docs Result ==================================="
