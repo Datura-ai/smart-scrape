@@ -35,7 +35,7 @@ class DiscordSearchTool(BaseTool):
 
         body = {
             "query": query,
-            "limit": 5,
+            "limit": 8,
             "possible_reply_limit": 8,
         }
 
