@@ -34,6 +34,7 @@ Operational Rules:
 7. Provide Links: Include links to relevant resources or information if necessary
 8. Use markdown to format steps, code, lists, etc.
 9. Do not include messages with empty content.
+10. Do not include duplicate messages in the summary.
 """
 
 
