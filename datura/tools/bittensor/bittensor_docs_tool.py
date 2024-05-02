@@ -58,10 +58,7 @@ class BittensorDocsTool(BaseTool):
         limit = 15
         index_names, query = self.extract_channels_from_query(query)
 
-        if index_names:
-            docs = await client.retrieve_with_index_names(query, limit, index_names)
-        else:
-            docs = await client.retrieve(query, limit)
+        docs = await client.general_retrieve(query, limit, index_names)
 
         bt.logging.info(
             "================================== Bittensor Docs Result ==================================="

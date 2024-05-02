@@ -80,6 +80,26 @@ class PineconeIndexer:
             select_multi=True,
         )
 
+    async def general_retrieve(
+        self,
+        query: str,
+        similarity_top_k: int,
+        index_names: List[str],
+    ):
+        if not index_names:
+            return await self.retrieve(query, similarity_top_k)
+
+        docs = await self.retrieve_with_index_names(
+            query,
+            similarity_top_k,
+            index_names
+        )
+
+        if len(docs) > 0:
+            return docs
+
+        return await self.retrieve(query, similarity_top_k)
+
     async def retrieve(
         self,
         query: str,
