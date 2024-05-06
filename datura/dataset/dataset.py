@@ -68,6 +68,21 @@ class MockTwitterQuestionsDataset:
             # "How is {} affecting international relations?",
             "What are the current trends in {} investment?",
             "What's the future outlook for {}?",
+            "What are the latest advancements in {} technology?",
+            "How is {} impacting society in 2024?",
+            "What are the most promising startups in the {} industry?",
+            "What are the ethical considerations surrounding {}?",
+            "How are policymakers addressing challenges in {}?",
+            "What are the economic implications of {} in 2024?",
+            "How is {} transforming the global landscape?",
+            "What are the potential long-term effects of {} on humanity?",
+            "What are the latest controversies surrounding {}?",
+            "How are experts predicting the future of {}?",
+            "What are the most innovative solutions in {} today?",
+            "How is {} affecting people's daily lives in 2024?",
+            "What are the latest collaborations in the {} industry?",
+            "How is {} influencing pop culture in 2024?",
+            "What are the latest government initiatives related to {}?",
         ]
 
         # Expanded list of topics, focusing on commonly discussed themes on Twitter
@@ -236,13 +251,59 @@ class MockTwitterQuestionsDataset:
             "amazon",
             "microsoft",
             "twitter",
-            "bittensor",
             "quantum mechanics",
             "cybersecurity",
             "augmented reality",
             "smart cities",
             "biotechnology",
             "autonomous driving",
+            "5G networks",
+            "gene editing",
+            "smart homes",
+            "blockchain governance",
+            "digital identity",
+            "sustainable fashion",
+            "circular economy",
+            "carbon capture technology",
+            "precision agriculture",
+            "telemedicine",
+            "online education platforms",
+            "remote work",
+            "digital nomads",
+            "plant-based meat alternatives",
+            "vertical farming",
+            "3D printing",
+            "robotics in healthcare",
+            "edge computing",
+            "digital twins",
+            "haptic technology",
+            "brain-computer interfaces",
+            "decentralized finance (DeFi)",
+            "non-fungible tokens (NFTs)",
+            "space mining",
+            "asteroid detection",
+            "quantum cryptography",
+            "smart materials",
+            "green hydrogen",
+            "tidal energy",
+            "carbon offsetting",
+            "regenerative agriculture",
+            "precision medicine",
+            "personalized nutrition",
+            "mental health apps",
+            "virtual events",
+            "augmented reality shopping",
+            "drone delivery",
+            "self-driving trucks",
+            "hyperloop transportation",
+            "digital art galleries",
+            "virtual influencers",
+            "social media activism",
+            "gamification in education",
+            "bioplastics",
+            "ocean cleanup technology",
+            "smart waste management",
+            "carbon-negative construction",
         ]
 
     def generate_question(self):
@@ -256,78 +317,6 @@ class MockTwitterQuestionsDataset:
     def next(self):
         # Return a generated question
         return self.generate_question()
-
-
-class StackOverflowDataset:
-    def __init__(self):
-        # Stack Overflow API endpoint for a random article
-        self.url = "https://api.stackexchange.com/2.3/questions"
-        self.questions = []
-
-    def get_stack_questions(self):
-        url = "https://api.stackexchange.com/2.3/questions"
-        params = {
-            "order": "desc",
-            "sort": "votes",  # Sorting by votes means that it's likely that the same questions will be fetched again
-            "site": "stackoverflow",
-            "pagesize": 100,  # Fetch 100 questions per API call
-            "page": random.randint(1, 5),
-        }
-
-        # Fetch questions
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-
-        # Parse response
-        questions = response.json()["items"]
-
-        # Filter questions by minimum upvotes
-        min_upvotes = 10
-        filtered_questions = [q for q in questions if q["score"] >= min_upvotes]
-        # Shuffle the questions
-        random.shuffle(filtered_questions)
-
-        # Add the questions to the list of questions
-        self.questions.extend(filtered_questions)
-        return
-
-    def get_stack_question(self) -> dict:
-        # If the list of questions is empty, fetch more questions
-        if not self.questions:
-            self.get_stack_questions()
-        question = self.questions.pop()
-        # Fetch the highest voted answer for the selected question
-        answer = self.get_stack_answer(question)
-        return {"question": question["title"], "answer": answer}
-
-    def get_stack_answer(self, question):
-        question_id = question["question_id"]
-        url_answers = (
-            f"https://api.stackexchange.com/2.3/questions/{question_id}/answers"
-        )
-        params_answers = {
-            "order": "desc",
-            "sort": "votes",
-            "site": "stackoverflow",
-            "filter": "withbody",  #'!9_bDDxJY5'
-        }
-        response_answers = requests.get(url_answers, params=params_answers)
-        response_answers.raise_for_status()
-        answers = response_answers.json()["items"]
-        if not answers:
-            bt.logging.warning("No answers found for the question!")
-
-        highest_voted_answer = answers[0]  # The first answer is the highest voted
-        soup = BeautifulSoup(highest_voted_answer["body"], "html.parser")
-        full_content = soup.get_text(separator="\n")
-        return full_content
-
-    def next(self):
-        bt.logging.debug("Retrieving data from prompting.dataset...")
-        t0 = time.time()
-        info = self.get_stack_question()
-        info["fetch_time"] = time.time() - t0
-        return info
 
 
 class MockDiscordQuestionsDataset:
