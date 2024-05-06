@@ -50,6 +50,8 @@ from pydantic import ValidationError
 from datetime import datetime, timedelta
 import pytz
 
+APIFY_LINK_SCRAPE_AMOUNT = 10
+
 class TwitterContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
 
@@ -96,7 +98,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 for response in responses
                 if response.completion_links
                 for link in random.sample(
-                    response.completion_links, min(10, len(response.completion_links))
+                    response.completion_links, min(APIFY_LINK_SCRAPE_AMOUNT, len(response.completion_links))
                 )
             ]
             unique_links = list(
