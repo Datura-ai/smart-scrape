@@ -282,13 +282,15 @@ class TwitterPromptAnalyzer:
             )
 
     async def analyse_prompt_and_fetch_tweets(
-        self, prompt, is_recent_tweets=True, date_filter=None
+        self, prompt, is_recent_tweets=True, date_filter: DateFilter = None
     ):
         prompt_analysis = (
             TwitterPromptAnalysisResult()
         )  # Initialize prompt_analysis here
         try:
-            query, prompt_analysis = await self.generate_and_analyze_query(prompt)
+            query, prompt_analysis = await self.generate_and_analyze_query(
+                prompt, date_filter
+            )
 
             result_json, status_code, response_text = await self.get_tweets(
                 prompt_analysis, is_recent_tweets
@@ -354,11 +356,12 @@ class TwitterPromptAnalyzer:
             bt.logging.error(f"analyse_prompt_and_fetch_tweets, {e}")
             return {"meta": {"result_count": 0}}, prompt_analysis
 
-    async def generate_and_analyze_query(self, prompt):
+    async def generate_and_analyze_query(self, prompt, date_filter: DateFilter):
         query = await self.generate_query_params_from_prompt(prompt)
         prompt_analysis = TwitterPromptAnalysisResult()
         prompt_analysis.fill(query)
         self.set_max_results(prompt_analysis.api_params)
+        self.set_date_filter(prompt_analysis.api_params, date_filter)
         bt.logging.info(
             "Tweets Query ==================================================="
         )
@@ -370,6 +373,11 @@ class TwitterPromptAnalyzer:
 
     def set_max_results(self, api_params, max_results=10):
         api_params["max_results"] = max_results
+
+    def set_date_filter(self, api_params, date_filter: DateFilter):
+        if date_filter:
+            api_params["start_time"] = date_filter.start_date.isoformat()
+            api_params["end_time"] = date_filter.end_date.isoformat()
 
     async def retry_with_fixed_query(
         self, prompt, old_query, error=None, is_accuracy=True, is_recent_tweets=True

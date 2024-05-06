@@ -74,3 +74,14 @@ def get_random_date_filter():
         end_date=now,
         date_filter_type=date_filter,
     )
+
+
+def get_recent_date_filter():
+    now = datetime.now(pytz.utc).replace(second=0, microsecond=0)
+    diff = timedelta(days=1)
+
+    return DateFilter(
+        start_date=now - diff,
+        end_date=now,
+        date_filter_type=DateFilterType.PAST_24_HOURS,
+    )

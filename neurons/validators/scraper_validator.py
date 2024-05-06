@@ -31,7 +31,7 @@ from datura.services.twitter_api_wrapper import TwitterAPIClient
 from datura import QUERY_MINERS
 import asyncio
 from aiostream import stream
-from datura.dataset.date_filters import get_random_date_filter
+from datura.dataset.date_filters import get_random_date_filter, get_recent_date_filter
 
 
 class ScraperValidator:
@@ -154,8 +154,8 @@ class ScraperValidator:
             specified_uids=specified_uids,
         )
 
-        start_date = date_filter.start_date.strftime('%Y-%m-%dT%H:%M:%SZ')
-        end_date = date_filter.end_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+        start_date = date_filter.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+        end_date = date_filter.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
         synapse = ScraperStreamingSynapse(
@@ -401,7 +401,7 @@ class ScraperValidator:
                 tools=tools,
                 language=self.language,
                 region=self.region,
-                date_filter=get_random_date_filter(),
+                date_filter=get_recent_date_filter(),
                 google_date_filter=self.date_filter,
             )
             final_synapses = []
@@ -466,7 +466,7 @@ class ScraperValidator:
                 tools=tools,
                 language=self.language,
                 region=self.region,
-                date_filter=get_random_date_filter(),
+                date_filter=get_recent_date_filter(),
                 google_date_filter=self.date_filter,
             )
 
