@@ -435,6 +435,8 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "completion_links": completion_links,
             "search_completion_links": search_completion_links,
             "texts": self.texts,
+            "start_date": self.start_date,
+            "end_date": self.end_date,
         }
 
     class Config:
