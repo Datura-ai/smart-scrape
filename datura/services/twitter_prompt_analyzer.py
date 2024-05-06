@@ -8,6 +8,7 @@ from datura.protocol import TwitterPromptAnalysisResult
 import bittensor as bt
 from datura.dataset import MockTwitterQuestionsDataset
 from datura.services.twitter_api_wrapper import TwitterAPIClient
+from datura.dataset.date_filters import DateFilter
 
 twitter_api_query_example = {
     "query": "(from:twitterdev -is:retweet) OR #twitterdev",
@@ -207,9 +208,11 @@ class TwitterPromptAnalyzer:
         self,
         openai_query_model="gpt-3.5-turbo-0125",
         openai_fix_query_model="gpt-4-1106-preview",
+        date_filter: DateFilter = None,
     ):
         self.openai_query_model = openai_query_model
         self.openai_fix_query_model = openai_fix_query_model
+        self.date_filter = date_filter
 
         self.tw_client = TwitterAPIClient(
             openai_query_model=openai_query_model,

@@ -39,10 +39,12 @@ class GetRecentTweetsTool(BaseTool):
         openai_fix_query_model = (
             self.tool_manager.miner.config.miner.openai_fix_query_model
         )
+        date_filter = self.tool_manager.date_filter
 
         client = TwitterPromptAnalyzer(
             openai_query_model=openai_query_model,
             openai_fix_query_model=openai_fix_query_model,
+            date_filter=date_filter,
         )
 
         result, prompt_analysis = await client.analyse_prompt_and_fetch_tweets(
