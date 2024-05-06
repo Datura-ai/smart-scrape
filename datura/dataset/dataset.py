@@ -5,6 +5,7 @@ from datasets import load_dataset
 from bs4 import BeautifulSoup
 import time
 import requests
+import html
 
 
 class MockTwitterQuestionsDataset:
@@ -68,6 +69,21 @@ class MockTwitterQuestionsDataset:
             # "How is {} affecting international relations?",
             "What are the current trends in {} investment?",
             "What's the future outlook for {}?",
+            "What are the latest advancements in {} technology?",
+            "How is {} impacting society in 2024?",
+            "What are the most promising startups in the {} industry?",
+            "What are the ethical considerations surrounding {}?",
+            "How are policymakers addressing challenges in {}?",
+            "What are the economic implications of {} in 2024?",
+            "How is {} transforming the global landscape?",
+            "What are the potential long-term effects of {} on humanity?",
+            "What are the latest controversies surrounding {}?",
+            "How are experts predicting the future of {}?",
+            "What are the most innovative solutions in {} today?",
+            "How is {} affecting people's daily lives in 2024?",
+            "What are the latest collaborations in the {} industry?",
+            "How is {} influencing pop culture in 2024?",
+            "What are the latest government initiatives related to {}?",
         ]
 
         # Expanded list of topics, focusing on commonly discussed themes on Twitter
@@ -236,13 +252,59 @@ class MockTwitterQuestionsDataset:
             "amazon",
             "microsoft",
             "twitter",
-            "bittensor",
             "quantum mechanics",
             "cybersecurity",
             "augmented reality",
             "smart cities",
             "biotechnology",
             "autonomous driving",
+            "5G networks",
+            "gene editing",
+            "smart homes",
+            "blockchain governance",
+            "digital identity",
+            "sustainable fashion",
+            "circular economy",
+            "carbon capture technology",
+            "precision agriculture",
+            "telemedicine",
+            "online education platforms",
+            "remote work",
+            "digital nomads",
+            "plant-based meat alternatives",
+            "vertical farming",
+            "3D printing",
+            "robotics in healthcare",
+            "edge computing",
+            "digital twins",
+            "haptic technology",
+            "brain-computer interfaces",
+            "decentralized finance (DeFi)",
+            "non-fungible tokens (NFTs)",
+            "space mining",
+            "asteroid detection",
+            "quantum cryptography",
+            "smart materials",
+            "green hydrogen",
+            "tidal energy",
+            "carbon offsetting",
+            "regenerative agriculture",
+            "precision medicine",
+            "personalized nutrition",
+            "mental health apps",
+            "virtual events",
+            "augmented reality shopping",
+            "drone delivery",
+            "self-driving trucks",
+            "hyperloop transportation",
+            "digital art galleries",
+            "virtual influencers",
+            "social media activism",
+            "gamification in education",
+            "bioplastics",
+            "ocean cleanup technology",
+            "smart waste management",
+            "carbon-negative construction",
         ]
 
     def generate_question(self):
@@ -327,7 +389,7 @@ class StackOverflowDataset:
         t0 = time.time()
         info = self.get_stack_question()
         info["fetch_time"] = time.time() - t0
-        return info
+        return html.unescape(info["question"])
 
 
 class MockDiscordQuestionsDataset:
@@ -391,8 +453,26 @@ class MockBittensiorQuestionsDataset:
         return self.generate_question()
 
 
+class QuestionsDataset:
+    def __init__(self) -> None:
+        self.datasets = [
+            MockTwitterQuestionsDataset(),
+            StackOverflowDataset(),
+        ]
+
+    def next(self):
+        random_dataset = random.choice(self.datasets)
+        return random_dataset.next()
+
+
 if __name__ == "__main__":
     # Example usage
-    twitter_questions_dataset = MockTwitterQuestionsDataset()
+    # twitter_questions_dataset = MockTwitterQuestionsDataset()
+    # for _ in range(100):
+    # print(twitter_questions_dataset.next())
+
+    stack_overflow_dataset = StackOverflowDataset()
+
     for _ in range(100):
-        print(twitter_questions_dataset.next())
+        question = stack_overflow_dataset.next()
+        print(question)
