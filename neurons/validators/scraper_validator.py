@@ -154,13 +154,18 @@ class ScraperValidator:
             specified_uids=specified_uids,
         )
 
+        start_date = date_filter.start_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+        end_date = date_filter.end_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
         synapse = ScraperStreamingSynapse(
             messages=prompt,
             model=self.model,
             seed=self.seed,
             is_intro_text=is_intro_text,
-            date_filter=date_filter,
+            start_date=start_date,
+            end_date=end_date,
+            date_filter_type=date_filter.date_filter_type.value,
             tools=tools,
             language=language,
             region=region,
@@ -396,6 +401,7 @@ class ScraperValidator:
                 tools=tools,
                 language=self.language,
                 region=self.region,
+                date_filter=get_random_date_filter(),
                 google_date_filter=self.date_filter,
             )
             final_synapses = []
@@ -460,6 +466,7 @@ class ScraperValidator:
                 tools=tools,
                 language=self.language,
                 region=self.region,
+                date_filter=get_random_date_filter(),
                 google_date_filter=self.date_filter,
             )
 
