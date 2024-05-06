@@ -17,6 +17,7 @@ import json
 from neurons.validators.utils.prompts import ScoringPrompt, SearchSummaryRelevancePrompt
 import time
 
+APIFY_LINK_SCRAPE_AMOUNT = 5
 
 class WebSearchContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
@@ -62,7 +63,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 link
                 for link in random.sample(
                     response.search_completion_links,
-                    min(3, len(response.search_completion_links)),
+                    min(APIFY_LINK_SCRAPE_AMOUNT, len(response.search_completion_links)),
                 )
             ]
 
