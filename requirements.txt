@@ -24,5 +24,5 @@ asyncpraw==7.7.1
 aiostream==0.5.2
 llama-index==0.10.28
 llama-index-vector-stores-pinecone==0.1.4
-llama-index-embeddings-openai
-pinecone-client
+llama-index-embeddings-openai>=0.1.5,<0.2.0
+pinecone-client>=3.0.2,<4.0.0
