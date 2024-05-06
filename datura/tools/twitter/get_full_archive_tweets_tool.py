@@ -43,11 +43,12 @@ class GetFullArchiveTweetsTool(BaseTool):
         client = TwitterPromptAnalyzer(
             openai_query_model=openai_query_model,
             openai_fix_query_model=openai_fix_query_model,
-            date_filter=date_filter,
         )
 
         result, prompt_analysis = await client.analyse_prompt_and_fetch_tweets(
-            query, is_recent_tweets=False
+            query,
+            is_recent_tweets=False,
+            date_filter=date_filter,
         )
 
         bt.logging.info(

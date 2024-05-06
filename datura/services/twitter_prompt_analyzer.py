@@ -208,11 +208,9 @@ class TwitterPromptAnalyzer:
         self,
         openai_query_model="gpt-3.5-turbo-0125",
         openai_fix_query_model="gpt-4-1106-preview",
-        date_filter: DateFilter = None,
     ):
         self.openai_query_model = openai_query_model
         self.openai_fix_query_model = openai_fix_query_model
-        self.date_filter = date_filter
 
         self.tw_client = TwitterAPIClient(
             openai_query_model=openai_query_model,
@@ -283,7 +281,9 @@ class TwitterPromptAnalyzer:
                 prompt_analysis.api_params
             )
 
-    async def analyse_prompt_and_fetch_tweets(self, prompt, is_recent_tweets=True):
+    async def analyse_prompt_and_fetch_tweets(
+        self, prompt, is_recent_tweets=True, date_filter=None
+    ):
         prompt_analysis = (
             TwitterPromptAnalysisResult()
         )  # Initialize prompt_analysis here
