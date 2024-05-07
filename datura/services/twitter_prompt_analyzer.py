@@ -8,7 +8,7 @@ from datura.protocol import TwitterPromptAnalysisResult
 import bittensor as bt
 from datura.dataset import MockTwitterQuestionsDataset
 from datura.services.twitter_api_wrapper import TwitterAPIClient
-from datura.dataset.date_filters import DateFilter
+from datura.dataset.date_filters import DateFilter, DateFilterType
 
 twitter_api_query_example = {
     "query": "(from:twitterdev -is:retweet) OR #twitterdev",
@@ -282,7 +282,7 @@ class TwitterPromptAnalyzer:
             )
 
     async def analyse_prompt_and_fetch_tweets(
-        self, prompt, is_recent_tweets=True, date_filter: DateFilter = None
+        self, prompt, date_filter: DateFilter = None
     ):
         prompt_analysis = (
             TwitterPromptAnalysisResult()
@@ -291,6 +291,11 @@ class TwitterPromptAnalyzer:
             query, prompt_analysis = await self.generate_and_analyze_query(
                 prompt, date_filter
             )
+
+            is_recent_tweets = False
+
+            if date_filter.date_filter_type == DateFilterType.PAST_24_HOURS:
+                is_recent_tweets = True
 
             result_json, status_code, response_text = await self.get_tweets(
                 prompt_analysis, is_recent_tweets
@@ -361,7 +366,11 @@ class TwitterPromptAnalyzer:
         prompt_analysis = TwitterPromptAnalysisResult()
         prompt_analysis.fill(query)
         self.set_max_results(prompt_analysis.api_params)
-        self.set_date_filter(prompt_analysis.api_params, date_filter)
+        self.set_filter_dates(
+            api_params=prompt_analysis.api_params,
+            start_date=date_filter.start_date,
+            end_date=date_filter.end_date,
+        )
         bt.logging.info(
             "Tweets Query ==================================================="
         )
@@ -374,10 +383,11 @@ class TwitterPromptAnalyzer:
     def set_max_results(self, api_params, max_results=10):
         api_params["max_results"] = max_results
 
-    def set_date_filter(self, api_params, date_filter: DateFilter):
-        if date_filter:
-            api_params["start_time"] = date_filter.start_date.isoformat()
-            api_params["end_time"] = date_filter.end_date.isoformat()
+    def set_filter_dates(self, api_params, start_date, end_date):
+        if start_date:
+            api_params["start_time"] = start_date.isoformat()
+        if end_date:
+            api_params["end_time"] = end_date.isoformat()
 
     async def retry_with_fixed_query(
         self, prompt, old_query, error=None, is_accuracy=True, is_recent_tweets=True

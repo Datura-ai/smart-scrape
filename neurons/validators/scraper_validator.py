@@ -44,7 +44,7 @@ class ScraperValidator:
         self.neuron = neuron
         self.timeout = 180
         self.tools = [
-            "Recent Tweets",
+            "Twitter Search",
             "Google Search",
             "ArXiv Search",
             "Youtube Search",
