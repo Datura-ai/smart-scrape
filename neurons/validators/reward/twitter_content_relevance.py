@@ -255,7 +255,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
                     tweet_created_at_aware = datetime.strptime(
                         converted_val_tweet_created_at, "%Y-%m-%dT%H:%M:%S.%fZ"
-                    ).replace(tzinfo=pytz.UTC)
+                    ).replace(tzinfo=pytz.UTC, second=0, microsecond=0)
 
                     start_date = response.start_date
                     end_date = response.end_date
