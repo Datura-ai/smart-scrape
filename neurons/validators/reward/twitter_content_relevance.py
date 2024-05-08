@@ -52,6 +52,7 @@ import pytz
 
 APIFY_LINK_SCRAPE_AMOUNT = 10
 
+
 class TwitterContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
 
@@ -98,7 +99,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 for response in responses
                 if response.completion_links
                 for link in random.sample(
-                    response.completion_links, min(APIFY_LINK_SCRAPE_AMOUNT, len(response.completion_links))
+                    response.completion_links,
+                    min(APIFY_LINK_SCRAPE_AMOUNT, len(response.completion_links)),
                 )
             ]
             unique_links = list(
@@ -252,9 +254,13 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                         tweet_score = 0
 
                     # Recent tweets wuould be last two weeks
-                    tweet_created_at_aware = datetime.strptime(converted_val_tweet_created_at, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=pytz.UTC)
+                    tweet_created_at_aware = datetime.strptime(
+                        converted_val_tweet_created_at, "%Y-%m-%dT%H:%M:%S.%fZ"
+                    ).replace(tzinfo=pytz.UTC)
 
-                    if tweet_created_at_aware < datetime.now(pytz.UTC) - timedelta(days=14):
+                    if tweet_created_at_aware < datetime.now(pytz.UTC) - timedelta(
+                        days=14
+                    ):
                         tweet_score = 0
 
                 tweet_scores.append(tweet_score)
@@ -380,6 +386,20 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                     if len(response.validator_tweets) > 10
                     else 10
                 )
+
+                unique_tweet_texts = {}
+                for val_tweet in response.validator_tweets:
+                    if val_tweet.full_text not in unique_tweet_texts:
+                        unique_tweet_texts[val_tweet.full_text] = val_tweet
+
+                unique_validator_tweets = list(unique_tweet_texts.values())
+                
+                duplicate_tweets_count = len(response.validator_tweets) - len(
+                    unique_validator_tweets
+                )
+
+                response.validator_tweets = unique_validator_tweets
+
                 if len(response.validator_tweets):
                     for val_tweet in response.validator_tweets:
                         val_tweet_id = val_tweet.id
@@ -400,6 +420,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                         reward_event.reward = self.calculate_adjusted_score(
                             links_count=len(response.completion_links),
                             score=average_score,
+                            duplicate_tweets_count=duplicate_tweets_count,
                         )
                 else:
                     bt.logging.info(f"UID '{uid}' has no validator tweets.")
