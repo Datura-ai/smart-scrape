@@ -396,6 +396,20 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                     if len(response.validator_tweets) > 10
                     else 10
                 )
+
+                unique_tweet_texts = {}
+                for val_tweet in response.validator_tweets:
+                    if val_tweet.full_text not in unique_tweet_texts:
+                        unique_tweet_texts[val_tweet.full_text] = val_tweet
+
+                unique_validator_tweets = list(unique_tweet_texts.values())
+
+                duplicate_tweets_count = len(response.validator_tweets) - len(
+                    unique_validator_tweets
+                )
+
+                response.validator_tweets = unique_validator_tweets
+
                 if len(response.validator_tweets):
                     for val_tweet in response.validator_tweets:
                         val_tweet_id = val_tweet.id
@@ -416,6 +430,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                         reward_event.reward = self.calculate_adjusted_score(
                             links_count=len(response.completion_links),
                             score=average_score,
+                            duplicate_tweets_count=duplicate_tweets_count,
                         )
                 else:
                     bt.logging.info(f"UID '{uid}' has no validator tweets.")
