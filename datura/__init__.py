@@ -75,6 +75,7 @@ valid_validators = [
     "5DnXm2tBGAD57ySJv5SfpTfLcsQbSKKp6xZKFWABw3cYUgqg",
     "5GVpVH7DjYmQY7ckznVnrHncU9knzYJvhY3TfbFY7sPboJB2",
     "5Fq5v71D4LX8Db1xsmRSy6udQThcZ8sFDqxQFwnUZ1BuqY5A",
+    "5ChuGqW2cxc5AZJ29z6vyTkTncg75L9ovfp8QN8eB8niSD75",
 ]
 
 WHITELISTED_KEYS = testnet_key + test_key + valid_validators
