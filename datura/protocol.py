@@ -459,6 +459,29 @@ def extract_json_chunk(chunk, response, buffer=""):
     return json_objects, buffer
 
 
+class SearchSynapse(bt.Synapse):
+    query: str = pydantic.Field(
+        "",
+        title="model",
+        description="The query to run tools with",
+    )
+
+    tools: List[str] = pydantic.Field(
+        default_factory=list,
+        title="Tools",
+        description="A list of tools specified by user to fetch data from.",
+    )
+
+    results: Optional[Dict[str, Any]] = pydantic.Field(
+        default_factory=dict,
+        title="Tool results",
+        description="A dictionary of results from the specified tools.",
+    )
+
+    def deserialize(self) -> str:
+        return self.query
+
+
 class MinerTweet(BaseModel):
     id: str
     author_id: str
