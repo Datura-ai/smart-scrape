@@ -1,6 +1,6 @@
 import os
 from pydantic import BaseModel, Field
-from typing import List
+from typing import Optional
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, HTTPException, Request, Query
 import uvicorn
@@ -98,14 +98,6 @@ available_tools = [
 ]
 
 
-class SearchRequest(BaseModel):
-    tools: List[str] = Field(
-        ...,
-        example=available_tools,
-    )
-    query: str = Field(..., example="What are the recent sport events?")
-
-
 @app.get(
     "/search",
     summary="Search across multiple platforms",
@@ -127,11 +119,16 @@ async def search(
         example=json.dumps([tool for tool in available_tools]),
     ),
     query: str = Query(..., example="What are the recent sport events?"),
+    uid: Optional[int] = Query(
+        None,
+        example=0,
+        description="Optional miner uid to run. If not provided, a random miner will be selected.",
+    ),
 ):
     tools = json.loads(tools)
 
     try:
-        result = await neu.scraper_validator.search(query, tools)
+        result = await neu.scraper_validator.search(query, tools, uid)
         return result
     except Exception as e:
         bt.logging.error(f"error in search {traceback.format_exc()}")

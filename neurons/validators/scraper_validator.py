@@ -569,7 +569,7 @@ class ScraperValidator:
             bt.logging.error(f"Error in query_and_score: {e}")
             raise e
 
-    async def search(self, query: str, tools: List[str]):
+    async def search(self, query: str, tools: List[str], uid: int = None):
         try:
             task_name = "search"
 
@@ -588,14 +588,17 @@ class ScraperValidator:
 
             bt.logging.debug("run_task", task_name)
 
-            # Get random id on that step
-            uids = await self.neuron.get_uids(
-                strategy=QUERY_MINERS.RANDOM,
-                is_only_allowed_miner=True,
-                specified_uids=None,
-            )
+            # If uid is not provided, get random uids
+            if uid is None:
+                uids = await self.neuron.get_uids(
+                    strategy=QUERY_MINERS.RANDOM,
+                    is_only_allowed_miner=True,
+                    specified_uids=None,
+                )
 
-            axons = [self.neuron.metagraph.axons[uid] for uid in uids]
+                uid = uids[0]
+
+            axon = self.neuron.metagraph.axons[uid]
 
             synapse = SearchSynapse(
                 query=prompt,
@@ -604,7 +607,7 @@ class ScraperValidator:
             )
 
             synapse: SearchSynapse = await self.neuron.dendrite.call(
-                target_axon=axons[0],
+                target_axon=axon,
                 synapse=synapse,
                 timeout=self.timeout,
                 deserialize=False,

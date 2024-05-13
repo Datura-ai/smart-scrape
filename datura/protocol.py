@@ -460,22 +460,34 @@ def extract_json_chunk(chunk, response, buffer=""):
 
 
 class SearchSynapse(bt.Synapse):
+    """A class to represent search api synapse"""
+
     query: str = pydantic.Field(
         "",
         title="model",
-        description="The query to run tools with",
+        description="The query to run tools with. Example: 'What are the recent sport events?'. Immutable.",
+        allow_mutation=False,
     )
 
     tools: List[str] = pydantic.Field(
         default_factory=list,
         title="Tools",
-        description="A list of tools specified by user to fetch data from.",
+        description="A list of tools specified by user to fetch data from. Immutable."
+        "Available tools are: Google Search, Google Image Search, Hacker News Search, Reddit Search",
+        allow_mutation=False,
+    )
+
+    uid: Optional[int] = pydantic.Field(
+        None,
+        title="UID",
+        description="Optional miner uid to run. If not provided, a random miner will be selected. Immutable.",
+        allow_mutation=False,
     )
 
     results: Optional[Dict[str, Any]] = pydantic.Field(
         default_factory=dict,
-        title="Tool results",
-        description="A dictionary of results from the specified tools.",
+        title="Tool result dictionary",
+        description="A dictionary of tool results where key is tool name and value is the result. Example: {'Google Search': {}, 'Google Image Search': {} }",
     )
 
     def deserialize(self) -> str:
