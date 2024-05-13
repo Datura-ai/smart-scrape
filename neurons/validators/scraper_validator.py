@@ -31,7 +31,11 @@ from datura.services.twitter_api_wrapper import TwitterAPIClient
 from datura import QUERY_MINERS
 import asyncio
 from aiostream import stream
-from datura.dataset.date_filters import get_random_date_filter, get_recent_date_filter
+from datura.dataset.date_filters import (
+    get_random_date_filter,
+    get_specified_date_filter,
+    DateFilterType,
+)
 
 
 class ScraperValidator:
@@ -380,6 +384,8 @@ class ScraperValidator:
         try:
             prompt = query["content"]
             tools = query.get("tools", [])
+            date_filter_type = query.get("date_filter", DateFilterType.PAST_WEEK.value)
+            date_filter_type = DateFilterType(date_filter_type)
 
             task_name = "augment"
             task = TwitterTask(
@@ -393,6 +399,8 @@ class ScraperValidator:
                 bt.logging.info("Not available uids")
                 raise StopAsyncIteration("Not available uids")
 
+            date_filter = get_specified_date_filter(date_filter_type)
+
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=QUERY_MINERS.RANDOM,
@@ -401,7 +409,7 @@ class ScraperValidator:
                 tools=tools,
                 language=self.language,
                 region=self.region,
-                date_filter=get_recent_date_filter(),
+                date_filter=date_filter,
                 google_date_filter=self.date_filter,
             )
             final_synapses = []
@@ -445,6 +453,8 @@ class ScraperValidator:
         try:
             prompt = query["content"]
             tools = query.get("tools", [])
+            date_filter_type = query.get("date_filter", DateFilterType.PAST_WEEK.value)
+            date_filter_type = DateFilterType(date_filter_type)
 
             task_name = "augment"
             task = TwitterTask(
@@ -458,6 +468,8 @@ class ScraperValidator:
                 bt.logging.info("Not available uids")
                 raise StopAsyncIteration("Not available uids")
 
+            date_filter = get_specified_date_filter(date_filter_type)
+
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=QUERY_MINERS.ALL,
@@ -466,7 +478,7 @@ class ScraperValidator:
                 tools=tools,
                 language=self.language,
                 region=self.region,
-                date_filter=get_recent_date_filter(),
+                date_filter=date_filter,
                 google_date_filter=self.date_filter,
             )
 

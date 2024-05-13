@@ -31,7 +31,6 @@ class TwitterAPIClient:
                     bt.logging.error(
                         f"Critical Twitter API Request error occurred: {await response.text()}"
                     )
-                    os._exit(1)
 
                 json_data = None
 
