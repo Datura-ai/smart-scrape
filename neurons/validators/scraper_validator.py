@@ -26,11 +26,12 @@ from neurons.validators.reward.search_content_relevance import (
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask
 
-from datura.dataset import MockTwitterQuestionsDataset
+from datura.dataset import MockTwitterQuestionsDataset, QuestionsDataset
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from datura import QUERY_MINERS
 import asyncio
 from aiostream import stream
+from datura.dataset.date_filters import get_random_date_filter, get_recent_date_filter
 
 
 class ScraperValidator:
@@ -43,7 +44,7 @@ class ScraperValidator:
         self.neuron = neuron
         self.timeout = 180
         self.tools = [
-            "Recent Tweets",
+            "Twitter Search",
             "Google Search",
             "ArXiv Search",
             "Youtube Search",
@@ -131,10 +132,11 @@ class ScraperValidator:
         is_only_allowed_miner=True,
         is_intro_text=False,
         specified_uids=None,
+        date_filter=None,
         tools=[],
         language="en",
         region="us",
-        date_filter="qdr:w",
+        google_date_filter="qdr:w",
     ):
         task_name = task.task_name
         prompt = task.compose_prompt()
@@ -152,16 +154,22 @@ class ScraperValidator:
             specified_uids=specified_uids,
         )
 
+        start_date = date_filter.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+        end_date = date_filter.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
         synapse = ScraperStreamingSynapse(
             messages=prompt,
             model=self.model,
             seed=self.seed,
             is_intro_text=is_intro_text,
+            start_date=start_date,
+            end_date=end_date,
+            date_filter_type=date_filter.date_filter_type.value,
             tools=tools,
             language=language,
             region=region,
-            date_filter=date_filter,
+            google_date_filter=google_date_filter,
         )
 
         # Make calls to the network with the prompt.
@@ -323,7 +331,7 @@ class ScraperValidator:
 
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
-            dataset = MockTwitterQuestionsDataset()
+            dataset = QuestionsDataset()
             prompt = dataset.next()
 
             task_name = "augment"
@@ -342,10 +350,11 @@ class ScraperValidator:
                 task=task,
                 strategy=strategy,
                 is_only_allowed_miner=False,
+                date_filter=get_random_date_filter(),
                 tools=self.tools,
                 language=self.language,
                 region=self.region,
-                date_filter=self.date_filter,
+                google_date_filter=self.date_filter,
             )
 
             final_synapses = []
@@ -392,7 +401,8 @@ class ScraperValidator:
                 tools=tools,
                 language=self.language,
                 region=self.region,
-                date_filter=self.date_filter,
+                date_filter=get_recent_date_filter(),
+                google_date_filter=self.date_filter,
             )
             final_synapses = []
             for response in async_responses:
@@ -456,7 +466,8 @@ class ScraperValidator:
                 tools=tools,
                 language=self.language,
                 region=self.region,
-                date_filter=self.date_filter,
+                date_filter=get_recent_date_filter(),
+                google_date_filter=self.date_filter,
             )
 
             async def stream_response(uid, async_response):

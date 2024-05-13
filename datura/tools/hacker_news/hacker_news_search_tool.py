@@ -43,7 +43,7 @@ class HackerNewsSearchTool(BaseTool):
             language=self.tool_manager.language if self.tool_manager else "en",
             region=self.tool_manager.region if self.tool_manager else "us",
             date_filter=(
-                self.tool_manager.date_filter if self.tool_manager else "qdr:w"
+                self.tool_manager.google_date_filter if self.tool_manager else "qdr:w"
             ),
         )
         result = await search.run(query)

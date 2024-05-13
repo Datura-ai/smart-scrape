@@ -80,6 +80,7 @@ class ToolManager:
         language,
         region,
         date_filter,
+        google_date_filter,
     ):
         self.prompt = prompt
         self.manual_tool_names = manual_tool_names
@@ -88,6 +89,7 @@ class ToolManager:
         self.language = language
         self.region = region
         self.date_filter = date_filter
+        self.google_date_filter = google_date_filter
 
         self.response_streamer = ResponseStreamer(send=send)
         self.send = send

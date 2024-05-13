@@ -5,6 +5,7 @@ from datasets import load_dataset
 from bs4 import BeautifulSoup
 import time
 import requests
+import html
 
 
 class MockTwitterQuestionsDataset:
@@ -319,6 +320,78 @@ class MockTwitterQuestionsDataset:
         return self.generate_question()
 
 
+class StackOverflowDataset:
+    def __init__(self):
+        # Stack Overflow API endpoint for a random article
+        self.url = "https://api.stackexchange.com/2.3/questions"
+        self.questions = []
+
+    def get_stack_questions(self):
+        url = "https://api.stackexchange.com/2.3/questions"
+        params = {
+            "order": "desc",
+            "sort": "votes",  # Sorting by votes means that it's likely that the same questions will be fetched again
+            "site": "stackoverflow",
+            "pagesize": 100,  # Fetch 100 questions per API call
+            "page": random.randint(1, 5),
+        }
+
+        # Fetch questions
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+
+        # Parse response
+        questions = response.json()["items"]
+
+        # Filter questions by minimum upvotes
+        min_upvotes = 10
+        filtered_questions = [q for q in questions if q["score"] >= min_upvotes]
+        # Shuffle the questions
+        random.shuffle(filtered_questions)
+
+        # Add the questions to the list of questions
+        self.questions.extend(filtered_questions)
+        return
+
+    def get_stack_question(self) -> dict:
+        # If the list of questions is empty, fetch more questions
+        if not self.questions:
+            self.get_stack_questions()
+        question = self.questions.pop()
+        # Fetch the highest voted answer for the selected question
+        answer = self.get_stack_answer(question)
+        return {"question": question["title"], "answer": answer}
+
+    def get_stack_answer(self, question):
+        question_id = question["question_id"]
+        url_answers = (
+            f"https://api.stackexchange.com/2.3/questions/{question_id}/answers"
+        )
+        params_answers = {
+            "order": "desc",
+            "sort": "votes",
+            "site": "stackoverflow",
+            "filter": "withbody",  #'!9_bDDxJY5'
+        }
+        response_answers = requests.get(url_answers, params=params_answers)
+        response_answers.raise_for_status()
+        answers = response_answers.json()["items"]
+        if not answers:
+            bt.logging.warning("No answers found for the question!")
+
+        highest_voted_answer = answers[0]  # The first answer is the highest voted
+        soup = BeautifulSoup(highest_voted_answer["body"], "html.parser")
+        full_content = soup.get_text(separator="\n")
+        return full_content
+
+    def next(self):
+        bt.logging.debug("Retrieving data from prompting.dataset...")
+        t0 = time.time()
+        info = self.get_stack_question()
+        info["fetch_time"] = time.time() - t0
+        return html.unescape(info["question"])
+
+
 class MockDiscordQuestionsDataset:
     def __init__(self):
         self.question_templates = [
@@ -380,8 +453,26 @@ class MockBittensiorQuestionsDataset:
         return self.generate_question()
 
 
+class QuestionsDataset:
+    def __init__(self) -> None:
+        self.datasets = [
+            MockTwitterQuestionsDataset(),
+            StackOverflowDataset(),
+        ]
+
+    def next(self):
+        random_dataset = random.choice(self.datasets)
+        return random_dataset.next()
+
+
 if __name__ == "__main__":
     # Example usage
-    twitter_questions_dataset = MockTwitterQuestionsDataset()
+    # twitter_questions_dataset = MockTwitterQuestionsDataset()
+    # for _ in range(100):
+    # print(twitter_questions_dataset.next())
+
+    stack_overflow_dataset = StackOverflowDataset()
+
     for _ in range(100):
-        print(twitter_questions_dataset.next())
+        question = stack_overflow_dataset.next()
+        print(question)

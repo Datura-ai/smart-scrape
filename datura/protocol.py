@@ -11,7 +11,6 @@ from enum import Enum
 from aiohttp import ClientResponse
 from datura.services.twitter_utils import TwitterUtils
 from datura.services.web_search_utils import WebSearchUtils
-import random
 
 
 class IsAlive(bt.Synapse):
@@ -130,6 +129,24 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="A list of tools specified by user to use to answer question.",
     )
 
+    start_date: Optional[str] = pydantic.Field(
+        None,
+        title="Start Date",
+        description="The start date for the search query.",
+    )
+
+    end_date: Optional[str] = pydantic.Field(
+        None,
+        title="End Date",
+        description="The end date for the search query.",
+    )
+
+    date_filter_type: Optional[int] = pydantic.Field(
+        None,
+        title="Date filter enum",
+        description="The date filter enum.",
+    )
+
     language: Optional[str] = pydantic.Field(
         "en",
         title="Language",
@@ -142,7 +159,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Region specified by user.",
     )
 
-    date_filter: Optional[str] = pydantic.Field(
+    google_date_filter: Optional[str] = pydantic.Field(
         "qdr:w",
         title="Date Filter",
         description="Date filter specified by user.",
@@ -418,6 +435,8 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "completion_links": completion_links,
             "search_completion_links": search_completion_links,
             "texts": self.texts,
+            "start_date": self.start_date,
+            "end_date": self.end_date,
         }
 
     class Config:

@@ -1,31 +1,31 @@
 import json
-import bittensor as bt
 from typing import Type
-from starlette.types import Send
+import bittensor as bt
 from pydantic import BaseModel, Field
-from datura.services.twitter_prompt_analyzer import TwitterPromptAnalyzer
+from starlette.types import Send
 from datura.tools.base import BaseTool
+from datura.services.twitter_prompt_analyzer import TwitterPromptAnalyzer
 
 
-class GetFullArchiveTweetsSchema(BaseModel):
+class TwitterSearchToolSchema(BaseModel):
     query: str = Field(
         ...,
-        description="The search query for Twitter",
+        description="The search query for tweets.",
     )
 
 
-class GetFullArchiveTweetsTool(BaseTool):
-    """Tool that gets full tweet archive from Twitter."""
+class TwitterSearchTool(BaseTool):
+    """Tool that gets tweets from Twitter."""
 
-    name = "Full Archive Tweets"
+    name = "Twitter Search"
 
-    slug = "get_full_archive_tweets"
+    slug = "get_tweets"
 
-    description = "Get full archive tweets for a given query."
+    description = "Get tweets for a given query."
 
-    args_schema: Type[GetFullArchiveTweetsSchema] = GetFullArchiveTweetsSchema
+    args_schema: Type[TwitterSearchToolSchema] = TwitterSearchToolSchema
 
-    tool_id = "319ae0a3-feeb-46a9-8c2c-5a955a17c854"
+    tool_id = "e831f03f-3282-4d5c-ae01-d7274515194d"
 
     def _run():
         pass
@@ -34,10 +34,12 @@ class GetFullArchiveTweetsTool(BaseTool):
         self,
         query: str,  # run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
+        """Tweet message and return."""
         openai_query_model = self.tool_manager.miner.config.miner.openai_query_model
         openai_fix_query_model = (
             self.tool_manager.miner.config.miner.openai_fix_query_model
         )
+        date_filter = self.tool_manager.date_filter
 
         client = TwitterPromptAnalyzer(
             openai_query_model=openai_query_model,
@@ -45,7 +47,8 @@ class GetFullArchiveTweetsTool(BaseTool):
         )
 
         result, prompt_analysis = await client.analyse_prompt_and_fetch_tweets(
-            query, is_recent_tweets=False
+            query,
+            date_filter=date_filter,
         )
 
         bt.logging.info(

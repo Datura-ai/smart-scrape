@@ -143,7 +143,8 @@ const ChatWindow: React.FC = () => {
       messagesToSend.push({
         role: "user",
         content: messages[messages.length - 2].text,
-        tools: ["Recent Tweets", "Google Search"],
+        // tools: ['Twitter Search', "Google Search"],
+        tools: ['Twitter Search'],
       });
 
       fetchAnalyseTweetsSummaryMessage(

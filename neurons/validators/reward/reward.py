@@ -223,6 +223,7 @@ class BaseRewardModel:
         self,
         links_count: int,
         score: float,
+        duplicate_tweets_count: int = 0,
         max_bonus: float = 0.2,
         link_sensitivity: int = 9,
         max_links_threshold: int = 10,
@@ -260,5 +261,9 @@ class BaseRewardModel:
             penalty_factor = max(0, 1 - excess_links * penalty_factor)
 
         adjusted_score = intermediate_score * penalty_factor
+
+        if duplicate_tweets_count > 0:
+            penalty_score = duplicate_tweets_count * 0.05
+            adjusted_score = max(0, adjusted_score - penalty_score)
 
         return adjusted_score
