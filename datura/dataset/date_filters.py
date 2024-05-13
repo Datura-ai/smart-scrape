@@ -76,5 +76,6 @@ def get_specified_date_filter(date_filter: DateFilterType):
 
 
 def get_random_date_filter():
-    date_filter = random.choice(random_date_filters)
+    # date_filter = random.choice(random_date_filters)
+    date_filter = DateFilterType.PAST_2_WEEKS
     return get_specified_date_filter(date_filter)
