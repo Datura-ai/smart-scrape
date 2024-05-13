@@ -8,11 +8,11 @@ from pydantic import BaseModel
 
 
 class DateFilterType(Enum):
-    PAST_24_HOURS = auto()
-    PAST_WEEK = auto()
-    PAST_2_WEEKS = auto()
-    PAST_MONTH = auto()
-    PAST_YEAR = auto()
+    PAST_24_HOURS = "PAST_24_HOURS"
+    PAST_WEEK = "PAST_WEEK"
+    PAST_2_WEEKS = "PAST_2_WEEKS"
+    PAST_MONTH = "PAST_MONTH"
+    PAST_YEAR = "PAST_YEAR"
 
 
 random_date_filters = [
@@ -52,8 +52,7 @@ class DateFilter(BaseModel):
     )
 
 
-def get_random_date_filter():
-    date_filter = random.choice(random_date_filters)
+def get_specified_date_filter(date_filter: DateFilterType):
     now = datetime.now(pytz.utc).replace(second=0, microsecond=0)
 
     diff = timedelta(days=1)
@@ -76,12 +75,6 @@ def get_random_date_filter():
     )
 
 
-def get_recent_date_filter():
-    now = datetime.now(pytz.utc).replace(second=0, microsecond=0)
-    diff = timedelta(days=1)
-
-    return DateFilter(
-        start_date=now - diff,
-        end_date=now,
-        date_filter_type=DateFilterType.PAST_24_HOURS,
-    )
+def get_random_date_filter():
+    date_filter = random.choice(random_date_filters)
+    return get_specified_date_filter(date_filter)

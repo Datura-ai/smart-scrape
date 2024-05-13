@@ -141,7 +141,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="The end date for the search query.",
     )
 
-    date_filter_type: Optional[int] = pydantic.Field(
+    date_filter_type: Optional[str] = pydantic.Field(
         None,
         title="Date filter enum",
         description="The date filter enum.",
