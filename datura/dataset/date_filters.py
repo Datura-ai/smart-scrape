@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 class DateFilterType(Enum):
     PAST_24_HOURS = "PAST_24_HOURS"
+    PAST_2_DAYS = "PAST_2_DAYS"
     PAST_WEEK = "PAST_WEEK"
     PAST_2_WEEKS = "PAST_2_WEEKS"
     PAST_MONTH = "PAST_MONTH"
@@ -21,10 +22,19 @@ random_date_filters = [
     DateFilterType.PAST_24_HOURS,
     DateFilterType.PAST_24_HOURS,
     DateFilterType.PAST_24_HOURS,
+    DateFilterType.PAST_2_DAYS,
+    DateFilterType.PAST_2_DAYS,
     DateFilterType.PAST_WEEK,
     DateFilterType.PAST_WEEK,
     DateFilterType.PAST_WEEK,
     DateFilterType.PAST_WEEK,
+    DateFilterType.PAST_WEEK,
+    DateFilterType.PAST_WEEK,
+    DateFilterType.PAST_2_WEEKS,
+    DateFilterType.PAST_2_WEEKS,
+    DateFilterType.PAST_2_WEEKS,
+    DateFilterType.PAST_2_WEEKS,
+    DateFilterType.PAST_2_WEEKS,
     DateFilterType.PAST_2_WEEKS,
     DateFilterType.PAST_2_WEEKS,
     DateFilterType.PAST_MONTH,
@@ -59,6 +69,8 @@ def get_specified_date_filter(date_filter: DateFilterType):
 
     if date_filter == DateFilterType.PAST_24_HOURS:
         diff = timedelta(days=1)
+    elif date_filter == DateFilterType.PAST_2_DAYS:
+        diff = timedelta(days=2)
     elif date_filter == DateFilterType.PAST_WEEK:
         diff = timedelta(days=7)
     elif date_filter == DateFilterType.PAST_2_WEEKS:
