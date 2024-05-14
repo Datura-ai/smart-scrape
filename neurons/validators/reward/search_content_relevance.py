@@ -17,7 +17,7 @@ import json
 from neurons.validators.utils.prompts import ScoringPrompt, SearchSummaryRelevancePrompt
 import time
 
-APIFY_LINK_SCRAPE_AMOUNT = 5
+APIFY_LINK_SCRAPE_AMOUNT = 7
 
 
 class WebSearchContentRelevanceModel(BaseRewardModel):
@@ -112,8 +112,6 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
     def check_response_random_link(self, response: ScraperStreamingSynapse):
         try:
-            link_score = 0
-
             completion = self.get_successful_search_summary_completion(
                 response=response
             )
@@ -131,28 +129,43 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 # at least miners should provide two search links
                 return 0
 
-            random_link = random.choice(validator_links)
+            # Google search results are separate because they include links with different domains from search
+            google_search_results = str(response.search_results) + str(
+                response.google_news_search_results
+            )
 
-            tool_to_search_result = {
-                "Google Search": response.search_results,
-                "ArXiv Search": response.arxiv_search_results,
-                "Youtube Search": response.youtube_search_results,
-                "Wikipedia Search": response.wikipedia_search_results,
-                "Google News Search": response.google_news_search_results,
+            domain_to_search_result = {
+                "arxiv.org": response.arxiv_search_results,
+                "wikipedia.org": response.wikipedia_search_results,
+                "reddit.com": response.reddit_search_results,
+                "news.ycombinator.com": response.hacker_news_search_results,
+                "youtube.com": response.youtube_search_results,
             }
 
-            results = []
+            link_scores = []
 
-            for tool in response.tools:
-                if tool in tool_to_search_result:
-                    results.append(tool_to_search_result[tool])
+            for val_link in validator_links:
+                url = val_link.get("url")
 
-            results = " ".join([str(result) for result in results if result])
+                if not url:
+                    link_scores.append(0)
+                    continue
 
-            if random_link["url"] in results:
-                link_score = 1
+                domain = url.split("/")[2].replace(
+                    "www.", ""
+                )  # Extract the domain from the URL and remove 'www.'
 
-            return link_score
+                if domain in domain_to_search_result:
+                    link_scores.append(
+                        1 if url in str(domain_to_search_result[domain]) else 0
+                    )
+                else:
+                    link_scores.append(1 if url in google_search_results else 0)
+
+            if link_scores:
+                return sum(link_scores) / len(link_scores)
+
+            return 0
         except Exception as e:
             bt.logging.error(f"check_response_random_link: {str(e)}")
             return 0
