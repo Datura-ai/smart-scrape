@@ -14,7 +14,9 @@ class DateFilterType(Enum):
     PAST_WEEK = "PAST_WEEK"
     PAST_2_WEEKS = "PAST_2_WEEKS"
     PAST_MONTH = "PAST_MONTH"
+    PAST_2_MONTHS = "PAST_2_MONTHS"
     PAST_YEAR = "PAST_YEAR"
+    PAST_2_YEARS = "PAST_2_YEARS"
 
 
 random_date_filters = list(
@@ -66,8 +68,12 @@ def get_specified_date_filter(date_filter: DateFilterType):
         diff = timedelta(days=14)
     elif date_filter == DateFilterType.PAST_MONTH:
         diff = timedelta(days=30)
+    elif date_filter == DateFilterType.PAST_2_MONTHS:
+        diff = timedelta(days=60)
     elif date_filter == DateFilterType.PAST_YEAR:
         diff = timedelta(days=365)
+    elif date_filter == DateFilterType.PAST_2_YEARS:
+        diff = timedelta(days=730)
 
     return DateFilter(
         start_date=now - diff,
