@@ -19,6 +19,7 @@ import time
 
 APIFY_LINK_SCRAPE_AMOUNT = 5
 
+
 class WebSearchContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
 
@@ -63,7 +64,9 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 link
                 for link in random.sample(
                     response.search_completion_links,
-                    min(APIFY_LINK_SCRAPE_AMOUNT, len(response.search_completion_links)),
+                    min(
+                        APIFY_LINK_SCRAPE_AMOUNT, len(response.search_completion_links)
+                    ),
                 )
             ]
 
@@ -130,13 +133,19 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
             random_link = random.choice(validator_links)
 
-            results = [
-                response.search_results,
-                response.arxiv_search_results,
-                response.youtube_search_results,
-                response.wikipedia_search_results,
-                response.google_news_search_results,
-            ]
+            tool_to_search_result = {
+                "Google Search": response.search_results,
+                "ArXiv Search": response.arxiv_search_results,
+                "Youtube Search": response.youtube_search_results,
+                "Wikipedia Search": response.wikipedia_search_results,
+                "Google News Search": response.google_news_search_results,
+            }
+
+            results = []
+
+            for tool in response.tools:
+                if tool in tool_to_search_result:
+                    results.append(tool_to_search_result[tool])
 
             results = " ".join([str(result) for result in results if result])
 

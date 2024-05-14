@@ -437,6 +437,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "texts": self.texts,
             "start_date": self.start_date,
             "end_date": self.end_date,
+            "tools": self.tools,
         }
 
     class Config:
