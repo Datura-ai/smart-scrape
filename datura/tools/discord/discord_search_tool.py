@@ -31,12 +31,16 @@ class DiscordSearchTool(BaseTool):
         query: str,
     ) -> str:
         """Search Discord messages and return results."""
+        date_filter = self.tool_manager.date_filter
+
         client = DiscordAPIClient()
 
         body = {
             "query": query,
             "limit": 8,
             "possible_reply_limit": 8,
+            "start_date": date_filter.start_date.timestamp(),
+            "end_date": date_filter.end_date.timestamp(),
         }
 
         (result, _, _) = await client.search_messages(body)
