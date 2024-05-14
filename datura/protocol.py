@@ -277,6 +277,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     def get_search_summary_completion(self) -> Optional[str]:
         return self.texts.get(ScraperTextRole.SEARCH_SUMMARY.value, "")
 
+    def get_hacker_news_completion(self) -> Optional[str]:
+        return self.texts.get(ScraperTextRole.HACKER_NEWS_SUMMARY.value, "")
+
+    def get_reddit_completion(self) -> Optional[str]:
+        return self.texts.get(ScraperTextRole.REDDIT_SUMMARY.value, "")
+
     async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:
             self.completion = ""
@@ -412,9 +418,22 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             }
 
         completion_links = TwitterUtils().find_twitter_links(self.completion)
-        search_completion_links = WebSearchUtils().find_links(
-            self.get_search_summary_completion()
+
+        search_completions = [
+            self.get_search_summary_completion(),
+            self.get_hacker_news_completion(),
+            self.get_reddit_completion(),
+        ]
+
+        search_completions = " ".join(
+            [
+                str(search_completion)
+                for search_completion in search_completions
+                if search_completion
+            ]
         )
+
+        search_completion_links = WebSearchUtils().find_links(search_completions)
 
         return {
             "name": headers.get("name", ""),
@@ -431,12 +450,15 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "wikipedia_search_results": self.wikipedia_search_results,
             "youtube_search_results": self.youtube_search_results,
             "arxiv_search_results": self.arxiv_search_results,
+            "hacker_news_search_results": self.hacker_news_search_results,
+            "reddit_search_results": self.reddit_search_results,
             "prompt_analysis": self.prompt_analysis.dict(),
             "completion_links": completion_links,
             "search_completion_links": search_completion_links,
             "texts": self.texts,
             "start_date": self.start_date,
             "end_date": self.end_date,
+            "tools": self.tools,
         }
 
     class Config:

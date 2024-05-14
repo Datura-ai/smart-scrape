@@ -48,15 +48,9 @@ class ScraperValidator:
         self.neuron = neuron
         self.timeout = 180
         self.tools = [
-            "Twitter Search",
-            "Google Search",
-            "ArXiv Search",
-            "Youtube Search",
-            # "Discord Search",
-            "Wikipedia Search",
-            "Reddit Search",
-            "Hacker News Search",
-            "Google Image Search",
+            ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
+            ["Twitter Search", "Google Search", "Wikipedia Search", "ArXiv Search"],
+            ["Twitter Search", "Youtube Search", "Wikipedia Search"],
         ]
         self.language = "en"
         self.region = "us"
@@ -350,12 +344,14 @@ class ScraperValidator:
                 bt.logging.info("No available UIDs, skipping task execution.")
                 return
 
+            tools = random.choice(self.tools)
+
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=strategy,
                 is_only_allowed_miner=False,
                 date_filter=get_random_date_filter(),
-                tools=self.tools,
+                tools=tools,
                 language=self.language,
                 region=self.region,
                 google_date_filter=self.date_filter,
