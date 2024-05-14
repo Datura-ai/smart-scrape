@@ -5,6 +5,7 @@ import pytz
 from typing import Optional
 import pydantic
 from pydantic import BaseModel
+from collections import Counter
 
 
 class DateFilterType(Enum):
@@ -16,30 +17,18 @@ class DateFilterType(Enum):
     PAST_YEAR = "PAST_YEAR"
 
 
-random_date_filters = [
-    DateFilterType.PAST_24_HOURS,
-    DateFilterType.PAST_24_HOURS,
-    DateFilterType.PAST_24_HOURS,
-    DateFilterType.PAST_24_HOURS,
-    DateFilterType.PAST_24_HOURS,
-    DateFilterType.PAST_2_DAYS,
-    DateFilterType.PAST_2_DAYS,
-    DateFilterType.PAST_WEEK,
-    DateFilterType.PAST_WEEK,
-    DateFilterType.PAST_WEEK,
-    DateFilterType.PAST_WEEK,
-    DateFilterType.PAST_WEEK,
-    DateFilterType.PAST_WEEK,
-    DateFilterType.PAST_2_WEEKS,
-    DateFilterType.PAST_2_WEEKS,
-    DateFilterType.PAST_2_WEEKS,
-    DateFilterType.PAST_2_WEEKS,
-    DateFilterType.PAST_2_WEEKS,
-    DateFilterType.PAST_2_WEEKS,
-    DateFilterType.PAST_2_WEEKS,
-    DateFilterType.PAST_MONTH,
-    DateFilterType.PAST_YEAR,
-]
+random_date_filters = list(
+    Counter(
+        {
+            DateFilterType.PAST_24_HOURS: 4,
+            DateFilterType.PAST_2_DAYS: 4,
+            DateFilterType.PAST_WEEK: 5,
+            DateFilterType.PAST_2_WEEKS: 5,
+            DateFilterType.PAST_MONTH: 1,
+            DateFilterType.PAST_YEAR: 1,
+        }
+    ).elements()
+)
 
 
 class DateFilter(BaseModel):
