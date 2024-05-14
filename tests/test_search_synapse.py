@@ -2,12 +2,12 @@ import requests
 import json
 
 tools = [
+    "Twitter Search",
     "Google Search",
     "Google Image Search",
     "Google News Search",
     "Hacker News Search",
     "Reddit Search",
-    "Recent Tweets",
     "Wikipedia Search",
     "ArXiv Search",
     "Youtube Search",

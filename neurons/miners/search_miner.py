@@ -1,6 +1,6 @@
 import bittensor as bt
 from datura.protocol import SearchSynapse
-from datura.tools.twitter.get_recent_tweets_tool import GetRecentTweetsTool
+from datura.tools.twitter.twitter_search_tool import TwitterSearchTool
 from datura.tools.search.serp_google_search_tool import SerpGoogleSearchTool
 from datura.tools.search.serp_google_image_search_tool import SerpGoogleImageSearchTool
 from datura.tools.search.serp_google_news_search_tool import SerpGoogleNewsSearchTool
@@ -22,7 +22,7 @@ class SearchMiner:
         tools = synapse.tools
 
         available_tools = [
-            GetRecentTweetsTool(),
+            TwitterSearchTool(),
             SerpGoogleSearchTool(),
             SerpGoogleImageSearchTool(),
             SerpGoogleNewsSearchTool(),
