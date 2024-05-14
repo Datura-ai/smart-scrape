@@ -91,7 +91,7 @@ class BaseRewardModel:
         # Apply a more aggressive exponential function to exaggerate differences
         # Adjust the exponent to control the differentiation between scores
         exaggeration_factor = (
-            2  # Adjust this factor to control the steepness of the reward curve
+            3  # Adjust this factor to control the steepness of the reward curve
         )
         rewards[~zero_mask] = torch.pow(
             rewards[~zero_mask] * exaggeration_factor, exaggeration_factor
