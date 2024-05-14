@@ -5,7 +5,6 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
-from dotenv import load_dotenv
 from llama_index.core import Settings
 from pinecone import Pinecone, PodSpec
 from llama_index.core import StorageContext
@@ -14,8 +13,6 @@ from llama_index.core import VectorStoreIndex
 from llama_index.readers.file import FlatReader
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.vector_stores.pinecone import PineconeVectorStore
-
-load_dotenv()
 
 
 class DocsIndexer:
@@ -26,7 +23,8 @@ class DocsIndexer:
         Settings.embed_model = OpenAIEmbedding(
             api_key=self.OPENAI_APIKEY, model="text-embedding-3-large", embed_batch_size=100
         )
-        self.docs_path = f"{os.path.abspath(os.getcwd())}/bittensor-docs"
+        self.docs_url = "https://github.com/opentensor/developer-docs"
+        self.docs_path = f"{os.path.abspath(os.getcwd())}/bittensor-docs/docs"
         self.index_name = "documentation"
         self.subnets = {
             "alpha-1": "https://github.com/opentensor/prompting",
@@ -119,6 +117,27 @@ class DocsIndexer:
         link = f"{base_url}/{link_file}/{link_anchor}"
         return self.normalize_link(f"[{link_text}]({link})")
 
+    def fetch_docs(self):
+        repo_dir = 'bittensor-docs'
+        docs_path = os.path.join(repo_dir, 'docs')
+        try:
+            subprocess.run(
+                ["git", "clone", self.docs_url, repo_dir], check=True)
+
+            # Remove all directories and files except 'docs'
+            for root, dirs, files in os.walk(repo_dir, topdown=False):
+                for dir in dirs:
+                    dir_path = os.path.join(root, dir)
+                    if dir_path != docs_path:
+                        shutil.rmtree(dir_path)
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    if root != docs_path:
+                        os.remove(file_path)
+
+        except subprocess.CalledProcessError:
+            print(f"Failed to clone {self.docs_url}")
+
     def read_docs(self):
         docs = []
         for root, _, files in os.walk(self.docs_path):
@@ -136,6 +155,9 @@ class DocsIndexer:
                         metadata['filepath'] = file_path
                         doc.metadata = metadata
                     docs.extend(document)
+
+        path = self.docs_path.replace('docs/', '')
+        shutil.rmtree(path)
         return docs
 
     def generate_link(self, file_extension, file_path):
@@ -193,11 +215,20 @@ class DocsIndexer:
 
         return nodes
 
-    def create_docs_index(self, create=False):
+    def create_docs_index(
+        self,
+        ignore_creating_docs_index=False,
+        ignore_fetching_docs=False,
+    ):
+        if not ignore_fetching_docs:
+            print('fetching')
+            self.fetch_docs()
+
         docs = self.read_docs()
         nodes = self.convert_docs_to_nodes(docs)
 
-        if create:
+        if not ignore_creating_docs_index:
+            self.pinecone.delete_index(self.index_name)
             self.pinecone.create_index(
                 self.index_name,
                 dimension=3072,
@@ -374,6 +405,8 @@ class DocsIndexer:
 
             docs[folder_name] = current_docs
 
+        path = f'{os.path.abspath(os.getcwd())}/subnets'
+        shutil.rmtree(path)
         return docs
 
     def convert_subnet_docs_to_nodes(self, docs):
@@ -422,16 +455,20 @@ class DocsIndexer:
 
         return nodes
 
-    def create_subnet_docs_index(self, create=False, fetch=False):
+    def create_subnet_docs_index(
+        self,
+        ignore_creating_subnets_index=True,
+        ignore_fetching_subnet_docs=False
+    ):
         try:
-            if fetch:
+            if not ignore_fetching_subnet_docs:
                 self.fetch_subnet_docs()
 
             docs = self.read_subnet_docs()
             nodes = self.convert_subnet_docs_to_nodes(docs)
             otf_weights = self.parse_otf_weights()
 
-            if create:
+            if not ignore_creating_subnets_index:
                 self.pinecone.create_index(
                     self.index_name,
                     dimension=3072,
@@ -448,8 +485,7 @@ class DocsIndexer:
                 merged.extend(nodes)
                 if subnet in otf_weights:
                     merged.extend(otf_weights[subnet])
-                    print(f"docs: >>> OTF: {subnet} : {
-                          len(otf_weights[subnet])} nodes")
+                    print(f"docs: >>> OTF: {subnet} : {len(otf_weights[subnet])} nodes")
                 else:
                     print("docs: >>> OTF: <not-available>")
 
@@ -475,16 +511,39 @@ class DocsIndexer:
             print(f"Error: {e}")
             sys.exit(1)
 
+    def execute(
+        self,
+        ignore_creating_docs_index: bool,
+        ignore_creating_subnets_index: bool,
+        ignore_fetching_docs: bool,
+        ignore_fetching_subnet_docs: bool,
+    ):
+        self.create_docs_index(
+            ignore_creating_docs_index,
+            ignore_fetching_docs
+        )
+
+        self.create_subnet_docs_index(
+            ignore_creating_subnets_index,
+            ignore_fetching_subnet_docs,
+        )
+
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
+    if '-h' in sys.argv or '--help' in sys.argv:
         print(
-            "Usage: python script.py <action> [--create-index] [--fetch-docs]")
+            "Usage: python3 datura/scripts/bittensor_docs_indexer.py [--ignore-creating-docs-index] [--ignore-creating-subnets-index] [--ignore-fetching-docs] [--ignore-fetching-subnet-docs]")
         sys.exit(1)
 
-    action = sys.argv[1]
-    create_index = "--create-index" in sys.argv
-    fetch_docs = "--fetch-docs" in sys.argv
+    ignore_creating_docs_index = "--ignore-creating-docs-index" in sys.argv or False
+    ignore_creating_subnets_index = "--ignore-creating-subnets-index" in sys.argv or True
+    ignore_fetching_docs = "--ignore-fetching-docs" in sys.argv or False
+    ignore_fetching_subnet_docs = "--ignore-fetching-subnet-docs" in sys.argv or False
 
     docs_indexer = DocsIndexer()
-    docs_indexer.create_subnet_docs_index(create_index, fetch_docs)
+    docs_indexer.execute(
+        ignore_creating_docs_index,
+        ignore_creating_subnets_index,
+        ignore_fetching_docs,
+        ignore_fetching_subnet_docs,
+    )
