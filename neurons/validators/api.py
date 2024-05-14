@@ -10,6 +10,7 @@ from validator import Neuron
 import time
 import asyncio
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 import json
 
 app = FastAPI()
@@ -91,17 +92,36 @@ async def process_scraper_validator(request: Request, data: dict):
 
 
 available_tools = [
+    "Recent Tweets",
     "Google Search",
+    "Google News Search",
     "Google Image Search",
+    "Bing Search",
+    "ArXiv Search",
+    "Wikipedia Search",
+    "Youtube Search",
     "Hacker News Search",
     "Reddit Search",
 ]
+
+SEARCH_DESCRIPTION = """Performs a search across multiple platforms. Available tools are:
+- Recent Tweets: Uses Twitter's /2/tweets/search/recent endpoint to search for recent tweets.
+- Google Search: Searches the web using Google.
+- Google News Search: Searches news articles using Google News.
+- Google Image Search: Searches images using Google.
+- Bing Search: Searches the web using Bing.
+- ArXiv Search: Searches academic papers on ArXiv.
+- Wikipedia Search: Searches articles on Wikipedia.
+- Youtube Search: Searches videos on Youtube.
+- Hacker News Search: Searches posts on Hacker News, under the hood it uses Google search.
+- Reddit Search: Searches posts on Reddit, under the hood it uses Google search.
+"""
 
 
 @app.get(
     "/search",
     summary="Search across multiple platforms",
-    description="Performs a search across specified tools",
+    description=SEARCH_DESCRIPTION,
     response_description="A dictionary of search results from the specified tools.",
     responses={
         200: {
@@ -138,6 +158,26 @@ async def search(
 @app.get("/")
 async def health_check():
     return {"status": "healthy"}
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="Datura API",
+        version="1.0.0",
+        summary="API for searching across multiple platforms",
+        routes=app.routes,
+        servers=[{"url": "https://api.smartscrape.ai", "description": "Datura API"}],
+    )
+    openapi_schema["info"]["x-logo"] = {
+        "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
+    }
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 
 def run_fastapi():

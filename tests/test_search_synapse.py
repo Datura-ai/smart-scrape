@@ -4,8 +4,14 @@ import json
 tools = [
     "Google Search",
     "Google Image Search",
+    "Google News Search",
     "Hacker News Search",
     "Reddit Search",
+    "Recent Tweets",
+    "Wikipedia Search",
+    "ArXiv Search",
+    "Youtube Search",
+    "Bing Search",
 ]
 
 query = "What are the recent sport events?"
