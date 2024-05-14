@@ -35,9 +35,15 @@ class GetRecentTweetsTool(BaseTool):
         query: str,  # run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         """Tweet message and return."""
-        openai_query_model = self.tool_manager.miner.config.miner.openai_query_model
+        openai_query_model = (
+            self.tool_manager.miner.config.miner.openai_query_model
+            if self.tool_manager
+            else "gpt-3.5-turbo-0125"
+        )
         openai_fix_query_model = (
             self.tool_manager.miner.config.miner.openai_fix_query_model
+            if self.tool_manager
+            else "gpt-4-1106-preview"
         )
 
         client = TwitterPromptAnalyzer(
