@@ -1,6 +1,6 @@
 import os
 from pydantic import BaseModel, Field
-from typing import List
+from typing import Optional
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, HTTPException, Request, Query
 import uvicorn
@@ -10,11 +10,8 @@ from validator import Neuron
 import time
 import asyncio
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 import json
-# from datura.tools.search.serp_google_search_tool import SerpGoogleSearchTool
-# from datura.tools.search.serp_google_image_search_tool import SerpGoogleImageSearchTool
-# from datura.tools.hacker_news.hacker_news_search_tool import HackerNewsSearchTool
-# from datura.tools.reddit.reddit_search_tool import RedditSearchTool
 
 app = FastAPI()
 
@@ -94,40 +91,43 @@ async def process_scraper_validator(request: Request, data: dict):
     return StreamingResponse(response_stream_event(data))
 
 
-class SearchRequest(BaseModel):
-    tools: List[str] = Field(
-        ...,
-        example=[
-            "Google Search",
-            "Google Image Search",
-            "Hacker News Search",
-            "Reddit Search",
-        ],
-    )
-    query: str = Field(..., example="What are the recent sport events?")
-
-
 available_tools = [
-    # SerpGoogleSearchTool(),
-    # SerpGoogleImageSearchTool(),
-    # HackerNewsSearchTool(),
-    # RedditSearchTool(),
+    "Recent Tweets",
+    "Google Search",
+    "Google News Search",
+    "Google Image Search",
+    "Bing Search",
+    "ArXiv Search",
+    "Wikipedia Search",
+    "Youtube Search",
+    "Hacker News Search",
+    "Reddit Search",
 ]
+
+SEARCH_DESCRIPTION = """Performs a search across multiple platforms. Available tools are:
+- Recent Tweets: Uses Twitter's /2/tweets/search/recent endpoint to search for recent tweets.
+- Google Search: Searches the web using Google.
+- Google News Search: Searches news articles using Google News.
+- Google Image Search: Searches images using Google.
+- Bing Search: Searches the web using Bing.
+- ArXiv Search: Searches academic papers on ArXiv.
+- Wikipedia Search: Searches articles on Wikipedia.
+- Youtube Search: Searches videos on Youtube.
+- Hacker News Search: Searches posts on Hacker News, under the hood it uses Google search.
+- Reddit Search: Searches posts on Reddit, under the hood it uses Google search.
+"""
 
 
 @app.get(
     "/search",
-    response_model=dict,
     summary="Search across multiple platforms",
-    description="Performs a search across specified tools",
+    description=SEARCH_DESCRIPTION,
     response_description="A dictionary of search results from the specified tools.",
     responses={
         200: {
             "description": "A dictionary of search results from the specified tools.",
             "content": {
-                "application/json": {
-                    "example": {tool.name: {} for tool in available_tools}
-                }
+                "application/json": {"example": {tool: {} for tool in available_tools}}
             },
         }
     },
@@ -136,34 +136,48 @@ async def search(
     tools: str = Query(
         ...,
         description="A JSON encoded list of tools to search with",
-        example=json.dumps([tool.name for tool in available_tools]),
+        example=json.dumps([tool for tool in available_tools]),
     ),
     query: str = Query(..., example="What are the recent sport events?"),
+    uid: Optional[int] = Query(
+        None,
+        example=0,
+        description="Optional miner uid to run. If not provided, a random miner will be selected.",
+    ),
 ):
     tools = json.loads(tools)
 
-    tool_tasks = []
-
-    for tool_name in tools:
-        tool_instance = next(
-            (tool for tool in available_tools if tool.name == tool_name), None
-        )
-        if not tool_instance:
-            raise HTTPException(status_code=400, detail=f"Invalid tool: {tool_name}")
-        tool_tasks.append(asyncio.create_task(tool_instance.ainvoke({"query": query})))
-
-    results = await asyncio.gather(*tool_tasks)
-
-    response = {}
-    for tool_name, result in zip(tools, results):
-        response[tool_name] = result
-
-    return response
+    try:
+        result = await neu.scraper_validator.search(query, tools, uid)
+        return result
+    except Exception as e:
+        bt.logging.error(f"error in search {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
 
 
 @app.get("/")
 async def health_check():
     return {"status": "healthy"}
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="Datura API",
+        version="1.0.0",
+        summary="API for searching across multiple platforms",
+        routes=app.routes,
+        servers=[{"url": "https://api.smartscrape.ai", "description": "Datura API"}],
+    )
+    openapi_schema["info"]["x-logo"] = {
+        "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
+    }
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 
 def run_fastapi():

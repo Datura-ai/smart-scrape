@@ -41,3 +41,8 @@ class Task(ABC):
 class TwitterTask(Task):
     def compose_prompt(self) -> str:
         return self.base_text
+
+
+class SearchTask(Task):
+    def compose_prompt(self) -> str:
+        return self.base_text
