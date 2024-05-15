@@ -592,11 +592,14 @@ class ScraperValidator:
             if uid is None:
                 uids = await self.neuron.get_uids(
                     strategy=QUERY_MINERS.RANDOM,
-                    is_only_allowed_miner=True,
+                    is_only_allowed_miner=False,
                     specified_uids=None,
                 )
 
-                uid = uids[0]
+                if uids:
+                    uid = uids[0]
+                else:
+                    raise StopAsyncIteration("No available uids")
 
             axon = self.neuron.metagraph.axons[uid]
 
