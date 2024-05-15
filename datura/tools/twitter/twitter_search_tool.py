@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from starlette.types import Send
 from datura.tools.base import BaseTool
 from datura.services.twitter_prompt_analyzer import TwitterPromptAnalyzer
+from datura.dataset.date_filters import get_specified_date_filter, DateFilterType
 
 
 class TwitterSearchToolSchema(BaseModel):
@@ -35,11 +36,21 @@ class TwitterSearchTool(BaseTool):
         query: str,  # run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         """Tweet message and return."""
-        openai_query_model = self.tool_manager.miner.config.miner.openai_query_model
+        openai_query_model = (
+            self.tool_manager.miner.config.miner.openai_query_model
+            if self.tool_manager
+            else "gpt-3.5-turbo-0125"
+        )
         openai_fix_query_model = (
             self.tool_manager.miner.config.miner.openai_fix_query_model
+            if self.tool_manager
+            else "gpt-4-1106-preview"
         )
-        date_filter = self.tool_manager.date_filter
+        date_filter = (
+            self.tool_manager.date_filter
+            if self.tool_manager
+            else get_specified_date_filter(DateFilterType.PAST_WEEK)
+        )
 
         client = TwitterPromptAnalyzer(
             openai_query_model=openai_query_model,

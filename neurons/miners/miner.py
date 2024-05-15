@@ -24,9 +24,10 @@ from typing import List, Dict, Tuple
 
 from datura.utils import get_version
 
-from datura.protocol import IsAlive, ScraperStreamingSynapse
+from datura.protocol import IsAlive, ScraperStreamingSynapse, SearchSynapse
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.miners.scraper_miner import ScraperMiner
+from neurons.miners.search_miner import SearchMiner
 
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
 if not OpenAI.api_key:
@@ -122,6 +123,8 @@ class StreamMiner(ABC):
         ).attach(
             forward_fn=self._smart_scraper,
             blacklist_fn=self.blacklist_smart_scraper,
+        ).attach(
+            forward_fn=self._search,
         )
         bt.logging.info(f"Axon created: {self.axon}")
 
@@ -141,6 +144,9 @@ class StreamMiner(ABC):
         self, synapse: ScraperStreamingSynapse
     ) -> ScraperStreamingSynapse:
         return self.smart_scraper(synapse)
+
+    async def _search(self, synapse: SearchSynapse) -> SearchSynapse:
+        return await self.search(synapse)
 
     def base_blacklist(self, synapse, blacklist_amt=20000) -> Tuple[bool, str]:
         try:
@@ -238,6 +244,9 @@ class StreamMiner(ABC):
     def smart_scraper(
         self, synapse: ScraperStreamingSynapse
     ) -> ScraperStreamingSynapse: ...
+
+    @abstractmethod
+    async def search(self, synapse: SearchSynapse) -> SearchSynapse: ...
 
     def run(self):
         if not self.subtensor.is_hotkey_registered(
@@ -346,6 +355,11 @@ class StreamingTemplateMiner(StreamMiner):
         tw_miner = ScraperMiner(self)
         token_streamer = partial(tw_miner.smart_scraper, synapse)
         return synapse.create_streaming_response(token_streamer)
+
+    async def search(self, synapse: SearchSynapse) -> SearchSynapse:
+        bt.logging.info(f"started processing for search synapse {synapse}")
+        search_miner = SearchMiner(self)
+        return await search_miner.search(synapse)
 
 
 def get_valid_hotkeys(config):

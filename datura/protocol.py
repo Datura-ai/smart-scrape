@@ -277,6 +277,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     def get_search_summary_completion(self) -> Optional[str]:
         return self.texts.get(ScraperTextRole.SEARCH_SUMMARY.value, "")
 
+    def get_hacker_news_completion(self) -> Optional[str]:
+        return self.texts.get(ScraperTextRole.HACKER_NEWS_SUMMARY.value, "")
+
+    def get_reddit_completion(self) -> Optional[str]:
+        return self.texts.get(ScraperTextRole.REDDIT_SUMMARY.value, "")
+
     async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:
             self.completion = ""
@@ -412,9 +418,22 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             }
 
         completion_links = TwitterUtils().find_twitter_links(self.completion)
-        search_completion_links = WebSearchUtils().find_links(
-            self.get_search_summary_completion()
+
+        search_completions = [
+            self.get_search_summary_completion(),
+            self.get_hacker_news_completion(),
+            self.get_reddit_completion(),
+        ]
+
+        search_completions = " ".join(
+            [
+                str(search_completion)
+                for search_completion in search_completions
+                if search_completion
+            ]
         )
+
+        search_completion_links = WebSearchUtils().find_links(search_completions)
 
         return {
             "name": headers.get("name", ""),
@@ -431,12 +450,15 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "wikipedia_search_results": self.wikipedia_search_results,
             "youtube_search_results": self.youtube_search_results,
             "arxiv_search_results": self.arxiv_search_results,
+            "hacker_news_search_results": self.hacker_news_search_results,
+            "reddit_search_results": self.reddit_search_results,
             "prompt_analysis": self.prompt_analysis.dict(),
             "completion_links": completion_links,
             "search_completion_links": search_completion_links,
             "texts": self.texts,
             "start_date": self.start_date,
             "end_date": self.end_date,
+            "tools": self.tools,
         }
 
     class Config:
@@ -477,6 +499,41 @@ def extract_json_chunk(chunk, response, buffer=""):
                 break
 
     return json_objects, buffer
+
+
+class SearchSynapse(bt.Synapse):
+    """A class to represent search api synapse"""
+
+    query: str = pydantic.Field(
+        "",
+        title="model",
+        description="The query to run tools with. Example: 'What are the recent sport events?'. Immutable.",
+        allow_mutation=False,
+    )
+
+    tools: List[str] = pydantic.Field(
+        default_factory=list,
+        title="Tools",
+        description="A list of tools specified by user to fetch data from. Immutable."
+        "Available tools are: Google Search, Google Image Search, Hacker News Search, Reddit Search",
+        allow_mutation=False,
+    )
+
+    uid: Optional[int] = pydantic.Field(
+        None,
+        title="UID",
+        description="Optional miner uid to run. If not provided, a random miner will be selected. Immutable.",
+        allow_mutation=False,
+    )
+
+    results: Optional[Dict[str, Any]] = pydantic.Field(
+        default_factory=dict,
+        title="Tool result dictionary",
+        description="A dictionary of tool results where key is tool name and value is the result. Example: {'Google Search': {}, 'Google Image Search': {} }",
+    )
+
+    def deserialize(self) -> str:
+        return self.query
 
 
 class MinerTweet(BaseModel):

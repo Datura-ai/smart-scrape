@@ -5,7 +5,11 @@ import random
 import json
 import bittensor as bt
 from base_validator import AbstractNeuron
-from datura.protocol import ScraperStreamingSynapse, TwitterPromptAnalysisResult
+from datura.protocol import (
+    ScraperStreamingSynapse,
+    TwitterPromptAnalysisResult,
+    SearchSynapse,
+)
 from datura.stream import process_async_responses, process_single_response
 from reward import RewardModelType, RewardScoringType
 from typing import List
@@ -24,7 +28,7 @@ from neurons.validators.reward.search_content_relevance import (
     WebSearchContentRelevanceModel,
 )
 from neurons.validators.reward.reward_llm import RewardLLM
-from neurons.validators.utils.tasks import TwitterTask
+from neurons.validators.utils.tasks import TwitterTask, SearchTask
 
 from datura.dataset import MockTwitterQuestionsDataset, QuestionsDataset
 from datura.services.twitter_api_wrapper import TwitterAPIClient
@@ -48,15 +52,9 @@ class ScraperValidator:
         self.neuron = neuron
         self.timeout = 180
         self.tools = [
-            "Twitter Search",
-            "Google Search",
-            "ArXiv Search",
-            "Youtube Search",
-            # "Discord Search",
-            "Wikipedia Search",
-            "Reddit Search",
-            "Hacker News Search",
-            "Google Image Search",
+            ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
+            ["Twitter Search", "Google Search", "Wikipedia Search", "ArXiv Search"],
+            ["Twitter Search", "Youtube Search", "Wikipedia Search"],
         ]
         self.language = "en"
         self.region = "us"
@@ -350,12 +348,14 @@ class ScraperValidator:
                 bt.logging.info("No available UIDs, skipping task execution.")
                 return
 
+            tools = random.choice(self.tools)
+
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=strategy,
                 is_only_allowed_miner=False,
                 date_filter=get_random_date_filter(),
-                tools=self.tools,
+                tools=tools,
                 language=self.language,
                 region=self.region,
                 google_date_filter=self.date_filter,
@@ -586,4 +586,53 @@ class ScraperValidator:
                     )
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")
+            raise e
+
+    async def search(self, query: str, tools: List[str], uid: int = None):
+        try:
+            task_name = "search"
+
+            task = SearchTask(
+                base_text=query,
+                task_name=task_name,
+                task_type="search",
+                criteria=[],
+            )
+
+            if not len(self.neuron.available_uids):
+                bt.logging.info("Not available uids")
+                raise StopAsyncIteration("Not available uids")
+
+            prompt = task.compose_prompt()
+
+            bt.logging.debug("run_task", task_name)
+
+            # If uid is not provided, get random uids
+            if uid is None:
+                uids = await self.neuron.get_uids(
+                    strategy=QUERY_MINERS.RANDOM,
+                    is_only_allowed_miner=True,
+                    specified_uids=None,
+                )
+
+                uid = uids[0]
+
+            axon = self.neuron.metagraph.axons[uid]
+
+            synapse = SearchSynapse(
+                query=prompt,
+                tools=tools,
+                results={},
+            )
+
+            synapse: SearchSynapse = await self.neuron.dendrite.call(
+                target_axon=axon,
+                synapse=synapse,
+                timeout=self.timeout,
+                deserialize=False,
+            )
+
+            return synapse.results
+        except Exception as e:
+            bt.logging.error(f"Error in search: {e}")
             raise e
