@@ -23,7 +23,7 @@ random_date_filters = list(
     Counter(
         {
             DateFilterType.PAST_24_HOURS: 4,
-            DateFilterType.PAST_2_DAYS: 4,
+            DateFilterType.PAST_2_DAYS: 5,
             DateFilterType.PAST_WEEK: 5,
             DateFilterType.PAST_2_WEEKS: 5,
             DateFilterType.PAST_MONTH: 1,
