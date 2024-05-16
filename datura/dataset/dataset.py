@@ -1624,18 +1624,17 @@ class MockTwitterQuestionsDataset:
 
 class StackOverflowDataset:
     def __init__(self):
-        # Stack Overflow API endpoint for a random article
-        self.url = "https://api.stackexchange.com/2.3/questions"
         self.questions = []
 
     def get_stack_questions(self):
         url = "https://api.stackexchange.com/2.3/questions"
+
         params = {
             "order": "desc",
             "sort": "votes",  # Sorting by votes means that it's likely that the same questions will be fetched again
             "site": "stackoverflow",
             "pagesize": 100,  # Fetch 100 questions per API call
-            "page": random.randint(1, 5),
+            "page": random.randint(1, 25),  # Max 25 questions allowed on free API
         }
 
         # Fetch questions
@@ -1660,38 +1659,14 @@ class StackOverflowDataset:
         if not self.questions:
             self.get_stack_questions()
         question = self.questions.pop()
-        # Fetch the highest voted answer for the selected question
-        answer = self.get_stack_answer(question)
-        return {"question": question["title"], "answer": answer}
-
-    def get_stack_answer(self, question):
-        question_id = question["question_id"]
-        url_answers = (
-            f"https://api.stackexchange.com/2.3/questions/{question_id}/answers"
-        )
-        params_answers = {
-            "order": "desc",
-            "sort": "votes",
-            "site": "stackoverflow",
-            "filter": "withbody",  #'!9_bDDxJY5'
-        }
-        response_answers = requests.get(url_answers, params=params_answers)
-        response_answers.raise_for_status()
-        answers = response_answers.json()["items"]
-        if not answers:
-            bt.logging.warning("No answers found for the question!")
-
-        highest_voted_answer = answers[0]  # The first answer is the highest voted
-        soup = BeautifulSoup(highest_voted_answer["body"], "html.parser")
-        full_content = soup.get_text(separator="\n")
-        return full_content
+        return question["title"]
 
     def next(self):
         bt.logging.debug("Retrieving data from prompting.dataset...")
         t0 = time.time()
-        info = self.get_stack_question()
-        info["fetch_time"] = time.time() - t0
-        return html.unescape(info["question"])
+        question = self.get_stack_question()
+        fetch_time = time.time() - t0
+        return html.unescape(question)
 
 
 class MockDiscordQuestionsDataset:
@@ -1767,7 +1742,15 @@ class QuestionsDataset:
 
     def next(self):
         random_dataset = random.choice(self.datasets)
-        return random_dataset.next()
+        if isinstance(random_dataset, StackOverflowDataset):
+            try:
+                return random_dataset.next()
+            except Exception as e:
+                print(f"Error with StackOverflowDataset: {e}")
+                fallback_dataset = MockTwitterQuestionsDataset()
+                return fallback_dataset.next()
+        else:
+            return random_dataset.next()
 
 
 if __name__ == "__main__":
