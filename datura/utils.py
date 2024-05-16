@@ -331,7 +331,7 @@ async def save_logs_in_chunks(
     search_scores,
     weights,
     neuron,
-    netuid
+    netuid,
 ):
     try:
         logs = [
@@ -370,6 +370,13 @@ async def save_logs_in_chunks(
                         None,
                     ),
                 },
+                "tools": response.tools,
+                "date_filter": {
+                    "start_date": response.start_date,
+                    "end_date": response.end_date,
+                    "date_filter_type": response.date_filter_type,
+                },
+                "time": response.dendrite.process_time,
             }
             for response, uid, reward, summary_reward, twitter_reward, search_reward, tweet_score, search_score in zip(
                 responses,
