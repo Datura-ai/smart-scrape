@@ -2,26 +2,26 @@ import re
 import json
 import bittensor as bt
 from typing import Type
-from datura.tools.bittensor.pinecone_indexer import PineconeIndexer
+from datura.tools.subnets_source_code.pinecone_indexer import SubnetSourceCodePineconeIndexer
 from pydantic import BaseModel, Field
 from starlette.types import Send
 from datura.tools.base import BaseTool
 
 
-class BittensorDocsToolSchema(BaseModel):
+class SubnetsSourceCodeToolSchema(BaseModel):
     query: str = Field(
         ...,
-        description="The question for Bittensor docs.",
+        description="The question for subnets source code.",
     )
 
 
-class BittensorDocsTool(BaseTool):
+class SubnetsSourceCodeTool(BaseTool):
     """Tool that answers questions about Bittensor docs."""
 
-    name = "Bittensor Docs"
-    slug = "bittensor-docs"
-    description = "Answer questions about Bittensor docs."
-    args_scheme: Type[BittensorDocsToolSchema] = BittensorDocsToolSchema
+    name = "Subnet Source Code"
+    slug = "subnets-source-code"
+    description = "Answer questions about bittensor subnet's source code."
+    args_scheme: Type[SubnetsSourceCodeToolSchema] = SubnetsSourceCodeToolSchema
     tool_id = "98590eca-7db9-495f-9d35-c7c1aeeffe0b"
 
     def _run():
@@ -52,8 +52,8 @@ class BittensorDocsTool(BaseTool):
         self,
         query: str,
     ) -> str:
-        """Search Bittensor Documentation and return results."""
-        client = PineconeIndexer()
+        """Search on subnets' source codes"""
+        client = SubnetSourceCodePineconeIndexer()
 
         limit = 15
         index_names, query = self.extract_channels_from_query(query)
@@ -61,11 +61,11 @@ class BittensorDocsTool(BaseTool):
         docs = await client.general_retrieve(query, limit, index_names)
 
         bt.logging.info(
-            "================================== Bittensor Docs Result ==================================="
+            "================================== Subnets Source Code Result ==================================="
         )
         bt.logging.info(docs)
         bt.logging.info(
-            "================================== Bittensor Docs Result ===================================="
+            "================================== Subnets Source Code Result ===================================="
         )
 
         return docs
@@ -76,7 +76,7 @@ class BittensorDocsTool(BaseTool):
 
         if data:
             response_body = {
-                "type": "bittensor_docs_search",
+                "type": "subnets_source_code_search",
                 "content": data,
             }
 
@@ -87,4 +87,4 @@ class BittensorDocsTool(BaseTool):
                     "more_body": False,
                 }
             )
-            bt.logging.info("Bittensor Documentation search results data sent")
+            bt.logging.info("Subnets Source Code search results data sent")

@@ -87,6 +87,7 @@ class ScraperTextRole(str, Enum):
     REDDIT_SUMMARY = "reddit_summary"
     HACKER_NEWS_SUMMARY = "hacker_news_summary"
     BITTENSOR_SUMMARY = "bittensor_summary"
+    SUBNETS_SOURCE_CODE_SUMMARY = "subnets_source_code_summary"
     FINAL_SUMMARY = "summary"
 
 
@@ -253,6 +254,18 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Optional JSON object containing search results from Discord",
     )
 
+    bittensor_docs_results: Optional[Any] = pydantic.Field(
+        default_factory=dict,
+        title="Bittensor Docs Search Results",
+        description="Optional JSON object containing search results from Bittensor Docs",
+    )
+
+    subnets_source_code_result: Optional[Any] = pydantic.Field(
+        default_factory=dict,
+        title="Subnets Source Code Search Results",
+        description="Optional JSON object containing search results from Subnets Source Code",
+    )
+
     is_intro_text: bool = pydantic.Field(
         False,
         title="Is Intro Text",
@@ -376,6 +389,20 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                         self.discord_search_results = search_json
                         yield json.dumps(
                             {"type": "discord_search", "content": search_json}
+                        )
+
+                    elif content_type == "bittensor_docs_search":
+                        search_json = json_data.get("content", "{}")
+                        self.bittensor_docs_results = search_json
+                        yield json.dumps(
+                            {"type": "bittensor_docs_search", "content": search_json}
+                        )
+
+                    elif content_type == "subnets_source_code_search":
+                        search_json = json_data.get("content", "{}")
+                        self.subnets_source_code_result = search_json
+                        yield json.dumps(
+                            {"type": "subnets_source_code_search", "content": search_json}
                         )
 
                     elif content_type == "google_image_search":
