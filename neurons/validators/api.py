@@ -92,7 +92,7 @@ async def process_scraper_validator(request: Request, data: dict):
 
 
 available_tools = [
-    "Recent Tweets",
+    "Twitter Search",
     "Google Search",
     "Google News Search",
     "Google Image Search",
@@ -105,7 +105,7 @@ available_tools = [
 ]
 
 SEARCH_DESCRIPTION = """Performs a search across multiple platforms. Available tools are:
-- Recent Tweets: Uses Twitter's /2/tweets/search/recent endpoint to search for recent tweets.
+- Twitter Search: Uses Twitter API to search for tweets in past week date range.
 - Google Search: Searches the web using Google.
 - Google News Search: Searches news articles using Google News.
 - Google Image Search: Searches images using Google.

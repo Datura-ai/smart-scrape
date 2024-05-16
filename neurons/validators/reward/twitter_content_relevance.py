@@ -253,13 +253,23 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                     ):
                         tweet_score = 0
 
-                    # Recent tweets wuould be last two weeks
                     tweet_created_at_aware = datetime.strptime(
                         converted_val_tweet_created_at, "%Y-%m-%dT%H:%M:%S.%fZ"
-                    ).replace(tzinfo=pytz.UTC)
+                    ).replace(tzinfo=pytz.UTC, second=0, microsecond=0)
 
-                    if tweet_created_at_aware < datetime.now(pytz.UTC) - timedelta(
-                        days=14
+                    start_date = response.start_date
+                    end_date = response.end_date
+
+                    start_date = datetime.strptime(
+                        start_date, "%Y-%m-%dT%H:%M:%SZ"
+                    ).replace(tzinfo=pytz.utc)
+                    end_date = datetime.strptime(
+                        end_date, "%Y-%m-%dT%H:%M:%SZ"
+                    ).replace(tzinfo=pytz.utc)
+
+                    if (
+                        tweet_created_at_aware < start_date
+                        or tweet_created_at_aware > end_date
                     ):
                         tweet_score = 0
 
@@ -393,7 +403,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                         unique_tweet_texts[val_tweet.full_text] = val_tweet
 
                 unique_validator_tweets = list(unique_tweet_texts.values())
-                
+
                 duplicate_tweets_count = len(response.validator_tweets) - len(
                     unique_validator_tweets
                 )

@@ -104,6 +104,7 @@ class DateFilter(Enum):
     ANY_TIME = "any time"
     PAST_HOUR = "past hour"
     PAST_24_HOURS = "past 24 hours"
+    PAST_2_DAYS = "past 2 days"
     PAST_WEEK = "past week"
     PAST_MONTH = "past month"
     PAST_YEAR = "past year"

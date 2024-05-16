@@ -11,7 +11,6 @@ from enum import Enum
 from aiohttp import ClientResponse
 from datura.services.twitter_utils import TwitterUtils
 from datura.services.web_search_utils import WebSearchUtils
-import random
 
 
 class IsAlive(bt.Synapse):
@@ -87,6 +86,7 @@ class ScraperTextRole(str, Enum):
     DISCORD_SUMMARY = "discord_summary"
     REDDIT_SUMMARY = "reddit_summary"
     HACKER_NEWS_SUMMARY = "hacker_news_summary"
+    BITTENSOR_SUMMARY = "bittensor_summary"
     FINAL_SUMMARY = "summary"
 
 
@@ -129,6 +129,24 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="A list of tools specified by user to use to answer question.",
     )
 
+    start_date: Optional[str] = pydantic.Field(
+        None,
+        title="Start Date",
+        description="The start date for the search query.",
+    )
+
+    end_date: Optional[str] = pydantic.Field(
+        None,
+        title="End Date",
+        description="The end date for the search query.",
+    )
+
+    date_filter_type: Optional[str] = pydantic.Field(
+        None,
+        title="Date filter enum",
+        description="The date filter enum.",
+    )
+
     language: Optional[str] = pydantic.Field(
         "en",
         title="Language",
@@ -141,7 +159,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Region specified by user.",
     )
 
-    date_filter: Optional[str] = pydantic.Field(
+    google_date_filter: Optional[str] = pydantic.Field(
         "qdr:w",
         title="Date Filter",
         description="Date filter specified by user.",
@@ -258,6 +276,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
 
     def get_search_summary_completion(self) -> Optional[str]:
         return self.texts.get(ScraperTextRole.SEARCH_SUMMARY.value, "")
+
+    def get_hacker_news_completion(self) -> Optional[str]:
+        return self.texts.get(ScraperTextRole.HACKER_NEWS_SUMMARY.value, "")
+
+    def get_reddit_completion(self) -> Optional[str]:
+        return self.texts.get(ScraperTextRole.REDDIT_SUMMARY.value, "")
 
     async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:
@@ -394,9 +418,22 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             }
 
         completion_links = TwitterUtils().find_twitter_links(self.completion)
-        search_completion_links = WebSearchUtils().find_links(
-            self.get_search_summary_completion()
+
+        search_completions = [
+            self.get_search_summary_completion(),
+            self.get_hacker_news_completion(),
+            self.get_reddit_completion(),
+        ]
+
+        search_completions = " ".join(
+            [
+                str(search_completion)
+                for search_completion in search_completions
+                if search_completion
+            ]
         )
+
+        search_completion_links = WebSearchUtils().find_links(search_completions)
 
         return {
             "name": headers.get("name", ""),
@@ -413,10 +450,16 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "wikipedia_search_results": self.wikipedia_search_results,
             "youtube_search_results": self.youtube_search_results,
             "arxiv_search_results": self.arxiv_search_results,
+            "hacker_news_search_results": self.hacker_news_search_results,
+            "reddit_search_results": self.reddit_search_results,
             "prompt_analysis": self.prompt_analysis.dict(),
             "completion_links": completion_links,
             "search_completion_links": search_completion_links,
             "texts": self.texts,
+            "start_date": self.start_date,
+            "end_date": self.end_date,
+            "date_filter_type": self.date_filter_type,
+            "tools": self.tools,
         }
 
     class Config:

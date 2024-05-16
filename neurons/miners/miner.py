@@ -367,7 +367,7 @@ def get_valid_hotkeys(config):
     api = wandb.Api()
     subtensor = bt.subtensor(config=config)
     while True:
-        metagraph = subtensor.metagraph(18)
+        metagraph = subtensor.metagraph(config.netuid)
         try:
             runs = api.runs(f"{datura.ENTITY}/{datura.PROJECT_NAME}")
             latest_version = get_version()

@@ -5,27 +5,28 @@ from pydantic import BaseModel, Field
 from starlette.types import Send
 from datura.tools.base import BaseTool
 from datura.services.twitter_prompt_analyzer import TwitterPromptAnalyzer
+from datura.dataset.date_filters import get_specified_date_filter, DateFilterType
 
 
-class GetRecentTweetsToolSchema(BaseModel):
+class TwitterSearchToolSchema(BaseModel):
     query: str = Field(
         ...,
         description="The search query for tweets.",
     )
 
 
-class GetRecentTweetsTool(BaseTool):
-    """Tool that gets recent tweets from Twitter."""
+class TwitterSearchTool(BaseTool):
+    """Tool that gets tweets from Twitter."""
 
-    name = "Recent Tweets"
+    name = "Twitter Search"
 
-    slug = "get_recent_tweets"
+    slug = "get_tweets"
 
-    description = "Get recent tweets for a given query."
+    description = "Get tweets for a given query."
 
-    args_schema: Type[GetRecentTweetsToolSchema] = GetRecentTweetsToolSchema
+    args_schema: Type[TwitterSearchToolSchema] = TwitterSearchToolSchema
 
-    tool_id = "6e57b718-8953-448b-98db-fd19c1d1469c"
+    tool_id = "e831f03f-3282-4d5c-ae01-d7274515194d"
 
     def _run():
         pass
@@ -45,6 +46,11 @@ class GetRecentTweetsTool(BaseTool):
             if self.tool_manager
             else "gpt-4-1106-preview"
         )
+        date_filter = (
+            self.tool_manager.date_filter
+            if self.tool_manager
+            else get_specified_date_filter(DateFilterType.PAST_WEEK)
+        )
 
         client = TwitterPromptAnalyzer(
             openai_query_model=openai_query_model,
@@ -52,7 +58,8 @@ class GetRecentTweetsTool(BaseTool):
         )
 
         result, prompt_analysis = await client.analyse_prompt_and_fetch_tweets(
-            query, is_recent_tweets=True
+            query,
+            date_filter=date_filter,
         )
 
         bt.logging.info(
