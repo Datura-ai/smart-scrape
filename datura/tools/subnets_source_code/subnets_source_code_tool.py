@@ -76,7 +76,7 @@ class SubnetsSourceCodeTool(BaseTool):
 
         if data:
             response_body = {
-                "type": "subnets_source_code_summary",
+                "type": "subnets_source_code_search",
                 "content": data,
             }
 

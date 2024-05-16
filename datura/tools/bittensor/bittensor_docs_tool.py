@@ -76,7 +76,7 @@ class BittensorDocsTool(BaseTool):
 
         if data:
             response_body = {
-                "type": "bittensor_summary",
+                "type": "bittensor_docs_search",
                 "content": data,
             }
 
