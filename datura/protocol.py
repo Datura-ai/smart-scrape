@@ -535,7 +535,7 @@ class SearchSynapse(bt.Synapse):
     )
 
     def deserialize(self) -> str:
-        return self.query
+        return self
 
 
 class MinerTweet(BaseModel):
