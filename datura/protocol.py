@@ -443,6 +443,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "dendrite": extract_info("bt_header_dendrite"),
             "axon": extract_info("bt_header_axon"),
             "messages": self.messages,
+            "model": self.model,
             "completion": self.completion,
             "miner_tweets": self.miner_tweets,
             "search_results": self.search_results,
