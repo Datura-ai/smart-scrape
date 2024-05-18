@@ -73,40 +73,51 @@ class BaseRewardModel:
         if self.var > 0:
             rewards /= torch.sqrt(self.var)
 
-        # Identify rewards that are initially 0
-        zero_mask = rewards == 0
-
-        # Min-max normalize rewards to scale between 0 and 1
-        min_reward = (
-            torch.min(rewards[~zero_mask]) if rewards[~zero_mask].nelement() > 0 else 0
+        common_formula = torch.erf(
+            rewards / torch.sqrt(torch.tensor([2.0])).to(rewards.device)
         )
-        max_reward = (
-            torch.max(rewards[~zero_mask]) if rewards[~zero_mask].nelement() > 0 else 1
-        )
-
-        # Check if all non-zero rewards are the same
-        if min_reward == max_reward:
-            rewards[~zero_mask] = 1  # Set all non-zero rewards to 1
-        else:
-            epsilon = 1e-10
-            rewards[~zero_mask] = (rewards[~zero_mask] - min_reward) / (
-                max(max_reward - min_reward, epsilon)
-            )
-
-            # Apply a more aggressive exponential function to exaggerate differences
-            exaggeration_factor = 3
-            rewards[~zero_mask] = torch.pow(
-                rewards[~zero_mask] * exaggeration_factor, exaggeration_factor
-            )
-
-            # Re-scale to ensure the top score is close to 1 after exponential exaggeration
-            if rewards[~zero_mask].nelement() > 0:
-                rewards[~zero_mask] /= torch.max(rewards[~zero_mask])
-
-        # Ensure rewards that were initially 0 remain 0
-        rewards[zero_mask] = 0
+        rewards = torch.where(rewards == 0, 0, 0.5 * (1 + common_formula))
 
         return rewards
+
+    # def normalize_rewards(self, rewards: torch.FloatTensor) -> torch.FloatTensor:
+    #     if self.var > 0:
+    #         rewards /= torch.sqrt(self.var)
+
+    #     # Identify rewards that are initially 0
+    #     zero_mask = rewards == 0
+
+    #     # Min-max normalize rewards to scale between 0 and 1
+    #     min_reward = (
+    #         torch.min(rewards[~zero_mask]) if rewards[~zero_mask].nelement() > 0 else 0
+    #     )
+    #     max_reward = (
+    #         torch.max(rewards[~zero_mask]) if rewards[~zero_mask].nelement() > 0 else 1
+    #     )
+
+    #     # Check if all non-zero rewards are the same
+    #     if min_reward == max_reward:
+    #         rewards[~zero_mask] = 1  # Set all non-zero rewards to 1
+    #     else:
+    #         epsilon = 1e-10
+    #         rewards[~zero_mask] = (rewards[~zero_mask] - min_reward) / (
+    #             max(max_reward - min_reward, epsilon)
+    #         )
+
+    #         # Apply a more aggressive exponential function to exaggerate differences
+    #         exaggeration_factor = 3
+    #         rewards[~zero_mask] = torch.pow(
+    #             rewards[~zero_mask] * exaggeration_factor, exaggeration_factor
+    #         )
+
+    #         # Re-scale to ensure the top score is close to 1 after exponential exaggeration
+    #         if rewards[~zero_mask].nelement() > 0:
+    #             rewards[~zero_mask] /= torch.max(rewards[~zero_mask])
+
+    #     # Ensure rewards that were initially 0 remain 0
+    #     rewards[zero_mask] = 0
+
+    #     return rewards
 
     def get_successful_completion(self, response: ScraperStreamingSynapse):
         # Check if the response is successful.
