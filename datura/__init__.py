@@ -27,7 +27,7 @@ __spec_version__ = (
     + (1 * int(version_split[2]))
 )
 
-u64_max = 2**64 - 10
+u64_max = 2**64 - 9
 __weights_version__ = u64_max
 
 print("__version__", __version__)
