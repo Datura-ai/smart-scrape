@@ -327,6 +327,9 @@ async def save_logs_in_chunks(
     summary_rewards,
     twitter_rewards,
     search_rewards,
+    original_summary_rewards,
+    original_twitter_rewards,
+    original_search_rewards,
     tweet_scores,
     search_scores,
     weights,
@@ -343,6 +346,9 @@ async def save_logs_in_chunks(
                 "summary_score": summary_reward,
                 "twitter_score": twitter_reward,
                 "search_score": search_reward,
+                "original_summary_score": original_summary_reward,
+                "original_twitter_score": original_twitter_reward,
+                "original_search_score": original_search_reward,
                 "tweet_scores": tweet_score,
                 "link_scores": search_score,
                 "weight": weights.get(str(uid)),
@@ -378,13 +384,16 @@ async def save_logs_in_chunks(
                 },
                 "time": response.dendrite.process_time,
             }
-            for response, uid, reward, summary_reward, twitter_reward, search_reward, tweet_score, search_score in zip(
+            for response, uid, reward, summary_reward, twitter_reward, search_reward, original_summary_reward, original_twitter_reward, original_search_reward, tweet_score, search_score in zip(
                 responses,
                 uids.tolist(),
                 rewards.tolist(),
                 summary_rewards.tolist(),
                 twitter_rewards.tolist(),
                 search_rewards.tolist(),
+                original_summary_rewards,
+                original_twitter_rewards,
+                original_search_rewards,
                 tweet_scores,
                 search_scores,
             )

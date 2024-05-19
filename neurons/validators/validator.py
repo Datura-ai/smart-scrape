@@ -204,6 +204,7 @@ class Neuron(AbstractNeuron):
         uids,
         rewards,
         all_rewards,
+        all_original_rewards,
         val_score_responses_list,
         neuron,
     ):
@@ -221,11 +222,14 @@ class Neuron(AbstractNeuron):
                     summary_rewards=all_rewards[0],
                     twitter_rewards=all_rewards[1],
                     search_rewards=all_rewards[2],
+                    original_summary_rewards=all_original_rewards[0],
+                    original_twitter_rewards=all_original_rewards[1],
+                    original_search_rewards=all_original_rewards[2],
                     tweet_scores=val_score_responses_list[1],
                     search_scores=val_score_responses_list[2],
                     weights=get_weights(self),
                     neuron=neuron,
-                    netuid=self.config.netuid
+                    netuid=self.config.netuid,
                 )
             )
         except Exception as e:

@@ -200,6 +200,7 @@ class ScraperValidator:
             )
 
             all_rewards = []
+            all_original_rewards = []
             val_score_responses_list = []
 
             for weight_i, reward_fn_i in zip(
@@ -211,6 +212,7 @@ class ScraperValidator:
                 )
 
                 all_rewards.append(reward_i_normalized)
+                all_original_rewards.append(reward_event[reward_fn_i.name])
                 val_score_responses_list.append(val_score_responses)
 
                 rewards += weight_i * reward_i_normalized.to(
@@ -298,6 +300,7 @@ class ScraperValidator:
                 uids=uids,
                 rewards=rewards,
                 all_rewards=all_rewards,
+                all_original_rewards=all_original_rewards,
                 val_score_responses_list=val_score_responses_list,
                 neuron=self.neuron,
             )
