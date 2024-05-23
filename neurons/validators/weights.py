@@ -24,6 +24,7 @@ import bittensor as bt
 import datura
 import multiprocessing
 import time
+import numpy as np
 
 import torch
 from multiprocessing import Queue
@@ -171,6 +172,35 @@ def set_weights_with_retry(self, processed_weight_uids, processed_weights):
     return success
 
 
+def get_weights(self):
+    if torch.all(self.moving_averaged_scores == 0):
+        bt.logging.info("All moving averaged scores are zero, skipping weight setting.")
+        return {}
+
+    raw_weights = torch.nn.functional.normalize(self.moving_averaged_scores, p=1, dim=0)
+
+    (
+        processed_weight_uids,
+        processed_weights,
+    ) = bt.utils.weight_utils.process_weights_for_netuid(
+        uids=self.metagraph.uids.to("cpu"),
+        weights=raw_weights.to("cpu"),
+        netuid=self.config.netuid,
+        subtensor=self.subtensor,
+        metagraph=self.metagraph,
+    )
+
+    # Normalize weights with exponential exaggeration
+    processed_weights = normalize_weights(processed_weight_uids, processed_weights)
+
+    normalized_weights_dict = {
+        str(uid.item()): weight.item()
+        for uid, weight in zip(processed_weight_uids, processed_weights)
+    }
+
+    return normalized_weights_dict
+
+
 def set_weights(self):
     if torch.all(self.moving_averaged_scores == 0):
         bt.logging.info("All moving averaged scores are zero, skipping weight setting.")
@@ -202,8 +232,16 @@ def set_weights(self):
     # Normalize weights with exponential exaggeration
     processed_weights = normalize_weights(processed_weight_uids, processed_weights)
 
+    normalized_weights_dict = {
+        str(uid.item()): weight.item()
+        for uid, weight in zip(processed_weight_uids, processed_weights)
+    }
+
     # Log the weights dictionary
-    bt.logging.info(f"Attempting to set weights action for {weights_dict}")
+    bt.logging.info(f"Weights before normalization: {weights_dict}")
+    bt.logging.info(
+        f"Attempting to set normalized weights action for {normalized_weights_dict}"
+    )
 
     bt.logging.info(
         f"Attempting to set weights details begins: ================ for {len(processed_weight_uids)} UIDs"
@@ -220,10 +258,11 @@ def set_weights(self):
     success = set_weights_with_retry(self, processed_weight_uids, processed_weights)
     return success
 
+
 def normalize_weights(processed_weight_uids, processed_weights, factor=5):
     # Convert to numpy array for processing
     weights = np.array([weight.item() for weight in processed_weights])
-    
+
     # Sort weights and apply exponential exaggeration
     def exponential_exaggeration(weights, factor=5):
         num_entries = len(weights)
@@ -231,13 +270,13 @@ def normalize_weights(processed_weight_uids, processed_weights, factor=5):
         ranks = np.arange(num_entries)
         exaggerated_weights = np.exp((ranks / num_entries) * factor) - 1
         exaggerated_weights /= np.sum(exaggerated_weights)  # Normalize to sum to 1
-        
+
         result = np.zeros_like(weights)
         result[sorted_indices] = exaggerated_weights
         return result
 
     exaggerated_weights = exponential_exaggeration(weights, factor)
-    
+
     # Normalize weights to sum to 1
     normalized_weights = exaggerated_weights / np.sum(exaggerated_weights)
 
@@ -245,8 +284,6 @@ def normalize_weights(processed_weight_uids, processed_weights, factor=5):
     normalized_weights_tensor = torch.tensor(normalized_weights, dtype=torch.float32)
 
     return normalized_weights_tensor
-
-
 
 
 def update_weights(self, total_scores, steps_passed):
