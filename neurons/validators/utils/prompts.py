@@ -99,6 +99,22 @@ class ScoringPrompt(BasePrompt):
                 return 0
         return 0
 
+    def check_score_exists(self, response: str) -> bool:
+        # SM_SCS_RDD (0) score is ignored
+        scores = [
+            "SM_SCS_PNK",
+            "SM_SCS_BLE",
+            "SM_SCS_GRY",
+            "SM_SCS_YAL",
+            "SM_SCS_GRN",
+        ]
+
+        for score in scores:
+            if score in response:
+                return True
+
+        return False
+
     @staticmethod
     def mock_response():
         r"""Mock responses to a followup prompt, for use in MockDendritePool."""
