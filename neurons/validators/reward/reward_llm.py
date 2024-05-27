@@ -276,8 +276,8 @@ class RewardLLM:
 
         # Define the order of scoring sources to be used
         scoring_sources = [
-            # ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
-            ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
+            ScoringSource.OpenAI,  # Attempt scoring with OpenAI
+            ScoringSource.LocalZephyr,  # Fallback to Local LLM if OpenAI fails
             # ScoringSource.Subnet18,  # First attempt with Subnet 18
         ]
 
