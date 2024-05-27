@@ -1,4 +1,5 @@
 import math
+from datura.dataset.tool_return import ResponseOrder, ResponseType
 import torch
 import wandb
 import random
@@ -139,6 +140,9 @@ class ScraperValidator:
         language="en",
         region="us",
         google_date_filter="qdr:w",
+        response_order=ResponseOrder.SUMMARY_FIRST, 
+        response_size=4000,
+        response_type=ResponseType.SUMMARY_AND_LINKS,
     ):
         task_name = task.task_name
         prompt = task.compose_prompt()
@@ -172,6 +176,9 @@ class ScraperValidator:
             language=language,
             region=region,
             google_date_filter=google_date_filter,
+            response_order=response_order.value,
+            response_size=response_size,
+            response_type=response_type.value,
         )
 
         # Make calls to the network with the prompt.
@@ -455,6 +462,9 @@ class ScraperValidator:
             tools = query.get("tools", [])
             date_filter_type = query.get("date_filter", DateFilterType.PAST_WEEK.value)
             date_filter_type = DateFilterType(date_filter_type)
+            response_order = query.get('response_order', ResponseOrder.SUMMARY_FIRST.value)
+            response_size = query.get('response_size', 4000)
+            response_type = query.get('response_type', ResponseType.SUMMARY_AND_LINKS.value)
 
             task_name = "augment"
             task = TwitterTask(
@@ -480,6 +490,9 @@ class ScraperValidator:
                 region=self.region,
                 date_filter=date_filter,
                 google_date_filter=self.date_filter,
+                response_order=response_order,
+                response_size=response_size,
+                response_type=response_type,
             )
 
             async def stream_response(uid, async_response):

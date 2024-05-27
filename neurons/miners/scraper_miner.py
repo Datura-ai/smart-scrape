@@ -21,6 +21,9 @@ class ScraperMiner:
             seed = synapse.seed
             tools = synapse.tools
             is_intro_text = synapse.is_intro_text
+            response_order = synapse.response_order
+            response_size = synapse.response_size
+            response_type = synapse.response_type
 
             bt.logging.trace(synapse)
 
@@ -54,6 +57,9 @@ class ScraperMiner:
                 region=synapse.region,
                 date_filter=date_filter,
                 google_date_filter=synapse.google_date_filter,
+                response_order=response_order.value,
+                response_size=response_size,
+                response_type=response_type.value,
             )
 
             await tool_manager.run()

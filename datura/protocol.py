@@ -278,6 +278,24 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="A dictionary of texts in the StreamPrompting scenario, containing a role (intro, twitter summary, search summary, summary) and content. Immutable.",
     )
 
+    response_order: Optional[str] = pydantic.Field(
+        "",
+        title="Response Order",
+        description="Preffered order type of response, by default it will be SUMMARY_FIRST",
+    )
+
+    response_size: Optional[int] = pydantic.Field(
+        4000,
+        title="Response Size",
+        description="Preffered size of response, by default it will be 4000 chars for each summary",
+    )
+
+    response_type: Optional[str] = pydantic.Field(
+        "",
+        title="Response Type",
+        description="Preffered type of response, by default it will be SUMMARY_AND_LINKS",
+    )
+
     def set_prompt_analysis(self, data: any):
         self.prompt_analysis = data
 
