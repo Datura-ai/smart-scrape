@@ -138,7 +138,7 @@ class RewardLLM:
                         return await call_openai(
                             messages=message,
                             temperature=0.2,
-                            model="gpt-3.5-turbo-16k",
+                            model="gpt-3.5-turbo-0125",
                         )
                     except Exception as e:
                         print(f"Error sending message to OpenAI: {e}")
@@ -276,7 +276,7 @@ class RewardLLM:
 
         # Define the order of scoring sources to be used
         scoring_sources = [
-            ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
+            # ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
             ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
             # ScoringSource.Subnet18,  # First attempt with Subnet 18
         ]
