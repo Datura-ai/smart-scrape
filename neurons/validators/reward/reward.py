@@ -142,7 +142,7 @@ class BaseRewardModel:
             )
 
             # Apply a more aggressive exponential function to exaggerate differences
-            exaggeration_factor = 5
+            exaggeration_factor = 3
             rewards[~zero_mask] = torch.pow(
                 rewards[~zero_mask] * exaggeration_factor, exaggeration_factor
             )
