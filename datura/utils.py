@@ -202,6 +202,12 @@ def extract_python_list(text: str):
 
 
 async def call_openai(messages, temperature, model, seed=1234, response_format=None):
+    api_key = os.environ.get("OPENAI_API_KEY")
+
+    if not api_key:
+        bt.logging.warning("Please set the OPENAI_API_KEY environment variable.")
+        return None
+
     for attempt in range(2):
         bt.logging.trace(
             f"Calling Openai. Temperature = {temperature}, Model = {model}, Seed = {seed},  Messages = {messages}"
