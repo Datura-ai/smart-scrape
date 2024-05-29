@@ -1,4 +1,5 @@
 from openai import AsyncOpenAI
+from datura.dataset.tool_return import ResponseOrder
 from datura.protocol import ScraperTextRole
 
 client = AsyncOpenAI(timeout=60.0)
@@ -9,6 +10,7 @@ As a Discord data analyst, your task is to provide users with a clear and concis
 Output Guidelines (Tasks):
 1. Discord Search Summary: Analyze the user's prompt and messages, and provide easy to follow instructions or information based on the analysis. You can include any count of messages in the summary.
 2. Discord Messages: Analyze DiscordData and Return list of messages, where key is DiscordData.id and value is list of possible reply IDs DiscordData.possible_replies.id. Choose the most relevant possible replies that are related to parent message the user's query.
+3. Structure your response according to the specified <ResponseOrder>. If <ResponseOrder> is set to LINKS_FIRST, provide all detailed explanations first, followed by a summary at the end. If <ResponseOrder> is set to SUMMARY_FIRST, provide the summary first, followed by the detailed explanations.
 
 <OutputExample>
 **Discord Search Summary:**
@@ -42,10 +44,12 @@ async def summarize_discord_data(
     prompt: str,
     model: str,
     filtered_messages,
+    response_order: ResponseOrder
 ):
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
     In <DiscordData>, Provided Discord API fetched data.
+    In <ResponseOrder>, provided response structure order/style.
 
     <UserPrompt>
     {prompt}
@@ -54,6 +58,10 @@ async def summarize_discord_data(
     <DiscordData>
     {filtered_messages}
     </DiscordData>
+    
+    <ResponseOrder>
+    {response_order.value}
+    </ResponseOrder>
     """
 
     messages = [

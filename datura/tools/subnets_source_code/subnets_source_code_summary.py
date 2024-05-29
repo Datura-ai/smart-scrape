@@ -9,6 +9,7 @@ As a Subnets Source Code data analyst, your task is to provide users with a clea
 
 Output Guidelines (Tasks):
 1. Analyze the user's prompt and the provided subnet source code data and write a well-rounded and detailed answer that addresses the user's query.
+2. Structure your response according to the specified <ResponseOrder>. If <ResponseOrder> is set to LINKS_FIRST, provide all detailed explanations first, followed by a summary at the end. If <ResponseOrder> is set to SUMMARY_FIRST, provide the summary first, followed by the detailed explanations.
 
 <OutputExample>
 **Subnets Source Code Summary:**
@@ -48,10 +49,12 @@ async def summarize_subnet_source_code_data(
     prompt: str,
     model: str,
     docs,
+    response_order,
 ):
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
     In <SourceCodeData>, provided subnets source code (Data)
+    In <ResponseOrder>, provided response structure order/style.
 
     <UserPrompt>
     {prompt}
@@ -60,6 +63,10 @@ async def summarize_subnet_source_code_data(
     <SourceCodeData>
     {docs}
     </SourceCodeData>
+    
+    <ResponseOrder>
+    {response_order.value}
+    </ResponseOrder>
     """
 
     messages = [

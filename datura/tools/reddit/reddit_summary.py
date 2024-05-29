@@ -1,4 +1,5 @@
 from openai import AsyncOpenAI
+from datura.dataset.tool_return import ResponseOrder
 from datura.protocol import ScraperTextRole
 
 client = AsyncOpenAI(timeout=60.0)
@@ -11,6 +12,7 @@ Output Guidelines (Tasks):
 1. Key posts: Provide a selection of Reddit links that directly correspond to the <UserPrompt>. 
 Synthesize insights from both the <UserPrompt> and the <RedditData> to formulate a well-rounded response.
 2. Summarizes key posts
+3. Structure your response according to the specified <ResponseOrder>. If <ResponseOrder> is set to LINKS_FIRST, provide all detailed explanations first, followed by a summary at the end. If <ResponseOrder> is set to SUMMARY_FIRST, provide the summary first, followed by the detailed explanations.
 
 <OutputExample>
 Key Posts:
@@ -38,10 +40,12 @@ async def summarize_reddit_data(
     prompt: str,
     model: str,
     filtered_posts,
+    response_order: ResponseOrder
 ):
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
     In <RedditData>, Provided Reddit API fetched data.
+    In <ResponseOrder>, provided provided response structure order/style.
     
     <UserPrompt>
     {prompt}
@@ -50,6 +54,10 @@ async def summarize_reddit_data(
     <RedditData>
     {filtered_posts}
     </RedditData>
+    
+    <ResponseOrder>
+    {response_order.value}
+    </ResponseOrder>
     """
 
     messages = [

@@ -1,4 +1,5 @@
 from openai import AsyncOpenAI
+from datura.dataset.tool_return import ResponseOrder
 from datura.protocol import ScraperTextRole
 
 client = AsyncOpenAI(timeout=60.0)
@@ -9,6 +10,7 @@ As a Bittensor Documentation data analyst, your task is to provide users with a 
 
 Output Guidelines (Tasks):
 1. Analyze the user's prompt and the provided Bittensor Documentation data and write a well-rounded and detailed answer that addresses the user's query.
+2. Structure your response according to the specified <ResponseOrder>. If <ResponseOrder> is set to LINKS_FIRST, provide all detailed explanations first, followed by a summary at the end. If <ResponseOrder> is set to SUMMARY_FIRST, provide the summary first, followed by the detailed explanations.
 
 <OutputExample>
 **Bittensor Documentation Summary:**
@@ -55,10 +57,12 @@ async def summarize_bittensor_data(
     prompt: str,
     model: str,
     docs,
+    response_order: ResponseOrder
 ):
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
     In <BittensorData>, Provided Bittensor API fetched data.
+    In <ResponseOrder>, provided provided response structure order/style.
 
     <UserPrompt>
     {prompt}
@@ -67,6 +71,10 @@ async def summarize_bittensor_data(
     <BittensorData>
     {docs}
     </BittensorData>
+
+    <ResponseOrder>
+    {response_order.value}
+    </ResponseOrder>
     """
 
     messages = [

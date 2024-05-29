@@ -1,4 +1,5 @@
 from openai import AsyncOpenAI
+from datura.dataset.tool_return import ResponseOrder
 from datura.protocol import TwitterPromptAnalysisResult, ScraperTextRole
 
 client = AsyncOpenAI(timeout=60.0)
@@ -11,6 +12,7 @@ Output Guidelines (Tasks):
 1. Key tweets: Provide a selection of Twitter links that directly correspond to the <UserPrompt>. 
 Synthesize insights from both the <UserPrompt> and the <TwitterData> to formulate a well-rounded response.
 2. Summarizes key tweets
+3. Structure your response according to the specified <ResponseOrder>. If <ResponseOrder> is set to LINKS_FIRST, provide all detailed explanations first, followed by a summary at the end. If <ResponseOrder> is set to SUMMARY_FIRST, provide the summary first, followed by the detailed explanations.
 
 <OutputExample>
 Key Tweets:
@@ -39,12 +41,14 @@ async def summarize_twitter_data(
     model: str,
     filtered_tweets,
     prompt_analysis: TwitterPromptAnalysisResult,
+    response_order: ResponseOrder, 
 ):
 
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
     In <PromptAnalysis> I analyze that prompts and generate query for API, keywords, hashtags, user_mentions.
     In <TwitterData>, Provided Twitter API fetched data.
+    In <ResponseOrder>, provided response structure order/style.
     
     <UserPrompt>
     {prompt}
@@ -57,6 +61,10 @@ async def summarize_twitter_data(
     <PromptAnalysis>
     {prompt_analysis}
     </PromptAnalysis>
+
+    <ResponseOrder>
+    {response_order.value}
+    </ResponseOrder>
     """
 
     messages = [

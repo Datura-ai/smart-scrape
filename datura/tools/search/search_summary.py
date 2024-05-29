@@ -11,6 +11,7 @@ Output Guidelines (Tasks):
 1. Key Links: Provide a selection of links that directly correspond to the <UserPrompt>.
 Synthesize insights from both the <UserPrompt> and the <SearchData> to formulate a well-rounded response.
 2. Summarizes key links
+3. Structure your response according to the specified <ResponseOrder>. If <ResponseOrder> is set to LINKS_FIRST, provide all detailed explanations first, followed by a summary at the end. If <ResponseOrder> is set to SUMMARY_FIRST, provide the summary first, followed by the detailed explanations.
 
 <OutputExample>
 Key Sources:
@@ -34,10 +35,11 @@ Operational Rules:
 """
 
 
-async def summarize_search_data(prompt: str, model: str, data):
+async def summarize_search_data(prompt: str, model: str, data, response_order):
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
     In <SearchData> I fetch data from Google, Youtube or Wikipedia.
+    In <ResponseOrder>, provided provided response structure order/style.
 
     <UserPrompt>
     {prompt}
@@ -46,6 +48,10 @@ async def summarize_search_data(prompt: str, model: str, data):
     <SearchData>
     {data}
     </SearchData>
+    
+    <ResponseOrder>
+    {response_order.value}
+    </ResponseOrder>
     """
 
     messages = [
