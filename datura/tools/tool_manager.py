@@ -5,6 +5,7 @@ import os
 import json
 import bittensor as bt
 from langchain_openai import ChatOpenAI
+from datura.dataset.tool_return import ResponseOrder
 from datura.tools.base import BaseTool
 from datura.tools.get_tools import (
     get_all_tools,
@@ -69,6 +70,7 @@ class ToolManager:
 
     twitter_prompt_analysis: Optional[TwitterPromptAnalysisResult]
     twitter_data: Optional[Dict[str, Any]]
+    response_order: ResponseOrder
 
     def __init__(
         self,
@@ -81,6 +83,7 @@ class ToolManager:
         region,
         date_filter,
         google_date_filter,
+        response_order,
     ):
         self.prompt = prompt
         self.manual_tool_names = manual_tool_names
@@ -99,6 +102,8 @@ class ToolManager:
         self.tool_name_to_instance = {tool.name: tool for tool in self.all_tools}
         self.twitter_prompt_analysis = None
         self.twitter_data = None
+
+        self.response_order = response_order
 
     async def run(self):
         actions = await self.detect_tools_to_use()
@@ -282,8 +287,8 @@ class ToolManager:
         Twitter Data Search: Next, I delve into Twitter, seeking out information, discussions, and insights that directly relate to your prompt.
         Google search: Next, I search Google, seeking out information, discussions, and insights that directly relate to your prompt.
 
-        Synthesis and Response: After gathering and analyzing this data, I compile my findings and craft a detailed response, which will be presented below"        
-        
+        Synthesis and Response: After gathering and analyzing this data, I compile my findings and craft a detailed response, which will be presented below"
+
         Output: Just return only introduction text without your comment
         """
         messages = [{"role": "user", "content": content}]
@@ -305,7 +310,7 @@ class ToolManager:
         content = f"""
             In <UserPrompt> provided User's prompt (Question).
             In <Information>, provided highlighted key information and relevant links from Twitter and Google Search.
-            
+
             <UserPrompt>
             {self.prompt}
             </UserPrompt>

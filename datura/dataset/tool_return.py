@@ -6,7 +6,8 @@ class ResponseOrder(Enum):
     SUMMARY_FIRST = "SUMMARY_FIRST"
 
 
-class ResponseType(Enum):
-    SUMMARY_AND_LINKS = "SUMMARY_AND_LINKS"
-    ONLY_LINKS = "ONLY_LINKS"
-    ONLY_SUMMARY = "ONLY_SUMMARY"
+def response_order_to_str(value: str) -> ResponseOrder:
+    if value == "LINK_FIRST":
+        return ResponseOrder.LINKS_FIRST
+    else:
+        return ResponseOrder.SUMMARY_FIRST
