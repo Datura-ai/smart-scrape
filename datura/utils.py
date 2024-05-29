@@ -357,6 +357,18 @@ async def save_logs_in_chunks(
                 "original_search_score": original_search_reward,
                 "tweet_scores": tweet_score,
                 "link_scores": search_score,
+                "search_results": {
+                    "google": response.search_results,
+                    "google_news": response.google_news_search_results,
+                    "google_image": response.google_image_search_results,
+                    "wikipedia": response.wikipedia_search_results,
+                    "youtube": response.youtube_search_results,
+                    "arxiv": response.arxiv_search_results,
+                    "reddit": response.reddit_search_results,
+                    "hacker_news": response.hacker_news_search_results,
+                    "discord": response.discord_search_results,
+                },
+                "texts": response.texts,
                 "weight": weights.get(str(uid)),
                 "miner": {
                     "uid": uid,
@@ -405,7 +417,7 @@ async def save_logs_in_chunks(
             )
         ]
 
-        chunk_size = 50
+        chunk_size = 40
 
         log_chunks = [logs[i : i + chunk_size] for i in range(0, len(logs), chunk_size)]
 
