@@ -8,6 +8,7 @@ from langchain_openai import ChatOpenAI
 from datura.dataset.tool_return import ResponseOrder
 from datura.tools.base import BaseTool
 from datura.tools.get_tools import (
+    TOOLKITS,
     get_all_tools,
     find_toolkit_by_tool_name,
     find_toolkit_by_name,
@@ -100,6 +101,7 @@ class ToolManager:
 
         self.all_tools = get_all_tools()
         self.tool_name_to_instance = {tool.name: tool for tool in self.all_tools}
+        self.toolkit_name_to_instance = {toolkit.name: toolkit for toolkit in TOOLKITS}
         self.twitter_prompt_analysis = None
         self.twitter_data = None
 
@@ -223,7 +225,12 @@ class ToolManager:
 
     async def run_toolkit(self, toolkit_name, actions):
         tasks = [asyncio.create_task(self.run_tool(action)) for action in actions]
+        toolkit_instance = self.toolkit_name_to_instance[toolkit_name]
 
+        if not toolkit_instance:
+            return
+
+        toolkit_instance.tool_manager = self
         toolkit_results = {}
 
         for completed_task in asyncio.as_completed(tasks):
