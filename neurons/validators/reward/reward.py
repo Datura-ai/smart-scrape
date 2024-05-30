@@ -262,6 +262,8 @@ class BaseRewardModel:
             reward_events.pop("reward"), dtype=torch.float32
         )
 
+        original_rewards = successful_rewards.tolist()
+
         # Softmax rewards across samples.
         successful_rewards_normalized = self.normalize_rewards(successful_rewards)
 
@@ -293,7 +295,12 @@ class BaseRewardModel:
             filled_rewards_normalized = filled_rewards_normalized.nan_to_num_(nan=0.0)
 
         # Return the filled rewards.
-        return filled_rewards_normalized, reward_events, val_score_responses
+        return (
+            filled_rewards_normalized,
+            reward_events,
+            val_score_responses,
+            original_rewards,
+        )
 
     def calculate_adjusted_score(
         self,

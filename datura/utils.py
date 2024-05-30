@@ -369,6 +369,12 @@ async def save_logs_in_chunks(
                     "discord": response.discord_search_results,
                 },
                 "texts": response.texts,
+                "validator_tweets": [
+                    val_tweet.dict() for val_tweet in response.validator_tweets
+                ],
+                "validator_links": response.validator_links,
+                "search_completion_links": response.search_completion_links,
+                "twitter_completion_links": response.completion_links,
                 "weight": weights.get(str(uid)),
                 "miner": {
                     "uid": uid,
@@ -417,7 +423,7 @@ async def save_logs_in_chunks(
             )
         ]
 
-        chunk_size = 40
+        chunk_size = 30
 
         log_chunks = [logs[i : i + chunk_size] for i in range(0, len(logs), chunk_size)]
 
