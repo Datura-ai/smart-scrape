@@ -39,13 +39,9 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
         for link_with_metadata in links_with_metadata:
             url = link_with_metadata.get("url")
-            title = link_with_metadata.get("title")
-            description = link_with_metadata.get("description")
-            content = f"Page Title: {title}. Page Description: {description}"
+            title = link_with_metadata.get("title", "")
 
-            result = self.get_scoring_text(
-                prompt=prompt, content=content, response=None
-            )
+            result = self.get_scoring_text(prompt=prompt, content=title, response=None)
             if result:
                 scoring_prompt, scoring_text = result
                 scoring_messages.append({url: scoring_text})
@@ -65,6 +61,9 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             fetched_links_with_metadata = await WebScraperActor().scrape_metadata(
                 urls=non_fetched_links
             )
+            fetched_links_with_metadata = [
+                link for link in fetched_links_with_metadata if link.get("url")
+            ]
             fetched_links = {link.get("url") for link in fetched_links_with_metadata}
             non_fetched_links = [
                 link for link in non_fetched_links if link not in fetched_links
