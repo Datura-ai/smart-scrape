@@ -5,35 +5,49 @@ from datura.protocol import ScraperTextRole
 client = AsyncOpenAI(timeout=60.0)
 
 
-SYSTEM_MESSAGE = """
-As a Reddit data analyst, your task is to provide users with a clear and concise summary derived from the given Reddit data and the user's query.
+def system_message(response_order: ResponseOrder):
+    outputexample = ""
+    if response_order == ResponseOrder.LINKS_FIRST:
+        outputexample = """
+            Key Posts:
+                - [Noah discusses how SportAccord can elevate the West Midlands brand globally, emphasizing its role in hosting high-profile sports events.](https://reddit.com/r/subreddit/comments/abc/sport-events)
+                - [SportAccord highlights the success of the Social in the City 2024 event, where Georgia Tech alumni gathered from across the country to celebrate their community spirit.](https://reddit.com/r/subreddit/comments/abc/sport-events)
+            Reddit Summary:
+             Georgia, as a country, hosts a diverse range of sports events catering to various interests. Popular sports in Georgia include football, basketball, rugby union, wrestling, judo, and weightlifting. The sports industry in Georgia is thriving, with a growing interest in modern sports like rugby union, weightlifting, basketball, judo, and football. The country offers a wide array of sporting activities from traditional sports like polo to modern events like football matches, showcasing a rich sporting culture.
+        """
+    else:
+        outputexample = """
+            Reddit Summary:
+             Georgia, as a country, hosts a diverse range of sports events catering to various interests. Popular sports in Georgia include football, basketball, rugby union, wrestling, judo, and weightlifting. The sports industry in Georgia is thriving, with a growing interest in modern sports like rugby union, weightlifting, basketball, judo, and football. The country offers a wide array of sporting activities from traditional sports like polo to modern events like football matches, showcasing a rich sporting culture.
+            Key Posts:
+                - [Noah discusses how SportAccord can elevate the West Midlands brand globally, emphasizing its role in hosting high-profile sports events.](https://reddit.com/r/subreddit/comments/abc/sport-events)
+                - [SportAccord highlights the success of the Social in the City 2024 event, where Georgia Tech alumni gathered from across the country to celebrate their community spirit.](https://reddit.com/r/subreddit/comments/abc/sport-events)
+        """
 
-Output Guidelines (Tasks):
-1. Key posts: Provide a selection of Reddit links that directly correspond to the <UserPrompt>. 
-Synthesize insights from both the <UserPrompt> and the <RedditData> to formulate a well-rounded response.
-2. Summarizes key posts
-3. Structure your response according to the specified <ResponseOrder>. If <ResponseOrder> is set to LINKS_FIRST, provide all detailed explanations first, followed by a summary at the end. If <ResponseOrder> is set to SUMMARY_FIRST, provide the summary first, followed by the detailed explanations.
+    return f"""
+    As a Reddit data analyst, your task is to provide users with a clear and concise summary derived from the given Reddit data and the user's query.
 
-<OutputExample>
-Key Posts:
-    - [Noah discusses how SportAccord can elevate the West Midlands brand globally, emphasizing its role in hosting high-profile sports events.](https://reddit.com/r/subreddit/comments/abc/sport-events)
-    - [SportAccord highlights the success of the Social in the City 2024 event, where Georgia Tech alumni gathered from across the country to celebrate their community spirit.](https://reddit.com/r/subreddit/comments/abc/sport-events)
-Reddit Summary:
- Georgia, as a country, hosts a diverse range of sports events catering to various interests. Popular sports in Georgia include football, basketball, rugby union, wrestling, judo, and weightlifting. The sports industry in Georgia is thriving, with a growing interest in modern sports like rugby union, weightlifting, basketball, judo, and football. The country offers a wide array of sporting activities from traditional sports like polo to modern events like football matches, showcasing a rich sporting culture.
-</OutputExample>
+    Output Guidelines (Tasks):
+    1. Key posts: Provide a selection of Reddit links that directly correspond to the <UserPrompt>.
+    Synthesize insights from both the <UserPrompt> and the <RedditData> to formulate a well-rounded response.
+    2. Summarizes key posts
 
-Operational Rules:
-1. No <RedditData> Scenario: If no RedditData is provided, inform the user that current Reddit insights related to their topic are unavailable.
-2. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
-3. Seamless Integration: Avoid explicitly stating "Based on the provided <RedditData>" in responses. Assume user awareness of the data integration process.
-4. Please separate your responses into sections for easy reading.
-5. For each link title, include a concise explanation that connects its relevance to the user's question. Use <RedditData>.url for link
-6. Not return text like <UserPrompt>, <PromptAnalysis>, <PromptAnalysis> to your response, make response easy to understand to any user.
-7. Make headers bold using Markdown.
-8. Return up to 10 Reddit links if available.
-9. Do not number the "key posts"; instead, provide each on a new line.
-10. Always maintain the order as shown in <OutputExample>, first providing "Key Posts", followed by "Reddit Summary".
-"""
+    <OutputExample>
+    {outputexample}
+    </OutputExample>
+
+    Operational Rules:
+    1. No <RedditData> Scenario: If no RedditData is provided, inform the user that current Reddit insights related to their topic are unavailable.
+    2. Emphasis on Critical Issues: Focus on and clearly explain any significant issues or points of interest that emerge from the analysis.
+    3. Seamless Integration: Avoid explicitly stating "Based on the provided <RedditData>" in responses. Assume user awareness of the data integration process.
+    4. Please separate your responses into sections for easy reading.
+    5. For each link title, include a concise explanation that connects its relevance to the user's question. Use <RedditData>.url for link
+    6. Not return text like <UserPrompt>, <PromptAnalysis>, <PromptAnalysis> to your response, make response easy to understand to any user.
+    7. Make headers bold using Markdown.
+    8. Return up to 10 Reddit links if available.
+    9. Do not number the "key posts"; instead, provide each on a new line.
+    10. Always maintain the order as shown in <OutputExample>, first providing "Key Posts", followed by "Reddit Summary".
+    """
 
 
 async def summarize_reddit_data(
@@ -45,8 +59,7 @@ async def summarize_reddit_data(
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
     In <RedditData>, Provided Reddit API fetched data.
-    In <ResponseOrder>, provided provided response structure order/style.
-    
+
     <UserPrompt>
     {prompt}
     </UserPrompt>
@@ -54,14 +67,14 @@ async def summarize_reddit_data(
     <RedditData>
     {filtered_posts}
     </RedditData>
-    
+
     <ResponseOrder>
     {response_order.value}
     </ResponseOrder>
     """
 
     messages = [
-        {"role": "system", "content": SYSTEM_MESSAGE},
+        {"role": "system", "content": system_message(response_order)},
         {"role": "user", "content": content},
     ]
 
