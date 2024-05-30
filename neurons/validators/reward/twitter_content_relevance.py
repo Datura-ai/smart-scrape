@@ -89,6 +89,36 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         )
         return score_responses
 
+    async def fetch_tweets_with_retries(self, urls):
+        max_retries = 4
+        non_fetched_links = urls
+        tweets_list = []
+
+        for retry in range(max_retries):
+            if not non_fetched_links:
+                break
+
+            fetched_tweets = await TwitterScraperActor().get_tweets(
+                urls=non_fetched_links
+            )
+            fetched_tweet_ids = {tweet.id for tweet in fetched_tweets}
+
+            non_fetched_links = [
+                link
+                for link in non_fetched_links
+                if self.tw_client.utils.extract_tweet_id(link) not in fetched_tweet_ids
+            ]
+
+            tweets_list.extend(fetched_tweets)
+
+            if non_fetched_links:
+                bt.logging.info(
+                    f"Retrying fetching non-fetched {len(non_fetched_links)} tweets: {non_fetched_links}. Retries left: {max_retries - retry - 1}"
+                )
+                await asyncio.sleep(3)
+
+        return tweets_list, non_fetched_links
+
     async def process_tweets(self, prompt, responses):
         try:
             non_fetched_links = {}
@@ -109,7 +139,11 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             if len(unique_links) == 0:
                 bt.logging.info("No unique links found to process.")
                 return
-            tweets_list = await TwitterScraperActor().get_tweets(urls=unique_links)
+
+            tweets_list, non_fetched_links = await self.fetch_tweets_with_retries(
+                unique_links
+            )
+
             for response in responses:
                 ids = [
                     self.tw_client.utils.extract_tweet_id(link)
@@ -132,12 +166,6 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 f"All links count: {len(all_links)}, Unique links count: {len(unique_links)}, "
                 f"APIFY fetched tweets links count: {len(tweets_list)}"
             )
-            fetched_tweet_ids = {tweet.id for tweet in tweets_list}
-            non_fetched_links = [
-                link
-                for link in unique_links
-                if self.tw_client.utils.extract_tweet_id(link) not in fetched_tweet_ids
-            ]
 
             bt.logging.info(
                 f"Twitter Links not fetched Amount: {len(non_fetched_links)}; List: {non_fetched_links}; For prompt: [{prompt}]"
