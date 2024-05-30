@@ -369,6 +369,12 @@ async def save_logs_in_chunks(
                     "discord": response.discord_search_results,
                 },
                 "texts": response.texts,
+                "validator_tweets": [
+                    val_tweet.dict() for val_tweet in response.validator_tweets
+                ],
+                "validator_links": response.validator_links,
+                "search_completion_links": response.search_completion_links,
+                "twitter_completion_links": response.completion_links,
                 "weight": weights.get(str(uid)),
                 "miner": {
                     "uid": uid,
