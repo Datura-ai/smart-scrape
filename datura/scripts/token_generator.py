@@ -2,9 +2,9 @@ import sys
 import bittensor as bt
 
 
-def generate_token(value: str):
+def generate_token(value: str, coldkey: str, hotkey: str):
     try:
-        wallet = bt.wallet(name="coldkey", hotkey="hotkey")
+        wallet = bt.wallet(name=coldkey, hotkey=hotkey)
         signature = wallet.hotkey.sign(value.encode()).hex()
         print(f"Signature:\n  {signature}")
     except Exception as e:
@@ -12,9 +12,12 @@ def generate_token(value: str):
 
 
 if __name__ == "__main__":
-    if '-h' in sys.argv or '--help' in sys.argv or len(sys.argv) == 1:
-        print('\nUsage:\n python token_generator.py "random cahrachters from our frontend"\n')
+    if '-h' in sys.argv or '--help' in sys.argv or len(sys.argv) < 4:
+        args = '"random cahrachters from our frontend" [coldkey] [hotkey]'
+        print(f'\nUsage:\n python token_generator.py {args}\n')
         sys.exit(1)
 
     value = sys.argv[1]
-    generate_token(value)
+    coldkey = sys.argv[2]
+    hotkey = sys.argv[3]
+    generate_token(value, coldkey, hotkey)
