@@ -1,6 +1,7 @@
 import traceback
 import bittensor as bt
 from starlette.types import Send
+from datura.dataset.tool_return import response_order_to_str
 from datura.protocol import (
     ScraperStreamingSynapse,
 )
@@ -21,6 +22,7 @@ class ScraperMiner:
             seed = synapse.seed
             tools = synapse.tools
             is_intro_text = synapse.is_intro_text
+            response_order = response_order_to_str(synapse.response_order)
 
             bt.logging.trace(synapse)
 
@@ -54,6 +56,7 @@ class ScraperMiner:
                 region=synapse.region,
                 date_filter=date_filter,
                 google_date_filter=synapse.google_date_filter,
+                response_order=response_order,
             )
 
             await tool_manager.run()

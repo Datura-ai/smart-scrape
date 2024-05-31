@@ -5,8 +5,10 @@ import os
 import json
 import bittensor as bt
 from langchain_openai import ChatOpenAI
+from datura.dataset.tool_return import ResponseOrder
 from datura.tools.base import BaseTool
 from datura.tools.get_tools import (
+    TOOLKITS,
     get_all_tools,
     find_toolkit_by_tool_name,
     find_toolkit_by_name,
@@ -69,6 +71,7 @@ class ToolManager:
 
     twitter_prompt_analysis: Optional[TwitterPromptAnalysisResult]
     twitter_data: Optional[Dict[str, Any]]
+    response_order: ResponseOrder
 
     def __init__(
         self,
@@ -81,6 +84,7 @@ class ToolManager:
         region,
         date_filter,
         google_date_filter,
+        response_order,
     ):
         self.prompt = prompt
         self.manual_tool_names = manual_tool_names
@@ -97,8 +101,11 @@ class ToolManager:
 
         self.all_tools = get_all_tools()
         self.tool_name_to_instance = {tool.name: tool for tool in self.all_tools}
+        self.toolkit_name_to_instance = {toolkit.name: toolkit for toolkit in TOOLKITS}
         self.twitter_prompt_analysis = None
         self.twitter_data = None
+
+        self.response_order = response_order
 
     async def run(self):
         actions = await self.detect_tools_to_use()
@@ -218,7 +225,12 @@ class ToolManager:
 
     async def run_toolkit(self, toolkit_name, actions):
         tasks = [asyncio.create_task(self.run_tool(action)) for action in actions]
+        toolkit_instance = self.toolkit_name_to_instance[toolkit_name]
 
+        if not toolkit_instance:
+            return
+
+        toolkit_instance.tool_manager = self
         toolkit_results = {}
 
         for completed_task in asyncio.as_completed(tasks):
@@ -282,8 +294,8 @@ class ToolManager:
         Twitter Data Search: Next, I delve into Twitter, seeking out information, discussions, and insights that directly relate to your prompt.
         Google search: Next, I search Google, seeking out information, discussions, and insights that directly relate to your prompt.
 
-        Synthesis and Response: After gathering and analyzing this data, I compile my findings and craft a detailed response, which will be presented below"        
-        
+        Synthesis and Response: After gathering and analyzing this data, I compile my findings and craft a detailed response, which will be presented below"
+
         Output: Just return only introduction text without your comment
         """
         messages = [{"role": "user", "content": content}]
@@ -305,7 +317,7 @@ class ToolManager:
         content = f"""
             In <UserPrompt> provided User's prompt (Question).
             In <Information>, provided highlighted key information and relevant links from Twitter and Google Search.
-            
+
             <UserPrompt>
             {self.prompt}
             </UserPrompt>

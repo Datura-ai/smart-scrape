@@ -18,9 +18,11 @@ class DiscordToolkit(BaseToolkit, ABC):
         return [DiscordSearchTool()]
 
     async def summarize(self, prompt, model, data):
+        response_order = self.tool_manager.response_order
         data = next(iter(data.values()))
         return await summarize_discord_data(
             prompt=prompt,
             model=model,
             filtered_messages=prepare_messages_data_for_summary(data),
+            response_order=response_order,
         )
