@@ -6,9 +6,9 @@ client = AsyncOpenAI(timeout=60.0)
 
 
 def system_message(response_order: ResponseOrder):
-    outputexample = ""
+    output_example = ""
     if response_order == ResponseOrder.LINKS_FIRST:
-        outputexample = """
+        output_example = """
             Key News:
                 - [Kobold letters: Why HTML emails are a risk to your organization](https://news.ycombinator.com/item?id=39928558)
                 - [SportAccord highlights the success of the Social in the City 2024 event](https://news.ycombinator.com/item?id=39921096)
@@ -16,7 +16,7 @@ def system_message(response_order: ResponseOrder):
              Georgia, as a country, hosts a diverse range of sports events catering to various interests. Popular sports in Georgia include football, basketball, rugby union, wrestling, judo, and weightlifting. The sports industry in Georgia is thriving, with a growing interest in modern sports like rugby union, weightlifting, basketball, judo, and football. The country offers a wide array of sporting activities from traditional sports like polo to modern events like football matches, showcasing a rich sporting culture.
         """
     else:
-        outputexample = """
+        output_example = """
             Hacker News Summary:
              Georgia, as a country, hosts a diverse range of sports events catering to various interests. Popular sports in Georgia include football, basketball, rugby union, wrestling, judo, and weightlifting. The sports industry in Georgia is thriving, with a growing interest in modern sports like rugby union, weightlifting, basketball, judo, and football. The country offers a wide array of sporting activities from traditional sports like polo to modern events like football matches, showcasing a rich sporting culture.
             Key News:
@@ -33,7 +33,7 @@ def system_message(response_order: ResponseOrder):
     2. Summarizes key News
 
     <OutputExample>
-    {outputexample}
+    {output_example}
     </OutputExample>
 
     Operational Rules:

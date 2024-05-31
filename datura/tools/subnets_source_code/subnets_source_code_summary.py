@@ -6,9 +6,9 @@ client = AsyncOpenAI(timeout=60.0)
 
 
 def system_message(response_order: ResponseOrder):
-    outputexample = ""
+    output_example = ""
     if response_order == ResponseOrder.LINKS_FIRST:
-        outputexample = """
+        output_example = """
             Key Sources:
                 - [tool_manager.py file in smart-scrape repository](https://github.com/Datura-ai/smart-scrape/blob/main/datura/tools/tool_manager.py)
             Subnets Source Code Summary:
@@ -18,7 +18,7 @@ def system_message(response_order: ResponseOrder):
              The **Tool Execution Flow** detects and categorizes tools into toolkit actions and independent tools, executes them concurrently, and streams responses as HTTP responses.
         """
     else:
-        outputexample = """
+        output_example = """
             Subnets Source Code Summary:
              To manage and execute tools in Datura, the system uses a structured process with the following key components:
              The **ToolManager Class** is the central component for managing tools. It initializes with parameters like prompt and tool names, uses `get_all_tools()` to retrieve available tools, identifies tools to use based on the prompt or manual input, and executes tools asynchronously.
@@ -33,10 +33,9 @@ def system_message(response_order: ResponseOrder):
 
     Output Guidelines (Tasks):
     1. Analyze the user's prompt and the provided subnet source code data and write a well-rounded and detailed answer that addresses the user's query.
-    2. Structure your response according to the specified <ResponseOrder>. If <ResponseOrder> is set to LINKS_FIRST, provide all detailed explanations first, followed by a summary at the end. If <ResponseOrder> is set to SUMMARY_FIRST, provide the summary first, followed by the detailed explanations.
 
     <OutputExample>
-    {outputexample}
+    {output_example}
     </OutputExample>
 
     Operational Rules:
@@ -58,7 +57,6 @@ async def summarize_subnet_source_code_data(
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
     In <SourceCodeData>, provided subnets source code (Data)
-    In <ResponseOrder>, provided response structure order/style.
 
     <UserPrompt>
     {prompt}
@@ -67,10 +65,6 @@ async def summarize_subnet_source_code_data(
     <SourceCodeData>
     {docs}
     </SourceCodeData>
-
-    <ResponseOrder>
-    {response_order.value}
-    </ResponseOrder>
     """
 
     messages = [

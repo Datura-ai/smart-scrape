@@ -6,9 +6,9 @@ client = AsyncOpenAI(timeout=60.0)
 
 
 def system_message(response_order: ResponseOrder):
-    outputexample = ""
+    output_example = ""
     if response_order == ResponseOrder.LINKS_FIRST:
-        outputexample = """
+        output_example = """
             Key Sources:
                 - [Installation guide for Bittensor](https://docs.bittensor.com/getting-started/installation)
                 - [Apple Silicon installation guide for Bittensor](https://docs.bittensor.com/getting-started/installation#installing-on-apple-silicon)
@@ -16,7 +16,7 @@ def system_message(response_order: ResponseOrder):
              To install Bittensor, follow the provided steps. You can install Bittensor using pip3 with the command `pip3 install bittensor --no-deps`. Alternatively, you can install it from the source by cloning the Bittensor repository from GitHub and then installing it using `python3 -m pip install -e bittensor/`. Before you start developing, ensure that you have installed Bittensor and created a Bittensor wallet.
         """
     else:
-        outputexample = """
+        output_example = """
             Bittensor Documentation Summary:
              To install Bittensor, follow the provided steps. You can install Bittensor using pip3 with the command `pip3 install bittensor --no-deps`. Alternatively, you can install it from the source by cloning the Bittensor repository from GitHub and then installing it using `python3 -m pip install -e bittensor/`. Before you start developing, ensure that you have installed Bittensor and created a Bittensor wallet.
             Key Sources:
@@ -31,7 +31,7 @@ def system_message(response_order: ResponseOrder):
     1. Analyze the user's prompt and the provided Bittensor Documentation data and write a well-rounded and detailed answer that addresses the user's query.
 
     <OutputExample>
-    {outputexample}
+    {output_example}
     </OutputExample>
 
     Operational Rules:
@@ -53,7 +53,6 @@ async def summarize_bittensor_data(
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
     In <BittensorData>, Provided Bittensor API fetched data.
-    In <ResponseOrder>, provided provided response structure order/style.
 
     <UserPrompt>
     {prompt}
@@ -62,10 +61,6 @@ async def summarize_bittensor_data(
     <BittensorData>
     {docs}
     </BittensorData>
-
-    <ResponseOrder>
-    {response_order.value}
-    </ResponseOrder>
     """
 
     messages = [
