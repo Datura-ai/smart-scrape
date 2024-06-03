@@ -27,6 +27,9 @@ from neurons.validators.reward.twitter_content_relevance import (
 from neurons.validators.reward.search_content_relevance import (
     WebSearchContentRelevanceModel,
 )
+from neurons.validators.reward.performance_reward import (
+    PerformanceRewardModel,
+)
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask, SearchTask
 
@@ -72,6 +75,7 @@ class ScraperValidator:
                 self.neuron.config.reward.summary_relevance_weight,
                 self.neuron.config.reward.twitter_content_weight,
                 self.neuron.config.reward.web_search_relavance_weight,
+                self.neuron.config.reward.performance_weight,
             ],
             dtype=torch.float32,
         ).to(self.neuron.config.neuron.device)
@@ -118,6 +122,13 @@ class ScraperValidator:
                 )
                 if self.neuron.config.reward.web_search_relavance_weight > 0
                 else MockRewardModel(RewardModelType.search_content_relevance.value)
+            ),
+            (
+                PerformanceRewardModel(
+                    device=self.neuron.config.neuron.device,
+                )
+                if self.neuron.config.reward.performance_weight > 0
+                else MockRewardModel(RewardModelType.performance_score.value)
             ),
         ]
 
@@ -207,15 +218,12 @@ class ScraperValidator:
                 self.reward_weights, self.reward_functions
             ):
                 start_time = time.time()
-                (
-                    reward_i_normalized,
-                    reward_event,
-                    val_score_responses,
-                    original_rewards,
-                ) = reward_fn_i.apply(task.base_text, responses, task.task_name, uids)
+                reward_i_normalized, reward_event, val_score_responses = (
+                    reward_fn_i.apply(task.base_text, responses, task.task_name, uids)
+                )
 
                 all_rewards.append(reward_i_normalized)
-                all_original_rewards.append(original_rewards)
+                all_original_rewards.append(reward_event[reward_fn_i.name])
                 val_score_responses_list.append(val_score_responses)
 
                 rewards += weight_i * reward_i_normalized.to(
