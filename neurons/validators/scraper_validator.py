@@ -226,12 +226,15 @@ class ScraperValidator:
                 self.reward_weights, self.reward_functions
             ):
                 start_time = time.time()
-                reward_i_normalized, reward_event, val_score_responses = (
-                    reward_fn_i.apply(task.base_text, responses, task.task_name, uids)
-                )
+                (
+                    reward_i_normalized,
+                    reward_event,
+                    val_score_responses,
+                    original_rewards,
+                ) = reward_fn_i.apply(task.base_text, responses, task.task_name, uids)
 
                 all_rewards.append(reward_i_normalized)
-                all_original_rewards.append(reward_event[reward_fn_i.name])
+                all_original_rewards.append(original_rewards)
                 val_score_responses_list.append(val_score_responses)
 
                 rewards += weight_i * reward_i_normalized.to(
@@ -475,6 +478,7 @@ class ScraperValidator:
         try:
             prompt = query["content"]
             tools = query.get("tools", [])
+            tools = ["Google Search", "Youtube Search"]
             date_filter_type = query.get("date_filter", DateFilterType.PAST_WEEK.value)
             date_filter_type = DateFilterType(date_filter_type)
 
