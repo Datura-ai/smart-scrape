@@ -28,7 +28,7 @@ from .config import RewardModelType
 from .reward import BaseRewardModel, BaseRewardEvent
 from datura.protocol import ScraperStreamingSynapse
 
-from neurons.validators.constants import QUERY_TIMEOUT, STEEPNESS, DIV_FACTOR, NUM_POOLS
+from neurons.validators.constants import QUERY_TIMEOUT, STEEPNESS, FACTOR
 
 
 class PerformanceRewardModel(BaseRewardModel):
@@ -61,7 +61,7 @@ class PerformanceRewardModel(BaseRewardModel):
         """
         Scales the axon time using a sigmoid function.
         """
-        offset = -float(NUM_POOLS) / DIV_FACTOR
+        offset = -10.0 / FACTOR
         return (
             (1 / (1 + math.exp(STEEPNESS * axon_time + offset)))
             if axon_time < QUERY_TIMEOUT
