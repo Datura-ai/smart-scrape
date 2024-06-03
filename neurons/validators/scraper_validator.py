@@ -57,7 +57,15 @@ class ScraperValidator:
         self.tools = [
             ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
             ["Twitter Search", "Google Search", "Wikipedia Search", "ArXiv Search"],
-            ["Twitter Search", "Youtube Search", "Wikipedia Search"],
+            ["Twitter Search", "Google Search", "Youtube Search"],
+            ["Twitter Search", "Youtube Search"],
+            ["Twitter Search", "Reddit Search"],
+            ["Twitter Search", "Reddit Search"],
+            ["Twitter Search", "Hacker News Search"],
+            ["Twitter Search", "ArXiv Search"],
+            ["Twitter Search", "Wikipedia Search"],
+            ["Twitter Search", "Google Search"],
+            ["Twitter Search", "Google News Search"],
         ]
         self.language = "en"
         self.region = "us"

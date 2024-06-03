@@ -69,6 +69,7 @@ class BaseRewardModel:
         self.count = 0
         self.mean = 0.0
         self.var = 0.0
+        self.is_default_normalization = True
 
     def normalize_rewards(self, rewards: torch.FloatTensor) -> torch.FloatTensor:
         # if self.var > 0:
@@ -218,7 +219,10 @@ class BaseRewardModel:
         original_rewards = successful_rewards.tolist()
 
         # Softmax rewards across samples.
-        successful_rewards_normalized = self.normalize_rewards(successful_rewards)
+        if self.is_default_normalization:
+            successful_rewards_normalized = self.normalize_rewards(successful_rewards)
+        else:
+            successful_rewards_normalized = original_rewards
 
         # Init zero rewards for all calls.
         filled_rewards = torch.ones(len(responses), dtype=torch.float32) * torch.nan

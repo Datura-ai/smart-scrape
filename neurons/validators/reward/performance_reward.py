@@ -15,91 +15,92 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
 import traceback
-import time
 import torch
 import bittensor as bt
-import random
-import asyncio
-import re
-import random
-from typing import List
+from typing import List, Tuple, Dict, Any, Union
+import sys
+import math
+import copy
 from .config import RewardModelType
 from .reward import BaseRewardModel, BaseRewardEvent
-import torch
-from typing import List
-import numpy as np
-import bittensor as bt
+from datura.protocol import ScraperStreamingSynapse
+
+# Assuming sturdy.constants and sturdy.utils.misc are available in your project
+from neurons.validators.constants import QUERY_TIMEOUT, STEEPNESS, DIV_FACTOR, NUM_POOLS
 
 
 class PerformanceRewardModel(BaseRewardModel):
-    reward_model_name: str = "VMware/open-llama-7b-open-instruct"
-
     @property
     def name(self) -> str:
-        return RewardModelType.twitter_content_relevance.value
+        return RewardModelType.performance_score.value
 
     def __init__(self, device: str):
         super().__init__()
         self.device = device
+        self.is_default_normalization = False
 
-    def calculate_percentile_rewards(
-        self,
-        process_times: List[float],
-        max_reward: float = 1.0,
-        min_reward: float = 0.1,
-    ) -> List[float]:
+    def get_response_times(self, uids: List[int], responses) -> Dict[int, float]:
         """
-        Calculate rewards based on percentile ranking of process times.
-        :param process_times: List of process times.
-        :param max_reward: Maximum reward.
-        :param min_reward: Minimum reward.
-        :return: List of rewards corresponding to the process times.
+        Returns a dictionary of axons based on their response times.
+        Adds a check for successful completion of the response.
         """
-        # Convert process times to numpy array for efficient operations
-        times_array = np.array(process_times)
-        # Calculate percentiles for each time
-        percentiles = 100 - np.argsort(np.argsort(times_array)) * 100.0 / (
-            len(times_array) - 1
+        axon_times = {
+            uids[idx]: (
+                response.dendrite.process_time
+                if response.dendrite.process_time is not None
+                and self.get_successful_completion(response)
+                else QUERY_TIMEOUT
+            )
+            for idx, response in enumerate(responses)
+        }
+        return axon_times
+
+    def sigmoid_scale(self, axon_time: float) -> float:
+        """
+        Scales the axon time using a sigmoid function.
+        """
+        offset = -float(NUM_POOLS) / DIV_FACTOR
+        return (
+            (1 / (1 + math.exp(STEEPNESS * axon_time + offset)))
+            if axon_time < QUERY_TIMEOUT
+            else 0
         )
-        # Scale percentiles to the reward range
-        scaled_rewards = min_reward + (max_reward - min_reward) * percentiles / 100
-        return scaled_rewards.tolist()
+
+    def reward(self, max_apy: float, miner_apy: float, axon_time: float) -> float:
+        """
+        Calculates the reward for a miner based on axon time and APY.
+        """
+        return (0.2 * self.sigmoid_scale(axon_time)) + (0.8 * miner_apy / max_apy)
 
     def get_rewards(
-        self, prompt: str, responses: List[bt.Synapse], name: str, uids
-    ) -> List[BaseRewardEvent]:
+        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
+    ) -> Tuple[List[BaseRewardEvent]]:
+        """
+        Returns a list of reward events for the given responses.
+        """
         reward_events = []
         try:
-            # Initialize an empty list for process times
-            process_times = []
-            for response in responses:
-                # Check if the response status code is 200 and there is a completion
-                if response.dendrite.status_code == 200 and response.completion:
-                    # If conditions are met, append the process time
-                    process_times.append(response.dendrite.process_time)
-                else:
-                    # If conditions are not met, append a high process time to ensure a low reward
-                    process_times.append(float("inf"))
+            axon_times = self.get_response_times(uids, responses)
 
-            # Calculate rewards based on process times
-            rewards = self.calculate_percentile_rewards(process_times)
+            # Placeholder for APY calculations, assuming it's done elsewhere
+            max_apy = max(miner_apy.values()) if miner_apy else 1.0
+            miner_apy = {uid: 0.1 for uid in uids}  # Example static APY for each miner
 
-            for response, reward in zip(responses, rewards):
+            for uid in uids:
                 reward_event = BaseRewardEvent()
-                # If the process time was set to infinity (for responses not meeting criteria), set reward to 0
-                reward_event.reward = (
-                    0 if response.dendrite.process_time == float("inf") else reward
+                reward_event.reward = self.reward(
+                    max_apy, miner_apy[uid], axon_times[uid]
                 )
                 reward_events.append(reward_event)
 
-            # Assuming grouped_val_score_responses is calculated elsewhere or not needed for this example
             return reward_events, {}
         except Exception as e:
-            error_message = f"Link Content Relevance get_rewards: {str(e)}"
+            error_message = f"PerformanceRewardModel get_rewards: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.error("\n".join(tb_str) + error_message)
-            for response in responses:
+            for uid in uids:
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
                 reward_events.append(reward_event)
