@@ -53,8 +53,15 @@ class ScraperValidator:
         self.timeout = 180
         self.tools = [
             ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
+            ["Twitter Search", "Reddit Search"],
+            ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
+            ["Twitter Search", "Google Search"],
+            ["Twitter Search", "Hacker News Search"],
             ["Twitter Search", "Google Search", "Wikipedia Search", "ArXiv Search"],
             ["Twitter Search", "Youtube Search", "Wikipedia Search"],
+            ["Twitter Search", "Youtube Search"],
+            ["Twitter Search", "ArXiv Search"],
+            ["Twitter Search", "Wikipedia Search"],
         ]
         self.language = "en"
         self.region = "us"
@@ -340,7 +347,8 @@ class ScraperValidator:
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
             dataset = QuestionsDataset()
-            prompt = dataset.next()
+            tools = random.choice(self.tools)
+            prompt = await dataset.generate_new_question_with_openai(tools)
 
             task_name = "augment"
             task = TwitterTask(
@@ -353,8 +361,6 @@ class ScraperValidator:
             if not len(self.neuron.available_uids):
                 bt.logging.info("No available UIDs, skipping task execution.")
                 return
-
-            tools = random.choice(self.tools)
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
