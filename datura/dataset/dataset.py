@@ -1347,7 +1347,7 @@ class QuestionsDataset:
         tools_str = ", ".join(selected_tools)
 
         # Prepare a simpler prompt for OpenAI
-        prompt = f"Create a simple and straightforward question about '{topic}' "
+        prompt = f"Create a simple and straightforward question about '{topic}' that is 5 to 14 words long."
         bt.logging.warning(f"Topic: {topic}")
 
         try:
