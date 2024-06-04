@@ -137,7 +137,8 @@ class RewardLLM:
                     try:
                         return await call_openai(
                             messages=message,
-                            temperature=0.2,
+                            temperature=0.0001,
+                            top_p=0.0001,
                             model="gpt-3.5-turbo-0125",
                         )
                     except Exception as e:
