@@ -1359,7 +1359,7 @@ class QuestionsDataset:
             # Make the call to OpenAI with the new question
             new_question = await call_openai(
                 messages=[{"role": "system", "content": prompt}],
-                temperature=0.5,  # Adjusted for creativity
+                temperature=0.7,  # Adjusted for creativity
                 model="gpt-3.5-turbo-0125",
                 seed=None,
             )
