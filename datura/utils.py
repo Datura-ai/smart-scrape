@@ -201,7 +201,9 @@ def extract_python_list(text: str):
     return None
 
 
-async def call_openai(messages, temperature, model, seed=1234, response_format=None):
+async def call_openai(
+    messages, temperature, model, seed=1234, response_format=None, top_p=None
+):
     api_key = os.environ.get("OPENAI_API_KEY")
 
     if not api_key:
@@ -219,6 +221,7 @@ async def call_openai(messages, temperature, model, seed=1234, response_format=N
                 temperature=temperature,
                 seed=seed,
                 response_format=response_format,
+                top_p=top_p,
             )
             response = response.choices[0].message.content
             bt.logging.trace(f"validator response is {response}")

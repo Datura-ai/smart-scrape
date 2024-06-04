@@ -144,6 +144,34 @@ class LinkContentPrompt(ScoringPrompt):
     def get_system_message(self):
         return system_link_content_relevance_template
 
+    def extract_score(self, response: str) -> float:
+        r"""Extract numeric score (range 0-10) from prompt response."""
+        # Mapping of special codes to numeric scores
+        special_scores = {
+            "0": 0,
+            "2": 2,
+            "5": 5,
+            "8": 8,
+            "9": 9,
+            "10": 10,
+        }
+
+        # Check for special codes in the response
+        for code, score in special_scores.items():
+            if code in response:
+                return score
+
+        # Original extraction logic
+        extraction = self.extract(response)
+        if extraction is not None:
+            try:
+                score = float(extraction)
+                if 0 <= score <= 10:
+                    return score
+            except ValueError:
+                return 0
+        return 0
+
 
 class SearchSummaryRelevancePrompt(ScoringPrompt):
     r"""Scores a summary on a scale from 0 to 10, given a context."""
@@ -249,7 +277,7 @@ Important scoring rules:
 - Assign a score based on the criteria above.
 
 OUTPUT EXAMPLE FORMAT:
-2, Explanation: is not related to the question
+2
 
 Output:
 Only MUST Generate one of from [2, 5, 9]:
