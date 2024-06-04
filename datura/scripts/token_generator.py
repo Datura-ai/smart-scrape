@@ -6,7 +6,8 @@ def generate_token(value: str, coldkey: str, hotkey: str):
     try:
         wallet = bt.wallet(name=coldkey, hotkey=hotkey)
         signature = wallet.hotkey.sign(value.encode()).hex()
-        print(f"Signature:\n  {signature}")
+        print(f"\nSignature:\n  {signature}")
+        print(f"\nss58 address:\n  {wallet.hotkey.ss58_address}\n")
     except Exception as e:
         print(f"[!] Error: {e}")
 
