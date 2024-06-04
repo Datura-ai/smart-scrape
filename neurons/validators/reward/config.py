@@ -45,4 +45,4 @@ class DefaultRewardFrameworkConfig:
     summary_relevance_weight: float = 0.25
     twitter_content_weight: float = 0.50
     web_search_relavance_weight: float = 0.20
-    performance_weight: float = 0.5
+    performance_weight: float = 0.05
