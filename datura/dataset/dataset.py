@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup
 import time
 import requests
 import html
+from datura.utils import call_openai
+import json
 
 
 class MockTwitterQuestionsDataset:
@@ -1329,6 +1331,46 @@ class QuestionsDataset:
             MockTwitterQuestionsDataset(),
             StackOverflowDataset(),
         ]
+
+    async def generate_new_question_with_openai(self, selected_tools):
+        # Select a random dataset and get the next question
+        # random_dataset = random.choice(self.datasets)
+        # original_question = random_dataset.next()
+        original_question = self.next()  # random_dataset.next()
+
+        # Extract the topic from the original question
+        topic = (
+            original_question.split("{}")[0]
+            if "{}" in original_question
+            else original_question
+        )
+
+        # Convert the list of tools into a string to include in the prompt
+        tools_str = ", ".join(selected_tools)
+
+        # Prepare the prompt for OpenAI, asking to generate a question related to the topic
+        # and specifying the tools that will be used to find the answer
+        prompt = (
+            f"Create a new question related to the topic '{topic}' that could be "
+            f"informed by current discussions or information available online. "
+        )
+
+        try:
+            # Make the call to OpenAI with the new question
+            new_question = await call_openai(
+                messages=[{"role": "system", "content": prompt}],
+                temperature=0.5,  # Adjusted for creativity
+                model="gpt-3.5-turbo-0125",
+                seed=None,
+            )
+
+            # Check if new_question is None or an empty string
+            if not new_question:
+                return original_question
+            return new_question
+        except Exception as e:
+            print(f"Failed to call OpenAI: {e}")
+            return original_question
 
     def next(self):
         random_dataset = random.choice(self.datasets)
