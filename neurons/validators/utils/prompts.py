@@ -72,32 +72,19 @@ class ScoringPrompt(BasePrompt):
     #     return 0
 
     def extract_score(self, response: str) -> float:
-        r"""Extract numeric score (range 0-10) from prompt response."""
-        # Mapping of special codes to numeric scores
-        special_scores = {
-            "SM_SCS_RDD": 0,
-            "SM_SCS_PNK": 2,
-            "SM_SCS_BLE": 5,
-            "SM_SCS_GRY": 8,
-            "SM_SCS_YAL": 9,
-            "SM_SCS_GRN": 10,
-        }
-
-        # Check for special codes in the response
-        for code, score in special_scores.items():
-            if code in response:
-                return score
-
-        # Original extraction logic
-        extraction = self.extract(response)
-        if extraction is not None:
-            try:
-                score = float(extraction)
-                if 0 <= score <= 10:
-                    return score
-            except ValueError:
-                return 0
-        return 0
+        r"""Extract numeric score (range 1-100) from prompt response."""
+        # Attempt to find and extract the score from the response
+        try:
+            # Extract the numeric value after "Score:"
+            score_str = response.split('**Score**:')[1].strip().split('\n')[0] if '**Score**:' in response else response.split('- Score:')[1].strip().split('\n')[0]
+            extracted_score = float(score_str)
+            if 1 <= extracted_score <= 100:
+                return extracted_score
+        except (ValueError, IndexError):
+            return 1  # Defaulting to 1 if extraction fails or is invalid
+        
+        # Default to the lowest score if no valid score is found
+        return 1
 
     def check_score_exists(self, response: str) -> bool:
         scores = [
@@ -234,25 +221,80 @@ user_link_content_relevance_template = """
 """
 
 system_link_content_relevance_template = """
-Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the level of relevance the tweet content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
+**System Prompt: Tweet Relevance Scoring**
 
-Return one of them:
-- Assign SM_SCS_PNK if the tweet content has no relevance to the question's topic, lacking any mention of keywords or themes related to the question. This score is for tweets that are completely unrelated to the question's topic, showing no connection or relevance to the intended subject matter.
+**Objective**: Evaluate the relevance of a tweet in response to a specific query. Provide a score from 1 to 100 reflecting the tweet's relevance, depth, and engagement with the query.
 
-- Assign SM_SCS_BLE if the tweet content mentions at least one keyword or theme from the question but fails to provide meaningful engagement or insight into those topics. This includes superficial mentions that do not contribute to a deeper understanding or relevant discussion of the question. The content should have some connection to the topic but fails to provide meaningful insight or discussion related to the core questions.
+### Scoring Guidelines
 
-- Assign SM_SCS_YAL if the tweet content is directly relevant to the question, incorporating and engaging with multiple keywords or themes from the question in a way that provides depth, insight, or valuable information related to the question's core topics. The content should provide valuable insights, detailed discussion, or meaningful engagement with the question's main focus.
+**1. Score: 1-30**
 
-Important scoring rules:
-- Identify keywords or topics from the question that are essential for the answer.
-- Evaluate the tweet content to determine its level of engagement with these keywords or topics.
-- Assign a score based on the criteria above.
+**Criteria**:
+- The tweet content is completely unrelated to the query.
+- No mention of keywords or themes from the query.
 
-OUTPUT EXAMPLE FORMAT:
-SM_SCS_PNK, Explanation: is not related to the question
+**Examples**:
+- Query: "What are the health benefits of green tea?"
+- Tweet: "I love sunny days!"
+- **Score: 5** - Explanation: No mention of green tea or its health benefits.
 
-Output:
-Only MUST Generate one of from [SM_SCS_PNK, SM_SCS_BLE, SM_SCS_YAL]:
+- Query: "How does solar power work?"
+- Tweet: "I'm excited for the weekend!"
+- **Score: 1** - Explanation: Completely irrelevant.
+
+**2. Score: 31-60**
+
+**Criteria**:
+- The tweet content mentions at least one keyword or theme from the query.
+- Fails to provide meaningful engagement or insights.
+- Contains superficial mentions without depth.
+
+**Examples**:
+- Query: "What are the health benefits of green tea?"
+- Tweet: "Green tea is pretty popular these days."
+- **Score: 45** - Explanation: Mentions green tea but lacks detailed information.
+
+- Query: "How does solar power work?"
+- Tweet: "Many people are installing solar panels."
+- **Score: 50** - Explanation: Mentions solar panels but not the mechanism or benefits of solar power.
+
+**3. Score: 61-100**
+
+**Criteria**:
+- The tweet content is directly relevant to the query.
+- Engages with multiple keywords or themes from the query.
+- Provides depth, insight, or valuable information related to the query.
+
+**Examples**:
+- Query: "What are the health benefits of green tea?"
+- Tweet: "Green tea is rich in antioxidants, which can help reduce the risk of certain cancers and improve brain function."
+- **Score: 85** - Explanation: Provides specific health benefits of green tea.
+
+- Query: "How does solar power work?"
+- Tweet: "Solar power works by converting sunlight into electricity using photovoltaic cells. It reduces carbon emissions and is a renewable energy source."
+- **Score: 90** - Explanation: Explains the mechanism and benefits of solar power.
+
+### Important Rules for Scoring
+
+1. **Identify Essential Keywords/Topics**:
+   - Clearly pick out the main topics or keywords in the query that are essential for a relevant response.
+
+2. **Evaluate Tweet Content**:
+   - Assess if the tweet mentions any of the identified keywords or topics.
+   - Judge the depth and relevance of the tweet's content concerning these keywords/topics.
+
+3. **Assign a Score Based on Defined Criteria**:
+   - Use the outlined criteria to assign a score.
+   - Provide a brief explanation for the assigned score for verification purposes.
+
+### Output Format
+
+- **Score**: [1-100 based on relevance criteria].
+- **Explanation**: [Brief rationale behind the assigned score].
+
+**Example Output**:
+- Score: 85
+- Explanation: The tweet provides specific health benefits of green tea, engaging deeply with the query.
 """
 
 system_search_summary_relevance_scoring_template = """

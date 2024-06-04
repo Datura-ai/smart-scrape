@@ -218,6 +218,7 @@ async def call_openai(messages, temperature, model, seed=1234, response_format=N
                 messages=messages,
                 temperature=temperature,
                 seed=seed,
+                top_p=0.0001,
                 response_format=response_format,
             )
             response = response.choices[0].message.content
