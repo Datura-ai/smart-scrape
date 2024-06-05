@@ -274,14 +274,79 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     def get_twitter_completion(self) -> Optional[str]:
         return self.texts.get(ScraperTextRole.TWITTER_SUMMARY.value, "")
 
-    def get_search_summary_completion(self) -> Optional[str]:
-        return self.texts.get(ScraperTextRole.SEARCH_SUMMARY.value, "")
+    def get_search_completion(self) -> Dict[str, str]:
+        """Gets the search completion text from the texts dictionary based on tools used."""
 
-    def get_hacker_news_completion(self) -> Optional[str]:
-        return self.texts.get(ScraperTextRole.HACKER_NEWS_SUMMARY.value, "")
+        completions = {}
 
-    def get_reddit_completion(self) -> Optional[str]:
-        return self.texts.get(ScraperTextRole.REDDIT_SUMMARY.value, "")
+        if any(
+            tool in self.tools
+            for tool in [
+                "Google Search",
+                "Google News Search",
+                "Wikipedia Search",
+                "Youtube Search",
+                "ArXiv Search",
+            ]
+        ):
+            search_summary = self.texts.get(ScraperTextRole.SEARCH_SUMMARY.value, "")
+            if search_summary:
+                completions[ScraperTextRole.SEARCH_SUMMARY.value] = search_summary
+
+        if "Reddit Search" in self.tools:
+            reddit_summary = self.texts.get(ScraperTextRole.REDDIT_SUMMARY.value, "")
+            if reddit_summary:
+                completions[ScraperTextRole.REDDIT_SUMMARY.value] = reddit_summary
+
+        if "Hacker News Search" in self.tools:
+            hacker_news_summary = self.texts.get(
+                ScraperTextRole.HACKER_NEWS_SUMMARY.value, ""
+            )
+            if hacker_news_summary:
+                completions[ScraperTextRole.HACKER_NEWS_SUMMARY.value] = (
+                    hacker_news_summary
+                )
+
+        return completions
+
+    def get_search_links(self) -> List[str]:
+        """Extracts web links from each summary making sure to filter by domain for each tool used.
+        In Reddit and Hacker News Search, the links are filtered by domains.
+        In search summary part, if Google Search or Google News Search is used, the links are allowed from any domain,
+        Otherwise search summary will only look for Wikipedia, ArXiv, Youtube links.
+        """
+
+        completions = self.get_search_completion()
+        links = []
+
+        for key, value in completions.items():
+            if key == ScraperTextRole.REDDIT_SUMMARY.value:
+                links.extend(WebSearchUtils.find_links_by_domain(value, "reddit.com"))
+            elif key == ScraperTextRole.HACKER_NEWS_SUMMARY.value:
+                links.extend(
+                    WebSearchUtils.find_links_by_domain(value, "news.ycombinator.com")
+                )
+            elif key == ScraperTextRole.SEARCH_SUMMARY.value:
+                if any(
+                    tool in self.tools
+                    for tool in ["Google Search", "Google News Search"]
+                ):
+                    links.extend(WebSearchUtils.find_links(value))
+                else:
+                    if "Wikipedia Search" in self.tools:
+                        links.extend(
+                            WebSearchUtils.find_links_by_domain(value, "wikipedia.org")
+                        )
+                    if "ArXiv Search" in self.tools:
+                        links.extend(
+                            WebSearchUtils.find_links_by_domain(value, "arxiv.org")
+                        )
+                    if "Youtube Search" in self.tools:
+                        links.extend(
+                            WebSearchUtils.find_links_by_domain(value, "youtube.com")
+                        )
+
+        return links
 
     async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:
@@ -418,22 +483,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             }
 
         completion_links = TwitterUtils().find_twitter_links(self.completion)
-
-        search_completions = [
-            self.get_search_summary_completion(),
-            self.get_hacker_news_completion(),
-            self.get_reddit_completion(),
-        ]
-
-        search_completions = " ".join(
-            [
-                str(search_completion)
-                for search_completion in search_completions
-                if search_completion
-            ]
-        )
-
-        search_completion_links = WebSearchUtils().find_links(search_completions)
+        search_completion_links = self.get_search_links()
 
         return {
             "name": headers.get("name", ""),
