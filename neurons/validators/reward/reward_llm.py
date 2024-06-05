@@ -1,7 +1,5 @@
-from typing import List
-import torch
 import random
-import requests
+import torch
 import os
 import asyncio
 import bittensor as bt
@@ -9,19 +7,20 @@ import re
 import time
 from datura.utils import call_openai
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from neurons.validators.reward.subnet_18_reward import StreamPrompting, query_miner
 from neurons.validators.utils.prompts import (
     extract_score_and_explanation,
 )
 from neurons.validators.utils.prompts import ScoringPrompt
 
 from enum import Enum
-import torch
 from transformers import pipeline
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 EXPECTED_ACCESS_KEY = os.environ.get("EXPECTED_ACCESS_KEY", "hello")
 URL_SUBNET_18 = os.environ.get("URL_SUBNET_18")
+SUBNET_18_VALIDATOR_UID = os.environ.get("SUBNET_18_VALIDATOR_UID", "0")
 
 
 class ScoringSource(Enum):
@@ -87,7 +86,7 @@ class RewardLLM:
 
         return text
 
-    def call_to_subnet_18_scoring(self, data):
+    async def call_to_subnet_18_scoring(self, data):
         start_time = time.time()  # Start timing for execution
         try:
             if not URL_SUBNET_18:
@@ -96,25 +95,21 @@ class RewardLLM:
                 )
                 return None
 
-            headers = {
-                "access-key": EXPECTED_ACCESS_KEY,
-                "Content-Type": "application/json",
-            }
-            response = requests.post(
-                url=f"{URL_SUBNET_18}/text-validator/",
-                headers=headers,
-                json=data,
-                timeout=10 * 60,  # Timeout after 10 minutes
-            )  # Using json parameter to automatically set the content-type to application/json
+            meta = bt.metagraph(netuid=18)
+            wallet = bt.wallet(name="local4", hotkey="vali")
+            dendrite = bt.dendrite(wallet=wallet)
+            top_miners_to_use = 100
+            top_miner_uids = meta.I.argsort(descending=True)[:top_miners_to_use]
+            miner_uid = random.choice(top_miner_uids)
 
-            if response.status_code in [401, 403]:
-                bt.logging.error(f"Connection issue with Subnet 18: {response.text}")
-                return {}
-            if response.status_code != 200:
-                bt.logging.error(
-                    f"ERROR connect to Subnet 18: Status code: {response.status_code}"
-                )
-                return None
+            messages = [{'role': 'user', 'content': data}]
+            synapse = StreamPrompting(
+                messages=messages,
+                provider="Claude",
+                model="claude-3-opus-20240229",
+                uid=miner_uid,
+            )
+            response = await query_miner(dendrite, meta.axons[miner_uid], synapse, 60, True)
             execution_time = (
                 time.time() - start_time
             ) / 60  # Calculate execution time in minutes
@@ -263,7 +258,8 @@ class RewardLLM:
         if source == ScoringSource.LocalZephyr:
             return self.get_score_by_zephyer(messages)
         if source == ScoringSource.Subnet18:
-            return self.call_to_subnet_18_scoring(messages)
+            loop = asyncio.get_event_loop_policy().get_event_loop()
+            return loop.run_until_complete(self.call_to_subnet_18_scoring(messages))
         elif source == ScoringSource.OpenAI:
             loop = asyncio.get_event_loop_policy().get_event_loop()
             return loop.run_until_complete(self.get_score_by_openai(messages=messages))
@@ -276,9 +272,9 @@ class RewardLLM:
 
         # Define the order of scoring sources to be used
         scoring_sources = [
-            ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
+            # ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
             # ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
-            # ScoringSource.Subnet18,  # First attempt with Subnet 18
+            ScoringSource.Subnet18,  # First attempt with Subnet 18
         ]
 
         # Attempt to score messages using the defined sources in order
