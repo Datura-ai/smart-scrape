@@ -1,3 +1,4 @@
-FACTOR = 1.5  # a scaling factor
+
 QUERY_TIMEOUT = 180  # timeout (seconds)
-STEEPNESS = 1.0
+STEEPNESS = 0.1
+FACTOR = 2  # a scaling factor
