@@ -15,9 +15,11 @@ class BittensorToolkit(BaseToolkit, ABC):
         return [BittensorDocsTool()]
 
     async def summarize(self, prompt, model, data):
+        response_order = self.tool_manager.response_order
         data = next(iter(data.values()))
         return await summarize_bittensor_data(
             prompt=prompt,
             model=model,
             docs=data,
+            response_order=response_order
         )
