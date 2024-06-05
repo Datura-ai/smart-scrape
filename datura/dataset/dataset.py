@@ -1334,9 +1334,7 @@ class QuestionsDataset:
 
     async def generate_new_question_with_openai(self, selected_tools):
         # Select a random dataset and get the next question
-        # random_dataset = random.choice(self.datasets)
-        # original_question = random_dataset.next()
-        original_question = self.next()  # random_dataset.next()
+        original_question = self.next()
 
         # Extract the topic from the original question
         topic = (
@@ -1348,18 +1346,15 @@ class QuestionsDataset:
         # Convert the list of tools into a string to include in the prompt
         tools_str = ", ".join(selected_tools)
 
-        # Prepare the prompt for OpenAI, asking to generate a question related to the topic
-        # and specifying the tools that will be used to find the answer
-        prompt = (
-            f"Create a new question related to the topic '{topic}' that could be "
-            f"informed by current discussions or information available online. "
-        )
+        # Prepare a simpler prompt for OpenAI
+        prompt = f"Create a simple and straightforward question about '{topic}' that is 5 to 14 words long."
+        bt.logging.warning(f"Topic: {topic}")
 
         try:
             # Make the call to OpenAI with the new question
             new_question = await call_openai(
                 messages=[{"role": "system", "content": prompt}],
-                temperature=0.7,  # Adjusted for creativity
+                temperature=0.3,  # Lower temperature for less creativity and more straightforward output
                 model="gpt-3.5-turbo-0125",
                 seed=None,
             )
@@ -1367,7 +1362,7 @@ class QuestionsDataset:
             # Check if new_question is None or an empty string
             if not new_question:
                 return original_question
-            return new_question
+            return new_question.strip()
         except Exception as e:
             print(f"Failed to call OpenAI: {e}")
             return original_question
