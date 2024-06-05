@@ -101,11 +101,11 @@ class ScraperValidator:
             raise Exception(message)
 
         self.reward_llm = RewardLLM()
-        if (
-            self.neuron.config.reward.twitter_content_weight > 0
-            or self.neuron.config.reward.summary_relevance_weight > 0
-        ) and not self.neuron.config.neuron.is_disable_tokenizer_reward:
-            self.reward_llm.init_pipe_zephyr()
+        # if (
+        #     self.neuron.config.reward.twitter_content_weight > 0
+        #     or self.neuron.config.reward.summary_relevance_weight > 0
+        # ) and not self.neuron.config.neuron.is_disable_tokenizer_reward:
+        #     self.reward_llm.init_pipe_zephyr()
 
         self.reward_functions = [
             (

@@ -92,7 +92,6 @@ class QUERY_MINERS(Enum):
 
 # Import all submodules.
 from . import protocol
-from . import reward
 from . import utils
 from . import tools
 

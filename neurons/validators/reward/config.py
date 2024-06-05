@@ -42,7 +42,7 @@ class DefaultRewardFrameworkConfig:
     Note: All the weights should add up to 1.0.
     """
 
-    summary_relevance_weight: float = 0.25
-    twitter_content_weight: float = 0.50
-    web_search_relavance_weight: float = 0.20
+    summary_relevance_weight: float = 0.20
+    twitter_content_weight: float = 0.45
+    web_search_relavance_weight: float = 0.30
     performance_weight: float = 0.05
