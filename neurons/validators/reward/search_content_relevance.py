@@ -164,7 +164,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 "arxiv.org": response.arxiv_search_results,
                 "wikipedia.org": response.wikipedia_search_results,
                 "reddit.com": response.reddit_search_results,
-                "news.ycombinator.com": response.hacker_news_search_results,
+                "ycombinator.com": response.hacker_news_search_results,
                 "youtube.com": response.youtube_search_results,
             }
 
