@@ -2,6 +2,7 @@ import pydantic
 import bittensor as bt
 import typing
 import json
+from datetime import datetime
 from abc import ABC, abstractmethod
 from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
 from starlette.responses import StreamingResponse
@@ -588,14 +589,63 @@ class SearchSynapse(bt.Synapse):
         return self
 
 
+class MinerTweetEntityUrl(BaseModel):
+    start: int
+    end: int
+    url: str
+    expanded_url: str
+    display_url: str
+
+
+class MinerTweetEntityMention(BaseModel):
+    start: int
+    end: int
+    username: str
+    id: str
+
+
+class MinerTweetEntityAnnotation(BaseModel):
+    start: int
+    end: int
+    probability: float
+    type: str
+    normalized_text: str
+
+
+class MinerTweetEntityTag(BaseModel):
+    start: int
+    end: int
+    tag: str
+
+
+class MinerTweetEntity(BaseModel):
+    urls: Optional[List[MinerTweetEntityUrl]]
+    hashtags: Optional[List[MinerTweetEntityTag]]
+    cashtags: Optional[List[MinerTweetEntityTag]]
+    mentions: Optional[List[MinerTweetEntityMention]]
+    annotations: Optional[List[MinerTweetEntityAnnotation]]
+
+
+class MinerTweetPublicMetrics(BaseModel):
+    retweet_count: int
+    reply_count: int
+    like_count: int
+    quote_count: int
+    bookmark_count: int
+    impression_count: int
+
+
 class MinerTweet(BaseModel):
     id: str
     author_id: str
     text: str
     possibly_sensitive: Optional[bool]
     edit_history_tweet_ids: List[str]
-    created_at: Optional[str] = ""
-    public_metrics: Dict[str, int]
+    created_at: datetime = Field(
+        ..., description="ISO 8601 format: YYYY-MM-DDTHH:mm:ss.sssZ"
+    )
+    public_metrics: Optional[MinerTweetPublicMetrics]
+    entities: Optional[MinerTweetEntity]
 
 
 class MinerTweetAuthor(BaseModel):
