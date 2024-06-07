@@ -1,15 +1,12 @@
-import random
 import torch
-import copy
 import os
 import asyncio
 import bittensor as bt
 import re
 import time
+from datura.services.subnet_18_api_wrapper import Subnet18
 from datura.utils import call_openai
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from neurons.validators.config import add_args, check_config, config
-from neurons.validators.reward.subnet_18_reward import StreamPrompting, query_miner
 from neurons.validators.utils.prompts import (
     extract_score_and_explanation,
 )
@@ -33,42 +30,14 @@ class ScoringSource(Enum):
 
 
 class RewardLLM:
-    subtensor: "bt.subtensor"
-    wallet: "bt.wallet"
-    metagraph: "bt.metagraph"
-    dendrite: "bt.dendrite"
-
-    @classmethod
-    def add_args(cls, parser):
-        add_args(cls, parser)
-
-    @classmethod
-    def config(cls):
-        return config(cls)
-
-    def __init__(self):
-        self.config = RewardLLM.config()
-
+    def __init__(self, wallet):
         self.tokenizer = None
         self.model = None
         self.device = None
         self.pipe = None
         self.scoring_prompt = ScoringPrompt()
-
-        self.initialize_components()
-
-    def initialize_components(self):
-        self.wallet = bt.wallet(config=self.config)
-        self.subtensor = bt.subtensor(config=self.config)
-        self.metagraph = self.subtensor.metagraph(self.config.netuid)
-        self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
-        self.dendrite = bt.dendrite(wallet=self.wallet)
-        self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
-        if self.wallet.hotkey.ss58_address not in self.metagraph.hotkeys:
-            bt.logging.error(
-                f"Your validator: {self.wallet} is not registered to chain connection: {self.subtensor}. Run btcli register --netuid 18 and try again."
-            )
-            exit()
+        wallet = bt.wallet(name="validator-prod", hotkey="default")
+        self.sn18 = Subnet18(wallet)
 
     def init_tokenizer(self, device, model_name):
         # https://huggingface.co/VMware/open-llama-7b-open-instruct
@@ -118,43 +87,21 @@ class RewardLLM:
 
         return text
 
-    async def get_score_by_subnet_18(self, data):
-        def flatten_content(content):
-            if isinstance(content, list):
-                return " ".join(flatten_content(item) for item in content)
-            if isinstance(content, dict):
-                return " ".join(f"{key}: {flatten_content(value)}" for key, value in content.items())
-            return str(content)
-
-        start_time = time.time()  # Start timing for execution
+    async def get_score_by_subnet_18(self, messages):
         try:
-            top_miners_to_use = 100
-            top_miner_uids = self.metagraph.I.argsort(descending=True)[:top_miners_to_use]
-            miner_uid = random.choice(top_miner_uids)
+            result = {}
+            start_time = time.time()
+            for message_dict in messages:
+                ((key, message_list),) = message_dict.items()
+                response = await self.sn18.query(messages=message_list)
+                result[key] = response
 
-            flattened_data = flatten_content(data)
-            messages = [{'role': 'user', 'content': flattened_data}]
-            synapse = StreamPrompting(
-                messages=messages,
-                provider="Claude",
-                model="claude-3-opus-20240229",
-                uid=miner_uid,
-                completion="",
-            )
-            response = await query_miner(
-                self.dendrite,
-                self.metagraph.axons[miner_uid],
-                synapse,
-                60,   # timeout
-                True  # streaming
-            )
-            execution_time = (
-                time.time() - start_time
-            ) / 60  # Calculate execution time in minutes
-            bt.logging.info(
-                f"Subnet 18 scoring call execution time: {execution_time:.2f} minutes"
-            )
-            return response
+                # Calculate execution time in minutes
+                execution_time = (time.time() - start_time) / 60
+                bt.logging.info(
+                    f"Subnet 18 scoring call execution time: {execution_time:.2f} minutes"
+                )
+            return result
         except Exception as e:
             bt.logging.warning(f"Error calling Subnet 18 scoring: {e}")
             return None

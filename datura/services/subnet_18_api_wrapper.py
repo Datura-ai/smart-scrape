@@ -91,8 +91,7 @@ class StreamPrompting(bt.StreamingSynapse):
         messages = values.get('messages', [])
         for i, message in enumerate(messages):
             if 'content' in message and not isinstance(message['content'], str):
-                raise TypeError(f"Message at index {
-                                i} has non-string 'content': {message['content']}")
+                raise TypeError(f"Message at index {i} has non-string 'content': {message['content']}")
         return values
 
     messages: List[Dict[str, str]] = pydantic.Field(
