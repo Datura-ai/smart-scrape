@@ -5,6 +5,13 @@ from starlette.responses import StreamingResponse
 
 
 class StreamPrompting(bt.StreamingSynapse):
+    @pydantic.root_validator(pre=True)
+    def check_messages_content_type(cls, values):
+        messages = values.get('messages', [])
+        for i, message in enumerate(messages):
+            if 'content' in message and not isinstance(message['content'], str):
+                raise TypeError(f"Message at index {i} has non-string 'content': {message['content']}")
+        return values
 
     messages: List[Dict[str, str]] = pydantic.Field(
         ...,
@@ -58,7 +65,7 @@ class StreamPrompting(bt.StreamingSynapse):
     )
 
     completion: str = pydantic.Field(
-        None,
+        "",
         title="Completion",
         description="Completion status of the current StreamPrompting object. "
                     "This attribute is mutable and can be updated.",

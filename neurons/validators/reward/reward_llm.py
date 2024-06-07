@@ -1,5 +1,6 @@
 import random
 import torch
+import copy
 import os
 import asyncio
 import bittensor as bt
@@ -7,6 +8,7 @@ import re
 import time
 from datura.utils import call_openai
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from neurons.validators.config import add_args, check_config, config
 from neurons.validators.reward.subnet_18_reward import StreamPrompting, query_miner
 from neurons.validators.utils.prompts import (
     extract_score_and_explanation,
@@ -31,12 +33,42 @@ class ScoringSource(Enum):
 
 
 class RewardLLM:
+    subtensor: "bt.subtensor"
+    wallet: "bt.wallet"
+    metagraph: "bt.metagraph"
+    dendrite: "bt.dendrite"
+
+    @classmethod
+    def add_args(cls, parser):
+        add_args(cls, parser)
+
+    @classmethod
+    def config(cls):
+        return config(cls)
+
     def __init__(self):
+        self.config = RewardLLM.config()
+
         self.tokenizer = None
         self.model = None
         self.device = None
         self.pipe = None
         self.scoring_prompt = ScoringPrompt()
+
+        self.initialize_components()
+
+    def initialize_components(self):
+        self.wallet = bt.wallet(config=self.config)
+        self.subtensor = bt.subtensor(config=self.config)
+        self.metagraph = self.subtensor.metagraph(self.config.netuid)
+        self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+        self.dendrite = bt.dendrite(wallet=self.wallet)
+        self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
+        if self.wallet.hotkey.ss58_address not in self.metagraph.hotkeys:
+            bt.logging.error(
+                f"Your validator: {self.wallet} is not registered to chain connection: {self.subtensor}. Run btcli register --netuid 18 and try again."
+            )
+            exit()
 
     def init_tokenizer(self, device, model_name):
         # https://huggingface.co/VMware/open-llama-7b-open-instruct
@@ -86,30 +118,36 @@ class RewardLLM:
 
         return text
 
-    async def call_to_subnet_18_scoring(self, data):
+    async def get_score_by_subnet_18(self, data):
+        def flatten_content(content):
+            if isinstance(content, list):
+                return " ".join(flatten_content(item) for item in content)
+            if isinstance(content, dict):
+                return " ".join(f"{key}: {flatten_content(value)}" for key, value in content.items())
+            return str(content)
+
         start_time = time.time()  # Start timing for execution
         try:
-            if not URL_SUBNET_18:
-                bt.logging.warning(
-                    "Please set the URL_SUBNET_18 environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md"
-                )
-                return None
-
-            meta = bt.metagraph(netuid=18)
-            wallet = bt.wallet(name="local4", hotkey="vali")
-            dendrite = bt.dendrite(wallet=wallet)
             top_miners_to_use = 100
-            top_miner_uids = meta.I.argsort(descending=True)[:top_miners_to_use]
+            top_miner_uids = self.metagraph.I.argsort(descending=True)[:top_miners_to_use]
             miner_uid = random.choice(top_miner_uids)
 
-            messages = [{'role': 'user', 'content': data}]
+            flattened_data = flatten_content(data)
+            messages = [{'role': 'user', 'content': flattened_data}]
             synapse = StreamPrompting(
                 messages=messages,
                 provider="Claude",
                 model="claude-3-opus-20240229",
                 uid=miner_uid,
+                completion="",
             )
-            response = await query_miner(dendrite, meta.axons[miner_uid], synapse, 60, True)
+            response = await query_miner(
+                self.dendrite,
+                self.metagraph.axons[miner_uid],
+                synapse,
+                60,   # timeout
+                True  # streaming
+            )
             execution_time = (
                 time.time() - start_time
             ) / 60  # Calculate execution time in minutes
@@ -259,7 +297,7 @@ class RewardLLM:
             return self.get_score_by_zephyer(messages)
         if source == ScoringSource.Subnet18:
             loop = asyncio.get_event_loop_policy().get_event_loop()
-            return loop.run_until_complete(self.call_to_subnet_18_scoring(messages))
+            return loop.run_until_complete(self.get_score_by_subnet_18(messages))
         elif source == ScoringSource.OpenAI:
             loop = asyncio.get_event_loop_policy().get_event_loop()
             return loop.run_until_complete(self.get_score_by_openai(messages=messages))
@@ -267,6 +305,7 @@ class RewardLLM:
             return self.get_score_by_llm(messages=messages)
 
     def llm_processing(self, messages):
+        bt.logging.info("[?] >>>>>>>> Starting process of llm reward")
         # Initialize score_responses as an empty dictionary to hold the scoring results
         score_responses = {}
 
@@ -279,10 +318,14 @@ class RewardLLM:
 
         # Attempt to score messages using the defined sources in order
         for source in scoring_sources:
+            bt.logging.info(f"[?] >>>>>>>> processing with source:{source}")
             # Attempt to score with the current source
             current_score_responses = self.get_score_by_source(
                 messages=messages, source=source
             )
+            bt.logging.info("[?] >>>>>>>> score responses")
+            bt.logging.info(f"[?] >>>>>>>> {current_score_responses}")
+            bt.logging.info("[?] >>>>>>>> score responses")
             if current_score_responses:
                 # Update the score_responses with the new scores
                 score_responses.update(current_score_responses)
