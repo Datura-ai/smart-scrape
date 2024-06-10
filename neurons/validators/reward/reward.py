@@ -23,6 +23,7 @@ from abc import abstractmethod
 from dataclasses import dataclass, asdict, fields
 from datura.protocol import ScraperStreamingSynapse, TwitterScraperTweet
 import re
+import numpy as np  # Ensure numpy is imported
 
 
 @dataclass
@@ -69,9 +70,56 @@ class BaseRewardModel:
         self.mean = 0.0
         self.var = 0.0
 
+    # def normalize_rewards(self, rewards: torch.FloatTensor) -> torch.FloatTensor:
+    #     # Check if all rewards are equal
+    #     if torch.all(rewards.eq(rewards[0])):
+    #         # If all rewards are equal, return a tensor of equal values summing to 1
+    #         equal_normalized_rewards = torch.full_like(
+    #             rewards, fill_value=1.0 / len(rewards)
+    #         )
+    #         return equal_normalized_rewards
+
+    #     # Convert to numpy array for processing
+    #     rewards_np = rewards.numpy()
+
+    #     # Sort rewards and apply exponential exaggeration
+    #     def exponential_exaggeration(rewards, factor=5):
+    #         num_entries = len(rewards)
+    #         sorted_indices = np.argsort(rewards)
+    #         ranks = np.arange(num_entries)
+    #         exaggerated_rewards = np.exp((ranks / num_entries) * factor) - 1
+    #         exaggerated_rewards /= np.sum(exaggerated_rewards)  # Normalize to sum to 1
+
+    #         result = np.zeros_like(rewards)
+    #         result[sorted_indices] = exaggerated_rewards
+    #         return result
+
+    #     exaggerated_rewards = exponential_exaggeration(rewards_np, factor=5)
+
+    #     # Normalize rewards to sum to 1
+    #     normalized_rewards = exaggerated_rewards / np.sum(exaggerated_rewards)
+
+    #     # Convert back to torch tensor
+    #     normalized_rewards_tensor = torch.tensor(
+    #         normalized_rewards, dtype=torch.float32
+    #     )
+
+    #     return normalized_rewards_tensor
+
+    # def normalize_rewards(self, rewards: torch.FloatTensor) -> torch.FloatTensor:
+    #     if self.var > 0:
+    #         rewards /= torch.sqrt(self.var)
+
+    #     common_formula = torch.erf(
+    #         rewards / torch.sqrt(torch.tensor([2.0])).to(rewards.device)
+    #     )
+    #     rewards = torch.where(rewards == 0, 0, 0.5 * (1 + common_formula))
+
+    #     return rewards
+
     def normalize_rewards(self, rewards: torch.FloatTensor) -> torch.FloatTensor:
-        if self.var > 0:
-            rewards /= torch.sqrt(self.var)
+        # if self.var > 0:
+        #     rewards /= torch.sqrt(self.var)
 
         # Identify rewards that are initially 0
         zero_mask = rewards == 0
@@ -164,7 +212,9 @@ class BaseRewardModel:
         self, response: ScraperStreamingSynapse
     ):
         # Check if the response is successful.
-        search_completion = response.get_search_summary_completion()
+        search_completion_dict = response.get_search_completion()
+        search_completion = "\n".join(search_completion_dict.values())
+
         if response.dendrite.status_code == 200 and search_completion:
             # Get the completion from the successful response.
             successful_completion = search_completion.strip()
@@ -214,6 +264,8 @@ class BaseRewardModel:
             reward_events.pop("reward"), dtype=torch.float32
         )
 
+        original_rewards = successful_rewards.tolist()
+
         # Softmax rewards across samples.
         successful_rewards_normalized = self.normalize_rewards(successful_rewards)
 
@@ -245,7 +297,12 @@ class BaseRewardModel:
             filled_rewards_normalized = filled_rewards_normalized.nan_to_num_(nan=0.0)
 
         # Return the filled rewards.
-        return filled_rewards_normalized, reward_events, val_score_responses
+        return (
+            filled_rewards_normalized,
+            reward_events,
+            val_score_responses,
+            original_rewards,
+        )
 
     def calculate_adjusted_score(
         self,

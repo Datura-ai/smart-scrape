@@ -99,6 +99,22 @@ class ScoringPrompt(BasePrompt):
                 return 0
         return 0
 
+    def check_score_exists(self, response: str) -> bool:
+        scores = [
+            "SM_SCS_RDD",
+            "SM_SCS_PNK",
+            "SM_SCS_BLE",
+            "SM_SCS_GRY",
+            "SM_SCS_YAL",
+            "SM_SCS_GRN",
+        ]
+
+        for score in scores:
+            if score in response:
+                return True
+
+        return False
+
     @staticmethod
     def mock_response():
         r"""Mock responses to a followup prompt, for use in MockDendritePool."""
@@ -127,6 +143,34 @@ class LinkContentPrompt(ScoringPrompt):
 
     def get_system_message(self):
         return system_link_content_relevance_template
+
+    def extract_score(self, response: str) -> float:
+        r"""Extract numeric score (range 0-10) from prompt response."""
+        # Mapping of special codes to numeric scores
+        special_scores = {
+            "0": 0,
+            "2": 2,
+            "5": 5,
+            "8": 8,
+            "9": 9,
+            "10": 10,
+        }
+
+        # Check for special codes in the response
+        for code, score in special_scores.items():
+            if code in response:
+                return score
+
+        # Original extraction logic
+        extraction = self.extract(response)
+        if extraction is not None:
+            try:
+                score = float(extraction)
+                if 0 <= score <= 10:
+                    return score
+            except ValueError:
+                return 0
+        return 0
 
 
 class SearchSummaryRelevancePrompt(ScoringPrompt):
@@ -221,11 +265,11 @@ system_link_content_relevance_template = """
 Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the level of relevance the tweet content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
 
 Return one of them:
-- Assign SM_SCS_PNK if the tweet content has no relevance to the question's topic, lacking any mention of keywords or themes related to the question. This score is for tweets that are completely unrelated to the question's topic, showing no connection or relevance to the intended subject matter.
+- Assign 2 if the tweet content has no relevance to the question's topic, lacking any mention of keywords or themes related to the question. This score is for tweets that are completely unrelated to the question's topic, showing no connection or relevance to the intended subject matter.
 
-- Assign SM_SCS_BLE if the tweet content mentions at least one keyword or theme from the question but fails to provide meaningful engagement or insight into those topics. This includes superficial mentions that do not contribute to a deeper understanding or relevant discussion of the question. The content should have some connection to the topic but fails to provide meaningful insight or discussion related to the core questions.
+- Assign 5 if the tweet content mentions at least one keyword or theme from the question but fails to provide meaningful engagement or insight into those topics. This includes superficial mentions that do not contribute to a deeper understanding or relevant discussion of the question. The content should have some connection to the topic but fails to provide meaningful insight or discussion related to the core questions.
 
-- Assign SM_SCS_YAL if the tweet content is directly relevant to the question, incorporating and engaging with multiple keywords or themes from the question in a way that provides depth, insight, or valuable information related to the question's core topics. The content should provide valuable insights, detailed discussion, or meaningful engagement with the question's main focus.
+- Assign 9 if the tweet content is directly relevant to the question, incorporating and engaging with multiple keywords or themes from the question in a way that provides depth, insight, or valuable information related to the question's core topics. The content should provide valuable insights, detailed discussion, or meaningful engagement with the question's main focus.
 
 Important scoring rules:
 - Identify keywords or topics from the question that are essential for the answer.
@@ -233,11 +277,33 @@ Important scoring rules:
 - Assign a score based on the criteria above.
 
 OUTPUT EXAMPLE FORMAT:
-SM_SCS_PNK, Explanation: is not related to the question
+2
 
 Output:
-Only MUST Generate one of from [SM_SCS_PNK, SM_SCS_BLE, SM_SCS_YAL]:
+Only MUST Generate one of from [2, 5, 9]:
 """
+
+# system_link_content_relevance_template = """
+# Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the level of relevance the tweet content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
+
+# Return one of them:
+# - Assign SM_SCS_PNK if the tweet content has no relevance to the question's topic, lacking any mention of keywords or themes related to the question. This score is for tweets that are completely unrelated to the question's topic, showing no connection or relevance to the intended subject matter.
+
+# - Assign SM_SCS_BLE if the tweet content mentions at least one keyword or theme from the question but fails to provide meaningful engagement or insight into those topics. This includes superficial mentions that do not contribute to a deeper understanding or relevant discussion of the question. The content should have some connection to the topic but fails to provide meaningful insight or discussion related to the core questions.
+
+# - Assign SM_SCS_YAL if the tweet content is directly relevant to the question, incorporating and engaging with multiple keywords or themes from the question in a way that provides depth, insight, or valuable information related to the question's core topics. The content should provide valuable insights, detailed discussion, or meaningful engagement with the question's main focus.
+
+# Important scoring rules:
+# - Identify keywords or topics from the question that are essential for the answer.
+# - Evaluate the tweet content to determine its level of engagement with these keywords or topics.
+# - Assign a score based on the criteria above.
+
+# OUTPUT EXAMPLE FORMAT:
+# SM_SCS_PNK, Explanation: is not related to the question
+
+# Output:
+# Only MUST Generate one of from [SM_SCS_PNK, SM_SCS_BLE, SM_SCS_YAL]:
+# """
 
 system_search_summary_relevance_scoring_template = """
 Evaluate the relevance of the web link content in response to a specific question. The score is determined based on the level of relevance the link content has to the question, with a focus on whether the content mentions keywords or topics related to the question.

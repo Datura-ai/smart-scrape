@@ -168,7 +168,7 @@ def custom_openapi():
         version="1.0.0",
         summary="API for searching across multiple platforms",
         routes=app.routes,
-        servers=[{"url": "https://api.smartscrape.ai", "description": "Datura API"}],
+        servers=[{"url": "https://api-sn22.datura.ai", "description": "Datura API"}],
     )
     openapi_schema["info"]["x-logo"] = {
         "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
