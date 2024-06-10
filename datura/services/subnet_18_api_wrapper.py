@@ -1,4 +1,3 @@
-import random
 import pydantic
 import bittensor as bt
 from typing import AsyncIterator, Dict, List
@@ -52,18 +51,29 @@ class Subnet18:
             bt.logging.error(f"Error occurred during querying miner: {e}")
             return None
 
+    def get_random_miner_uid(self, previous: int):
+        top_miner_uids = self.metagraph.I.argsort(
+            descending=True
+        )[:self.top_miners_to_use]
+
+        current = previous + 1
+        if current >= len(top_miner_uids):
+            current = 0
+
+        return (top_miner_uids[current], current)
+
     async def query(
         self,
         messages,
         provider="OpenAI",
         model="gpt-3.5-turbo-16k",
+        miner_uid=None,
     ):
         try:
             bt.logging.info("Calling query of Subnet 18")
-            top_miner_uids = self.metagraph.I.argsort(
-                descending=True
-            )[:self.top_miners_to_use]
-            miner_uid = random.choice(top_miner_uids)
+            if not miner_uid:
+                bt.logging.error("Miner UID is not provided for querying subnet 18")
+                return
 
             synapse = StreamPrompting(
                 messages=messages,
@@ -80,7 +90,8 @@ class Subnet18:
                 True  # streaming
             )
         except Exception as e:
-            bt.logging.error(f"Error occurred during querying with subnet 18: {e}")
+            bt.logging.error(
+                f"Error occurred during querying with subnet 18: {e}")
             return None
 
 

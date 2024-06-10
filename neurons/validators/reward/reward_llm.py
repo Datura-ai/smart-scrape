@@ -91,9 +91,16 @@ class RewardLLM:
         try:
             result = {}
             start_time = time.time()
+            previous = 0
             for message_dict in messages:
                 ((key, message_list),) = message_dict.items()
-                response = await self.sn18.query(messages=message_list)
+
+                miner_uid, current = self.sn18.get_random_miner_uid(previous)
+                previous = current
+                response = await self.sn18.query(
+                    messages=message_list,
+                    miner_uid=miner_uid
+                )
                 result[key] = response
 
                 # Calculate execution time in minutes
@@ -226,7 +233,6 @@ class RewardLLM:
             # Process outputs
             for key, output in zip(keys, outputs):
                 generated_text = output[0]["generated_text"]
-                # score_text = extract_score_and_explanation(generated_text)
                 score_text = extract_score_and_explanation(generated_text)
                 result[key] = score_text
 
