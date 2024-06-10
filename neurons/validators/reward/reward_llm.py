@@ -137,8 +137,9 @@ class RewardLLM:
                     try:
                         return await call_openai(
                             messages=message,
-                            temperature=0.2,
-                            model="gpt-3.5-turbo-16k",
+                            temperature=0.0001,
+                            top_p=0.0001,
+                            model="gpt-3.5-turbo-0125",
                         )
                     except Exception as e:
                         print(f"Error sending message to OpenAI: {e}")
@@ -276,8 +277,8 @@ class RewardLLM:
 
         # Define the order of scoring sources to be used
         scoring_sources = [
-            ScoringSource.LocalZephyr,  # Fallback to Local LLM if Subnet 18 fails or is disabled
-            # ScoringSource.OpenAI,  # Final attempt with OpenAI if both Subnet 18 and Local LLM fail
+            ScoringSource.OpenAI,  # Attempt scoring with OpenAI
+            # ScoringSource.LocalZephyr,  # Fallback to Local LLM if OpenAI fails
             # ScoringSource.Subnet18,  # First attempt with Subnet 18
         ]
 
@@ -291,22 +292,22 @@ class RewardLLM:
                 # Update the score_responses with the new scores
                 score_responses.update(current_score_responses)
 
-                # Filter messages that still need scoring (i.e., messages that did not receive a score)
-                messages = [
-                    message
-                    for (key, score_text), message in zip(
-                        current_score_responses.items(), messages
-                    )
-                    if score_text is not None
-                    and not any(char.isdigit() for char in score_text)
-                ]
-                # If all messages have been scored, break out of the loop
-                if not messages:
-                    break
-                else:
-                    bt.logging.info(
-                        f"{source} Attempt for scoring. Remaining messages: {len(messages)}"
-                    )
+                # # Filter messages that still need scoring (i.e., messages that did not receive a score)
+                # messages = [
+                #     message
+                #     for (key, score_text), message in zip(
+                #         current_score_responses.items(), messages
+                #     )
+                #     if self.scoring_prompt.check_score_exists(score_text) is False
+                # ]
+
+                # # If all messages have been scored, break out of the loop
+                # if not messages:
+                #     break
+                # else:
+                #     bt.logging.info(
+                #         f"{source} Attempt for scoring. Remaining messages: {len(messages)}"
+                #     )
             else:
                 bt.logging.info(
                     f"Scoring with {source} failed or returned no results. Attempting next source."

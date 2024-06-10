@@ -201,7 +201,15 @@ def extract_python_list(text: str):
     return None
 
 
-async def call_openai(messages, temperature, model, seed=1234, response_format=None):
+async def call_openai(
+    messages, temperature, model, seed=1234, response_format=None, top_p=None
+):
+    api_key = os.environ.get("OPENAI_API_KEY")
+
+    if not api_key:
+        bt.logging.warning("Please set the OPENAI_API_KEY environment variable.")
+        return None
+
     for attempt in range(2):
         bt.logging.trace(
             f"Calling Openai. Temperature = {temperature}, Model = {model}, Seed = {seed},  Messages = {messages}"
@@ -213,6 +221,7 @@ async def call_openai(messages, temperature, model, seed=1234, response_format=N
                 temperature=temperature,
                 seed=seed,
                 response_format=response_format,
+                top_p=top_p,
             )
             response = response.choices[0].message.content
             bt.logging.trace(f"validator response is {response}")
@@ -327,6 +336,9 @@ async def save_logs_in_chunks(
     summary_rewards,
     twitter_rewards,
     search_rewards,
+    original_summary_rewards,
+    original_twitter_rewards,
+    original_search_rewards,
     tweet_scores,
     search_scores,
     weights,
@@ -343,8 +355,29 @@ async def save_logs_in_chunks(
                 "summary_score": summary_reward,
                 "twitter_score": twitter_reward,
                 "search_score": search_reward,
+                "original_summary_score": original_summary_reward,
+                "original_twitter_score": original_twitter_reward,
+                "original_search_score": original_search_reward,
                 "tweet_scores": tweet_score,
                 "link_scores": search_score,
+                "search_results": {
+                    "google": response.search_results,
+                    "google_news": response.google_news_search_results,
+                    "google_image": response.google_image_search_results,
+                    "wikipedia": response.wikipedia_search_results,
+                    "youtube": response.youtube_search_results,
+                    "arxiv": response.arxiv_search_results,
+                    "reddit": response.reddit_search_results,
+                    "hacker_news": response.hacker_news_search_results,
+                    "discord": response.discord_search_results,
+                },
+                "texts": response.texts,
+                "validator_tweets": [
+                    val_tweet.dict() for val_tweet in response.validator_tweets
+                ],
+                "validator_links": response.validator_links,
+                "search_completion_links": response.search_completion_links,
+                "twitter_completion_links": response.completion_links,
                 "weight": weights.get(str(uid)),
                 "miner": {
                     "uid": uid,
@@ -378,19 +411,22 @@ async def save_logs_in_chunks(
                 },
                 "time": response.dendrite.process_time,
             }
-            for response, uid, reward, summary_reward, twitter_reward, search_reward, tweet_score, search_score in zip(
+            for response, uid, reward, summary_reward, twitter_reward, search_reward, original_summary_reward, original_twitter_reward, original_search_reward, tweet_score, search_score in zip(
                 responses,
                 uids.tolist(),
                 rewards.tolist(),
                 summary_rewards.tolist(),
                 twitter_rewards.tolist(),
                 search_rewards.tolist(),
+                original_summary_rewards,
+                original_twitter_rewards,
+                original_search_rewards,
                 tweet_scores,
                 search_scores,
             )
         ]
 
-        chunk_size = 50
+        chunk_size = 30
 
         log_chunks = [logs[i : i + chunk_size] for i in range(0, len(logs), chunk_size)]
 

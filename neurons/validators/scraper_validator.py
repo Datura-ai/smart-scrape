@@ -54,8 +54,15 @@ class ScraperValidator:
         self.timeout = 180
         self.tools = [
             ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
+            ["Twitter Search", "Reddit Search"],
+            ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
+            ["Twitter Search", "Google Search"],
+            ["Twitter Search", "Hacker News Search"],
             ["Twitter Search", "Google Search", "Wikipedia Search", "ArXiv Search"],
             ["Twitter Search", "Youtube Search", "Wikipedia Search"],
+            ["Twitter Search", "Youtube Search"],
+            ["Twitter Search", "ArXiv Search"],
+            ["Twitter Search", "Wikipedia Search"],
         ]
         self.language = "en"
         self.region = "us"
@@ -203,17 +210,22 @@ class ScraperValidator:
             )
 
             all_rewards = []
+            all_original_rewards = []
             val_score_responses_list = []
 
             for weight_i, reward_fn_i in zip(
                 self.reward_weights, self.reward_functions
             ):
                 start_time = time.time()
-                reward_i_normalized, reward_event, val_score_responses = (
-                    reward_fn_i.apply(task.base_text, responses, task.task_name, uids)
-                )
+                (
+                    reward_i_normalized,
+                    reward_event,
+                    val_score_responses,
+                    original_rewards,
+                ) = reward_fn_i.apply(task.base_text, responses, task.task_name, uids)
 
                 all_rewards.append(reward_i_normalized)
+                all_original_rewards.append(original_rewards)
                 val_score_responses_list.append(val_score_responses)
 
                 rewards += weight_i * reward_i_normalized.to(
@@ -301,6 +313,7 @@ class ScraperValidator:
                 uids=uids,
                 rewards=rewards,
                 all_rewards=all_rewards,
+                all_original_rewards=all_original_rewards,
                 val_score_responses_list=val_score_responses_list,
                 neuron=self.neuron,
             )
@@ -337,7 +350,8 @@ class ScraperValidator:
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
             dataset = QuestionsDataset()
-            prompt = dataset.next()
+            tools = random.choice(self.tools)
+            prompt = await dataset.generate_new_question_with_openai(tools)
 
             task_name = "augment"
             task = TwitterTask(
@@ -350,8 +364,6 @@ class ScraperValidator:
             if not len(self.neuron.available_uids):
                 bt.logging.info("No available UIDs, skipping task execution.")
                 return
-
-            tools = random.choice(self.tools)
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
@@ -616,11 +628,14 @@ class ScraperValidator:
             if uid is None:
                 uids = await self.neuron.get_uids(
                     strategy=QUERY_MINERS.RANDOM,
-                    is_only_allowed_miner=True,
+                    is_only_allowed_miner=False,
                     specified_uids=None,
                 )
 
-                uid = uids[0]
+                if uids:
+                    uid = uids[0]
+                else:
+                    raise StopAsyncIteration("No available uids")
 
             axon = self.neuron.metagraph.axons[uid]
 

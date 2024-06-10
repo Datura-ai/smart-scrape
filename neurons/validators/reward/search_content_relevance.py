@@ -17,7 +17,7 @@ import json
 from neurons.validators.utils.prompts import ScoringPrompt, SearchSummaryRelevancePrompt
 import time
 
-APIFY_LINK_SCRAPE_AMOUNT = 7
+APIFY_LINK_SCRAPE_AMOUNT = 10
 
 
 class WebSearchContentRelevanceModel(BaseRewardModel):
@@ -39,19 +39,45 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
         for link_with_metadata in links_with_metadata:
             url = link_with_metadata.get("url")
-            title = link_with_metadata.get("title")
-            description = link_with_metadata.get("description")
-            content = f"Page Title: {title}. Page Description: {description}"
+            title = link_with_metadata.get("title", "")
 
-            result = self.get_scoring_text(
-                prompt=prompt, content=content, response=None
-            )
+            result = self.get_scoring_text(prompt=prompt, content=title, response=None)
             if result:
                 scoring_prompt, scoring_text = result
                 scoring_messages.append({url: scoring_text})
 
         score_responses = self.reward_llm.llm_processing(scoring_messages)
         return score_responses
+
+    async def scrape_links_with_retries(self, urls):
+        max_retries = 4
+        non_fetched_links = urls
+        links_with_metadata = []
+
+        for retry in range(max_retries):
+            if not non_fetched_links:
+                break
+
+            fetched_links_with_metadata = await WebScraperActor().scrape_metadata(
+                urls=non_fetched_links
+            )
+            fetched_links_with_metadata = [
+                link for link in fetched_links_with_metadata if link.get("url")
+            ]
+            fetched_links = {link.get("url") for link in fetched_links_with_metadata}
+            non_fetched_links = [
+                link for link in non_fetched_links if link not in fetched_links
+            ]
+
+            links_with_metadata.extend(fetched_links_with_metadata)
+
+            if non_fetched_links:
+                bt.logging.info(
+                    f"Retrying fetching non-fetched {len(non_fetched_links)} links: {non_fetched_links}. Retries left: {max_retries - retry - 1}"
+                )
+                await asyncio.sleep(3)
+
+        return links_with_metadata, non_fetched_links
 
     async def process_links(
         self, prompt: str, responses: List[ScraperStreamingSynapse]
@@ -78,7 +104,9 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             bt.logging.info("No unique links found to process.")
             return {}
 
-        links_with_metadata = await WebScraperActor().scrape_metadata(urls=unique_links)
+        links_with_metadata, non_fetched_links = await self.scrape_links_with_retries(
+            unique_links
+        )
 
         for response in responses:
             for link_with_metadata in links_with_metadata:
@@ -97,8 +125,6 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             f"All links count: {len(all_links)}, Unique links count: {len(unique_links)}, "
             f"APIFY fetched web links count: {len(links_with_metadata)}"
         )
-        fetched_links = {link.get("url") for link in links_with_metadata}
-        non_fetched_links = [link for link in unique_links if link not in fetched_links]
 
         bt.logging.info(
             f"Web links not fetched amount: {len(non_fetched_links)}; List: {non_fetched_links}; For prompt: [{prompt}]"
@@ -138,7 +164,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 "arxiv.org": response.arxiv_search_results,
                 "wikipedia.org": response.wikipedia_search_results,
                 "reddit.com": response.reddit_search_results,
-                "news.ycombinator.com": response.hacker_news_search_results,
+                "ycombinator.com": response.hacker_news_search_results,
                 "youtube.com": response.youtube_search_results,
             }
 
@@ -151,14 +177,17 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                     link_scores.append(0)
                     continue
 
-                domain = url.split("/")[2].replace(
-                    "www.", ""
-                )  # Extract the domain from the URL and remove 'www.'
+                domain_parts = url.split("/")[2].split(".")
+                domain = ".".join(domain_parts[-2:])  # Extract the main domain
 
                 if domain in domain_to_search_result:
-                    link_scores.append(
-                        1 if url in str(domain_to_search_result[domain]) else 0
-                    )
+                    if (
+                        url in str(domain_to_search_result[domain])
+                        or url in google_search_results
+                    ):
+                        link_scores.append(1)
+                    else:
+                        link_scores.append(0)
                 else:
                     link_scores.append(1 if url in google_search_results else 0)
 

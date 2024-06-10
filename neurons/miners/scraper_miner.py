@@ -6,7 +6,11 @@ from datura.protocol import (
     ScraperStreamingSynapse,
 )
 from datura.tools.tool_manager import ToolManager
-from datura.dataset.date_filters import DateFilter, DateFilterType
+from datura.dataset.date_filters import (
+    DateFilter,
+    DateFilterType,
+    get_specified_date_filter,
+)
 from datetime import datetime
 import pytz
 
@@ -33,18 +37,23 @@ class ScraperMiner:
             bt.logging.info(
                 "================================== Prompt ===================================="
             )
-            start_date = datetime.strptime(
-                synapse.start_date, "%Y-%m-%dT%H:%M:%SZ"
-            ).replace(tzinfo=pytz.utc)
-            end_date = datetime.strptime(
-                synapse.end_date, "%Y-%m-%dT%H:%M:%SZ"
-            ).replace(tzinfo=pytz.utc)
 
-            date_filter = DateFilter(
-                start_date=start_date,
-                end_date=end_date,
-                date_filter_type=DateFilterType(synapse.date_filter_type),
-            )
+            date_filter = get_specified_date_filter(DateFilterType.PAST_2_WEEKS)
+
+            if synapse.start_date and synapse.end_date and synapse.date_filter_type:
+                start_date = datetime.strptime(
+                    synapse.start_date, "%Y-%m-%dT%H:%M:%SZ"
+                ).replace(tzinfo=pytz.utc)
+
+                end_date = datetime.strptime(
+                    synapse.end_date, "%Y-%m-%dT%H:%M:%SZ"
+                ).replace(tzinfo=pytz.utc)
+
+                date_filter = DateFilter(
+                    start_date=start_date,
+                    end_date=end_date,
+                    date_filter_type=DateFilterType(synapse.date_filter_type),
+                )
 
             tool_manager = ToolManager(
                 prompt=prompt,
