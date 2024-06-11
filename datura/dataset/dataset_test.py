@@ -5,7 +5,10 @@ import random
 
 if __name__ == "__main__":
     # Create an instance of QuestionsDataset
+
+    # Note: please update wallet information before running the code
     wallet = bt.wallet(name="validator-prod", hotkey="default")
+
     questions_dataset = QuestionsDataset(wallet=wallet)
     tools = [
         ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
