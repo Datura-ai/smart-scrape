@@ -281,6 +281,10 @@ class ScraperValidator:
                 "responses": {},
                 "scores": {},
                 "timestamps": {},
+                "summary_reward": {},
+                "twitter_reward": {},
+                "search_reward": {},
+                "latency_reward": {},
             }
             bt.logging.info(
                 f"======================== Reward ==========================="
@@ -311,13 +315,23 @@ class ScraperValidator:
                 f"======================== Reward ==========================="
             )
 
-            for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
+            summary_rewards = all_rewards[0]
+            twitter_rewards = all_rewards[1]
+            search_rewards = all_rewards[2]
+            latency_rewards = all_rewards[2]
+            zipped_rewards = zip(uids, rewards.tolist(), responses, summary_rewards, twitter_rewards, search_rewards, latency_rewards)
+
+            for uid_tensor, reward, response, summary_reward, twitter_reward, search_reward, latency_reward in zipped_rewards:
                 uid = uid_tensor.item()  # Convert tensor to int
                 uid_scores_dict[uid] = reward
                 scores[uid] = reward  # Now 'uid' is an int, which is a valid key type
                 wandb_data["scores"][uid] = reward
                 wandb_data["responses"][uid] = response.completion
                 wandb_data["prompts"][uid] = prompt
+                wandb_data["summary_reward"][uid] = summary_reward
+                wandb_data["twitter_reward"][uid] = twitter_reward
+                wandb_data["search_reward"][uid] = search_reward
+                wandb_data["latency_reward"][uid] = search_reward
 
             await self.neuron.update_scores(
                 wandb_data=wandb_data,
