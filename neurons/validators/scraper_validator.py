@@ -148,7 +148,7 @@ class ScraperValidator:
         language="en",
         region="us",
         google_date_filter="qdr:w",
-        response_order=ResponseOrder.SUMMARY_FIRST,
+        response_order=None,
     ):
         task_name = task.task_name
         prompt = task.compose_prompt()
@@ -182,7 +182,7 @@ class ScraperValidator:
             language=language,
             region=region,
             google_date_filter=google_date_filter,
-            response_order=response_order.value,
+            response_order=response_order,
         )
 
         # Make calls to the network with the prompt.
@@ -375,6 +375,7 @@ class ScraperValidator:
                 language=self.language,
                 region=self.region,
                 google_date_filter=self.date_filter,
+                response_order=ResponseOrder.SUMMARY_FIRST.value,
             )
 
             final_synapses = []
@@ -402,6 +403,7 @@ class ScraperValidator:
             tools = query.get("tools", [])
             date_filter_type = query.get("date_filter", DateFilterType.PAST_WEEK.value)
             date_filter_type = DateFilterType(date_filter_type)
+            response_order = query.get('response_order', ResponseOrder.SUMMARY_FIRST.value)
 
             task_name = "augment"
             task = TwitterTask(
@@ -427,6 +429,7 @@ class ScraperValidator:
                 region=self.region,
                 date_filter=date_filter,
                 google_date_filter=self.date_filter,
+                response_order=response_order,
             )
             final_synapses = []
             for response in async_responses:
