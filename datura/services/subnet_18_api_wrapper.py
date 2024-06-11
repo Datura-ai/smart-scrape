@@ -1,3 +1,4 @@
+import random
 import pydantic
 import bittensor as bt
 from typing import AsyncIterator, Dict, List
@@ -38,7 +39,6 @@ class Subnet18:
         streaming: bool
     ):
         try:
-            bt.logging.info(f"Calling vali axon {axon_to_use} to miner uid {synapse.uid} for query {synapse.messages}")
             responses = dendrite.query(
                 axons=[axon_to_use],
                 synapse=synapse,
@@ -51,15 +51,17 @@ class Subnet18:
             bt.logging.error(f"Error occurred during querying miner: {e}")
             return None
 
-    def get_random_miner_uid(self, previous: int):
+    def get_random_miner_uid(self):
         top_miner_uids = self.metagraph.I.argsort(
             descending=True
         )[:self.top_miners_to_use]
+        return random.choice(top_miner_uids)
 
+    def get_miner_uid(self, previous: int = 0):
+        top_miner_uids = self.metagraph.I.argsort(
+            descending=True
+        )[:self.top_miners_to_use]
         current = previous + 1
-        if current >= len(top_miner_uids):
-            current = 0
-
         return (top_miner_uids[current], current)
 
     async def query(
@@ -68,6 +70,7 @@ class Subnet18:
         provider="OpenAI",
         model="gpt-3.5-turbo-16k",
         miner_uid=None,
+        temperature=0.2,
     ):
         try:
             bt.logging.info("Calling query of Subnet 18")
@@ -81,6 +84,7 @@ class Subnet18:
                 model=model,
                 uid=miner_uid,
                 completion="",
+                temperature=temperature,
             )
             return await self.query_miner(
                 self.dendrite,
@@ -90,8 +94,7 @@ class Subnet18:
                 True  # streaming
             )
         except Exception as e:
-            bt.logging.error(
-                f"Error occurred during querying with subnet 18: {e}")
+            bt.logging.error(f"Error occurred during querying with subnet 18: {e}")
             return None
 
 

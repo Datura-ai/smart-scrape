@@ -350,9 +350,9 @@ class ScraperValidator:
 
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
-            dataset = QuestionsDataset()
+            dataset = QuestionsDataset(wallet=self.wallet)
             tools = random.choice(self.tools)
-            prompt = await dataset.generate_new_question_with_openai(tools)
+            prompt = await dataset.generate_new_question(tools)
 
             task_name = "augment"
             task = TwitterTask(
