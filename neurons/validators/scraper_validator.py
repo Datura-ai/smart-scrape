@@ -318,7 +318,7 @@ class ScraperValidator:
             summary_rewards = all_rewards[0]
             twitter_rewards = all_rewards[1]
             search_rewards = all_rewards[2]
-            latency_rewards = all_rewards[2]
+            latency_rewards = all_rewards[3]
             zipped_rewards = zip(uids, rewards.tolist(), responses, summary_rewards, twitter_rewards, search_rewards, latency_rewards)
 
             for uid_tensor, reward, response, summary_reward, twitter_reward, search_reward, latency_reward in zipped_rewards:
