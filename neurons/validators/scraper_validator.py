@@ -331,7 +331,7 @@ class ScraperValidator:
                 wandb_data["summary_reward"][uid] = summary_reward
                 wandb_data["twitter_reward"][uid] = twitter_reward
                 wandb_data["search_reward"][uid] = search_reward
-                wandb_data["latency_reward"][uid] = search_reward
+                wandb_data["latency_reward"][uid] = latency_reward
 
             await self.neuron.update_scores(
                 wandb_data=wandb_data,
