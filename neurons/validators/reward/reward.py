@@ -69,53 +69,7 @@ class BaseRewardModel:
         self.count = 0
         self.mean = 0.0
         self.var = 0.0
-
-    # def normalize_rewards(self, rewards: torch.FloatTensor) -> torch.FloatTensor:
-    #     # Check if all rewards are equal
-    #     if torch.all(rewards.eq(rewards[0])):
-    #         # If all rewards are equal, return a tensor of equal values summing to 1
-    #         equal_normalized_rewards = torch.full_like(
-    #             rewards, fill_value=1.0 / len(rewards)
-    #         )
-    #         return equal_normalized_rewards
-
-    #     # Convert to numpy array for processing
-    #     rewards_np = rewards.numpy()
-
-    #     # Sort rewards and apply exponential exaggeration
-    #     def exponential_exaggeration(rewards, factor=5):
-    #         num_entries = len(rewards)
-    #         sorted_indices = np.argsort(rewards)
-    #         ranks = np.arange(num_entries)
-    #         exaggerated_rewards = np.exp((ranks / num_entries) * factor) - 1
-    #         exaggerated_rewards /= np.sum(exaggerated_rewards)  # Normalize to sum to 1
-
-    #         result = np.zeros_like(rewards)
-    #         result[sorted_indices] = exaggerated_rewards
-    #         return result
-
-    #     exaggerated_rewards = exponential_exaggeration(rewards_np, factor=5)
-
-    #     # Normalize rewards to sum to 1
-    #     normalized_rewards = exaggerated_rewards / np.sum(exaggerated_rewards)
-
-    #     # Convert back to torch tensor
-    #     normalized_rewards_tensor = torch.tensor(
-    #         normalized_rewards, dtype=torch.float32
-    #     )
-
-    #     return normalized_rewards_tensor
-
-    # def normalize_rewards(self, rewards: torch.FloatTensor) -> torch.FloatTensor:
-    #     if self.var > 0:
-    #         rewards /= torch.sqrt(self.var)
-
-    #     common_formula = torch.erf(
-    #         rewards / torch.sqrt(torch.tensor([2.0])).to(rewards.device)
-    #     )
-    #     rewards = torch.where(rewards == 0, 0, 0.5 * (1 + common_formula))
-
-    #     return rewards
+        self.is_default_normalization = True
 
     def normalize_rewards(self, rewards: torch.FloatTensor) -> torch.FloatTensor:
         # if self.var > 0:
@@ -142,7 +96,7 @@ class BaseRewardModel:
             )
 
             # Apply a more aggressive exponential function to exaggerate differences
-            exaggeration_factor = 3
+            exaggeration_factor = 4
             rewards[~zero_mask] = torch.pow(
                 rewards[~zero_mask] * exaggeration_factor, exaggeration_factor
             )
@@ -267,7 +221,10 @@ class BaseRewardModel:
         original_rewards = successful_rewards.tolist()
 
         # Softmax rewards across samples.
-        successful_rewards_normalized = self.normalize_rewards(successful_rewards)
+        if self.is_default_normalization:
+            successful_rewards_normalized = self.normalize_rewards(successful_rewards)
+        else:
+            successful_rewards_normalized = original_rewards
 
         # Init zero rewards for all calls.
         filled_rewards = torch.ones(len(responses), dtype=torch.float32) * torch.nan

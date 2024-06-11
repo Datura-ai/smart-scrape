@@ -79,7 +79,10 @@ valid_validators = [
 ]
 
 WHITELISTED_KEYS = testnet_key + test_key + valid_validators
-BLACKLISTED_KEYS = ["5G1NjW9YhXLadMWajvTkfcJy6up3yH2q1YzMXDTi6ijanChe"]
+BLACKLISTED_KEYS = [
+    "5G1NjW9YhXLadMWajvTkfcJy6up3yH2q1YzMXDTi6ijanChe",
+    "5GsL9zNp1CdKmKSYBGjeF9kGReRpS8KdQv2yJ3mHVwKq2YCq",
+]
 
 ENTITY = "smart-scrape"
 PROJECT_NAME = "smart-scrape-1.0"
@@ -92,7 +95,6 @@ class QUERY_MINERS(Enum):
 
 # Import all submodules.
 from . import protocol
-from . import reward
 from . import utils
 from . import tools
 

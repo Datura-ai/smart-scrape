@@ -27,6 +27,9 @@ from neurons.validators.reward.twitter_content_relevance import (
 from neurons.validators.reward.search_content_relevance import (
     WebSearchContentRelevanceModel,
 )
+from neurons.validators.reward.performance_reward import (
+    PerformanceRewardModel,
+)
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask, SearchTask
 
@@ -58,10 +61,15 @@ class ScraperValidator:
             ["Twitter Search", "Google Search"],
             ["Twitter Search", "Hacker News Search"],
             ["Twitter Search", "Google Search", "Wikipedia Search", "ArXiv Search"],
-            ["Twitter Search", "Youtube Search", "Wikipedia Search"],
+            ["Twitter Search", "Google Search", "Youtube Search"],
             ["Twitter Search", "Youtube Search"],
+            ["Twitter Search", "Reddit Search"],
+            ["Twitter Search", "Reddit Search"],
+            ["Twitter Search", "Hacker News Search"],
             ["Twitter Search", "ArXiv Search"],
             ["Twitter Search", "Wikipedia Search"],
+            ["Twitter Search", "Google Search"],
+            ["Twitter Search", "Google News Search"],
         ]
         self.language = "en"
         self.region = "us"
@@ -79,6 +87,7 @@ class ScraperValidator:
                 self.neuron.config.reward.summary_relevance_weight,
                 self.neuron.config.reward.twitter_content_weight,
                 self.neuron.config.reward.web_search_relavance_weight,
+                self.neuron.config.reward.performance_weight,
             ],
             dtype=torch.float32,
         ).to(self.neuron.config.neuron.device)
@@ -92,11 +101,11 @@ class ScraperValidator:
             raise Exception(message)
 
         self.reward_llm = RewardLLM()
-        if (
-            self.neuron.config.reward.twitter_content_weight > 0
-            or self.neuron.config.reward.summary_relevance_weight > 0
-        ) and not self.neuron.config.neuron.is_disable_tokenizer_reward:
-            self.reward_llm.init_pipe_zephyr()
+        # if (
+        #     self.neuron.config.reward.twitter_content_weight > 0
+        #     or self.neuron.config.reward.summary_relevance_weight > 0
+        # ) and not self.neuron.config.neuron.is_disable_tokenizer_reward:
+        #     self.reward_llm.init_pipe_zephyr()
 
         self.reward_functions = [
             (
@@ -125,6 +134,13 @@ class ScraperValidator:
                 )
                 if self.neuron.config.reward.web_search_relavance_weight > 0
                 else MockRewardModel(RewardModelType.search_content_relevance.value)
+            ),
+            (
+                PerformanceRewardModel(
+                    device=self.neuron.config.neuron.device,
+                )
+                if self.neuron.config.reward.performance_weight > 0
+                else MockRewardModel(RewardModelType.performance_score.value)
             ),
         ]
 
@@ -465,6 +481,7 @@ class ScraperValidator:
         try:
             prompt = query["content"]
             tools = query.get("tools", [])
+            tools = ["Google Search", "Youtube Search"]
             date_filter_type = query.get("date_filter", DateFilterType.PAST_WEEK.value)
             date_filter_type = DateFilterType(date_filter_type)
 
