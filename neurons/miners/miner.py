@@ -153,6 +153,9 @@ class StreamMiner(ABC):
             hotkey = synapse.dendrite.hotkey
             synapse_type = type(synapse).__name__
 
+            if hotkey in datura.BLACKLISTED_KEYS:
+                return True, f"Blacklisted a {synapse_type} request from {hotkey}"
+
             # if hotkey in datura.WHITELISTED_KEYS:
             #     return False, f"accepting {synapse_type} request from {hotkey}"
 
