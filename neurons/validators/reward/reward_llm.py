@@ -6,14 +6,12 @@ import re
 import time
 from datura.services.subnet_18_api_wrapper import Subnet18
 from datura.utils import call_openai
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from neurons.validators.utils.prompts import (
     extract_score_and_explanation,
 )
 from neurons.validators.utils.prompts import ScoringPrompt
-
 from enum import Enum
-from transformers import pipeline
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -95,11 +93,12 @@ class RewardLLM:
             for message_dict in messages:
                 ((key, message_list),) = message_dict.items()
 
-                miner_uid, current = self.sn18.get_random_miner_uid(previous)
+                miner_uid, current = self.sn18.get_miner_uid(previous)
                 previous = current
                 response = await self.sn18.query(
                     messages=message_list,
-                    miner_uid=miner_uid
+                    miner_uid=miner_uid,
+                    temperature=0.0001,
                 )
                 result[key] = response
 
@@ -110,7 +109,7 @@ class RewardLLM:
                 )
             return result
         except Exception as e:
-            bt.logging.warning(f"Error calling Subnet 18 scoring: {e}")
+            bt.logging.warning(f"Error processing Subnet 18 queries: {e}")
             return None
 
     async def get_score_by_openai(self, messages):
@@ -129,7 +128,7 @@ class RewardLLM:
                             model="gpt-3.5-turbo-0125",
                         )
                     except Exception as e:
-                        print(f"Error sending message to OpenAI: {e}")
+                        bt.logging.info(f"Error sending message to OpenAI: {e}")
                         return ""  # Return an empty string to indicate failure
 
                 task = query_openai(message_list)
@@ -140,7 +139,7 @@ class RewardLLM:
             result = {}
             for response, message_dict in zip(query_responses, messages):
                 if isinstance(response, Exception):
-                    print(f"Query failed with exception: {response}")
+                    bt.logging.warning(f"Query failed with exception: {response}")
                     response = (
                         ""  # Replace the exception with an empty string in the result
                     )
@@ -148,11 +147,11 @@ class RewardLLM:
                 result[key] = response
 
             execution_time = time.time() - start_time  # Calculate execution time
-            print(
+            bt.logging.info(
                 f"Execution time for OpenAI queries: {execution_time} seconds")
             return result
         except Exception as e:
-            print(f"Error processing OpenAI queries: {e}")
+            bt.logging.warning(f"Error processing OpenAI queries: {e}")
             return None
 
     def get_score_by_llm(self, messages):
@@ -260,7 +259,6 @@ class RewardLLM:
             return self.get_score_by_llm(messages=messages)
 
     def llm_processing(self, messages):
-        bt.logging.info("[?] >>>>>>>> Starting process of llm reward")
         # Initialize score_responses as an empty dictionary to hold the scoring results
         score_responses = {}
 
@@ -273,36 +271,33 @@ class RewardLLM:
 
         # Attempt to score messages using the defined sources in order
         for source in scoring_sources:
-            bt.logging.info(f"[?] >>>>>>>> processing with source:{source}")
             # Attempt to score with the current source
             current_score_responses = self.get_score_by_source(
                 messages=messages, source=source
             )
-            bt.logging.info("[?] >>>>>>>> score responses")
-            bt.logging.info(f"[?] >>>>>>>> {current_score_responses}")
-            bt.logging.info("[?] >>>>>>>> score responses")
             if current_score_responses:
                 # Update the score_responses with the new scores
                 score_responses.update(current_score_responses)
 
-                # # Filter messages that still need scoring (i.e., messages that did not receive a score)
-                # messages = [
-                #     message
-                #     for (key, score_text), message in zip(
-                #         current_score_responses.items(), messages
-                #     )
-                #     if self.scoring_prompt.check_score_exists(score_text) is False
-                # ]
+                # Filter messages that still need scoring (i.e., messages that did not receive a score)
+                messages = [
+                    message
+                    for (_, score_text), message in zip(
+                        current_score_responses.items(), messages
+                    )
+                    if self.scoring_prompt.check_score_exists(score_text) is False
+                ]
 
                 # # If all messages have been scored, break out of the loop
-                # if not messages:
-                #     break
-                # else:
-                #     bt.logging.info(
-                #         f"{source} Attempt for scoring. Remaining messages: {len(messages)}"
-                #     )
+                if not messages:
+                    bt.logging.info("Messages are scored successfully")
+                    break
+                else:
+                    bt.logging.info(
+                        f"{source} Attempt for scoring. Remaining messages: {len(messages)}"
+                    )
             else:
-                bt.logging.info(
+                bt.logging.error(
                     f"Scoring with {source} failed or returned no results. Attempting next source."
                 )
 
