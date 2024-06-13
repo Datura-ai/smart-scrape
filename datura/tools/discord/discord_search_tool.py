@@ -3,8 +3,8 @@ import bittensor as bt
 from typing import Type
 from pydantic import BaseModel, Field
 from starlette.types import Send
+from datura.services.discord_messages.discord_service import DiscordService
 from datura.tools.base import BaseTool
-from datura.services.discord_api_wrapper import DiscordAPIClient
 
 
 class DiscordSearchToolSchema(BaseModel):
@@ -33,17 +33,15 @@ class DiscordSearchTool(BaseTool):
         """Search Discord messages and return results."""
         date_filter = self.tool_manager.date_filter
 
-        client = DiscordAPIClient()
+        client = DiscordService()
 
-        body = {
-            "query": query,
-            "limit": 8,
-            "possible_reply_limit": 8,
-            "start_date": date_filter.start_date.timestamp(),
-            "end_date": date_filter.end_date.timestamp(),
-        }
-
-        (result, _, _) = await client.search_messages(body)
+        result = await client.search(
+            query=query,
+            limit=8,
+            possible_reply_limit=8,
+            start_date=date_filter.start_date.timestamp(),
+            end_date=date_filter.end_date.timestamp(),
+        )
         bt.logging.info(
             "================================== Discord Result ==================================="
         )
