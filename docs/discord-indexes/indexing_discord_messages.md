@@ -57,3 +57,33 @@ To index this data into a Pinecone vector database, we have a script that reads 
 
 # How to use script
 
+1. **Install Dependencies:**
+   - Ensure you have all the necessary dependencies installed. You can use the following command to install them:
+     ```sh
+     pip install -r requirements.txt
+     ```
+
+2. **Set Environment Variables:**
+   - Set the environment variables for the OpenAI and Pinecone API keys:
+     ```sh
+     export OPENAI_API_KEY='your-openai-api-key'
+     export PINECONE_API_KEY='your-pinecone-api-key'
+     ```
+
+3. **Run the Script:**
+   - Execute the script by running the following command:
+     ```sh
+     python3 datura/scripts/discord_messages_indexer.py
+     ```
+
+4. **Ignore Index Creation:**
+   - If you want to run the script without creating new indexes, use the `--ignore-creating-indexes` flag:
+     ```sh
+     python3 datura/scripts/discord_messages_indexer.py --ignore-creating-indexes
+     ```
+
+5. **Help Command:**
+   - To get help or usage information, use the `-h` or `--help` flag:
+     ```sh
+     python3 datura/scripts/discord_messages_indexer.py --help
+     ```

@@ -55,7 +55,7 @@ Here's a breakdown of the environment variables necessary for the Smart-Scrape s
 
 8. **DISCORD_MESSAGES_DB_URL**:
    - **Usage**: Used to access bittensor discord messages/channels/users
-   - **How to Create**: Already defined, and available to use: `postgresql+psycopg2://postgres:RZ4HuxwtoHVpLx31Lais@datura.chq208acep4j.eu-north-1.rds.amazonaws.com/datura-discord`
+   - **How to Create**: Already defined, and available to use: `read_only_db_url`
    - **Required for**: Miners exclusively.
 
 9. **PINECONE_API_KEY**:
