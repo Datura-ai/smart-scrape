@@ -53,6 +53,16 @@ Here's a breakdown of the environment variables necessary for the Smart-Scrape s
    - **How to Create**: Sign up or log in at [Serp API](https://serpapi.com/), and generate a key in your account settings.
    - **Required for**: Miners exclusively.
 
+8. **DISCORD_MESSAGES_DB_URL**:
+   - **Usage**: Used to access bittensor discord messages/channels/users
+   - **How to Create**: Already defined, and available to use: `postgresql+psycopg2://postgres:RZ4HuxwtoHVpLx31Lais@datura.chq208acep4j.eu-north-1.rds.amazonaws.com/datura-discord`
+   - **Required for**: Miners exclusively.
+
+9. **PINECONE_API_KEY**:
+   - **Usage**: Used to read and write pinecone vector indexes for discord messages exclusively.
+   - **How to Create**: Sign up or login at [Pinecone](http://pinecone.io/), and generate a key in your account settings.
+   - **Required for**: Miners exclusively.
+
 ### Executing Commands for Setting Environment Variables
 
 To set the environment variables, open a terminal and replace `<your_key_here>` with your actual keys. For Validators, secure and authenticated access is crucial:
@@ -64,6 +74,8 @@ export EXPECTED_ACCESS_KEY=<your_EXPECTED_ACCESS_KEY_here>  # Only for Validator
 export WANDB_API_KEY=<your_wandb_api_key_here>
 export APIFY_API_KEY=<your_apify_api_key_here>  # Only for Validators
 export URL_SUBNET_18=<your_url_subent_18>
+export DISCORD_MESSAGES_DB_URL=<read_only_db_url>
+export PINECONE_API_KEY=<your_pinecone_api_key>
 ```
 
 ### Setting Environment Variables Using `.bashrc`
@@ -77,6 +89,8 @@ echo 'export EXPECTED_ACCESS_KEY="<your_EXPECTED_ACCESS_KEY>"' >> ~/.bashrc  # O
 echo 'export WANDB_API_KEY="<your_wandb_api_key>"' >> ~/.bashrc
 echo 'export APIFY_API_KEY="<your_apify_api_key>"' >> ~/.bashrc
 echo 'export URL_SUBNET_18="<your_url_subent_18>"' >> ~/.bashrc
+echo 'export DISCORD_MESSAGES_DB_URL="<read_only_db_url>"' >> ~/.bashrc
+echo 'export PINECONE_API_KEY="<your_pinecone_api_key>"' >> ~/.bashrc
 
 source ~/.bashrc
 ```
