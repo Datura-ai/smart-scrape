@@ -191,6 +191,35 @@ def find_unique_tags(input_text: str):
     return list(set(matches))
 
 
+def extract_score(self, response: str) -> float:
+    r"""Extract numeric score (range 0-10) from prompt response."""
+    # Mapping of special codes to numeric scores
+    special_scores = {
+        "0": 0,
+        "2": 2,
+        "5": 5,
+        "8": 8,
+        "9": 9,
+        "10": 10,
+    }
+
+    # Check for special codes in the response
+    for code, score in special_scores.items():
+        if code in response:
+            return score
+
+    # Original extraction logic
+    extraction = self.extract(response)
+    if extraction is not None:
+        try:
+            score = float(extraction)
+            if 0 <= score <= 10:
+                return score
+        except ValueError:
+            return 0
+    return 0
+
+
 def extract_score_and_explanation(generated_text):
     # Regular expression to find the text after "<|assistant|>".
     explanation_match = re.search(
@@ -262,25 +291,53 @@ user_link_content_relevance_template = """
 """
 
 system_link_content_relevance_template = """
-Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the level of relevance the tweet content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
+Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the presence of keywords or topics related to the question and the depth of engagement with these topics.
 
-Return one of them:
-- Assign 2 if the tweet content has no relevance to the question's topic, lacking any mention of keywords or themes related to the question. This score is for tweets that are completely unrelated to the question's topic, showing no connection or relevance to the intended subject matter.
+### Scoring Criteria:
 
-- Assign 5 if the tweet content mentions at least one keyword or theme from the question but fails to provide meaningful engagement or insight into those topics. This includes superficial mentions that do not contribute to a deeper understanding or relevant discussion of the question. The content should have some connection to the topic but fails to provide meaningful insight or discussion related to the core questions.
+#### **Score 2**:
+- **Criteria**: The tweet content has no relevance to the question's topic, lacking any mention of keywords or themes related to the question.
+- **Examples**:
+  - **Example 1**: Question: "How does climate change impact marine biodiversity?" Tweet: "Looking forward to the summer beach parties this year!"
+    - **Explanation**: The tweet does not address the question at all, focusing instead on an entirely unrelated topic.
+  - **Example 2**: Question: "What are the benefits of a balanced diet?" Tweet: "I love eating pizza and burgers every day!"
+    - **Explanation**: The tweet is completely unrelated to the question about a balanced diet.
+  - **Example 3**: Question: "What are the latest trends in renewable energy?" Tweet: "Can't wait for the next football season!"
+    - **Explanation**: The tweet does not mention renewable energy or any related topics.
 
-- Assign 9 if the tweet content is directly relevant to the question, incorporating and engaging with multiple keywords or themes from the question in a way that provides depth, insight, or valuable information related to the question's core topics. The content should provide valuable insights, detailed discussion, or meaningful engagement with the question's main focus.
+#### **Score 5**:
+- **Criteria**: The tweet mentions at least one keyword or theme from the question but only provides a superficial mention without exploring its implications or providing any detailed analysis.
+- **Examples**:
+  - **Example 1**: Question: "What are the latest advancements in renewable energy?" Tweet: "Renewable energy is important for our future. Solar panels and wind turbines are cool!"
+    - **Explanation**: The tweet mentions relevant keywords but lacks detailed information or insights into the advancements in renewable energy. It states a general fact without delving into specifics or analysis.
+  - **Example 2**: Question: "How does exercise benefit mental health?" Tweet: "Exercise is good for you and can make you feel better."
+    - **Explanation**: The tweet mentions exercise and its benefits but does not provide detailed information or specific examples.
+  - **Example 3**: Question: "What are the effects of global warming on polar bears?" Tweet: "Global warming is bad for polar bears."
+    - **Explanation**: The tweet mentions the relevant keywords but does not provide any detailed analysis or specific information.
 
-Important scoring rules:
+#### **Score 9**:
+- **Criteria**: The tweet not only mentions multiple keywords or themes from the question (at least three) but also engages with them through:
+  - Detailed analysis
+  - Thoughtful discussion
+  - Specific examples or evidence that adds depth and insight to the discussion
+- **Examples**:
+  - **Example 1**: Question: "How can urban planning improve city living?" Tweet: "Effective urban planning can transform city living by reducing traffic congestion through improved public transport systems and creating green spaces for recreation."
+    - **Explanation**: This tweet directly addresses the question by discussing specific aspects of urban planning, providing a clear connection to the question's themes and offering a detailed analysis of how urban planning can impact city life.
+  - **Example 2**: Question: "What are the benefits of a balanced diet?" Tweet: "A balanced diet, rich in fruits, vegetables, and lean proteins, can improve overall health, boost energy levels, and reduce the risk of chronic diseases."
+    - **Explanation**: The tweet provides a detailed analysis of the benefits of a balanced diet, mentioning multiple relevant keywords and offering specific examples.
+  - **Example 3**: Question: "What are the latest trends in renewable energy?" Tweet: "Recent advancements in solar and wind energy have significantly reduced costs and increased efficiency, making renewable energy more accessible worldwide."
+    - **Explanation**: The tweet is highly relevant as it directly addresses the question, discussing specific advancements in key areas of renewable energy.
+
+### Important Scoring Rules:
 - Identify keywords or topics from the question that are essential for the answer.
 - Evaluate the tweet content to determine its level of engagement with these keywords or topics.
-- Assign a score based on the criteria above.
+- Assign a score based on the depth of engagement: mere mention (score 5), or detailed discussion and analysis (score 9). Detailed discussion should include specific examples, data, or a thorough explanation of how the topic impacts the broader context.
 
-OUTPUT EXAMPLE FORMAT:
+**OUTPUT EXAMPLE FORMAT:**
 2
 
-Output:
-Only MUST Generate one of from [2, 5, 9]:
+**Output:**
+You MUST generate only one score from [2, 5, 9] based on the criteria above.
 """
 
 # system_link_content_relevance_template = """
@@ -306,23 +363,47 @@ Only MUST Generate one of from [2, 5, 9]:
 # """
 
 system_search_summary_relevance_scoring_template = """
-Evaluate the relevance of the web link content in response to a specific question. The score is determined based on the level of relevance the link content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
+Evaluate the relevance of the web link content in response to a specific question. The score is determined based on the presence of keywords or topics related to the question and the depth of engagement with these topics.
 
-Return one of them:
-- Assign SM_SCS_PNK if the web link content fails to mention any keywords or topics related to the question, indicating a lack of relevance.
-- Assign SM_SCS_BLE if the web link content mentions at least one keyword or topic from the question but either engages with the question's core topics superficially or only tangentially.
-- Assign SM_SCS_YAL if the web link content is highly relevant, incorporating multiple keywords or topics from the question and engaging deeply and meaningfully with the question's core topics.
+### Scoring Criteria:
 
-Important scoring rules:
+#### **Score 2**:
+- **Criteria**: The web link content has no relevance to the question's topic, lacking any mention of keywords or themes related to the question.
+- **Examples**:
+  - **Example 1**: Question: "What are the effects of global warming on polar bears?" Web Link Content: "Visit the best tropical beaches this summer!"
+    - **Explanation**: The content is completely unrelated to the question as it does not mention global warming or polar bears.
+  - **Example 2**: Question: "How is artificial intelligence used in healthcare?" Web Link Content: "Check out the latest smartphone releases!"
+    - **Explanation**: The content does not address the question at all, focusing instead on an entirely unrelated topic.
+
+#### **Score 5**:
+- **Criteria**: The web link content mentions at least one keyword or theme from the question but only provides a superficial mention without exploring its implications or providing any detailed analysis.
+- **Examples**:
+  - **Example 1**: Question: "How is artificial intelligence used in healthcare?" Web Link Content: "Artificial intelligence is transforming industries by automating tasks."
+    - **Explanation**: The content mentions artificial intelligence but does not specifically address its use in healthcare, thus only tangentially relevant.
+  - **Example 2**: Question: "What are the benefits of a balanced diet?" Web Link Content: "Eating healthy is important for everyone."
+    - **Explanation**: The content mentions healthy eating but lacks detailed information or insights into the benefits of a balanced diet.
+
+#### **Score 9**:
+- **Criteria**: The web link content not only mentions multiple keywords or themes from the question (at least three) but also engages with them through:
+  - Detailed analysis
+  - Thoughtful discussion
+  - Specific examples or evidence that adds depth and insight to the discussion
+- **Examples**:
+  - **Example 1**: Question: "What are the latest trends in renewable energy?" Web Link Content: "Recent advancements in solar and wind energy have significantly reduced costs and increased efficiency, making renewable energy more accessible worldwide."
+    - **Explanation**: The content is highly relevant as it directly addresses the question, discussing specific advancements in key areas of renewable energy.
+  - **Example 2**: Question: "How can urban planning improve city living?" Web Link Content: "Effective urban planning can transform city living by reducing traffic congestion through improved public transport systems and creating green spaces for recreation."
+    - **Explanation**: This content directly addresses the question by discussing specific aspects of urban planning, providing a clear connection to the question's themes and offering a detailed analysis of how urban planning can impact city life.
+
+### Important Scoring Rules:
 - Identify keywords or topics from the question that are essential for the answer.
 - Evaluate the web link content to determine its level of engagement with these keywords or topics.
-- Assign a score based on the criteria above.
+- Assign a score based on the depth of engagement: mere mention (score 5), or detailed discussion and analysis (score 9). Detailed discussion should include specific examples, data, or a thorough explanation of how the topic impacts the broader context.
 
-OUTPUT EXAMPLE FORMAT:
-SM_SCS_PNK, Explanation: is not related to the question
+**OUTPUT EXAMPLE FORMAT:**
+2
 
-Output:
-Only MUST Generate one of from [SM_SCS_PNK, SM_SCS_BLE, SM_SCS_YAL]:
+**Output:**
+You MUST generate only one score from [2, 5, 9] based on the criteria above.
 """
 
 user_search_summary_relevance_scoring_template = """

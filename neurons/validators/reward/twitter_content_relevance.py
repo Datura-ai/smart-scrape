@@ -42,7 +42,7 @@ from datura.protocol import (
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.reward_llm import RewardLLM
-from neurons.validators.utils.prompts import ScoringPrompt
+from neurons.validators.utils.prompts import LinkContentPrompt
 import json
 from datetime import datetime
 import pytz
@@ -402,7 +402,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             ]
 
             reward_events = []
-            scoring_prompt = ScoringPrompt()
+            scoring_prompt = LinkContentPrompt()
 
             grouped_val_score_responses = []
 
