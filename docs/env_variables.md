@@ -55,12 +55,12 @@ Here's a breakdown of the environment variables necessary for the Smart-Scrape s
 
 8. **DISCORD_MESSAGES_DB_URL**:
    - **Usage**: Used to access bittensor discord messages/channels/users
-   - **How to Create**: Already defined, and available to use: `read_only_db_url`
+   - **How to Create**: Use `discord_db_url_generator.py` to get a read only database url. It will ask you for miner coldkey, and password for it after running the script.
    - **Required for**: Miners exclusively.
 
 9. **PINECONE_API_KEY**:
    - **Usage**: Used to read and write pinecone vector indexes for discord messages exclusively.
-   - **How to Create**: Sign up or login at [Pinecone](http://pinecone.io/), and generate a key in your account settings.
+   - **How to Create**: Sign up or login at [Pinecone](https://pinecone.io/), and generate a key in your account settings.
    - **Required for**: Miners exclusively.
 
 ### Executing Commands for Setting Environment Variables
@@ -74,7 +74,7 @@ export EXPECTED_ACCESS_KEY=<your_EXPECTED_ACCESS_KEY_here>  # Only for Validator
 export WANDB_API_KEY=<your_wandb_api_key_here>
 export APIFY_API_KEY=<your_apify_api_key_here>  # Only for Validators
 export URL_SUBNET_18=<your_url_subent_18>
-export DISCORD_MESSAGES_DB_URL=<read_only_db_url>
+export DISCORD_MESSAGES_DB_URL=<discord_db_url>
 export PINECONE_API_KEY=<your_pinecone_api_key>
 ```
 

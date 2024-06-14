@@ -11,13 +11,13 @@ This document serves as the main reference for all documentation related to the 
 
 ## Env Variables
 
-Setting environment variables is crucial for the implementation of Discord message indexing. The primary variable is `DB_URL`, which points to the database where messages, users, and channels are stored.
+Setting environment variables is crucial for the implementation of Discord message indexing. The primary variable is `DISCORD_MESSAGES_DB_URL`, which points to the database where messages, users, and channels are stored.
 
 ### Setting Environment Variables
 
-Follow the guidelines provided here: [env_variables.md](https://github.com/Datura-ai/smart-scrape/blob/main/docs/env_variables.md)
+Follow the guidelines provided here in order to get and set environment variables: [env_variables.md](https://github.com/Datura-ai/smart-scrape/blob/main/docs/env_variables.md)
 
-**DB_URL**:
+**DISCORD_MESSAGES_DB_URL**:
 ```
 read_only_db_url
 ```

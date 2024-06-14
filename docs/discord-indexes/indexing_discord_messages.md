@@ -64,8 +64,9 @@ To index this data into a Pinecone vector database, we have a script that reads 
      ```
 
 2. **Set Environment Variables:**
-   - Set the environment variables for the OpenAI and Pinecone API keys:
+   - Set the environment variables for the Discord Messages, OpenAI and Pinecone API keys:
      ```sh
+     export DISCORD_MESSAGES_DB_URL='discord-messages-db-url'
      export OPENAI_API_KEY='your-openai-api-key'
      export PINECONE_API_KEY='your-pinecone-api-key'
      ```

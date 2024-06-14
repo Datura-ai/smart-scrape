@@ -3,7 +3,7 @@ import uuid
 import bittensor as bt
 from requests import request
 
-URL = "http://0.0.0.0:80/api/get-discord-db-url"
+URL = "http://api-discord.datura.ai/api/get-discord-db-url"
 
 
 def generate_token(coldkey: str):

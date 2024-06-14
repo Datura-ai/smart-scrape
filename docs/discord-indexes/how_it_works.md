@@ -10,7 +10,7 @@ The main class for the service is `discord_service`, which accepts query paramet
 
 ### database.py
 
-This file defines the `DB_URL`, all models, and methods necessary for connecting to and retrieving data from the database. Messages are stored by the scraper bot "Datura Knight" from the Bittensor Discord channel and saved in a PostgreSQL database. The connection is established using the `DB_URL` environment variable.
+This file defines the `DISCORD_MESSAGES_DB_URL`, all models, and methods necessary for connecting to and retrieving data from the database. Messages are stored by the scraper bot "Datura Knight" from the Bittensor Discord channel and saved in a PostgreSQL database. The connection is established using the `DISCORD_MESSAGES_DB_URL` environment variable.
 
 ### discord_pinecone_indexer.py and pinecone_indexes.json
 
