@@ -191,6 +191,35 @@ def find_unique_tags(input_text: str):
     return list(set(matches))
 
 
+def extract_score(self, response: str) -> float:
+    r"""Extract numeric score (range 0-10) from prompt response."""
+    # Mapping of special codes to numeric scores
+    special_scores = {
+        "0": 0,
+        "2": 2,
+        "5": 5,
+        "8": 8,
+        "9": 9,
+        "10": 10,
+    }
+
+    # Check for special codes in the response
+    for code, score in special_scores.items():
+        if code in response:
+            return score
+
+    # Original extraction logic
+    extraction = self.extract(response)
+    if extraction is not None:
+        try:
+            score = float(extraction)
+            if 0 <= score <= 10:
+                return score
+        except ValueError:
+            return 0
+    return 0
+
+
 def extract_score_and_explanation(generated_text):
     # Regular expression to find the text after "<|assistant|>".
     explanation_match = re.search(
@@ -266,10 +295,16 @@ Evaluate the relevance of the tweet content in response to a specific question. 
 
 Return one of them:
 - Assign 2 if the tweet content has no relevance to the question's topic, lacking any mention of keywords or themes related to the question. This score is for tweets that are completely unrelated to the question's topic, showing no connection or relevance to the intended subject matter.
+  Example: Question: "How does climate change impact marine biodiversity?" Tweet: "Looking forward to the summer beach parties this year!"
+  Explanation: The tweet does not address the question at all, focusing instead on an entirely unrelated topic.
 
-- Assign 5 if the tweet content mentions at least one keyword or theme from the question but fails to provide meaningful engagement or insight into those topics. This includes superficial mentions that do not contribute to a deeper understanding or relevant discussion of the question. The content should have some connection to the topic but fails to provide meaningful insight or discussion related to the core questions.
+- Assign 5 if the tweet content mentions at least one keyword or theme from the question but the engagement remains superficial. The tweet should mention the keywords but without exploring them in any depth or adding any new understanding or context. This score is for tweets that recognize the topic but do not explore its implications or details.
+  Example: Question: "What are the latest advancements in renewable energy?" Tweet: "Renewable energy is important for our future. Solar panels and wind turbines are cool!"
+  Explanation: The tweet mentions relevant keywords like "renewable energy," "solar panels," and "wind turbines," but it only states a general opinion without providing any detailed information or insights into the advancements in renewable energy.
 
-- Assign 9 if the tweet content is directly relevant to the question, incorporating and engaging with multiple keywords or themes from the question in a way that provides depth, insight, or valuable information related to the question's core topics. The content should provide valuable insights, detailed discussion, or meaningful engagement with the question's main focus.
+- Assign 9 if the tweet content mentions multiple keywords or themes from the question and engages with them beyond a superficial level. The content should provide some insights or discussion that adds to the understanding of the question's main focus, but it does not necessarily need to be deeply comprehensive or highly detailed. This score is for tweets that show a good level of engagement with the question, offering perspectives or analyses that are relevant and informative.
+  Example: Question: "How can urban planning improve city living?" Tweet: "Effective urban planning can transform city living by reducing traffic congestion through improved public transport systems and creating green spaces for recreation."
+  Explanation: This tweet directly addresses the question by discussing specific aspects of urban planning, such as improving public transport and creating green spaces, which are relevant to enhancing city living. It provides a clear connection to the question's themes and offers a concise analysis of how urban planning can impact city life.
 
 Important scoring rules:
 - Identify keywords or topics from the question that are essential for the answer.
@@ -309,9 +344,17 @@ system_search_summary_relevance_scoring_template = """
 Evaluate the relevance of the web link content in response to a specific question. The score is determined based on the level of relevance the link content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
 
 Return one of them:
-- Assign SM_SCS_PNK if the web link content fails to mention any keywords or topics related to the question, indicating a lack of relevance.
-- Assign SM_SCS_BLE if the web link content mentions at least one keyword or topic from the question but either engages with the question's core topics superficially or only tangentially.
-- Assign SM_SCS_YAL if the web link content is highly relevant, incorporating multiple keywords or topics from the question and engaging deeply and meaningfully with the question's core topics.
+- Assign 2 if the web link content fails to mention any keywords or topics related to the question, indicating a lack of relevance.
+  Example: Question: "What are the effects of global warming on polar bears?" Web Link Content: "Visit the best tropical beaches this summer!"
+  Explanation: The content is completely unrelated to the question as it does not mention global warming or polar bears.
+
+- Assign 5 if the web link content mentions at least one keyword or topic from the question but engages with the question's core topics superficially or only tangentially.
+  Example: Question: "How is artificial intelligence used in healthcare?" Web Link Content: "Artificial intelligence is transforming industries by automating tasks."
+  Explanation: The content mentions artificial intelligence but does not specifically address its use in healthcare, thus only tangentially relevant.
+
+- Assign 9 if the web link content is highly relevant, incorporating multiple keywords or topics from the question and engaging deeply and meaningfully with the question's core topics.
+  Example: Question: "What are the latest trends in renewable energy?" Web Link Content: "Recent advancements in solar and wind energy have significantly reduced costs and increased efficiency, making renewable energy more accessible worldwide."
+  Explanation: The content is highly relevant as it directly addresses the question, discussing specific advancements in key areas of renewable energy.
 
 Important scoring rules:
 - Identify keywords or topics from the question that are essential for the answer.
@@ -319,10 +362,10 @@ Important scoring rules:
 - Assign a score based on the criteria above.
 
 OUTPUT EXAMPLE FORMAT:
-SM_SCS_PNK, Explanation: is not related to the question
+2
 
 Output:
-Only MUST Generate one of from [SM_SCS_PNK, SM_SCS_BLE, SM_SCS_YAL]:
+Only MUST Generate one of from [2, 5, 9]:
 """
 
 user_search_summary_relevance_scoring_template = """

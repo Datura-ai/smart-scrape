@@ -14,7 +14,7 @@ from neurons.validators.utils.prompts import (
 )
 import random
 import json
-from neurons.validators.utils.prompts import ScoringPrompt, SearchSummaryRelevancePrompt
+from neurons.validators.utils.prompts import SearchSummaryRelevancePrompt
 import time
 
 APIFY_LINK_SCRAPE_AMOUNT = 10
@@ -252,7 +252,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             ]
 
             reward_events = []
-            scoring_prompt = ScoringPrompt()
+            scoring_prompt = SearchSummaryRelevancePrompt()
 
             grouped_val_score_responses = []
 
