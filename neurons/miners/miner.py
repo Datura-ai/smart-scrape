@@ -179,14 +179,15 @@ class StreamMiner(ABC):
                     f"Blacklisted a non registered hotkey's {synapse_type} request from {hotkey}",
                 )
 
-            # check the stake
-            tao = self.metagraph.neurons[uid].stake.tao
-            # metagraph.neurons[uid].S
-            if tao < blacklist_amt:
-                return (
-                    True,
-                    f"Blacklisted a low stake {synapse_type} request: {tao} < {blacklist_amt} from {hotkey}",
-                )
+            if self.config.subtensor.network == "finney":
+                # check the stake
+                tao = self.metagraph.neurons[uid].stake.tao
+                # metagraph.neurons[uid].S
+                if tao < blacklist_amt:
+                    return (
+                        True,
+                        f"Blacklisted a low stake {synapse_type} request: {tao} < {blacklist_amt} from {hotkey}",
+                    )
 
             time_window = datura.MIN_REQUEST_PERIOD * 60
             current_time = time.time()
