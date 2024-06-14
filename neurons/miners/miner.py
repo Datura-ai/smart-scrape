@@ -28,7 +28,17 @@ from datura.protocol import IsAlive, ScraperStreamingSynapse, SearchSynapse
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.miners.scraper_miner import ScraperMiner
 from neurons.miners.search_miner import SearchMiner
+import warnings
+import sys
 
+
+def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+    log = file if hasattr(file, "write") else sys.stderr
+    traceback.print_stack(file=log)
+    log.write(warnings.formatwarning(message, category, filename, lineno, line))
+
+
+warnings.showwarning = warn_with_traceback
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
 if not OpenAI.api_key:
     raise ValueError(
@@ -120,12 +130,14 @@ class StreamMiner(ABC):
         self.axon.attach(
             forward_fn=self._is_alive,
             blacklist_fn=self.blacklist_is_alive,
-        ).attach(
-            forward_fn=self._smart_scraper,
-            blacklist_fn=self.blacklist_smart_scraper,
-        ).attach(
-            forward_fn=self._search,
         )
+
+        # attach(
+        #     forward_fn=self._smart_scraper,
+        #     blacklist_fn=self.blacklist_smart_scraper,
+        # ).attach(
+        #     forward_fn=self._search,
+        # )
         bt.logging.info(f"Axon created: {self.axon}")
 
         # Instantiate runners
@@ -179,14 +191,14 @@ class StreamMiner(ABC):
                     f"Blacklisted a non registered hotkey's {synapse_type} request from {hotkey}",
                 )
 
-            # check the stake
-            tao = self.metagraph.neurons[uid].stake.tao
-            # metagraph.neurons[uid].S
-            if tao < blacklist_amt:
-                return (
-                    True,
-                    f"Blacklisted a low stake {synapse_type} request: {tao} < {blacklist_amt} from {hotkey}",
-                )
+            # # check the stake
+            # tao = self.metagraph.neurons[uid].stake.tao
+            # # metagraph.neurons[uid].S
+            # if tao < blacklist_amt:
+            #     return (
+            #         True,
+            #         f"Blacklisted a low stake {synapse_type} request: {tao} < {blacklist_amt} from {hotkey}",
+            #     )
 
             time_window = datura.MIN_REQUEST_PERIOD * 60
             current_time = time.time()
@@ -426,6 +438,11 @@ def get_valid_hotkeys(config):
 
 
 if __name__ == "__main__":
-    with StreamingTemplateMiner():
-        while True:
-            time.sleep(1)
+    try:
+        print(bt.logging.set_debug())
+        with StreamingTemplateMiner():
+            while True:
+                time.sleep(1)
+    except Exception as e:
+        print("Exception occurred: ", e)
+        print(traceback.format_exc())

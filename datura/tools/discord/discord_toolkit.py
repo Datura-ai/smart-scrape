@@ -12,7 +12,7 @@ class DiscordToolkit(BaseToolkit, ABC):
     name: str = "Discord Toolkit"
     description: str = "Toolkit containing tools for interacting discord."
     slug: str = "discord"
-    toolkit_id = "fb78b028-f7f4-4d20-b7e8-7dc072e97d9a"
+    toolkit_id: str = "fb78b028-f7f4-4d20-b7e8-7dc072e97d9a"
 
     def get_tools(self) -> List[BaseTool]:
         return [DiscordSearchTool()]

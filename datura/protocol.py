@@ -105,24 +105,24 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Completion status of the current StreamPrompting object. This attribute is mutable and can be updated.",
     )
 
-    required_hash_fields: List[str] = pydantic.Field(
-        ["messages"],
-        title="Required Hash Fields",
-        description="A list of required fields for the hash.",
-        allow_mutation=False,
-    )
+    # required_hash_fields: List[str] = pydantic.Field(
+    #     ["messages"],
+    #     title="Required Hash Fields",
+    #     description="A list of required fields for the hash.",
+    #     allow_mutation=False,
+    # )
 
-    seed: int = pydantic.Field(
-        "",
-        title="Seed",
-        description="Seed for text generation. This attribute is immutable and cannot be updated.",
-    )
+    # seed: int = pydantic.Field(
+    #     0,
+    #     title="Seed",
+    #     description="Seed for text generation. This attribute is immutable and cannot be updated.",
+    # )
 
-    model: Optional[str] = pydantic.Field(
-        "",
-        title="model",
-        description="The model that which to use when calling openai for your response.",
-    )
+    # model: Optional[str] = pydantic.Field(
+    #     "",
+    #     title="model",
+    #     description="The model that which to use when calling openai for your response.",
+    # )
 
     tools: Optional[List[str]] = pydantic.Field(
         default_factory=list,
@@ -166,11 +166,11 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Date filter specified by user.",
     )
 
-    prompt_analysis: TwitterPromptAnalysisResult = pydantic.Field(
-        default_factory=lambda: TwitterPromptAnalysisResult(),
-        title="Prompt Analysis",
-        description="Analysis of the Twitter query result.",
-    )
+    # prompt_analysis: TwitterPromptAnalysisResult = pydantic.Field(
+    #     default_factory=lambda: TwitterPromptAnalysisResult(),
+    #     title="Prompt Analysis",
+    #     description="Analysis of the Twitter query result.",
+    # )
 
     validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
         default_factory=list,
@@ -266,8 +266,8 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="A dictionary of texts in the StreamPrompting scenario, containing a role (intro, twitter summary, search summary, summary) and content. Immutable.",
     )
 
-    def set_prompt_analysis(self, data: any):
-        self.prompt_analysis = data
+    # def set_prompt_analysis(self, data: any):
+    #     self.prompt_analysis = data
 
     def set_tweets(self, data: any):
         self.tweets = data
@@ -379,11 +379,11 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                         self.completion = completion
 
                         yield json.dumps({"type": "completion", "content": completion})
-                    elif content_type == "prompt_analysis":
-                        prompt_analysis_json = json_data.get("content", "{}")
-                        prompt_analysis = TwitterPromptAnalysisResult()
-                        prompt_analysis.fill(prompt_analysis_json)
-                        self.set_prompt_analysis(prompt_analysis)
+                    # elif content_type == "prompt_analysis":
+                    #     prompt_analysis_json = json_data.get("content", "{}")
+                    #     prompt_analysis = TwitterPromptAnalysisResult()
+                    #     prompt_analysis.fill(prompt_analysis_json)
+                    #     self.set_prompt_analysis(prompt_analysis)
 
                     elif content_type == "tweets":
                         tweets_json = json_data.get("content", "[]")
@@ -504,7 +504,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "arxiv_search_results": self.arxiv_search_results,
             "hacker_news_search_results": self.hacker_news_search_results,
             "reddit_search_results": self.reddit_search_results,
-            "prompt_analysis": self.prompt_analysis.dict(),
+            # "prompt_analysis": self.prompt_analysis.dict(),
             "completion_links": completion_links,
             "search_completion_links": search_completion_links,
             "texts": self.texts,

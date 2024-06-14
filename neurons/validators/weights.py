@@ -70,6 +70,7 @@ def on_retry(exception, tries_remaining, delay):
 
 
 def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_key):
+    message = ""  # Initialize message
     try:
         subtensor = bt.subtensor(config=config)
         success, message = subtensor.set_weights(
@@ -87,6 +88,7 @@ def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_
         return success, message
     except Exception as e:
         bt.logging.error(f"Failed to set weights on chain with exception: { e }")
+        message = str(e)  # Update message with exception details
         return False, message
 
 
@@ -182,7 +184,7 @@ def get_weights(self):
         processed_weight_uids,
         processed_weights,
     ) = bt.utils.weight_utils.process_weights_for_netuid(
-        uids=self.metagraph.uids.to("cpu"),
+        uids=torch.from_numpy(self.metagraph.uids).to("cpu"),
         weights=raw_weights.to("cpu"),
         netuid=self.config.netuid,
         subtensor=self.subtensor,
@@ -213,13 +215,12 @@ def set_weights(self):
         processed_weight_uids,
         processed_weights,
     ) = bt.utils.weight_utils.process_weights_for_netuid(
-        uids=self.metagraph.uids.to("cpu"),
+        uids=torch.from_numpy(self.metagraph.uids).to("cpu"),
         weights=raw_weights.to("cpu"),
         netuid=self.config.netuid,
         subtensor=self.subtensor,
         metagraph=self.metagraph,
     )
-
     weights_dict = {
         str(uid.item()): weight.item()
         for uid, weight in zip(processed_weight_uids, processed_weights)
