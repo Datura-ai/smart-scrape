@@ -16,6 +16,9 @@ import random
 import json
 from neurons.validators.utils.prompts import SearchSummaryRelevancePrompt
 import time
+import asyncio
+import re
+import html
 
 APIFY_LINK_SCRAPE_AMOUNT = 10
 
@@ -199,6 +202,17 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             bt.logging.error(f"check_response_random_link: {str(e)}")
             return 0
 
+    def clean_text(self, text):
+        # url shorteners can cause problems with tweet verification, so remove urls from the text comparison.
+        text = re.sub(r"(https?://)?\S+\.\S+\/?(\S+)?", "", text)
+        # Some scrapers put the mentions at the front of the text, remove them.
+        text = re.sub(r"^(@\w+\s*)+", "", text)
+        # Remove emojis and other symbols
+        text = re.sub(r"[^\w\s,]", "", text)
+        # And some have special characters escaped as html entities
+        text = html.unescape(text)
+        return text
+
     def get_scoring_text(
         self, prompt: str, content: str, response: ScraperStreamingSynapse
     ) -> BaseRewardEvent:
@@ -214,6 +228,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             if content is None:
                 bt.logging.debug("Search Content is empty.")
                 return None
+            content = self.clean_text(content)
 
             scoring_prompt_text = None
             scoring_prompt = SearchSummaryRelevancePrompt()

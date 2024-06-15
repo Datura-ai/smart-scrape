@@ -147,29 +147,17 @@ class LinkContentPrompt(ScoringPrompt):
     def extract_score(self, response: str) -> float:
         r"""Extract numeric score (range 0-10) from prompt response."""
         # Mapping of special codes to numeric scores
-        special_scores = {
-            "0": 0,
-            "2": 2,
-            "5": 5,
-            "8": 8,
-            "9": 9,
-            "10": 10,
-        }
 
-        # Check for special codes in the response
-        for code, score in special_scores.items():
-            if code in response:
-                return score
-
-        # Original extraction logic
-        extraction = self.extract(response)
-        if extraction is not None:
+        # Extract score from output string
+        match = re.search(r"Score:\s*(\d+),", response)
+        if match:
             try:
-                score = float(extraction)
+                score = float(match.group(1))
                 if 0 <= score <= 10:
                     return score
             except ValueError:
                 return 0
+
         return 0
 
 
@@ -194,29 +182,17 @@ def find_unique_tags(input_text: str):
 def extract_score(self, response: str) -> float:
     r"""Extract numeric score (range 0-10) from prompt response."""
     # Mapping of special codes to numeric scores
-    special_scores = {
-        "0": 0,
-        "2": 2,
-        "5": 5,
-        "8": 8,
-        "9": 9,
-        "10": 10,
-    }
 
-    # Check for special codes in the response
-    for code, score in special_scores.items():
-        if code in response:
-            return score
-
-    # Original extraction logic
-    extraction = self.extract(response)
-    if extraction is not None:
+    # Extract score from output string
+    match = re.search(r"Score:\s*(\d+),", response)
+    if match:
         try:
-            score = float(extraction)
+            score = float(match.group(1))
             if 0 <= score <= 10:
                 return score
         except ValueError:
             return 0
+
     return 0
 
 
@@ -334,7 +310,7 @@ Evaluate the relevance of the tweet content in response to a specific question. 
 - Assign a score based on the depth of engagement: mere mention (score 5), or detailed discussion and analysis (score 9). Detailed discussion should include specific examples, data, or a thorough explanation of how the topic impacts the broader context.
 
 **OUTPUT EXAMPLE FORMAT:**
-2
+Score: 2, Explanation:
 
 **Output:**
 You MUST generate only one score from [2, 5, 9] based on the criteria above.
@@ -400,7 +376,7 @@ Evaluate the relevance of the web link content in response to a specific questio
 - Assign a score based on the depth of engagement: mere mention (score 5), or detailed discussion and analysis (score 9). Detailed discussion should include specific examples, data, or a thorough explanation of how the topic impacts the broader context.
 
 **OUTPUT EXAMPLE FORMAT:**
-2
+Score: 2, Explanation:
 
 **Output:**
 You MUST generate only one score from [2, 5, 9] based on the criteria above.

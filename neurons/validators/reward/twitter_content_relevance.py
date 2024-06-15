@@ -68,6 +68,17 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         self.scoring_type = scoring_type
         self.tw_client = TwitterAPIClient()
 
+    def clean_text(self, text):
+        # url shorteners can cause problems with tweet verification, so remove urls from the text comparison.
+        text = re.sub(r"(https?://)?\S+\.\S+\/?(\S+)?", "", text)
+        # Some scrapers put the mentions at the front of the text, remove them.
+        text = re.sub(r"^(@\w+\s*)+", "", text)
+        # Remove emojis and other symbols
+        text = re.sub(r"[^\w\s,]", "", text)
+        # And some have special characters escaped as html entities
+        text = html.unescape(text)
+        return text
+
     async def llm_process_validator_tweets(self, prompt, tweets_list):
         start_llm_time = time.time()
         scoring_messages = []
@@ -365,6 +376,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             if content is None:
                 bt.logging.debug("Twitter Content is empty")
                 return None
+
+            content = self.clean_text(content)
 
             scoring_prompt_text = scoring_prompt.text(prompt, content)
 
