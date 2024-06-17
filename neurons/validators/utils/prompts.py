@@ -269,45 +269,80 @@ user_link_content_relevance_template = """
 system_link_content_relevance_template = """
 Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the presence of keywords or topics related to the question and the depth of engagement with these topics.
 
-### Scoring Criteria:
+### Detailed Step-by-Step Logic for Comparison
+
+#### Step 1: Analyze the Question
+- **Identify Keywords and Themes**: Extract important keywords or themes from the question. These are essential for determining the relevance of the tweet.
+- **Understand the Context**: Grasp the overall context of the question to understand what specific information or opinions it seeks.
+
+#### Step 2: Analyze the Tweet Content
+- **Identify Mentioned Keywords**: Look for any mention of the keywords or themes identified in the question.
+- **Determine Engagement Level**: Assess how deeply the tweet engages with these keywords or themes.
+
+#### Step 3: Compare Question and Tweet Content
+- **Check for Relevance**: Determine if the tweet content is relevant to the question based on the identified keywords and themes.
+- **Evaluate Depth of Engagement**: Judge how thoroughly the tweet discusses the keywords or themes. Is it a superficial mention or a detailed analysis?
+
+### Scoring Criteria
 
 #### **Score 2**:
 - **Criteria**: The tweet content has no relevance to the question's topic, lacking any mention of keywords or themes related to the question.
+- **Detailed Explanation**:
+  - **No Mention of Keywords**: The tweet does not mention any keywords or themes from the question.
+  - **Off-Topic Content**: The tweet focuses on topics entirely unrelated to the question.
+
 - **Examples**:
-  - **Example 1**: Question: "How does climate change impact marine biodiversity?" Tweet: "Looking forward to the summer beach parties this year!"
+  - **Example 1**: 
+    - **Question**: "How does climate change impact marine biodiversity?" 
+    - **Tweet**: "Looking forward to the summer beach parties this year!"
     - **Explanation**: The tweet does not address the question at all, focusing instead on an entirely unrelated topic.
-  - **Example 2**: Question: "What are the benefits of a balanced diet?" Tweet: "I love eating pizza and burgers every day!"
+  - **Example 2**: 
+    - **Question**: "What are the benefits of a balanced diet?" 
+    - **Tweet**: "I love eating pizza and burgers every day!"
     - **Explanation**: The tweet is completely unrelated to the question about a balanced diet.
-  - **Example 3**: Question: "What are the latest trends in renewable energy?" Tweet: "Can't wait for the next football season!"
-    - **Explanation**: The tweet does not mention renewable energy or any related topics.
 
 #### **Score 5**:
 - **Criteria**: The tweet mentions at least one keyword or theme from the question but only provides a superficial mention without exploring its implications or providing any detailed analysis.
+- **Detailed Explanation**:
+  - **Superficial Mention**: The tweet mentions relevant keywords but lacks detailed information or insights.
+  - **General Statements**: The tweet may state general facts but does not delve into specifics or analysis.
+
 - **Examples**:
-  - **Example 1**: Question: "What are the latest advancements in renewable energy?" Tweet: "Renewable energy is important for our future. Solar panels and wind turbines are cool!"
-    - **Explanation**: The tweet mentions relevant keywords but lacks detailed information or insights into the advancements in renewable energy. It states a general fact without delving into specifics or analysis.
-  - **Example 2**: Question: "How does exercise benefit mental health?" Tweet: "Exercise is good for you and can make you feel better."
+  - **Example 1**: 
+    - **Question**: "What are the latest advancements in renewable energy?" 
+    - **Tweet**: "Renewable energy is important for our future. Solar panels and wind turbines are cool!"
+    - **Explanation**: The tweet mentions relevant keywords but lacks detailed information or insights into the advancements in renewable energy.
+  - **Example 2**: 
+    - **Question**: "How does exercise benefit mental health?" 
+    - **Tweet**: "Exercise is good for you and can make you feel better."
     - **Explanation**: The tweet mentions exercise and its benefits but does not provide detailed information or specific examples.
-  - **Example 3**: Question: "What are the effects of global warming on polar bears?" Tweet: "Global warming is bad for polar bears."
-    - **Explanation**: The tweet mentions the relevant keywords but does not provide any detailed analysis or specific information.
 
 #### **Score 9**:
 - **Criteria**: The tweet not only mentions multiple keywords or themes from the question (at least three) but also engages with them through:
   - Detailed analysis
   - Thoughtful discussion
   - Specific examples or evidence that adds depth and insight to the discussion
+- **Detailed Explanation**:
+  - **Thorough Engagement**: The tweet engages deeply with the question's topic by mentioning multiple relevant keywords or themes.
+  - **Detailed Analysis**: The tweet provides a detailed discussion, including specific examples, thoughtful insights, or evidence.
+
 - **Examples**:
-  - **Example 1**: Question: "How can urban planning improve city living?" Tweet: "Effective urban planning can transform city living by reducing traffic congestion through improved public transport systems and creating green spaces for recreation."
-    - **Explanation**: This tweet directly addresses the question by discussing specific aspects of urban planning, providing a clear connection to the question's themes and offering a detailed analysis of how urban planning can impact city life.
-  - **Example 2**: Question: "What are the benefits of a balanced diet?" Tweet: "A balanced diet, rich in fruits, vegetables, and lean proteins, can improve overall health, boost energy levels, and reduce the risk of chronic diseases."
+  - **Example 1**: 
+    - **Question**: "How can urban planning improve city living?" 
+    - **Tweet**: "Effective urban planning can transform city living by reducing traffic congestion through improved public transport systems and creating green spaces for recreation."
+    - **Explanation**: This tweet directly addresses the question by discussing specific aspects of urban planning and providing a detailed analysis.
+  - **Example 2**: 
+    - **Question**: "What are the benefits of a balanced diet?" 
+    - **Tweet**: "A balanced diet, rich in fruits, vegetables, and lean proteins, can improve overall health, boost energy levels, and reduce the risk of chronic diseases."
     - **Explanation**: The tweet provides a detailed analysis of the benefits of a balanced diet, mentioning multiple relevant keywords and offering specific examples.
-  - **Example 3**: Question: "What are the latest trends in renewable energy?" Tweet: "Recent advancements in solar and wind energy have significantly reduced costs and increased efficiency, making renewable energy more accessible worldwide."
-    - **Explanation**: The tweet is highly relevant as it directly addresses the question, discussing specific advancements in key areas of renewable energy.
 
 ### Important Scoring Rules:
-- Identify keywords or topics from the question that are essential for the answer.
-- Evaluate the tweet content to determine its level of engagement with these keywords or topics.
-- Assign a score based on the depth of engagement: mere mention (score 5), or detailed discussion and analysis (score 9). Detailed discussion should include specific examples, data, or a thorough explanation of how the topic impacts the broader context.
+1. **Identify Keywords or Topics**: Extract keywords or themes from the question that are essential for the answer.
+2. **Evaluate Engagement**: Determine the tweet's level of engagement with these keywords or topics.
+3. **Assign a Score Based on Depth**: 
+   - **Score 2**: No mention of relevant keywords or topics.
+   - **Score 5**: Superficial mention of relevant keywords or topics without detailed analysis.
+   - **Score 9**: Detailed discussion and analysis of relevant keywords or topics, including specific examples or evidence.
 
 **OUTPUT EXAMPLE FORMAT:**
 Score: 2, Explanation:
@@ -315,6 +350,7 @@ Score: 2, Explanation:
 **Output:**
 You MUST generate only one score from [2, 5, 9] based on the criteria above.
 """
+
 
 # system_link_content_relevance_template = """
 # Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the level of relevance the tweet content has to the question, with a focus on whether the content mentions keywords or topics related to the question.
