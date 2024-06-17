@@ -377,22 +377,52 @@ You MUST generate only one score from [2, 5, 9] based on the criteria above.
 system_search_summary_relevance_scoring_template = """
 Evaluate the relevance of the web link content in response to a specific question. The score is determined based on the presence of keywords or topics related to the question and the depth of engagement with these topics.
 
-### Scoring Criteria:
+### Detailed Step-by-Step Logic for Comparison
+
+#### Step 1: Analyze the Question
+- **Identify Keywords and Themes**: Extract important keywords or themes from the question. These are essential for determining the relevance of the web link content.
+- **Understand the Context**: Grasp the overall context of the question to understand what specific information or opinions it seeks.
+
+#### Step 2: Analyze the Web Link Content
+- **Identify Mentioned Keywords**: Look for any mention of the keywords or themes identified in the question.
+- **Determine Engagement Level**: Assess how deeply the web link content engages with these keywords or themes.
+
+#### Step 3: Compare Question and Web Link Content
+- **Check for Relevance**: Determine if the web link content is relevant to the question based on the identified keywords and themes.
+- **Evaluate Depth of Engagement**: Judge how thoroughly the web link content discusses the keywords or themes. Is it a superficial mention or a detailed analysis?
+
+### Scoring Criteria
 
 #### **Score 2**:
 - **Criteria**: The web link content has no relevance to the question's topic, lacking any mention of keywords or themes related to the question.
+- **Detailed Explanation**:
+  - **No Mention of Keywords**: The web link content does not mention any keywords or themes from the question.
+  - **Off-Topic Content**: The web link content focuses on topics entirely unrelated to the question.
+
 - **Examples**:
-  - **Example 1**: Question: "What are the effects of global warming on polar bears?" Web Link Content: "Visit the best tropical beaches this summer!"
+  - **Example 1**: 
+    - **Question**: "What are the effects of global warming on polar bears?" 
+    - **Web Link Content**: "Visit the best tropical beaches this summer!"
     - **Explanation**: The content is completely unrelated to the question as it does not mention global warming or polar bears.
-  - **Example 2**: Question: "How is artificial intelligence used in healthcare?" Web Link Content: "Check out the latest smartphone releases!"
+  - **Example 2**: 
+    - **Question**: "How is artificial intelligence used in healthcare?" 
+    - **Web Link Content**: "Check out the latest smartphone releases!"
     - **Explanation**: The content does not address the question at all, focusing instead on an entirely unrelated topic.
 
 #### **Score 5**:
 - **Criteria**: The web link content mentions at least one keyword or theme from the question but only provides a superficial mention without exploring its implications or providing any detailed analysis.
+- **Detailed Explanation**:
+  - **Superficial Mention**: The web link content mentions relevant keywords but lacks detailed information or insights.
+  - **General Statements**: The content may state general facts but does not delve into specifics or analysis.
+
 - **Examples**:
-  - **Example 1**: Question: "How is artificial intelligence used in healthcare?" Web Link Content: "Artificial intelligence is transforming industries by automating tasks."
+  - **Example 1**: 
+    - **Question**: "How is artificial intelligence used in healthcare?" 
+    - **Web Link Content**: "Artificial intelligence is transforming industries by automating tasks."
     - **Explanation**: The content mentions artificial intelligence but does not specifically address its use in healthcare, thus only tangentially relevant.
-  - **Example 2**: Question: "What are the benefits of a balanced diet?" Web Link Content: "Eating healthy is important for everyone."
+  - **Example 2**: 
+    - **Question**: "What are the benefits of a balanced diet?" 
+    - **Web Link Content**: "Eating healthy is important for everyone."
     - **Explanation**: The content mentions healthy eating but lacks detailed information or insights into the benefits of a balanced diet.
 
 #### **Score 9**:
@@ -400,16 +430,27 @@ Evaluate the relevance of the web link content in response to a specific questio
   - Detailed analysis
   - Thoughtful discussion
   - Specific examples or evidence that adds depth and insight to the discussion
+- **Detailed Explanation**:
+  - **Thorough Engagement**: The content engages deeply with the question's topic by mentioning multiple relevant keywords or themes.
+  - **Detailed Analysis**: The content provides a detailed discussion, including specific examples, thoughtful insights, or evidence.
+
 - **Examples**:
-  - **Example 1**: Question: "What are the latest trends in renewable energy?" Web Link Content: "Recent advancements in solar and wind energy have significantly reduced costs and increased efficiency, making renewable energy more accessible worldwide."
+  - **Example 1**: 
+    - **Question**: "What are the latest trends in renewable energy?" 
+    - **Web Link Content**: "Recent advancements in solar and wind energy have significantly reduced costs and increased efficiency, making renewable energy more accessible worldwide."
     - **Explanation**: The content is highly relevant as it directly addresses the question, discussing specific advancements in key areas of renewable energy.
-  - **Example 2**: Question: "How can urban planning improve city living?" Web Link Content: "Effective urban planning can transform city living by reducing traffic congestion through improved public transport systems and creating green spaces for recreation."
+  - **Example 2**: 
+    - **Question**: "How can urban planning improve city living?" 
+    - **Web Link Content**: "Effective urban planning can transform city living by reducing traffic congestion through improved public transport systems and creating green spaces for recreation."
     - **Explanation**: This content directly addresses the question by discussing specific aspects of urban planning, providing a clear connection to the question's themes and offering a detailed analysis of how urban planning can impact city life.
 
 ### Important Scoring Rules:
-- Identify keywords or topics from the question that are essential for the answer.
-- Evaluate the web link content to determine its level of engagement with these keywords or topics.
-- Assign a score based on the depth of engagement: mere mention (score 5), or detailed discussion and analysis (score 9). Detailed discussion should include specific examples, data, or a thorough explanation of how the topic impacts the broader context.
+1. **Identify Keywords or Topics**: Extract keywords or themes from the question that are essential for the answer.
+2. **Evaluate Engagement**: Determine the web link content's level of engagement with these keywords or topics.
+3. **Assign a Score Based on Depth**: 
+   - **Score 2**: No mention of relevant keywords or topics.
+   - **Score 5**: Superficial mention of relevant keywords or topics without detailed analysis.
+   - **Score 9**: Detailed discussion and analysis of relevant keywords or topics, including specific examples or evidence.
 
 **OUTPUT EXAMPLE FORMAT:**
 Score: 2, Explanation:
@@ -417,6 +458,7 @@ Score: 2, Explanation:
 **Output:**
 You MUST generate only one score from [2, 5, 9] based on the criteria above.
 """
+
 
 user_search_summary_relevance_scoring_template = """
 <Question>
