@@ -55,14 +55,15 @@ class ScraperValidator:
         self.neuron = neuron
         self.timeout = 180
         self.tools = [
-            ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
             ["Twitter Search", "Reddit Search"],
-            ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
+            ["Twitter Search", "Reddit Search", "Hacker News Search"],
+            ["Twitter Search", "Google Search"],
             ["Twitter Search", "Google Search"],
             ["Twitter Search", "Hacker News Search"],
-            ["Twitter Search", "Google Search", "Wikipedia Search", "ArXiv Search"],
-            ["Twitter Search", "Google Search", "Youtube Search"],
+            ["Twitter Search", "Wikipedia Search", "ArXiv Search"],
             ["Twitter Search", "Youtube Search"],
+            ["Twitter Search", "Youtube Search"],
+            ["Twitter Search", "Google News Search"],
             ["Twitter Search", "Reddit Search"],
             ["Twitter Search", "Reddit Search"],
             ["Twitter Search", "Hacker News Search"],
@@ -319,9 +320,25 @@ class ScraperValidator:
             twitter_rewards = all_rewards[1]
             search_rewards = all_rewards[2]
             latency_rewards = all_rewards[3]
-            zipped_rewards = zip(uids, rewards.tolist(), responses, summary_rewards, twitter_rewards, search_rewards, latency_rewards)
+            zipped_rewards = zip(
+                uids,
+                rewards.tolist(),
+                responses,
+                summary_rewards,
+                twitter_rewards,
+                search_rewards,
+                latency_rewards,
+            )
 
-            for uid_tensor, reward, response, summary_reward, twitter_reward, search_reward, latency_reward in zipped_rewards:
+            for (
+                uid_tensor,
+                reward,
+                response,
+                summary_reward,
+                twitter_reward,
+                search_reward,
+                latency_reward,
+            ) in zipped_rewards:
                 uid = uid_tensor.item()  # Convert tensor to int
                 uid_scores_dict[uid] = reward
                 scores[uid] = reward  # Now 'uid' is an int, which is a valid key type
@@ -495,8 +512,11 @@ class ScraperValidator:
         try:
             prompt = query["content"]
             tools = query.get("tools", [])
-            tools = ["Google Search", "Youtube Search"]
-            date_filter_type = query.get("date_filter", DateFilterType.PAST_WEEK.value)
+            # tools = ["Google Search", "Youtube Search"]
+            # tools = ["Twitter Search"]
+            date_filter_type = query.get(
+                "date_filter", DateFilterType.PAST_2_DAYS.value
+            )
             date_filter_type = DateFilterType(date_filter_type)
 
             task_name = "augment"
