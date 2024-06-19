@@ -469,7 +469,8 @@ class ScraperValidator:
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=QUERY_MINERS.RANDOM,
-                is_only_allowed_miner=True,
+                # This is set to false on Finney to allow all miners to participate from Datura UI
+                is_only_allowed_miner=self.neuron.config.subtensor.network != "finney",
                 is_intro_text=True,
                 tools=tools,
                 language=self.language,
