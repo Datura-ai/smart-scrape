@@ -215,7 +215,10 @@ def config(cls):
     parser = argparse.ArgumentParser()
     bt.wallet.add_args(parser)
     bt.subtensor.add_args(parser)
+
+    os.environ["BT_LOGGING_DEBUG"] = "True"
     bt.logging.add_args(parser)
+
     bt.axon.add_args(parser)
     cls.add_args(parser)
     return bt.config(parser)

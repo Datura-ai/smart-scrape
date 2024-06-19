@@ -360,7 +360,9 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                 # Decode the chunk from bytes to a string
                 chunk_str = chunk.decode("utf-8")
                 # Attempt to parse the chunk as JSON, updating the buffer with remaining incomplete JSON data
-                json_objects, buffer = extract_json_chunk(chunk_str, response, buffer)
+                json_objects, buffer = extract_json_chunk(
+                    chunk_str, response, self.axon.hotkey, buffer
+                )
                 for json_data in json_objects:
                     content_type = json_data.get("type")
 
@@ -453,18 +455,23 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         except json.JSONDecodeError as e:
             port = response.real_url.port
             host = response.real_url.host
+            hotkey = self.axon.hotkey
             bt.logging.debug(
-                f"process_streaming_response Host: {host}:{port} ERROR: json.JSONDecodeError: {e}, "
+                f"process_streaming_response: Host: {host}:{port}, hotkey: {hotkey}, ERROR: json.JSONDecodeError: {e}, "
             )
         except TimeoutError as e:
             port = response.real_url.port
             host = response.real_url.host
-            print(f"TimeoutError occurred: Host: {host}:{port}, Error: {e}")
+            hotkey = self.axon.hotkey
+            print(
+                f"process_streaming_response TimeoutError: Host: {host}:{port}, hotkey: {hotkey}, Error: {e}"
+            )
         except Exception as e:
             port = response.real_url.port
             host = response.real_url.host
+            hotkey = self.axon.hotkey
             bt.logging.debug(
-                f"process_streaming_response: Host: {host}:{port} ERROR: {e}"
+                f"process_streaming_response: Host: {host}:{port}, hotkey: {hotkey}, ERROR: {e}"
             )
 
     def deserialize(self) -> str:
@@ -518,7 +525,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         arbitrary_types_allowed = True
 
 
-def extract_json_chunk(chunk, response, buffer=""):
+def extract_json_chunk(chunk, response, hotkey, buffer=""):
     """
     Extracts JSON objects from a chunk of data, handling cases where JSON objects are split across multiple chunks.
 
@@ -546,8 +553,8 @@ def extract_json_chunk(chunk, response, buffer=""):
                 # Invalid JSON data encountered
                 port = response.real_url.port
                 host = response.real_url.host
-                bt.logging.trace(
-                    f"Host: {host}:{port}; Failed to decode JSON object: {e} from {buffer}"
+                bt.logging.debug(
+                    f"Host: {host}:{port}; hotkey: {hotkey}; Failed to decode JSON object: {e} from {buffer}"
                 )
                 break
 

@@ -134,12 +134,12 @@ class Neuron(AbstractNeuron):
                 axon, IsAlive(), deserialize=False, timeout=15
             )
             if response.is_success:
-                bt.logging.trace(f"UID {uid} is active")
+                bt.logging.debug(f"UID {uid} is active")
                 return axon  # Return the axon info instead of the UID
             else:
-                raise Exception(f"Is not active")
+                raise Exception(f"UID {uid} is not active")
         except Exception as e:
-            bt.logging.trace(f"Checking UID {uid}: {e}\n{traceback.format_exc()}")
+            bt.logging.debug(f"Checking UID {uid}: {e}\n{traceback.format_exc()}")
             raise e
 
     async def get_available_uids_is_alive(self):
