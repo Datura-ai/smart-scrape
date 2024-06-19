@@ -7,19 +7,24 @@ import bittensor as bt
 import aiohttp
 import json
 import asyncio
+import time
 
 
-async def process_async_responses(async_responses):
+async def process_async_responses(async_responses, uids, start_time):
     tasks = [collect_generator_results(resp) for resp in async_responses]
     responses = await asyncio.gather(*tasks)
-    for response in responses:
+    for uid, response in zip(uids, responses):
         final_synapse = next(
             (chunk for chunk in response if isinstance(chunk, bt.Synapse)), None
         )
         if final_synapse:
+            end_time = time.time()
+            duration = end_time - start_time
+            bt.logging.debug(
+                f"Miner uid {uid} finished with final synapse after {duration:.2f}s from start time. Dendrite process time: {final_synapse.dendrite.process_time:.2f}s"
+            )
             yield final_synapse  # Yield final synapse
         else:
-            # Fixed code as per instructions
             stream_text = "".join(
                 [str(chunk) for chunk in response if chunk is not None]
             )

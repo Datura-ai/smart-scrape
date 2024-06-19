@@ -409,6 +409,10 @@ class ScraperValidator:
                 bt.logging.info("No available UIDs, skipping task execution.")
                 return
 
+            bt.logging.debug(
+                f"Query and score running with prompt: {prompt} and tools: {tools}"
+            )
+
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=strategy,
@@ -421,7 +425,9 @@ class ScraperValidator:
             )
 
             final_synapses = []
-            async for value in process_async_responses(async_responses):
+            async for value in process_async_responses(
+                async_responses, uids, start_time
+            ):
                 if isinstance(value, bt.Synapse):
                     final_synapses.append(value)
                 else:
