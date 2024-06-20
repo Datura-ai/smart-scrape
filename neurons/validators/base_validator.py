@@ -12,6 +12,9 @@ class AbstractNeuron(ABC):
         self.wallet: "bt.wallet" = None
         self.metagraph: "bt.metagraph" = None
         self.dendrite: "bt.dendrite" = None
+        self.dendrite1: "bt.dendrite" = None
+        self.dendrite2: "bt.dendrite" = None
+        self.dendrite3: "bt.dendrite" = None
 
     @classmethod
     @abstractmethod
