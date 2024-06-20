@@ -426,7 +426,7 @@ async def save_logs_in_chunks(
             )
         ]
 
-        chunk_size = 30
+        chunk_size = 20
 
         log_chunks = [logs[i : i + chunk_size] for i in range(0, len(logs), chunk_size)]
 
