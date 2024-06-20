@@ -148,8 +148,18 @@ class LinkContentPrompt(ScoringPrompt):
         r"""Extract numeric score (range 0-10) from prompt response."""
         # Mapping of special codes to numeric scores
 
-        # Extract score from output string
-        match = re.search(r"Score:\s*(\d+),", response)
+        # Extract score from output string with various formats
+        match = re.search(r"(?i)score[:\s]*([0-9]|10)", response)
+        if match:
+            try:
+                score = float(match.group(1))
+                if 0 <= score <= 10:
+                    return score
+            except ValueError:
+                return 0
+
+        # Extract score directly from the response if "Score:" prefix is missing
+        match = re.search(r"\b([0-9]|10)\b", response)
         if match:
             try:
                 score = float(match.group(1))
@@ -183,8 +193,18 @@ def extract_score(self, response: str) -> float:
     r"""Extract numeric score (range 0-10) from prompt response."""
     # Mapping of special codes to numeric scores
 
-    # Extract score from output string
-    match = re.search(r"Score:\s*(\d+),", response)
+    # Extract score from output string with various formats
+    match = re.search(r"(?i)score[:\s]*([0-9]|10)", response)
+    if match:
+        try:
+            score = float(match.group(1))
+            if 0 <= score <= 10:
+                return score
+        except ValueError:
+            return 0
+
+    # Extract score directly from the response if "Score:" prefix is missing
+    match = re.search(r"\b([0-9]|10)\b", response)
     if match:
         try:
             score = float(match.group(1))
@@ -295,11 +315,11 @@ Evaluate the relevance of the tweet content in response to a specific question. 
   - **Example 1**: 
     - **Question**: "How does climate change impact marine biodiversity?" 
     - **Tweet**: "Looking forward to the summer beach parties this year!"
-    - **Explanation**: The tweet does not address the question at all, focusing instead on an entirely unrelated topic.
+    - **Output**: Score 2, Explanation: The tweet does not address the question at all, focusing instead on an entirely unrelated topic.
   - **Example 2**: 
     - **Question**: "What are the benefits of a balanced diet?" 
     - **Tweet**: "I love eating pizza and burgers every day!"
-    - **Explanation**: The tweet is completely unrelated to the question about a balanced diet.
+    - **Output**: Score 2, Explanation: The tweet is completely unrelated to the question about a balanced diet.
 
 #### **Score 5**:
 - **Criteria**: The tweet mentions at least one keyword or theme from the question but only provides a superficial mention without exploring its implications or providing any detailed analysis.
@@ -311,11 +331,11 @@ Evaluate the relevance of the tweet content in response to a specific question. 
   - **Example 1**: 
     - **Question**: "What are the latest advancements in renewable energy?" 
     - **Tweet**: "Renewable energy is important for our future. Solar panels and wind turbines are cool!"
-    - **Explanation**: The tweet mentions relevant keywords but lacks detailed information or insights into the advancements in renewable energy.
+    - **Output**: Score 5, Explanation: The tweet mentions relevant keywords but lacks detailed information or insights into the advancements in renewable energy.
   - **Example 2**: 
     - **Question**: "How does exercise benefit mental health?" 
     - **Tweet**: "Exercise is good for you and can make you feel better."
-    - **Explanation**: The tweet mentions exercise and its benefits but does not provide detailed information or specific examples.
+    - **Output**: Score 5, Explanation: The tweet mentions exercise and its benefits but does not provide detailed information or specific examples.
 
 #### **Score 9**:
 - **Criteria**: The tweet not only mentions multiple keywords or themes from the question (at least three) but also engages with them through:
@@ -330,11 +350,11 @@ Evaluate the relevance of the tweet content in response to a specific question. 
   - **Example 1**: 
     - **Question**: "How can urban planning improve city living?" 
     - **Tweet**: "Effective urban planning can transform city living by reducing traffic congestion through improved public transport systems and creating green spaces for recreation."
-    - **Explanation**: This tweet directly addresses the question by discussing specific aspects of urban planning and providing a detailed analysis.
+    - **Output**: Score 9, Explanation: This tweet directly addresses the question by discussing specific aspects of urban planning and providing a detailed analysis.
   - **Example 2**: 
     - **Question**: "What are the benefits of a balanced diet?" 
     - **Tweet**: "A balanced diet, rich in fruits, vegetables, and lean proteins, can improve overall health, boost energy levels, and reduce the risk of chronic diseases."
-    - **Explanation**: The tweet provides a detailed analysis of the benefits of a balanced diet, mentioning multiple relevant keywords and offering specific examples.
+    - **Output**: Score 9, Explanation: The tweet provides a detailed analysis of the benefits of a balanced diet, mentioning multiple relevant keywords and offering specific examples.
 
 ### Important Scoring Rules:
 1. **Identify Keywords or Topics**: Extract keywords or themes from the question that are essential for the answer.
@@ -343,6 +363,9 @@ Evaluate the relevance of the tweet content in response to a specific question. 
    - **Score 2**: No mention of relevant keywords or topics.
    - **Score 5**: Superficial mention of relevant keywords or topics without detailed analysis.
    - **Score 9**: Detailed discussion and analysis of relevant keywords or topics, including specific examples or evidence.
+
+Important Rule for Scoring Consistency:
+Always Assign One Score: Ensure that the evaluation criteria are strictly followed to consistently assign one score. If the tweet meets multiple criteria, choose the score that best fits the overall engagement and relevance level.
 
 **OUTPUT EXAMPLE FORMAT:**
 Score: 2, Explanation:
@@ -403,11 +426,11 @@ Evaluate the relevance of the web link content in response to a specific questio
   - **Example 1**: 
     - **Question**: "What are the effects of global warming on polar bears?" 
     - **Web Link Content**: "Visit the best tropical beaches this summer!"
-    - **Explanation**: The content is completely unrelated to the question as it does not mention global warming or polar bears.
+    - **Output**: Score 2, Explanation: The content is completely unrelated to the question as it does not mention global warming or polar bears.
   - **Example 2**: 
     - **Question**: "How is artificial intelligence used in healthcare?" 
     - **Web Link Content**: "Check out the latest smartphone releases!"
-    - **Explanation**: The content does not address the question at all, focusing instead on an entirely unrelated topic.
+    - **Output**: Score 2, Explanation: The content does not address the question at all, focusing instead on an entirely unrelated topic.
 
 #### **Score 5**:
 - **Criteria**: The web link content mentions at least one keyword or theme from the question but only provides a superficial mention without exploring its implications or providing any detailed analysis.
@@ -419,11 +442,11 @@ Evaluate the relevance of the web link content in response to a specific questio
   - **Example 1**: 
     - **Question**: "How is artificial intelligence used in healthcare?" 
     - **Web Link Content**: "Artificial intelligence is transforming industries by automating tasks."
-    - **Explanation**: The content mentions artificial intelligence but does not specifically address its use in healthcare, thus only tangentially relevant.
+    - **Output**: Score 5, Explanation: The content mentions artificial intelligence but does not specifically address its use in healthcare, thus only tangentially relevant.
   - **Example 2**: 
     - **Question**: "What are the benefits of a balanced diet?" 
     - **Web Link Content**: "Eating healthy is important for everyone."
-    - **Explanation**: The content mentions healthy eating but lacks detailed information or insights into the benefits of a balanced diet.
+    - **Output**: Score 5, Explanation: The content mentions healthy eating but lacks detailed information or insights into the benefits of a balanced diet.
 
 #### **Score 9**:
 - **Criteria**: The web link content not only mentions multiple keywords or themes from the question (at least three) but also engages with them through:
@@ -438,11 +461,11 @@ Evaluate the relevance of the web link content in response to a specific questio
   - **Example 1**: 
     - **Question**: "What are the latest trends in renewable energy?" 
     - **Web Link Content**: "Recent advancements in solar and wind energy have significantly reduced costs and increased efficiency, making renewable energy more accessible worldwide."
-    - **Explanation**: The content is highly relevant as it directly addresses the question, discussing specific advancements in key areas of renewable energy.
+    - **Output**: Score 9, Explanation: The content is highly relevant as it directly addresses the question, discussing specific advancements in key areas of renewable energy.
   - **Example 2**: 
     - **Question**: "How can urban planning improve city living?" 
     - **Web Link Content**: "Effective urban planning can transform city living by reducing traffic congestion through improved public transport systems and creating green spaces for recreation."
-    - **Explanation**: This content directly addresses the question by discussing specific aspects of urban planning, providing a clear connection to the question's themes and offering a detailed analysis of how urban planning can impact city life.
+    - **Output**: Score 9, Explanation: This content directly addresses the question by discussing specific aspects of urban planning, providing a clear connection to the question's themes and offering a detailed analysis of how urban planning can impact city life.
 
 ### Important Scoring Rules:
 1. **Identify Keywords or Topics**: Extract keywords or themes from the question that are essential for the answer.
@@ -451,6 +474,9 @@ Evaluate the relevance of the web link content in response to a specific questio
    - **Score 2**: No mention of relevant keywords or topics.
    - **Score 5**: Superficial mention of relevant keywords or topics without detailed analysis.
    - **Score 9**: Detailed discussion and analysis of relevant keywords or topics, including specific examples or evidence.
+
+Important Rule for Scoring Consistency:
+Always Assign One Score: Ensure that the evaluation criteria are strictly followed to consistently assign one score. If the web link content meets multiple criteria, choose the score that best fits the overall engagement and relevance level.
 
 **OUTPUT EXAMPLE FORMAT:**
 Score: 2, Explanation:
