@@ -94,6 +94,9 @@ class Neuron(AbstractNeuron):
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
         self.dendrite = bt.dendrite(wallet=self.wallet)
+        self.dendrite1 = bt.dendrite(wallet=self.wallet)
+        self.dendrite2 = bt.dendrite(wallet=self.wallet)
+        self.dendrite3 = bt.dendrite(wallet=self.wallet)
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
         if self.wallet.hotkey.ss58_address not in self.metagraph.hotkeys:
             bt.logging.error(

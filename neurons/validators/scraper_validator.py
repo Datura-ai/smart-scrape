@@ -207,6 +207,47 @@ class ScraperValidator:
             deserialize=False,
         )
 
+        axon_group_1 = axons[:80]
+        axon_group_2 = axons[80:160]
+        axon_group_3 = axons[160:]
+
+        async_response_groups = await asyncio.gather(
+            *[
+                asyncio.create_task(
+                    self.neuron.dendrite1.forward(
+                        axons=axon_group_1,
+                        synapse=synapse,
+                        timeout=self.timeout,
+                        streaming=self.streaming,
+                        deserialize=False,
+                    )
+                ),
+                asyncio.create_task(
+                    self.neuron.dendrite2.forward(
+                        axons=axon_group_2,
+                        synapse=synapse,
+                        timeout=self.timeout,
+                        streaming=self.streaming,
+                        deserialize=False,
+                    )
+                ),
+                asyncio.create_task(
+                    self.neuron.dendrite3.forward(
+                        axons=axon_group_3,
+                        synapse=synapse,
+                        timeout=self.timeout,
+                        streaming=self.streaming,
+                        deserialize=False,
+                    )
+                ),
+            ]
+        )
+
+        async_responses = []
+
+        for async_response_group in async_response_groups:
+            async_responses.extend(async_response_group)
+
         return async_responses, uids, event, start_time
 
     async def compute_rewards_and_penalties(
