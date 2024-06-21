@@ -430,6 +430,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 reward_event.reward = 0
                 if "Twitter Search" not in response.tools:
                     reward_event.reward = 1
+                    reward_events.append(reward_event)
+                    grouped_val_score_responses.append({})
                     continue
 
                 score_result = None
@@ -482,8 +484,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 reward_events.append(reward_event)
                 grouped_val_score_responses.append(response_scores)
 
-                zero_scores = {}
-                non_zero_scores = {}
+            zero_scores = {}
+            non_zero_scores = {}
 
             for (index, response), uid_tensor, reward_e in zip(
                 enumerate(responses), uids, reward_events
