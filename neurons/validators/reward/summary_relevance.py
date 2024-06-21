@@ -54,7 +54,12 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         self, prompt: str, response: ScraperStreamingSynapse
     ) -> BaseRewardEvent:
         try:
-            completion = self.get_successful_twitter_completion(response=response)
+            if "Twitter Search" in response.tools:
+                completion = self.get_successful_twitter_completion(response=response)
+            else:
+                completion = self.get_successful_search_summary_completion(
+                    response=response
+                )
 
             if not completion:
                 return None

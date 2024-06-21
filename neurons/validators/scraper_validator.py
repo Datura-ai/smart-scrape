@@ -71,6 +71,14 @@ class ScraperValidator:
             ["Twitter Search", "Wikipedia Search"],
             ["Twitter Search", "Google Search"],
             ["Twitter Search", "Google News Search"],
+            ["Google Search"],
+            ["Reddit Search", "Hacker News Search"],
+            ["Hacker News Search"],
+            ["Google News Search"],
+            ["Youtube Search"],
+            ["ArXiv Search"],
+            ["Wikipedia Search"],
+            ["Twitter Search"],
         ]
         self.language = "en"
         self.region = "us"

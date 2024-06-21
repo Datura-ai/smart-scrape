@@ -428,6 +428,9 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 uid = uid_tensor.item()
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
+                if "Twitter Search" not in response.tools:
+                    reward_event.reward = 1
+                    continue
 
                 score_result = None
                 response_scores = {}
