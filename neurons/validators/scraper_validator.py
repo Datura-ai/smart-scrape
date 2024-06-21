@@ -56,7 +56,6 @@ class ScraperValidator:
         self.timeout = 180
         self.tools = [
             ["Twitter Search", "Reddit Search"],
-            ["Twitter Search", "Reddit Search", "Hacker News Search"],
             ["Twitter Search", "Google Search"],
             ["Twitter Search", "Google Search"],
             ["Twitter Search", "Hacker News Search"],
@@ -72,7 +71,7 @@ class ScraperValidator:
             ["Twitter Search", "Google Search"],
             ["Twitter Search", "Google News Search"],
             ["Google Search"],
-            ["Reddit Search", "Hacker News Search"],
+            ["Reddit Search"],
             ["Hacker News Search"],
             ["Google News Search"],
             ["Youtube Search"],
