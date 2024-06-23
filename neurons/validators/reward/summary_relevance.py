@@ -94,8 +94,14 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 # Format scoring prompt for this completion.
                 scoring_prompt_text = scoring_prompt.text(prompt, completion)
 
+            # If tools include Twitter Search it scores summary of twitter, otherwise search
+            is_twitter = "Twitter Search" in response.tools
+
             return scoring_prompt, [
-                {"role": "system", "content": scoring_prompt.get_system_message()},
+                {
+                    "role": "system",
+                    "content": scoring_prompt.get_system_message(is_twitter=is_twitter),
+                },
                 {"role": "user", "content": scoring_prompt_text},
             ]
         except Exception as e:
