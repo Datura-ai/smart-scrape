@@ -12,6 +12,7 @@ from enum import Enum
 from aiohttp import ClientResponse
 from datura.services.twitter_utils import TwitterUtils
 from datura.services.web_search_utils import WebSearchUtils
+import traceback
 
 
 class IsAlive(bt.Synapse):
@@ -358,7 +359,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         try:
             async for chunk in response.content.iter_any():
                 # Decode the chunk from bytes to a string
-                chunk_str = chunk.decode("utf-8")
+                chunk_str = chunk.decode("utf-8", errors="replace")
                 # Attempt to parse the chunk as JSON, updating the buffer with remaining incomplete JSON data
                 json_objects, buffer = extract_json_chunk(
                     chunk_str, response, self.axon.hotkey, buffer
@@ -470,8 +471,9 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             port = response.real_url.port
             host = response.real_url.host
             hotkey = self.axon.hotkey
+            error_details = traceback.format_exc()
             bt.logging.debug(
-                f"process_streaming_response: Host: {host}:{port}, hotkey: {hotkey}, ERROR: {e}"
+                f"process_streaming_response: Host: {host}:{port}, hotkey: {hotkey}, ERROR: {e}, DETAILS: {error_details}, chunk: {chunk}"
             )
 
     def deserialize(self) -> str:
