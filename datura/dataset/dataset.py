@@ -1,13 +1,17 @@
 import random
 import datetime
 import bittensor as bt
-from datasets import load_dataset
-from bs4 import BeautifulSoup
+
+# from datasets import load_dataset
+# from bs4 import BeautifulSoup
 import time
 import requests
 import html
 from datura.utils import call_openai
-import json
+from faker import Faker
+from faker.providers import company, address, person, lorem, geo
+
+# import json
 
 
 class MockTwitterQuestionsDataset:
@@ -1331,6 +1335,41 @@ class QuestionsDataset:
             MockTwitterQuestionsDataset(),
             # StackOverflowDataset(),
         ]
+        self.faker = Faker()
+        # Removed commerce provider
+        self.faker.add_provider(company)
+        # self.faker.add_provider(hacker)
+        self.faker.add_provider(address)
+        self.faker.add_provider(person)
+        self.faker.add_provider(lorem)
+        self.faker.add_provider(geo)
+
+        self.faker_methods = [
+            # self.faker.animal_name,  # Use animal_name instead of animal.type
+            # self.faker.commerce_department,
+            # self.faker.commerce_product_name,
+            # self.faker.company_bs_noun,
+            # self.faker.hacker_noun,
+            # self.faker.hacker_phrase,
+            # self.faker.hacker_verb,
+            self.faker.city,
+            self.faker.country,
+            self.faker.state,
+            # self.faker.bio,
+            # self.faker.job_area,
+            # self.faker.job_descriptor,
+            # self.faker.job_title,
+            # self.faker.job_type,
+            lambda: self.faker.word(),
+            lambda: self.faker.word(5),
+            lambda: self.faker.word(100),
+            lambda: self.faker.word(strategy="shortest"),
+            lambda: self.faker.word(length={"min": 5, "max": 7}, strategy="fail"),
+            lambda: self.faker.words(),
+            lambda: self.faker.words(5),
+            lambda: self.faker.words(count=5),
+            lambda: self.faker.words(count={"min": 5, "max": 10}),
+        ]
 
     async def generate_new_question_with_openai(self, selected_tools):
         # Select a random dataset and get the next question
@@ -1343,12 +1382,18 @@ class QuestionsDataset:
             else original_question
         )
 
-        # Convert the list of tools into a string to include in the prompt
-        tools_str = ", ".join(selected_tools)
+        # Generate words using Faker
+        word1 = self.faker.word()
+        word2 = self.faker.word()
+        word3 = self.faker.word()
 
         # Prepare a simpler prompt for OpenAI
-        prompt = f"Create a simple and straightforward question about '{topic}' that is 5 to 14 words long."
-        bt.logging.warning(f"Topic: {topic}")
+        tools_str = ", ".join(selected_tools)
+        prompt = f"""Create a simple and straightforward question using the words '{word1}', '{word2}', and '{word3}' that is 5 to 14 words long and searchable on ${tools_str}. 
+                     The question must be grammatically correct and related to Twitter content. 
+                     It is not necessary to use all three words; synonyms can be used.
+                     Don't use hashtags"""
+        # bt.logging.warning(f"Topic: {topic}")
 
         try:
             # Make the call to OpenAI with the new question
@@ -1358,7 +1403,7 @@ class QuestionsDataset:
                 model="gpt-3.5-turbo-0125",
                 seed=None,
             )
-
+            # bt.logging.warning(f"{word1}, {word2}, {word3} --- {new_question.strip()}")
             # Check if new_question is None or an empty string
             if not new_question:
                 return original_question
@@ -1378,16 +1423,3 @@ class QuestionsDataset:
                 return fallback_dataset.next()
         else:
             return random_dataset.next()
-
-
-if __name__ == "__main__":
-    # Example usage
-    # twitter_questions_dataset = MockTwitterQuestionsDataset()
-    # for _ in range(100):
-    # print(twitter_questions_dataset.next())
-
-    stack_overflow_dataset = StackOverflowDataset()
-
-    for _ in range(100):
-        question = stack_overflow_dataset.next()
-        print(question)
