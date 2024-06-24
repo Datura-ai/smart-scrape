@@ -359,7 +359,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         try:
             async for chunk in response.content.iter_any():
                 # Decode the chunk from bytes to a string
-                chunk_str = chunk.decode("utf-8", errors="replace")
+                try:
+                    chunk_str = chunk.decode("utf-8", errors="replace")
+                except UnicodeDecodeError as e:
+                    bt.logging.debug(f"UnicodeDecodeError: {str(e)[-500:]}")
+                    continue
+
                 # Attempt to parse the chunk as JSON, updating the buffer with remaining incomplete JSON data
                 json_objects, buffer = extract_json_chunk(
                     chunk_str, response, self.axon.hotkey, buffer
@@ -475,7 +480,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             bt.logging.debug(
                 f"process_streaming_response: Host: {host}:{port}, hotkey: {hotkey}, ERROR: {e}, DETAILS: {error_details}, chunk: {chunk}"
             )
-
+            
     def deserialize(self) -> str:
         return self.completion
 

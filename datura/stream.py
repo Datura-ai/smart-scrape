@@ -20,9 +20,15 @@ async def process_async_responses(async_responses, uids, start_time):
         if final_synapse:
             end_time = time.time()
             duration = end_time - start_time
-            bt.logging.debug(
-                f"Miner uid {uid} finished with final synapse after {duration:.2f}s from start time. Dendrite process time: {final_synapse.dendrite.process_time:.2f}s"
-            )
+            process_time = final_synapse.dendrite.process_time
+            if process_time is not None:
+                bt.logging.debug(
+                    f"Miner uid {uid} finished with final synapse after {duration:.2f}s from start time. Dendrite process time: {process_time:.2f}s"
+                )
+            else:
+                bt.logging.debug(
+                    f"Miner uid {uid} finished with final synapse after {duration:.2f}s from start time. Dendrite process time is None"
+                )
             yield final_synapse  # Yield final synapse
         else:
             stream_text = "".join(
