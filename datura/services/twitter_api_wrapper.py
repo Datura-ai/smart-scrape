@@ -48,7 +48,8 @@ class TwitterAPIClient:
         return response_json
 
     async def get_tweets_by_ids(self, tweet_ids):
-        ids = ",".join(tweet_ids)  # Combine all tweet IDs into a comma-separated string
+        # Combine all tweet IDs into a comma-separated string
+        ids = ",".join(tweet_ids)
         tweets_url = f"https://api.twitter.com/2/tweets?ids={ids}"
         response_json, status_code = await self.connect_to_endpoint(tweets_url, {})
         if status_code != 200:
@@ -62,3 +63,15 @@ class TwitterAPIClient:
     async def get_full_archive_tweets(self, query_params):
         search_url = "https://api.twitter.com/2/tweets/search/all"
         return await self.connect_to_endpoint(search_url, query_params)
+
+    async def get_user_followings(self, user_id: str):
+        url = f"https://api.twitter.com/2/users/{user_id}/following"
+        return await self.connect_to_endpoint(url, {})
+
+    async def get_user(self, user_id: str, params: dict):
+        url = f"https://api.twitter.com/2/users/{user_id}"
+        return await self.connect_to_endpoint(url, params)
+    
+    async def get_user_by_username(self, username: str, params: dict):
+        url = f"https://api.twitter.com/2/users/by/username/{username}"
+        return await self.connect_to_endpoint(url, params)

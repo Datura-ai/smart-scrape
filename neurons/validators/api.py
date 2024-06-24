@@ -1,5 +1,4 @@
 import os
-from pydantic import BaseModel, Field
 from typing import Optional
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, HTTPException, Request, Query
@@ -7,13 +6,15 @@ import uvicorn
 import bittensor as bt
 import traceback
 from validator import Neuron
-import time
 import asyncio
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 import json
+from neurons.validators.api.twitter_api import twitter_api_router
 
 app = FastAPI()
+
+app.add_api_route(twitter_api_router)
 
 app.add_middleware(
     CORSMiddleware,
