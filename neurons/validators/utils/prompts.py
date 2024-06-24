@@ -134,7 +134,7 @@ class SummaryRelevancePrompt(ScoringPrompt):
         return (
             system_twitter_summary_relevance_scoring_template
             if is_twitter
-            else system_search_summary_relevance_scoring_template
+            else system_search_summary_text_relevance_scoring_template
         )
 
 
@@ -270,7 +270,7 @@ Do NOT return direct answer to <Question>. Remember you are quality analyst and 
 """
 
 
-system_search_summary_relevance_scoring_template = """
+system_search_summary_text_relevance_scoring_template = """
 You are a meticulous Content Quality Analyst, adept at discerning the relevance and accuracy of digital responses with a critical eye. Your expertise lies in evaluating content against stringent criteria, ensuring each piece aligns perfectly with the intended question's context and requirements, as encapsulated within the <Question></Question> tags.
 
 Return one of them:
