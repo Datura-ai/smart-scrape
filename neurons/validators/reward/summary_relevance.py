@@ -54,7 +54,12 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         self, prompt: str, response: ScraperStreamingSynapse
     ) -> BaseRewardEvent:
         try:
-            completion = self.get_successful_twitter_completion(response=response)
+            if "Twitter Search" in response.tools:
+                completion = self.get_successful_twitter_completion(response=response)
+            else:
+                completion = self.get_successful_search_summary_completion(
+                    response=response
+                )
 
             if not completion:
                 return None
@@ -82,7 +87,14 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     completion, completion_links_str
                 )
 
-            if scoring_prompt is None or not response.completion_links:
+            # If tools include Twitter Search it scores summary of twitter, otherwise search
+            is_twitter = "Twitter Search" in response.tools
+
+            if (
+                scoring_prompt is None
+                or (is_twitter and not response.completion_links)
+                or (not is_twitter and not response.search_completion_links)
+            ):
                 return None
 
             if not scoring_prompt_text:
@@ -90,7 +102,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 scoring_prompt_text = scoring_prompt.text(prompt, completion)
 
             return scoring_prompt, [
-                {"role": "system", "content": scoring_prompt.get_system_message()},
+                {
+                    "role": "system",
+                    "content": scoring_prompt.get_system_message(is_twitter=is_twitter),
+                },
                 {"role": "user", "content": scoring_prompt_text},
             ]
         except Exception as e:
@@ -101,7 +116,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
-            completions: List[str] = self.get_successful_twitter_completions(responses)
+            completions: List[str] = self.get_successful_completions_for_summary(
+                responses
+            )
             bt.logging.info(f"SummaryRelevanceRewardModel | PROMPT: {prompt}")
             bt.logging.debug(
                 f"SummaryRelevanceRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."

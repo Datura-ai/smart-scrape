@@ -56,11 +56,14 @@ class ScraperValidator:
         self.timeout = 180
         self.tools = [
             ["Twitter Search", "Reddit Search"],
-            ["Twitter Search", "Reddit Search", "Hacker News Search"],
+            ["Twitter Search", "Reddit Search"],
+            ["Twitter Search", "Google Search"],
+            ["Twitter Search", "Google Search"],
             ["Twitter Search", "Google Search"],
             ["Twitter Search", "Google Search"],
             ["Twitter Search", "Hacker News Search"],
-            ["Twitter Search", "Wikipedia Search", "ArXiv Search"],
+            ["Twitter Search", "Hacker News Search"],
+            ["Twitter Search", "Youtube Search"],
             ["Twitter Search", "Youtube Search"],
             ["Twitter Search", "Youtube Search"],
             ["Twitter Search", "Google News Search"],
@@ -68,9 +71,18 @@ class ScraperValidator:
             ["Twitter Search", "Reddit Search"],
             ["Twitter Search", "Hacker News Search"],
             ["Twitter Search", "ArXiv Search"],
+            ["Twitter Search", "ArXiv Search"],
+            ["Twitter Search", "Wikipedia Search"],
             ["Twitter Search", "Wikipedia Search"],
             ["Twitter Search", "Google Search"],
             ["Twitter Search", "Google News Search"],
+            ["Twitter Search", "Google News Search"],
+            ["Google Search"],
+            ["Reddit Search"],
+            ["Hacker News Search"],
+            ["Youtube Search"],
+            ["ArXiv Search"],
+            ["Wikipedia Search"],
         ]
         self.language = "en"
         self.region = "us"

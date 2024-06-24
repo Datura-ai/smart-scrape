@@ -150,6 +150,25 @@ class BaseRewardModel:
             return successful_completion.strip()
         return None
 
+    def get_successful_completions_for_summary(
+        self, responses: List[ScraperStreamingSynapse]
+    ):
+        successful_completions = []
+
+        for response in responses:
+            if "Twitter Search" in response.tools:
+                completion = self.get_successful_twitter_completion(response)
+            else:
+                completion = self.get_successful_search_summary_completion(response)
+
+            successful_completions.append(completion)
+
+        return [
+            completion
+            for completion in successful_completions
+            if completion is not None
+        ]
+
     def get_successful_twitter_completions(
         self, responses: List[ScraperStreamingSynapse]
     ):
