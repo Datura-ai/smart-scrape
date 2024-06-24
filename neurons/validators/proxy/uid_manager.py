@@ -1,6 +1,5 @@
-import time
 import threading
-import itertools
+import time
 import bittensor as bt
 
 
@@ -13,10 +12,8 @@ class UIDManager:
         self.wallet = wallet
         self.dendrite = bt.dendrite(wallet=self.wallet)
         self.metagraph = bt.metagraph(netuid=22)
-        self.max_miners_to_use = 150
-        self.validator_uid = self.metagraph.hotkeys.index(
-            wallet.hotkey.ss58_address
-        )
+        self.max_miners_to_use = 200
+        self.validator_uid = self.metagraph.hotkeys.index(wallet.hotkey.ss58_address)
         self.axon_to_use = self.metagraph.axons[self.validator_uid]
 
         self.init_state()
@@ -24,19 +21,11 @@ class UIDManager:
 
     def init_state(self):
         """
-        Defines initial state of for top_uids and previous uid.
+        Defines initial state for top_uids and previous uid.
         """
-        # Sort the miners by their values and take the top max_miners_to_use
-        self.top_uids = self.metagraph.I.argsort(
-            descending=True
-        )[:self.max_miners_to_use]
-        self.previous_uid = 0
-        # Create an infinite cycle iterator over top_uids
-        self.uid_cycle = itertools.cycle(self.top_uids)
-
-        # Advance the iterator to the previous UID's position
-        for _ in range(self.previous_uid):
-            next(self.uid_cycle)
+        self.top_uids = self.metagraph.I.argsort(descending=True)[:self.max_miners_to_use]
+        self.uid_map = {i: uid for i, uid in enumerate(self.top_uids)}
+        self.current_index = 0
 
     def update_state(self):
         """
@@ -45,11 +34,14 @@ class UIDManager:
         while True:
             # Wait 40 minutes to re-fetch updated top-miner uids.
             time.sleep(40 * 60)
-            self.top_uids = self.metagraph.I.argsort(
-                descending=True
-            )[:self.max_miners_to_use]
-            self.previous_uid = 0
-            self.uid_cycle = itertools.cycle(self.top_uids)
+            self.top_uids = self.metagraph.I.argsort(descending=True)[:self.max_miners_to_use]
+            new_uid_map = {i: uid for i, uid in enumerate(self.top_uids)}
+
+            for i in range(self.max_miners_to_use):
+                self.uid_map[i] = new_uid_map.get(i, self.uid_map.get(i))
+
+            # Ensure the current_index stays within the bounds of the new top_uids
+            self.current_index %= self.max_miners_to_use
 
     def start_update_thread(self):
         """
@@ -61,7 +53,8 @@ class UIDManager:
 
     def get_miner_uid(self):
         """
-        Get the next miner UID from the top_uids using itertools.cycle.
+        Get the next miner UID from the top_uids using the uid_map.
         """
-        self.previous_uid = next(self.uid_cycle)
-        return self.previous_uid
+        miner_uid = self.uid_map[self.current_index]
+        self.current_index = (self.current_index + 1) % self.max_miners_to_use
+        return miner_uid
