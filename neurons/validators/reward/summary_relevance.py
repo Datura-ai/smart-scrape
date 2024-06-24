@@ -87,15 +87,19 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     completion, completion_links_str
                 )
 
-            if scoring_prompt is None or not response.completion_links:
+            # If tools include Twitter Search it scores summary of twitter, otherwise search
+            is_twitter = "Twitter Search" in response.tools
+
+            if (
+                scoring_prompt is None
+                or (is_twitter and not response.completion_links)
+                or (not is_twitter and not response.search_completion_links)
+            ):
                 return None
 
             if not scoring_prompt_text:
                 # Format scoring prompt for this completion.
                 scoring_prompt_text = scoring_prompt.text(prompt, completion)
-
-            # If tools include Twitter Search it scores summary of twitter, otherwise search
-            is_twitter = "Twitter Search" in response.tools
 
             return scoring_prompt, [
                 {
@@ -112,7 +116,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
-            completions: List[str] = self.get_successful_twitter_completions(responses)
+            completions: List[str] = self.get_successful_completions_for_summary(
+                responses
+            )
             bt.logging.info(f"SummaryRelevanceRewardModel | PROMPT: {prompt}")
             bt.logging.debug(
                 f"SummaryRelevanceRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
