@@ -191,14 +191,14 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             return {}
 
     def format_text_for_match(self, text):
+        # Unescape HTML entities first
+        text = html.unescape(text)
         # url shorteners can cause problems with tweet verification, so remove urls from the text comparison.
         text = re.sub(r"(https?://)?\S+\.\S+\/?(\S+)?", "", text)
         # Some scrapers put the mentions at the front of the text, remove them.
         text = re.sub(r"^(@\w+\s*)+", "", text)
         # And some trim trailing whitespace at the end of newlines, so ignore whitespace.
         text = re.sub(r"\s+", "", text)
-        # And some have special characters escaped as html entities
-        text = html.unescape(text)
         # The validator apify actor uses the tweet.text field and not the note_tweet field (> 280) charts, so only
         # use the first 280 chars for comparison.
         text = text[:280]
