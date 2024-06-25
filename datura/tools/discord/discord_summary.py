@@ -83,15 +83,9 @@ def prepare_message(message):
 
 
 def prepare_messages_data_for_summary(messages):
-    body = messages.get("body", [])
-
-    # Error handling
-    if isinstance(body, str):
-        return []
-
     normalized_messages = []
 
-    for message in body:
+    for message in messages:
         normalized_messages.append(
             {
                 **prepare_message(message),
