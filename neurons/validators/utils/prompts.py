@@ -403,14 +403,11 @@ Evaluate the relevance of the tweet content in response to a specific question. 
    - **Score 5**: Superficial mention of relevant keywords or topics without detailed analysis.
    - **Score 9**: Detailed discussion and analysis of relevant keywords or topics, including specific examples or evidence.
 
-### Important Rule for Scoring Consistency:
-- **Always Assign One Score**: Ensure that the evaluation criteria are strictly followed to consistently assign one score. If the tweet meets multiple criteria, choose the score that best fits the overall engagement and relevance level.
-
 **OUTPUT EXAMPLE FORMAT:**
 Score: 2, Explanation:
 
 **Output**:
-You MUST generate only one score from [2, 5, 9] based on the criteria above.
+You MUST generate a single score, either 2, 5, or 9, based on the scoring rules and examples provided above.
 """
 
 
@@ -514,14 +511,11 @@ Evaluate the relevance of the web link content in response to a specific questio
    - **Score 5**: Superficial mention of relevant keywords or topics without detailed analysis.
    - **Score 9**: Detailed discussion and analysis of relevant keywords or topics, including specific examples or evidence.
 
-### Important Rule for Scoring Consistency:
-- **Always Assign One Score**: Ensure that the evaluation criteria are strictly followed to consistently assign one score. If the web link content meets multiple criteria, choose the score that best fits the overall engagement and relevance level.
-
 **OUTPUT EXAMPLE FORMAT:**
 Score: 2, Explanation:
 
 **Output**:
-You MUST generate only one score from [2, 5, 9] based on the criteria above.
+You MUST generate a single score, either 2, 5, or 9, based on the scoring rules and examples provided above.
 """
 
 
