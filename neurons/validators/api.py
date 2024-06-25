@@ -177,7 +177,7 @@ async def get_user_followings(user_id: str):
 
 
 @twitter_api_router.get('/users/{user_id}')
-async def get_user_by_id(user_id: str, user_fields: str):
+async def get_user_by_id(user_id: str, user_fields: str = Query(..., alias="user.fields")):
     try:
         response = await neu.scraper_validator.get_twitter_user(
             body={
@@ -195,7 +195,7 @@ async def get_user_by_id(user_id: str, user_fields: str):
 
 
 @twitter_api_router.get('/users/by/username/{username}')
-async def get_user_by_username(username: str, user_fields: str):
+async def get_user_by_username(username: str, user_fields: str = Query(..., alias="user.fields")):
     try:
         response = await neu.scraper_validator.get_twitter_user(
             body={
@@ -210,8 +210,6 @@ async def get_user_by_username(username: str, user_fields: str):
             f"Error in get_user_followings for GET_USER_WITH_USERNAME: {traceback.format_exc()}"
         )
         raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
-
-app.add_api_route(twitter_api_router)
 
 
 @app.get("/")
@@ -235,6 +233,8 @@ def custom_openapi():
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
+
+app.include_router(twitter_api_router)
 
 app.openapi = custom_openapi
 

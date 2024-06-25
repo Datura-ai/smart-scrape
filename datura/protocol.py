@@ -621,11 +621,11 @@ class SearchSynapse(bt.Synapse):
         return self
 
 
-
 class TwitterAPISynapseCall(Enum):
     GET_USER_FOLLOWINGS = "GET_USER_FOLLOWINGS"
     GET_USER = "GET_USER"
     GET_USER_WITH_USERNAME = "GET_USER_WITH_USERNAME"
+
 
 class TwitterAPISynapse(bt.Synapse):
     """A class to represent twitter api synapse"""
@@ -641,16 +641,22 @@ class TwitterAPISynapse(bt.Synapse):
         title="User ID",
         description="An optional string that's user of twitter's username",
     )
-    
+
     # convert to List[str]
     user_fields: Optional[str] = pydantic.Field(
         None,
         title="User fields param for specifying data types to fetch. Used as 'user.fields'"
     )
-    
+
     request_type: Optional[str] = pydantic.Field(
         None,
         title="Request type field to decide the method to call"
+    )
+
+    results: Optional[Dict[str, Any]] = pydantic.Field(
+        default_factory=dict,
+        title="Response dictionary",
+        description="A dictionary of results returned by twitter api",
     )
 
     def deserialize(self) -> str:
