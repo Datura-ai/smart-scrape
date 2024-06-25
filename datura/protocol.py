@@ -8,7 +8,6 @@ from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from enum import Enum
-
 from aiohttp import ClientResponse
 from datura.services.twitter_utils import TwitterUtils
 from datura.services.web_search_utils import WebSearchUtils
@@ -616,6 +615,42 @@ class SearchSynapse(bt.Synapse):
         default_factory=dict,
         title="Tool result dictionary",
         description="A dictionary of tool results where key is tool name and value is the result. Example: {'Google Search': {}, 'Google Image Search': {} }",
+    )
+
+    def deserialize(self) -> str:
+        return self
+
+
+
+class TwitterAPISynapseCall(Enum):
+    GET_USER_FOLLOWINGS = "GET_USER_FOLLOWINGS"
+    GET_USER = "GET_USER"
+    GET_USER_WITH_USERNAME = "GET_USER_WITH_USERNAME"
+
+class TwitterAPISynapse(bt.Synapse):
+    """A class to represent twitter api synapse"""
+
+    user_id: Optional[str] = pydantic.Field(
+        None,
+        title="User ID",
+        description="An optional string that's user of twitter's user id",
+    )
+
+    username: Optional[str] = pydantic.Field(
+        None,
+        title="User ID",
+        description="An optional string that's user of twitter's username",
+    )
+    
+    # convert to List[str]
+    user_fields: Optional[str] = pydantic.Field(
+        None,
+        title="User fields param for specifying data types to fetch. Used as 'user.fields'"
+    )
+    
+    request_type: Optional[str] = pydantic.Field(
+        None,
+        title="Request type field to decide the method to call"
     )
 
     def deserialize(self) -> str:

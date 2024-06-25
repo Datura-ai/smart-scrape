@@ -8,19 +8,14 @@ import bittensor as bt
 from base_validator import AbstractNeuron
 from datura.protocol import (
     ScraperStreamingSynapse,
-    TwitterPromptAnalysisResult,
+    TwitterAPISynapse,
     SearchSynapse,
 )
-from datura.stream import process_async_responses, process_single_response
+from datura.stream import process_async_responses
 from reward import RewardModelType, RewardScoringType
 from typing import List
 from utils.mock import MockRewardModel
 import time
-from neurons.validators.penalty import (
-    TaskValidationPenaltyModel,
-    AccuracyPenaltyModel,
-    LinkValidationPenaltyModel,
-)
 from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
 from neurons.validators.reward.twitter_content_relevance import (
     TwitterContentRelevanceModel,
@@ -31,7 +26,7 @@ from neurons.validators.reward.search_content_relevance import (
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask, SearchTask
 
-from datura.dataset import MockTwitterQuestionsDataset, QuestionsDataset
+from datura.dataset import QuestionsDataset
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from datura import QUERY_MINERS
 import asyncio
@@ -646,6 +641,58 @@ class ScraperValidator:
             )
 
             synapse: SearchSynapse = await self.neuron.dendrite.call(
+                target_axon=axon,
+                synapse=synapse,
+                timeout=self.timeout,
+                deserialize=False,
+            )
+
+            return synapse.results
+        except Exception as e:
+            bt.logging.error(f"Error in search: {e}")
+            raise e
+
+    async def get_twitter_user(self, body: dict, uid: int | None = None):
+        try:
+            task_name = "get_twitter_user"
+
+            # task = TwitterAPITask(
+            #     base_text=json.dumps(body),
+            #     task_name=task_name,
+            #     task_type="fetch",
+            #     criteria=[],
+            # )
+
+            if not len(self.neuron.available_uids):
+                bt.logging.info("Not available uids")
+                raise StopAsyncIteration("Not available uids")
+
+            bt.logging.debug("run_task", task_name)
+
+            # If uid is not provided, get random uids
+            if uid is None:
+                uids = await self.neuron.get_uids(
+                    strategy=QUERY_MINERS.RANDOM,
+                    is_only_allowed_miner=False,
+                    specified_uids=None,
+                )
+
+                if uids:
+                    uid = uids[0]
+                else:
+                    raise StopAsyncIteration("No available uids")
+
+            axon = self.neuron.metagraph.axons[uid]
+
+            synapse = TwitterAPISynapse(
+                user_id=body.get('user_id'),
+                username=body.get('username'),
+                user_fields=body.get('user_fields'),
+                # excpected as TwitterAPISynapseCall
+                request_type=body.get('request_type').value
+            )
+
+            synapse: TwitterAPISynapse = await self.neuron.dendrite.call(
                 target_axon=axon,
                 synapse=synapse,
                 timeout=self.timeout,

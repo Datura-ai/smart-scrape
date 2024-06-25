@@ -1,7 +1,8 @@
 import os
 from typing import Optional
 from fastapi.responses import StreamingResponse
-from fastapi import FastAPI, HTTPException, Request, Query
+from fastapi import FastAPI, HTTPException, Request, Query, APIRouter
+from datura.protocol import TwitterAPISynapseCall
 import uvicorn
 import bittensor as bt
 import traceback
@@ -10,11 +11,8 @@ import asyncio
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 import json
-from neurons.validators.api.twitter_api import twitter_api_router
 
 app = FastAPI()
-
-app.add_api_route(twitter_api_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -154,6 +152,66 @@ async def search(
     except Exception as e:
         bt.logging.error(f"error in search {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
+
+
+twitter_api_router = APIRouter(
+    prefix='/twitter',
+)
+
+
+@twitter_api_router.get('/users/{user_id}/following')
+async def get_user_followings(user_id: str):
+    try:
+        response = await neu.scraper_validator.get_twitter_user(
+            body={
+                "user_id": user_id,
+                "request_type": TwitterAPISynapseCall.GET_USER_FOLLOWINGS,
+            }
+        )
+        return response
+    except Exception as e:
+        bt.logging.error(
+            f"Error in get_user_followings for GET_USER_FOLLOWINGS: {traceback.format_exc()}"
+        )
+        raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
+
+
+@twitter_api_router.get('/users/{user_id}')
+async def get_user_by_id(user_id: str, user_fields: str):
+    try:
+        response = await neu.scraper_validator.get_twitter_user(
+            body={
+                "user_id": user_id,
+                "request_type": TwitterAPISynapseCall.GET_USER,
+                "user_fields": user_fields,
+            }
+        )
+        return response
+    except Exception as e:
+        bt.logging.error(
+            f"Error in get_user_followings for GET_USER: {traceback.format_exc()}"
+        )
+        raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
+
+
+@twitter_api_router.get('/users/by/username/{username}')
+async def get_user_by_username(username: str, user_fields: str):
+    try:
+        response = await neu.scraper_validator.get_twitter_user(
+            body={
+                "username": username,
+                "request_type": TwitterAPISynapseCall.GET_USER_WITH_USERNAME,
+                "user_fields": user_fields,
+            }
+        )
+        return response
+    except Exception as e:
+        bt.logging.error(
+            f"Error in get_user_followings for GET_USER_WITH_USERNAME: {traceback.format_exc()}"
+        )
+        raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
+
+app.add_api_route(twitter_api_router)
 
 
 @app.get("/")
