@@ -1386,6 +1386,7 @@ class QuestionsDataset:
         word1 = self.faker.word()
         word2 = self.faker.word()
         word3 = self.faker.word()
+        word4 = self.faker.word()
 
         tools = [
             "Twitter Search",
@@ -1400,10 +1401,10 @@ class QuestionsDataset:
 
         # Prepare a simpler prompt for OpenAI
         tools_str = ", ".join(selected_tools)
-        prompt = f"""Create a simple and straightforward question using the words '{word1}', '{word2}', and '{word3}' that is 5 to 14 words long and searchable on the Tool API of {tools_str}. 
+        prompt = f"""Create a simple and straightforward question using the words '{word1}', '{word2}', '{word3}', and '{word4}' that is 5 to 14 words long. 
                      **Important Rules**
                       - The question must be grammatically correct and related to the API of {tools_str} content. 
-                      - It is not necessary to use all three words; synonyms can be used.
+                      - It is not necessary to use all four words; synonyms can be used.
                       - Don't use hashtags.
                       - Don't include the source Tool API provider in the question, such as {tools}.
                       """
