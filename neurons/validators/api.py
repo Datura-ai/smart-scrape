@@ -52,7 +52,8 @@ async def response_stream_event(data):
                 chunk = str(response)  # Assuming response is already a string
                 merged_chunks += chunk
                 lines = chunk.split("\n")
-                sse_data = "\n".join(f"data: {line if line else ' '}" for line in lines)
+                sse_data = "\n".join(
+                    f"data: {line if line else ' '}" for line in lines)
                 yield f"{sse_data}\n\n"
         else:
             uids = None
@@ -62,7 +63,8 @@ async def response_stream_event(data):
                 chunk = str(response)  # Assuming response is already a string
                 merged_chunks += chunk
                 lines = chunk.split("\n")
-                sse_data = "\n".join(f"data: {line if line else ' '}" for line in lines)
+                sse_data = "\n".join(
+                    f"data: {line if line else ' '}" for line in lines)
                 # print("sse_data: ", sse_data)
                 yield f"{sse_data}\n\n"
         # Here you might want to do something with merged_chunks
@@ -153,19 +155,61 @@ async def search(
         bt.logging.error(f"error in search {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
 
-
-twitter_api_router = APIRouter(
-    prefix='/twitter',
+USER_FIELDS_DESCRIPTION = (
+    "This fields parameter enables you to select which specific user fields "
+    "will be delivered with each returned user object. Specify the desired fields "
+    "in a comma-separated list without spaces between commas and fields. These specified "
+    "user fields will display directly in the user data objects.\n\n"
+    "Possible fields are:\n"
+    "- id\n"
+    "- created_at\n"
+    "- description\n"
+    "- entities\n"
+    "- location\n"
+    "- most_recent_tweet_id\n"
+    "- name\n"
+    "- pinned_tweet_id\n"
+    "- profile_image_url\n"
+    "- protected\n"
+    "- public_metrics\n"
+    "- url\n"
+    "- username\n"
+    "- verified\n"
+    "- verified_type\n"
+    "- withheld"
 )
 
+twitter_api_router = APIRouter(prefix='/twitter')
 
-@twitter_api_router.get('/users/{user_id}/following')
-async def get_user_followings(user_id: str):
+
+@twitter_api_router.get(
+    '/users/{user_id}/following',
+    summary="Get User Followings",
+    description="Retrieve the list of users that the specified user is following on Twitter.",
+    response_description="A list of users that the specified user is following.",
+    responses={
+        200: {
+            "description": "A list of users that the specified user is following.",
+            "content": {
+                "application/json": {"example": {"data": []}}
+            },
+        }
+    },
+)
+async def get_user_followings(
+    user_id: str,
+    user_fields: Optional[str] = Query(
+        None,
+        alias="user.fields",
+        description=USER_FIELDS_DESCRIPTION,
+    ),
+):
     try:
         response = await neu.scraper_validator.get_twitter_user(
             body={
                 "user_id": user_id,
                 "request_type": TwitterAPISynapseCall.GET_USER_FOLLOWINGS,
+                "user_fields": user_fields,
             }
         )
         return response
@@ -176,8 +220,28 @@ async def get_user_followings(user_id: str):
         raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
 
 
-@twitter_api_router.get('/users/{user_id}')
-async def get_user_by_id(user_id: str, user_fields: str = Query(..., alias="user.fields")):
+@twitter_api_router.get(
+    '/users/{user_id}',
+    summary="Get User by ID",
+    description="Retrieve the details of a Twitter user by their user ID.",
+    response_description="The details of the specified Twitter user.",
+    responses={
+        200: {
+            "description": "The details of the specified Twitter user.",
+            "content": {
+                "application/json": {"example": {"data": {}}}
+            },
+        }
+    },
+)
+async def get_user_by_id(
+    user_id: str,
+    user_fields: Optional[str] = Query(
+        None,
+        alias="user.fields",
+        description=USER_FIELDS_DESCRIPTION,
+    ),
+):
     try:
         response = await neu.scraper_validator.get_twitter_user(
             body={
@@ -194,8 +258,28 @@ async def get_user_by_id(user_id: str, user_fields: str = Query(..., alias="user
         raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
 
 
-@twitter_api_router.get('/users/by/username/{username}')
-async def get_user_by_username(username: str, user_fields: str = Query(..., alias="user.fields")):
+@twitter_api_router.get(
+    '/users/by/username/{username}',
+    summary="Get User by Username",
+    description="Retrieve the details of a Twitter user by their username.",
+    response_description="The details of the specified Twitter user.",
+    responses={
+        200: {
+            "description": "The details of the specified Twitter user.",
+            "content": {
+                "application/json": {"example": {"data": {}}}
+            },
+        }
+    },
+)
+async def get_user_by_username(
+    username: str,
+    user_fields: Optional[str] = Query(
+        None,
+        alias="user.fields",
+        description=USER_FIELDS_DESCRIPTION,
+    ),
+):
     try:
         response = await neu.scraper_validator.get_twitter_user(
             body={

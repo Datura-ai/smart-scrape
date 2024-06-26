@@ -10,20 +10,30 @@ class TwitterAPIMiner:
 
     async def get_user(self, synapse: TwitterAPISynapse):
         if synapse.request_type == TwitterAPISynapseCall.GET_USER.value:
+            params = {}
+            if synapse.user_fields:
+                params["user.fields"] = synapse.user_fields
             response, _, _ = await self.client.get_user(
                 user_id=synapse.user_id,
-                params={"user.fields": synapse.user_fields},
+                params=params,
             )
             synapse.results = response
         elif synapse.request_type == TwitterAPISynapseCall.GET_USER_WITH_USERNAME.value:
+            params = {}
+            if synapse.user_fields:
+                params["user.fields"] = synapse.user_fields
             response, _, _ = await self.client.get_user_by_username(
                 username=synapse.username,
-                params={"user.fields": synapse.user_fields},
+                params=params,
             )
             synapse.results = response
         elif synapse.request_type == TwitterAPISynapseCall.GET_USER_FOLLOWINGS.value:
+            params = {}
+            if synapse.user_fields:
+                params["user.fields"] = synapse.user_fields
             response, _, _ = await self.client.get_user_followings(
                 user_id=synapse.user_id,
+                params=params,
             )
             synapse.results = response
 

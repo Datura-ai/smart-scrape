@@ -64,9 +64,9 @@ class TwitterAPIClient:
         search_url = "https://api.twitter.com/2/tweets/search/all"
         return await self.connect_to_endpoint(search_url, query_params)
 
-    async def get_user_followings(self, user_id: str):
+    async def get_user_followings(self, user_id: str, params: dict):
         url = f"https://api.twitter.com/2/users/{user_id}/following"
-        return await self.connect_to_endpoint(url, {})
+        return await self.connect_to_endpoint(url, params)
 
     async def get_user(self, user_id: str, params: dict):
         url = f"https://api.twitter.com/2/users/{user_id}"
