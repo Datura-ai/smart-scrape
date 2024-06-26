@@ -71,7 +71,7 @@ class TwitterAPIClient:
     async def get_user(self, user_id: str, params: dict):
         url = f"https://api.twitter.com/2/users/{user_id}"
         return await self.connect_to_endpoint(url, params)
-    
+
     async def get_user_by_username(self, username: str, params: dict):
         url = f"https://api.twitter.com/2/users/by/username/{username}"
         return await self.connect_to_endpoint(url, params)
