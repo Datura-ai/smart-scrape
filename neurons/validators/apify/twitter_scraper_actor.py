@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 
 # DEALINGS IN THE SOFTWARE.p
 import traceback
@@ -38,6 +38,127 @@ class TwitterScraperActor:
         try:
             run_input = {
                 "startUrls": urls,
+            }
+
+            run = await self.client.actor(self.actor_id).call(run_input=run_input)
+
+            tweets: List[TwitterScraperTweet] = []
+
+            async for item in self.client.dataset(
+                run["defaultDatasetId"]
+            ).iterate_items():
+                media_list = item.get("extendedEntities", {}).get("media", [])
+
+                media_list = [
+                    TwitterScraperMedia(
+                        media_url=media.get("media_url_https"), type=media.get("type")
+                    )
+                    for media in media_list
+                ]
+
+                author = item.get("author", {})
+
+                tweet = TwitterScraperTweet(
+                    id=item.get("id"),
+                    full_text=item.get("text"),
+                    reply_count=item.get("replyCount"),
+                    retweet_count=item.get("retweetCount"),
+                    like_count=item.get("likeCount"),
+                    quote_count=item.get("quoteCount"),
+                    url=item.get("url"),
+                    created_at=item.get("createdAt"),
+                    is_quote_tweet=item.get("isQuote"),
+                    is_retweet=item.get("isRetweet"),
+                    media=media_list,
+                    user=TwitterScraperUser(
+                        id=author.get("id"),
+                        created_at=author.get("createdAt"),
+                        description=author.get("description"),
+                        followers_count=author.get("followers"),
+                        favourites_count=author.get("favouritesCount"),
+                        media_count=author.get("mediaCount"),
+                        statuses_count=author.get("statusesCount"),
+                        verified=author.get("isVerified"),
+                        profile_image_url=author.get("profilePicture"),
+                        url=author.get("url"),
+                        name=author.get("name"),
+                        username=author.get("userName"),
+                    ),
+                )
+
+                tweets.append(tweet)
+
+            return tweets
+        except Exception as e:
+            error_message = (
+                f"TwitterScraperActor: Failed to scrape tweets {urls}: {str(e)}"
+            )
+            tb_str = traceback.format_exception(type(e), e, e.__traceback__)
+            bt.logging.warning("\n".join(tb_str) + error_message)
+            return []
+
+    async def get_tweets_advanced(
+        self,
+        urls: List[str],
+        author: Optional[str],
+        conversationIds: Optional[List[str]],
+        start: Optional[str],
+        end: Optional[str],
+        geocode: Optional[str],
+        geotaggedNear: Optional[str],
+        inReplyTo: Optional[str],
+        includeSearchTerms: Optional[bool],
+        maxItems: Optional[int],
+        maxTweetsPerQuery: Optional[int],
+        mentioning: Optional[str],
+        minimumFavorites: Optional[str],
+        minimumReplies: Optional[str],
+        minimumRetweets: Optional[str],
+        onlyImage: Optional[bool],
+        onlyQuote: Optional[bool],
+        onlyTwitterBlue: Optional[bool],
+        onlyVerifiedUsers: Optional[bool],
+        onlyVideo: Optional[bool],
+        placeObjectId: Optional[str],
+        searchTerms: Optional[List[str]],
+        sort: Optional[str],
+        tweetLanguage: Optional[str],
+        twitterHandles: Optional[List[str]],
+        withinRadius: Optional[str],
+    ) -> List[TwitterScraperTweet]:
+        if not APIFY_API_KEY:
+            bt.logging.warning(
+                "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
+            )
+            return []
+        try:
+            run_input = {
+                "startUrls": urls,
+                "author": author,
+                "conversationIds": conversationIds,
+                "start": start,
+                "end": end,
+                "geocode": geocode,
+                "geotaggedNear": geotaggedNear,
+                "inReplyTo": inReplyTo,
+                "includeSearchTerms": includeSearchTerms,
+                "maxItems": maxItems,
+                "maxTweetsPerQuery": maxTweetsPerQuery,
+                "mentioning": mentioning,
+                "minimumFavorites": minimumFavorites,
+                "minimumReplies": minimumReplies,
+                "minimumRetweets": minimumRetweets,
+                "onlyImage": onlyImage,
+                "onlyQuote": onlyQuote,
+                "onlyTwitterBlue": onlyTwitterBlue,
+                "onlyVerifiedUsers": onlyVerifiedUsers,
+                "onlyVideo": onlyVideo,
+                "placeObjectId": placeObjectId,
+                "searchTerms": searchTerms,
+                "sort": sort,
+                "tweetLanguage": tweetLanguage,
+                "twitterHandles": twitterHandles,
+                "withinRadius": withinRadius,
             }
 
             run = await self.client.actor(self.actor_id).call(run_input=run_input)
