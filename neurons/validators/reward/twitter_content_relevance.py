@@ -383,39 +383,6 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             bt.logging.warning("\n".join(tb_str) + error_message)
             return None
 
-    def get_scoring_text2(
-        self, prompt: str, content: str, response: bt.Synapse
-    ) -> BaseRewardEvent:
-        try:
-            if response:
-                completion = self.get_successful_twitter_completion(response=response)
-                if not completion:
-                    return None
-
-            scoring_prompt = None
-
-            scoring_prompt_text = None
-
-            scoring_prompt = LinkContentPrompt2()
-
-            if content is None:
-                bt.logging.debug("Twitter Content is empty")
-                return None
-
-            content = self.clean_text(content)
-
-            scoring_prompt_text = scoring_prompt.text(prompt, content)
-
-            return scoring_prompt, [
-                {"role": "system", "content": scoring_prompt.get_system_message()},
-                {"role": "user", "content": scoring_prompt_text},
-            ]
-        except Exception as e:
-            error_message = f"Error in Prompt reward method: {str(e)}"
-            tb_str = traceback.format_exception(type(e), e, e.__traceback__)
-            bt.logging.warning("\n".join(tb_str) + error_message)
-            return None
-
     def get_rewards(
         self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> List[BaseRewardEvent]:
