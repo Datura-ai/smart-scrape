@@ -1,5 +1,5 @@
 import os
-from typing import _Alias, Optional
+from typing import Optional
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, HTTPException, Request, Query, APIRouter
 from datura.protocol import TwitterAPISynapseCall

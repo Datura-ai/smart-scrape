@@ -678,11 +678,15 @@ class ScraperValidator:
             axon = self.neuron.metagraph.axons[uid]
 
             synapse = TwitterAPISynapse(
+                # excpected as TwitterAPISynapseCall
+                request_type=body.get('request_type').value,
                 user_id=body.get('user_id'),
                 username=body.get('username'),
                 user_fields=body.get('user_fields'),
-                # excpected as TwitterAPISynapseCall
-                request_type=body.get('request_type').value
+                expansions=body.get('expansions'),
+                max_results=body.get('max_results'),
+                tweet_fields=body.get('tweet_fields'),
+                pagination_token=body.get('pagination_token'),
             )
 
             synapse: TwitterAPISynapse = await self.neuron.dendrite.call(
