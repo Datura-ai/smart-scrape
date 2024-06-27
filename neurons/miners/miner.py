@@ -150,7 +150,7 @@ class StreamMiner(ABC):
 
     async def _search(self, synapse: SearchSynapse) -> SearchSynapse:
         return await self.search(synapse)
-    
+
     async def _get_twitter_user(self, synapse: TwitterAPISynapse) -> TwitterAPISynapse:
         return await self.get_twitter_user(synapse)
 
@@ -182,14 +182,14 @@ class StreamMiner(ABC):
                     f"Blacklisted a non registered hotkey's {synapse_type} request from {hotkey}",
                 )
 
-            # # check the stake
-            # tao = self.metagraph.neurons[uid].stake.tao
-            # # metagraph.neurons[uid].S
-            # if tao < blacklist_amt:
-            #     return (
-            #         True,
-            #         f"Blacklisted a low stake {synapse_type} request: {tao} < {blacklist_amt} from {hotkey}",
-            #     )
+            # check the stake
+            tao = self.metagraph.neurons[uid].stake.tao
+            # metagraph.neurons[uid].S
+            if tao < blacklist_amt:
+                return (
+                    True,
+                    f"Blacklisted a low stake {synapse_type} request: {tao} < {blacklist_amt} from {hotkey}",
+                )
 
             time_window = datura.MIN_REQUEST_PERIOD * 60
             current_time = time.time()
@@ -253,7 +253,7 @@ class StreamMiner(ABC):
 
     @abstractmethod
     async def search(self, synapse: SearchSynapse) -> SearchSynapse: ...
-    
+
     @abstractmethod
     async def get_twitter_user(self, synapse: TwitterAPISynapse) -> TwitterAPISynapse: ...
 
@@ -369,7 +369,7 @@ class StreamingTemplateMiner(StreamMiner):
         bt.logging.info(f"started processing for search synapse {synapse}")
         search_miner = SearchMiner(self)
         return await search_miner.search(synapse)
-    
+
     async def get_twitter_user(self, synapse: TwitterAPISynapse) -> TwitterAPISynapse:
         bt.logging.info(f"started processing for twitter api synapse {synapse}")
         twitter_api_miner = TwitterAPIMiner(self)
