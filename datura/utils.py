@@ -20,6 +20,8 @@ from . import client
 from collections import deque
 from datetime import datetime
 from datura.misc import ttl_get_block
+import re
+import html
 
 list_update_lock = asyncio.Lock()
 _text_questions_buffer = deque()
@@ -460,3 +462,17 @@ def calculate_bonus_score(
     new_score = min(1, original_score + bonus)
 
     return new_score
+
+
+def clean_text(text):
+    # And some have special characters escaped as html entities
+    text = html.unescape(text)
+    # url shorteners can cause problems with tweet verification, so remove urls from the text comparison.
+    text = re.sub(r"(https?://)?\S+\.\S+\/?(\S+)?", "", text)
+    # Some scrapers put the mentions at the front of the text, remove them.
+    text = re.sub(r"^(@\w+\s*)+", "", text)
+    # Remove emojis and other symbols
+    text = re.sub(r"[^\w\s,]", "", text)
+    # Normalize whitespace and newlines
+    text = re.sub(r"\s+", " ", text).strip()
+    return text

@@ -30,7 +30,6 @@ from .reward import BaseRewardModel, BaseRewardEvent, pattern_to_check
 from neurons.validators.utils.prompts import (
     SummaryRelevancePrompt,
     LinkContentPrompt,
-    extract_score_and_explanation,
 )
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from datura.protocol import (
@@ -43,6 +42,7 @@ from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.prompts import LinkContentPrompt
+from datura.utils import clean_text
 import json
 from datetime import datetime
 import pytz
@@ -69,15 +69,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         self.tw_client = TwitterAPIClient()
 
     def clean_text(self, text):
-        # url shorteners can cause problems with tweet verification, so remove urls from the text comparison.
-        text = re.sub(r"(https?://)?\S+\.\S+\/?(\S+)?", "", text)
-        # Some scrapers put the mentions at the front of the text, remove them.
-        text = re.sub(r"^(@\w+\s*)+", "", text)
-        # Remove emojis and other symbols
-        text = re.sub(r"[^\w\s,]", "", text)
-        # And some have special characters escaped as html entities
-        text = html.unescape(text)
-        return text
+        return clean_text(text)
 
     async def llm_process_validator_tweets(self, prompt, tweets_list):
         start_llm_time = time.time()
@@ -372,6 +364,39 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             scoring_prompt_text = None
 
             scoring_prompt = LinkContentPrompt()
+
+            if content is None:
+                bt.logging.debug("Twitter Content is empty")
+                return None
+
+            content = self.clean_text(content)
+
+            scoring_prompt_text = scoring_prompt.text(prompt, content)
+
+            return scoring_prompt, [
+                {"role": "system", "content": scoring_prompt.get_system_message()},
+                {"role": "user", "content": scoring_prompt_text},
+            ]
+        except Exception as e:
+            error_message = f"Error in Prompt reward method: {str(e)}"
+            tb_str = traceback.format_exception(type(e), e, e.__traceback__)
+            bt.logging.warning("\n".join(tb_str) + error_message)
+            return None
+
+    def get_scoring_text2(
+        self, prompt: str, content: str, response: bt.Synapse
+    ) -> BaseRewardEvent:
+        try:
+            if response:
+                completion = self.get_successful_twitter_completion(response=response)
+                if not completion:
+                    return None
+
+            scoring_prompt = None
+
+            scoring_prompt_text = None
+
+            scoring_prompt = LinkContentPrompt2()
 
             if content is None:
                 bt.logging.debug("Twitter Content is empty")
