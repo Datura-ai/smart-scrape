@@ -50,7 +50,9 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 scoring_prompt, scoring_text = result
                 scoring_messages.append({url: scoring_text})
 
-        score_responses = self.reward_llm.llm_processing(scoring_messages)
+        score_responses = await self.reward_llm.llm_processing(
+            scoring_messages
+        )  # Await the coroutine
         return score_responses
 
     async def scrape_links_with_retries(self, urls):
