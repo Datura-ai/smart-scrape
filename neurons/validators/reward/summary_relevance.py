@@ -153,7 +153,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 bt.logging.info(
                     f"Executing llm_processing on {len(messages)} summary relevance messages."
                 )
-                score_responses = self.reward_llm.llm_processing(messages)
+                score_responses = asyncio.get_event_loop().run_until_complete(
+                    self.reward_llm.llm_processing(messages)
+                )
+
                 if score_responses and isinstance(
                     score_responses, dict
                 ):  # Ensure score_responses is a dictionary
