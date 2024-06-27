@@ -22,6 +22,7 @@ from datetime import datetime
 from datura.misc import ttl_get_block
 import re
 import html
+import unicodedata
 
 list_update_lock = asyncio.Lock()
 _text_questions_buffer = deque()
@@ -465,14 +466,26 @@ def calculate_bonus_score(
 
 
 def clean_text(text):
-    # And some have special characters escaped as html entities
+    # Unescape HTML entities
     text = html.unescape(text)
-    # url shorteners can cause problems with tweet verification, so remove urls from the text comparison.
+
+    # Remove URLs
     text = re.sub(r"(https?://)?\S+\.\S+\/?(\S+)?", "", text)
-    # Some scrapers put the mentions at the front of the text, remove them.
+
+    # Remove mentions at the beginning of the text
     text = re.sub(r"^(@\w+\s*)+", "", text)
+
     # Remove emojis and other symbols
     text = re.sub(r"[^\w\s,]", "", text)
+
     # Normalize whitespace and newlines
     text = re.sub(r"\s+", " ", text).strip()
+
+    # Remove non-printable characters and other special Unicode characters
+    text = "".join(
+        char
+        for char in text
+        if char.isprintable() and not unicodedata.category(char).startswith("C")
+    )
+
     return text
