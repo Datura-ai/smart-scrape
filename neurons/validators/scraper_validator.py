@@ -656,13 +656,6 @@ class ScraperValidator:
         try:
             task_name = "get_twitter_user"
 
-            # task = TwitterAPITask(
-            #     base_text=json.dumps(body),
-            #     task_name=task_name,
-            #     task_type="fetch",
-            #     criteria=[],
-            # )
-
             if not len(self.neuron.available_uids):
                 bt.logging.info("Not available uids")
                 raise StopAsyncIteration("Not available uids")
