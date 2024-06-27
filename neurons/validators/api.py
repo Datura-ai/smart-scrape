@@ -1,13 +1,12 @@
 import os
-from pydantic import BaseModel, Field
 from typing import Optional
 from fastapi.responses import StreamingResponse
-from fastapi import FastAPI, HTTPException, Request, Query
+from fastapi import FastAPI, HTTPException, Request, Query, APIRouter
+from datura.protocol import TwitterAPISynapseCall
 import uvicorn
 import bittensor as bt
 import traceback
 from validator import Neuron
-import time
 import asyncio
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
@@ -53,7 +52,8 @@ async def response_stream_event(data):
                 chunk = str(response)  # Assuming response is already a string
                 merged_chunks += chunk
                 lines = chunk.split("\n")
-                sse_data = "\n".join(f"data: {line if line else ' '}" for line in lines)
+                sse_data = "\n".join(
+                    f"data: {line if line else ' '}" for line in lines)
                 yield f"{sse_data}\n\n"
         else:
             uids = None
@@ -63,7 +63,8 @@ async def response_stream_event(data):
                 chunk = str(response)  # Assuming response is already a string
                 merged_chunks += chunk
                 lines = chunk.split("\n")
-                sse_data = "\n".join(f"data: {line if line else ' '}" for line in lines)
+                sse_data = "\n".join(
+                    f"data: {line if line else ' '}" for line in lines)
                 # print("sse_data: ", sse_data)
                 yield f"{sse_data}\n\n"
         # Here you might want to do something with merged_chunks
@@ -154,6 +155,146 @@ async def search(
         bt.logging.error(f"error in search {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
 
+USER_FIELDS_DESCRIPTION = (
+    "This fields parameter enables you to select which specific user fields "
+    "will be delivered with each returned user object. Specify the desired fields "
+    "in a comma-separated list without spaces between commas and fields. These specified "
+    "user fields will display directly in the user data objects.\n\n"
+    "Possible fields are:\n"
+    "- id\n"
+    "- created_at\n"
+    "- description\n"
+    "- entities\n"
+    "- location\n"
+    "- most_recent_tweet_id\n"
+    "- name\n"
+    "- pinned_tweet_id\n"
+    "- profile_image_url\n"
+    "- protected\n"
+    "- public_metrics\n"
+    "- url\n"
+    "- username\n"
+    "- verified\n"
+    "- verified_type\n"
+    "- withheld"
+)
+
+twitter_api_router = APIRouter(prefix='/twitter')
+
+
+@twitter_api_router.get(
+    '/users/{user_id}/following',
+    summary="Get User Followings",
+    description="Retrieve the list of users that the specified user is following on Twitter.",
+    response_description="A list of users that the specified user is following.",
+    responses={
+        200: {
+            "description": "A list of users that the specified user is following.",
+            "content": {
+                "application/json": {"example": {"data": []}}
+            },
+        }
+    },
+)
+async def get_user_followings(
+    user_id: str,
+    user_fields: Optional[str] = Query(
+        None,
+        alias="user.fields",
+        description=USER_FIELDS_DESCRIPTION,
+    ),
+):
+    try:
+        response = await neu.scraper_validator.get_twitter_user(
+            body={
+                "user_id": user_id,
+                "request_type": TwitterAPISynapseCall.GET_USER_FOLLOWINGS,
+                "user_fields": user_fields,
+            }
+        )
+        return response
+    except Exception as e:
+        bt.logging.error(
+            f"Error in get_user_followings for GET_USER_FOLLOWINGS: {traceback.format_exc()}"
+        )
+        raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
+
+
+@twitter_api_router.get(
+    '/users/{user_id}',
+    summary="Get User by ID",
+    description="Retrieve the details of a Twitter user by their user ID.",
+    response_description="The details of the specified Twitter user.",
+    responses={
+        200: {
+            "description": "The details of the specified Twitter user.",
+            "content": {
+                "application/json": {"example": {"data": {}}}
+            },
+        }
+    },
+)
+async def get_user_by_id(
+    user_id: str,
+    user_fields: Optional[str] = Query(
+        None,
+        alias="user.fields",
+        description=USER_FIELDS_DESCRIPTION,
+    ),
+):
+    try:
+        response = await neu.scraper_validator.get_twitter_user(
+            body={
+                "user_id": user_id,
+                "request_type": TwitterAPISynapseCall.GET_USER,
+                "user_fields": user_fields,
+            }
+        )
+        return response
+    except Exception as e:
+        bt.logging.error(
+            f"Error in get_user_followings for GET_USER: {traceback.format_exc()}"
+        )
+        raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
+
+
+@twitter_api_router.get(
+    '/users/by/username/{username}',
+    summary="Get User by Username",
+    description="Retrieve the details of a Twitter user by their username.",
+    response_description="The details of the specified Twitter user.",
+    responses={
+        200: {
+            "description": "The details of the specified Twitter user.",
+            "content": {
+                "application/json": {"example": {"data": {}}}
+            },
+        }
+    },
+)
+async def get_user_by_username(
+    username: str,
+    user_fields: Optional[str] = Query(
+        None,
+        alias="user.fields",
+        description=USER_FIELDS_DESCRIPTION,
+    ),
+):
+    try:
+        response = await neu.scraper_validator.get_twitter_user(
+            body={
+                "username": username,
+                "request_type": TwitterAPISynapseCall.GET_USER_WITH_USERNAME,
+                "user_fields": user_fields,
+            }
+        )
+        return response
+    except Exception as e:
+        bt.logging.error(
+            f"Error in get_user_followings for GET_USER_WITH_USERNAME: {traceback.format_exc()}"
+        )
+        raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
+
 
 @app.get("/")
 async def health_check():
@@ -176,6 +317,8 @@ def custom_openapi():
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
+
+app.include_router(twitter_api_router)
 
 app.openapi = custom_openapi
 
