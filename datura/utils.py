@@ -20,6 +20,9 @@ from . import client
 from collections import deque
 from datetime import datetime
 from datura.misc import ttl_get_block
+import re
+import html
+import unicodedata
 
 list_update_lock = asyncio.Lock()
 _text_questions_buffer = deque()
@@ -460,3 +463,29 @@ def calculate_bonus_score(
     new_score = min(1, original_score + bonus)
 
     return new_score
+
+
+def clean_text(text):
+    # Unescape HTML entities
+    text = html.unescape(text)
+
+    # Remove URLs
+    text = re.sub(r"(https?://)?\S+\.\S+\/?(\S+)?", "", text)
+
+    # Remove mentions at the beginning of the text
+    text = re.sub(r"^(@\w+\s*)+", "", text)
+
+    # Remove emojis and other symbols
+    text = re.sub(r"[^\w\s,]", "", text)
+
+    # Normalize whitespace and newlines
+    text = re.sub(r"\s+", " ", text).strip()
+
+    # Remove non-printable characters and other special Unicode characters
+    text = "".join(
+        char
+        for char in text
+        if char.isprintable() and not unicodedata.category(char).startswith("C")
+    )
+
+    return text

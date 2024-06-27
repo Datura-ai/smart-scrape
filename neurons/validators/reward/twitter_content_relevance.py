@@ -30,7 +30,6 @@ from .reward import BaseRewardModel, BaseRewardEvent, pattern_to_check
 from neurons.validators.utils.prompts import (
     SummaryRelevancePrompt,
     LinkContentPrompt,
-    extract_score_and_explanation,
 )
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from datura.protocol import (
@@ -43,6 +42,7 @@ from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.prompts import LinkContentPrompt
+from datura.utils import clean_text
 import json
 from datetime import datetime
 import pytz
@@ -69,15 +69,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         self.tw_client = TwitterAPIClient()
 
     def clean_text(self, text):
-        # url shorteners can cause problems with tweet verification, so remove urls from the text comparison.
-        text = re.sub(r"(https?://)?\S+\.\S+\/?(\S+)?", "", text)
-        # Some scrapers put the mentions at the front of the text, remove them.
-        text = re.sub(r"^(@\w+\s*)+", "", text)
-        # Remove emojis and other symbols
-        text = re.sub(r"[^\w\s,]", "", text)
-        # And some have special characters escaped as html entities
-        text = html.unescape(text)
-        return text
+        return clean_text(text)
 
     async def llm_process_validator_tweets(self, prompt, tweets_list):
         start_llm_time = time.time()

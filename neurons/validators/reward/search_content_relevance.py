@@ -5,12 +5,13 @@ from neurons.validators.reward.reward_llm import RewardLLM
 from datura.protocol import ScraperStreamingSynapse, ScraperTextRole
 import traceback
 import bittensor as bt
+from neurons.validators.utils.prompts import LinkContentPrompt
+from datura.utils import clean_text
 from neurons.validators.apify.web_scraper_actor import WebScraperActor
 import re
 import asyncio
 from neurons.validators.utils.prompts import (
     SearchSummaryRelevancePrompt,
-    extract_score_and_explanation,
 )
 import random
 import json
@@ -49,7 +50,9 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 scoring_prompt, scoring_text = result
                 scoring_messages.append({url: scoring_text})
 
-        score_responses = self.reward_llm.llm_processing(scoring_messages)
+        score_responses = await self.reward_llm.llm_processing(
+            scoring_messages
+        )  # Await the coroutine
         return score_responses
 
     async def scrape_links_with_retries(self, urls):
@@ -203,15 +206,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             return 0
 
     def clean_text(self, text):
-        # url shorteners can cause problems with tweet verification, so remove urls from the text comparison.
-        text = re.sub(r"(https?://)?\S+\.\S+\/?(\S+)?", "", text)
-        # Some scrapers put the mentions at the front of the text, remove them.
-        text = re.sub(r"^(@\w+\s*)+", "", text)
-        # Remove emojis and other symbols
-        text = re.sub(r"[^\w\s,]", "", text)
-        # And some have special characters escaped as html entities
-        text = html.unescape(text)
-        return text
+        return clean_text(text)
 
     def get_scoring_text(
         self, prompt: str, content: str, response: ScraperStreamingSynapse
@@ -228,6 +223,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             if content is None:
                 bt.logging.debug("Search Content is empty.")
                 return None
+
             content = self.clean_text(content)
 
             scoring_prompt_text = None

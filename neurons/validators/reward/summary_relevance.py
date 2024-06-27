@@ -28,7 +28,6 @@ from neurons.validators.reward.reward import BaseRewardModel, BaseRewardEvent
 from neurons.validators.utils.prompts import (
     SummaryRelevancePrompt,
     LinkContentPrompt,
-    extract_score_and_explanation,
 )
 
 from datura.protocol import ScraperStreamingSynapse
