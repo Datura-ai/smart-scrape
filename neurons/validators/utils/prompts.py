@@ -347,7 +347,7 @@ Here is the question:
 {}
 </Question>
 
-And the tweet content:
+And the answer content:
 <Answer>
 {}
 </Answer>
