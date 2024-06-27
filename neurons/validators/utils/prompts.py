@@ -316,6 +316,26 @@ user_summary_relevance_scoring_template = """
 
 
 user_link_content_relevance_template = """
+#### Step 1: Analyze the Question
+- **Identify Keywords and Themes**: Extract important keywords or themes from the question. These are essential for determining the relevance of the tweet.
+- **Understand the Context**: Grasp the overall context of the question to understand what specific information or opinions it seeks.
+
+#### Step 2: Analyze the Tweet Content
+- **Identify Mentioned Keywords**: Look for any mention of the keywords or themes identified in the question.
+- **Determine Engagement Level**: Assess how deeply the tweet engages with these keywords or themes.
+
+#### Step 3: Compare Question and Tweet Content
+- **Check for Relevance**: Determine if the tweet content is relevant to the question based on the identified keywords and themes.
+- **Evaluate Depth of Engagement**: Judge how thoroughly the tweet discusses the keywords or themes. Is it a superficial mention or a detailed analysis?
+
+### Important Scoring Rules:
+1. **Identify Keywords or Topics**: Extract keywords or themes from the question that are essential for the answer.
+2. **Evaluate Engagement**: Determine the tweet's level of engagement with these keywords or topics.
+3. **Assign a Score Based on Depth**: 
+   - **Score 2**: No mention of relevant keywords or topics.
+   - **Score 5**: Superficial mention of relevant keywords or topics without detailed analysis.
+   - **Score 9**: Detailed discussion and analysis of relevant keywords or topics, including specific examples or evidence.
+
 <Question>
 {}
 </Question>
@@ -329,18 +349,6 @@ system_link_content_relevance_template = """
 Evaluate the relevance of the tweet content in response to a specific question. The score is determined based on the presence of keywords or topics related to the question and the depth of engagement with these topics.
 
 ### Detailed Step-by-Step Logic for Comparison
-
-#### Step 1: Analyze the Question
-- **Identify Keywords and Themes**: Extract important keywords or themes from the question. These are essential for determining the relevance of the tweet.
-- **Understand the Context**: Grasp the overall context of the question to understand what specific information or opinions it seeks.
-
-#### Step 2: Analyze the Tweet Content
-- **Identify Mentioned Keywords**: Look for any mention of the keywords or themes identified in the question.
-- **Determine Engagement Level**: Assess how deeply the tweet engages with these keywords or themes.
-
-#### Step 3: Compare Question and Tweet Content
-- **Check for Relevance**: Determine if the tweet content is relevant to the question based on the identified keywords and themes.
-- **Evaluate Depth of Engagement**: Judge how thoroughly the tweet discusses the keywords or themes. Is it a superficial mention or a detailed analysis?
 
 ### Scoring Criteria
 
@@ -395,14 +403,6 @@ Evaluate the relevance of the tweet content in response to a specific question. 
     - **Tweet**: "A balanced diet, rich in fruits, vegetables, and lean proteins, can improve overall health, boost energy levels, and reduce the risk of chronic diseases."
     - **Output**: Score 9, Explanation: The tweet provides a detailed analysis of the benefits of a balanced diet, mentioning multiple relevant keywords and offering specific examples.
 
-### Important Scoring Rules:
-1. **Identify Keywords or Topics**: Extract keywords or themes from the question that are essential for the answer.
-2. **Evaluate Engagement**: Determine the tweet's level of engagement with these keywords or topics.
-3. **Assign a Score Based on Depth**: 
-   - **Score 2**: No mention of relevant keywords or topics.
-   - **Score 5**: Superficial mention of relevant keywords or topics without detailed analysis.
-   - **Score 9**: Detailed discussion and analysis of relevant keywords or topics, including specific examples or evidence.
-
 **OUTPUT EXAMPLE FORMAT:**
 Score: 2, Explanation:
 
@@ -437,18 +437,6 @@ system_search_summary_relevance_scoring_template = """
 Evaluate the relevance of the web link content in response to a specific question. The score is determined based on the presence of keywords or topics related to the question and the depth of engagement with these topics.
 
 ### Detailed Step-by-Step Logic for Comparison
-
-#### Step 1: Analyze the Question
-- **Identify Keywords and Themes**: Extract important keywords or themes from the question. These are essential for determining the relevance of the web link content.
-- **Understand the Context**: Grasp the overall context of the question to understand what specific information or opinions it seeks.
-
-#### Step 2: Analyze the Web Link Content
-- **Identify Mentioned Keywords**: Look for any mention of the keywords or themes identified in the question.
-- **Determine Engagement Level**: Assess how deeply the web link content engages with these keywords or themes.
-
-#### Step 3: Compare Question and Web Link Content
-- **Check for Relevance**: Determine if the web link content is relevant to the question based on the identified keywords and themes.
-- **Evaluate Depth of Engagement**: Judge how thoroughly the web link content discusses the keywords or themes. Is it a superficial mention or a detailed analysis?
 
 ### Scoring Criteria
 
@@ -503,14 +491,6 @@ Evaluate the relevance of the web link content in response to a specific questio
     - **Web Link Content**: "Effective urban planning can transform city living by reducing traffic congestion through improved public transport systems and creating green spaces for recreation."
     - **Output**: Score 9, Explanation: This content directly addresses the question by discussing specific aspects of urban planning, providing a clear connection to the question's themes and offering a detailed analysis of how urban planning can impact city life.
 
-### Important Scoring Rules:
-1. **Identify Keywords or Topics**: Extract keywords or themes from the question that are essential for the answer.
-2. **Evaluate Engagement**: Determine the web link content's level of engagement with these keywords or topics.
-3. **Assign a Score Based on Depth**: 
-   - **Score 2**: No mention of relevant keywords or topics.
-   - **Score 5**: Superficial mention of relevant keywords or topics without detailed analysis.
-   - **Score 9**: Detailed discussion and analysis of relevant keywords or topics, including specific examples or evidence.
-
 **OUTPUT EXAMPLE FORMAT:**
 Score: 2, Explanation:
 
@@ -520,6 +500,26 @@ You MUST generate a single score, either 2, 5, or 9, based on the scoring rules 
 
 
 user_search_summary_relevance_scoring_template = """
+#### Step 1: Analyze the Question
+- **Identify Keywords and Themes**: Extract important keywords or themes from the question. These are essential for determining the relevance of the web link content.
+- **Understand the Context**: Grasp the overall context of the question to understand what specific information or opinions it seeks.
+
+#### Step 2: Analyze the Web Link Content
+- **Identify Mentioned Keywords**: Look for any mention of the keywords or themes identified in the question.
+- **Determine Engagement Level**: Assess how deeply the web link content engages with these keywords or themes.
+
+#### Step 3: Compare Question and Web Link Content
+- **Check for Relevance**: Determine if the web link content is relevant to the question based on the identified keywords and themes.
+- **Evaluate Depth of Engagement**: Judge how thoroughly the web link content discusses the keywords or themes. Is it a superficial mention or a detailed analysis?
+
+### Important Scoring Rules:
+1. **Identify Keywords or Topics**: Extract keywords or themes from the question that are essential for the answer.
+2. **Evaluate Engagement**: Determine the web link content's level of engagement with these keywords or topics.
+3. **Assign a Score Based on Depth**: 
+   - **Score 2**: No mention of relevant keywords or topics.
+   - **Score 5**: Superficial mention of relevant keywords or topics without detailed analysis.
+   - **Score 9**: Detailed discussion and analysis of relevant keywords or topics, including specific examples or evidence.
+
 <Question>
 {}
 </Question>
