@@ -171,7 +171,7 @@ class RewardLLM:
         else:
             return await self.get_score_by_openai(messages=messages)
 
-    def llm_processing(self, messages):
+    async def llm_processing(self, messages):
         # Initialize score_responses as an empty dictionary to hold the scoring results
         score_responses = {}
 
@@ -185,7 +185,7 @@ class RewardLLM:
         # Attempt to score messages using the defined sources in order
         for source in scoring_sources:
             # Attempt to score with the current source
-            current_score_responses = self.get_score_by_source(
+            current_score_responses = await self.get_score_by_source(
                 messages=messages, source=source
             )
             if current_score_responses:

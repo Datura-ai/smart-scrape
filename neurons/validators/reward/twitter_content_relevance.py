@@ -83,7 +83,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             if result:
                 scoring_prompt, scoring_text = result
                 scoring_messages.append({str(val_tweet_id): scoring_text})
-        score_responses = self.reward_llm.llm_processing(scoring_messages)
+        score_responses = await self.reward_llm.llm_processing(scoring_messages)
 
         end_llm_time = time.time()
         llm_duration_minutes = (end_llm_time - start_llm_time) / 60
