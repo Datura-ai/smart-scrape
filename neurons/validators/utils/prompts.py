@@ -185,39 +185,38 @@ class SearchSummaryRelevancePrompt(ScoringPrompt):
     def get_system_message(self):
         return system_message_question_answer_template
 
+    def extract_score(self, response: str) -> float:
+        r"""Extract numeric score (range 0-10) from prompt response."""
+        # Mapping of special codes to numeric scores
+
+        # Extract score from output string with various formats
+        match = re.search(r"(?i)score[:\s]*([0-9]|10)", response)
+        if match:
+            try:
+                score = float(match.group(1))
+                if 0 <= score <= 10:
+                    return score
+            except ValueError:
+                return 0
+
+        # Extract score directly from the response if "Score:" prefix is missing
+        match = re.search(r"\b([0-9]|10)\b", response)
+        if match:
+            try:
+                score = float(match.group(1))
+                if 0 <= score <= 10:
+                    return score
+            except ValueError:
+                return 0
+
+        return 0
+
 
 def find_unique_tags(input_text: str):
     r"""Find all substrings that match the pattern '<...>'."""
     matches = re.findall("<([^>]*)>", input_text)
     # Return a list of unique matches.
     return list(set(matches))
-
-
-def extract_score(self, response: str) -> float:
-    r"""Extract numeric score (range 0-10) from prompt response."""
-    # Mapping of special codes to numeric scores
-
-    # Extract score from output string with various formats
-    match = re.search(r"(?i)score[:\s]*([0-9]|10)", response)
-    if match:
-        try:
-            score = float(match.group(1))
-            if 0 <= score <= 10:
-                return score
-        except ValueError:
-            return 0
-
-    # Extract score directly from the response if "Score:" prefix is missing
-    match = re.search(r"\b([0-9]|10)\b", response)
-    if match:
-        try:
-            score = float(match.group(1))
-            if 0 <= score <= 10:
-                return score
-        except ValueError:
-            return 0
-
-    return 0
 
 
 system_twitter_summary_relevance_scoring_template = """
