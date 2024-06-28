@@ -1,6 +1,7 @@
 import json
 from typing import Type
 import bittensor as bt
+from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from pydantic import BaseModel, Field
 from starlette.types import Send
 from datura.tools.base import BaseTool
@@ -36,45 +37,35 @@ class TwitterAdvancedSearchTool(BaseTool):
         query: str,  # run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         """Tweet message and return."""
-        openai_query_model = (
-            self.tool_manager.miner.config.miner.openai_query_model
-            if self.tool_manager
-            else "gpt-3.5-turbo-0125"
-        )
-        openai_fix_query_model = (
-            self.tool_manager.miner.config.miner.openai_fix_query_model
-            if self.tool_manager
-            else "gpt-4-1106-preview"
-        )
         date_filter = (
             self.tool_manager.date_filter
             if self.tool_manager
             else get_specified_date_filter(DateFilterType.PAST_WEEK)
         )
+        start_date = date_filter.start_date.date()
+        end_date = date_filter.end_date.date()
 
-        client = TwitterPromptAnalyzer(
-            openai_query_model=openai_query_model,
-            openai_fix_query_model=openai_fix_query_model,
-        )
+        client = TwitterScraperActor()
 
-        result, prompt_analysis = await client.analyse_prompt_and_fetch_tweets(
-            query,
-            date_filter=date_filter,
+        result = await client.get_tweets_advanced(
+            urls=[],
+            start=start_date,
+            end=end_date,
         )
 
         bt.logging.info(
-            "================================== Prompt analysis ==================================="
+            "================================== Twitter Advanced Search Results ==================================="
         )
-        bt.logging.info(prompt_analysis)
+        bt.logging.info(result)
         bt.logging.info(
-            "================================== Prompt analysis ===================================="
+            "================================== Twitter Advanced Search Results ===================================="
         )
 
         if self.tool_manager:
             self.tool_manager.twitter_data = result
-            self.tool_manager.twitter_prompt_analysis = prompt_analysis
+            self.tool_manager.twitter_prompt_analysis = {}
 
-        return (result, prompt_analysis)
+        return (result, {})
 
     async def send_event(self, send: Send, response_streamer, data):
         if not data:
