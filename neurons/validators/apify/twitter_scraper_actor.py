@@ -125,7 +125,7 @@ class TwitterScraperActor:
         tweetLanguage: Optional[str] = None,
         twitterHandles: Optional[List[str]] = None,
         withinRadius: Optional[str] = None,
-    ) -> List[TwitterScraperTweet]:
+    ) -> List[dict]:
         if not APIFY_API_KEY:
             bt.logging.warning(
                 "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
@@ -164,7 +164,7 @@ class TwitterScraperActor:
 
             run = await self.client.actor(self.actor_id).call(run_input=run_input)
 
-            tweets: List[TwitterScraperTweet] = []
+            tweets: List[dict] = []
 
             async for item in self.client.dataset(
                 run["defaultDatasetId"]
@@ -208,7 +208,7 @@ class TwitterScraperActor:
                     ),
                 )
 
-                tweets.append(tweet)
+                tweets.append(tweet.dict())
 
             return tweets
         except Exception as e:

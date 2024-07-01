@@ -1,4 +1,5 @@
 import json
+import time
 from typing import Type
 import bittensor as bt
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
@@ -37,6 +38,7 @@ class TwitterAdvancedSearchTool(BaseTool):
         query: str,  # run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         """Tweet message and return."""
+        start_time = time.time()
         date_filter = (
             self.tool_manager.date_filter
             if self.tool_manager
@@ -47,16 +49,24 @@ class TwitterAdvancedSearchTool(BaseTool):
 
         client = TwitterScraperActor()
 
-        result = await client.get_tweets_advanced(
-            urls=[],
+        tweets = await client.get_tweets_advanced(
+            urls=[
+
+            ],
             start=start_date,
             end=end_date,
+            searchTerms=["Crypto"],
         )
+
+        result = {
+            "data": tweets,
+            "result_count": len(tweets),
+        }
 
         bt.logging.info(
             "================================== Twitter Advanced Search Results ==================================="
         )
-        bt.logging.info(result)
+        bt.logging.info(tweets)
         bt.logging.info(
             "================================== Twitter Advanced Search Results ===================================="
         )
@@ -64,6 +74,11 @@ class TwitterAdvancedSearchTool(BaseTool):
         if self.tool_manager:
             self.tool_manager.twitter_data = result
             self.tool_manager.twitter_prompt_analysis = {}
+
+        execution_time = (time.time() - start_time) / 60
+        bt.logging.info("==========================================")
+        bt.logging.info(f"Twitter Advanced Search Execution time is: {execution_time} minutes")
+        bt.logging.info("==========================================")
 
         return (result, {})
 
@@ -90,7 +105,7 @@ class TwitterAdvancedSearchTool(BaseTool):
             bt.logging.info("Prompt Analysis sent")
 
         if tweets:
-            tweets_amount = tweets.get("meta", {}).get("result_count", 0)
+            tweets_amount = tweets.get("result_count", 0)
 
             tweets_response_body = {"type": "tweets", "content": tweets}
             response_streamer.more_body = False
