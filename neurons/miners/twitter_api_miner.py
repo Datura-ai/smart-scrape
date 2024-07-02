@@ -14,13 +14,11 @@ class TwitterAPIMiner:
         if synapse.request_type == TwitterAPISynapseCall.GET_USER.value:
             response = await self.client.get_user_by_id(
                 id=synapse.user_id,
-                maxUsersPerQuery=max_users_per_query,
             )
             synapse.results = response
         elif synapse.request_type == TwitterAPISynapseCall.GET_USER_WITH_USERNAME.value:
             response = await self.client.get_user_by_username(
                 username=synapse.username,
-                maxUsersPerQuery=max_users_per_query,
             )
             synapse.results = response
         elif synapse.request_type == TwitterAPISynapseCall.GET_USER_FOLLOWINGS.value:

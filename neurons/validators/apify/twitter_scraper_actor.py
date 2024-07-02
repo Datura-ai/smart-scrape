@@ -101,7 +101,6 @@ class TwitterScraperActor:
     async def get_user_by_id(
         self,
         id: str,
-        maxUsersPerQuery: Optional[int] = 100,
     ) -> dict:
         if not APIFY_API_KEY:
             error = "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
@@ -110,8 +109,8 @@ class TwitterScraperActor:
         try:
             run_input = {
                 "twitterUserIds": [id],
-                "maxUsersPerQuery": maxUsersPerQuery,
-                "getFollowing": False,
+                "maxUsersPerQuery": 1,
+                "getFollowing": True,
                 "getRetweeters": False,
                 "getFollowers": False,
                 "includeUnavailableUsers": False,
@@ -122,15 +121,15 @@ class TwitterScraperActor:
                 run_input=run_input
             )
 
-            users: List[dict] = []
-
+            users = []
             async for item in self.client.dataset(
                 run["defaultDatasetId"]
             ).iterate_items():
-                users.append(item)
+                if item.get('id') == id:
+                    user = item
 
             return {
-                "data": users
+                "data": user
             }
         except Exception as e:
             error_message = (
@@ -145,7 +144,6 @@ class TwitterScraperActor:
     async def get_user_by_username(
         self,
         username: str,
-        maxUsersPerQuery: Optional[int] = 100,
     ) -> dict:
         if not APIFY_API_KEY:
             error = "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
@@ -154,8 +152,8 @@ class TwitterScraperActor:
         try:
             run_input = {
                 "twitterHandles": [username],
-                "maxUsersPerQuery": maxUsersPerQuery,
-                "getFollowing": False,
+                "maxUsersPerQuery": 1,
+                "getFollowing": True,
                 "getRetweeters": False,
                 "getFollowers": False,
                 "includeUnavailableUsers": False,
@@ -166,15 +164,15 @@ class TwitterScraperActor:
                 run_input=run_input
             )
 
-            users: List[dict] = []
-
+            user = None
             async for item in self.client.dataset(
                 run["defaultDatasetId"]
             ).iterate_items():
-                users.append(item)
+                if item.get('userName') == username:
+                    user = item
 
             return {
-                "data": users
+                "data": user
             }
         except Exception as e:
             error_message = (
