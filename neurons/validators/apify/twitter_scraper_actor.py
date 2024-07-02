@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 
 # DEALINGS IN THE SOFTWARE.p
 import traceback
@@ -25,6 +25,7 @@ class TwitterScraperActor:
     def __init__(self) -> None:
         # Actor: https://apify.com/apidojo/tweet-scraper
         self.actor_id = "61RPP7dywgiy0JPD0"
+        self.user_scraper_actor_id = "V38PZzpEgOfeeWvZY"
         self.client = ApifyClientAsync(token=APIFY_API_KEY)
 
     async def get_tweets(
@@ -97,9 +98,11 @@ class TwitterScraperActor:
             bt.logging.warning("\n".join(tb_str) + error_message)
             return []
 
-    async def get_user_followings(
+    async def get_user_by_id(
         self,
-        usernames: List[str]
+        id: str,
+        maxItems: Optional[int] = 1000,
+        maxUsersPerQuery: Optional[int] = 100,
     ) -> List[dict]:
         if not APIFY_API_KEY:
             bt.logging.warning(
@@ -108,22 +111,114 @@ class TwitterScraperActor:
             return []
         try:
             run_input = {
-                "twitterHandles": usernames,
+                "maxItems": maxItems,
+                "twitterUserIds": [id],
+                "maxUsersPerQuery": maxUsersPerQuery,
+                "getFollowing": False,
+                "getRetweeters": False,
+                "getFollowers": False,
+                "includeUnavailableUsers": False,
             }
             run_input = {k: v for k, v in run_input.items() if v is not None}
 
-            run = await self.client.actor(self.actor_id).call(run_input=run_input)
+            run = await self.client.actor(self.user_scraper_actor_id).call(
+                run_input=run_input
+            )
 
             users: List[dict] = []
 
             async for item in self.client.dataset(
                 run["defaultDatasetId"]
             ).iterate_items():
-                users.append(
-                    TwitterScraperUser(
-                        item
-                    )
-                )
+                users.append(item)
+
+            return users
+        except Exception as e:
+            error_message = (
+                f"TwitterScraperActor: Failed to scrape users {ids}: {str(e)}"
+            )
+            tb_str = traceback.format_exception(type(e), e, e.__traceback__)
+            bt.logging.warning("\n".join(tb_str) + error_message)
+            return []
+
+    async def get_user_by_username(
+        self,
+        username: str,
+        maxItems: Optional[int] = 1000,
+        maxUsersPerQuery: Optional[int] = 100,
+    ) -> List[dict]:
+        if not APIFY_API_KEY:
+            bt.logging.warning(
+                "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
+            )
+            return []
+        try:
+            run_input = {
+                "maxItems": maxItems,
+                "twitterHandles": [username],
+                "maxUsersPerQuery": maxUsersPerQuery,
+                "getFollowing": False,
+                "getRetweeters": False,
+                "getFollowers": False,
+                "includeUnavailableUsers": False,
+            }
+            run_input = {k: v for k, v in run_input.items() if v is not None}
+
+            run = await self.client.actor(self.user_scraper_actor_id).call(
+                run_input=run_input
+            )
+
+            users: List[dict] = []
+
+            async for item in self.client.dataset(
+                run["defaultDatasetId"]
+            ).iterate_items():
+                users.append(item)
+
+            return users
+        except Exception as e:
+            error_message = (
+                f"TwitterScraperActor: Failed to scrape users {ids}: {str(e)}"
+            )
+            tb_str = traceback.format_exception(type(e), e, e.__traceback__)
+            bt.logging.warning("\n".join(tb_str) + error_message)
+            return []
+
+    async def get_user_followings(
+        self,
+        ids: Optional[List[str]],
+        usernames: Optional[List[str]],
+        maxItems: Optional[int] = 1000,
+        maxUsersPerQuery: Optional[int] = 100,
+    ) -> List[dict]:
+        if not APIFY_API_KEY:
+            bt.logging.warning(
+                "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
+            )
+            return []
+        try:
+            run_input = {
+                "maxItems": maxItems,
+                "twitterUserIds": ids,
+                "twitterHandles": usernames,
+                "maxUsersPerQuery": maxUsersPerQuery,
+                "getFollowing": True,
+                "getRetweeters": False,
+                "getFollowers": False,
+                "includeUnavailableUsers": False,
+            }
+            run_input = {k: v for k, v in run_input.items() if v is not None}
+
+            run = await self.client.actor(self.user_scraper_actor_id).call(
+                run_input=run_input
+            )
+
+            users: List[dict] = []
+
+            async for item in self.client.dataset(
+                run["defaultDatasetId"]
+            ).iterate_items():
+                users.append(item)
 
             return users
         except Exception as e:
