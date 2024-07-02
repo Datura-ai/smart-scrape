@@ -440,8 +440,9 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
                 unique_tweet_texts = {}
                 for val_tweet in response.validator_tweets:
-                    if val_tweet.full_text not in unique_tweet_texts:
-                        unique_tweet_texts[val_tweet.full_text] = val_tweet
+                    text = self.format_text_for_match(val_tweet.full_text)
+                    if text not in unique_tweet_texts:
+                        unique_tweet_texts[text] = val_tweet
 
                 unique_validator_tweets = list(unique_tweet_texts.values())
 
