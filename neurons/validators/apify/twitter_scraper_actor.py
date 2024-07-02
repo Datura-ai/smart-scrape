@@ -96,3 +96,40 @@ class TwitterScraperActor:
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.warning("\n".join(tb_str) + error_message)
             return []
+
+    async def get_user_followings(
+        self,
+        usernames: List[str]
+    ) -> List[dict]:
+        if not APIFY_API_KEY:
+            bt.logging.warning(
+                "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
+            )
+            return []
+        try:
+            run_input = {
+                "twitterHandles": usernames,
+            }
+            run_input = {k: v for k, v in run_input.items() if v is not None}
+
+            run = await self.client.actor(self.actor_id).call(run_input=run_input)
+
+            users: List[dict] = []
+
+            async for item in self.client.dataset(
+                run["defaultDatasetId"]
+            ).iterate_items():
+                users.append(
+                    TwitterScraperUser(
+                        item
+                    )
+                )
+
+            return users
+        except Exception as e:
+            error_message = (
+                f"TwitterScraperActor: Failed to scrape users {usernames}: {str(e)}"
+            )
+            tb_str = traceback.format_exception(type(e), e, e.__traceback__)
+            bt.logging.warning("\n".join(tb_str) + error_message)
+            return []
