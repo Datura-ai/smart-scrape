@@ -101,17 +101,14 @@ class TwitterScraperActor:
     async def get_user_by_id(
         self,
         id: str,
-        maxItems: Optional[int] = 1000,
         maxUsersPerQuery: Optional[int] = 100,
-    ) -> List[dict]:
+    ) -> dict:
         if not APIFY_API_KEY:
-            bt.logging.warning(
-                "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
-            )
-            return []
+            error = "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
+            bt.logging.warning(error)
+            return {"error": error}
         try:
             run_input = {
-                "maxItems": maxItems,
                 "twitterUserIds": [id],
                 "maxUsersPerQuery": maxUsersPerQuery,
                 "getFollowing": False,
@@ -132,29 +129,30 @@ class TwitterScraperActor:
             ).iterate_items():
                 users.append(item)
 
-            return users
+            return {
+                "data": users
+            }
         except Exception as e:
             error_message = (
-                f"TwitterScraperActor: Failed to scrape users {ids}: {str(e)}"
+                f"TwitterScraperActor: Failed to scrape user {id}: {str(e)}"
             )
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.warning("\n".join(tb_str) + error_message)
-            return []
+            return {
+                "error": error_message,
+            }
 
     async def get_user_by_username(
         self,
         username: str,
-        maxItems: Optional[int] = 1000,
         maxUsersPerQuery: Optional[int] = 100,
-    ) -> List[dict]:
+    ) -> dict:
         if not APIFY_API_KEY:
-            bt.logging.warning(
-                "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
-            )
-            return []
+            error = "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
+            bt.logging.warning(error)
+            return {"error": error}
         try:
             run_input = {
-                "maxItems": maxItems,
                 "twitterHandles": [username],
                 "maxUsersPerQuery": maxUsersPerQuery,
                 "getFollowing": False,
@@ -175,32 +173,31 @@ class TwitterScraperActor:
             ).iterate_items():
                 users.append(item)
 
-            return users
+            return {
+                "data": users
+            }
         except Exception as e:
             error_message = (
-                f"TwitterScraperActor: Failed to scrape users {ids}: {str(e)}"
+                f"TwitterScraperActor: Failed to scrape user {username}: {str(e)}"
             )
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.warning("\n".join(tb_str) + error_message)
-            return []
+            return {
+                "error": error_message,
+            }
 
     async def get_user_followings(
         self,
-        ids: Optional[List[str]],
-        usernames: Optional[List[str]],
-        maxItems: Optional[int] = 1000,
+        id: str,
         maxUsersPerQuery: Optional[int] = 100,
-    ) -> List[dict]:
+    ) -> dict:
         if not APIFY_API_KEY:
-            bt.logging.warning(
-                "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
-            )
-            return []
+            error = "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
+            bt.logging.warning(error)
+            return {"error": error}
         try:
             run_input = {
-                "maxItems": maxItems,
-                "twitterUserIds": ids,
-                "twitterHandles": usernames,
+                "twitterUserIds": [id],
                 "maxUsersPerQuery": maxUsersPerQuery,
                 "getFollowing": True,
                 "getRetweeters": False,
@@ -220,11 +217,15 @@ class TwitterScraperActor:
             ).iterate_items():
                 users.append(item)
 
-            return users
+            return {
+                "data": users
+            }
         except Exception as e:
             error_message = (
-                f"TwitterScraperActor: Failed to scrape users {usernames}: {str(e)}"
+                f"TwitterScraperActor: Failed to scrape user's followings {id}: {str(e)}"
             )
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.warning("\n".join(tb_str) + error_message)
-            return []
+            return {
+                "error": error_message,
+            }

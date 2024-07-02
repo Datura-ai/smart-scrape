@@ -634,7 +634,7 @@ class TwitterAPISynapse(bt.Synapse):
         None,
         title="Request type field to decide the method to call"
     )
-    
+
     user_id: Optional[str] = pydantic.Field(
         None,
         title="User ID",
@@ -647,34 +647,10 @@ class TwitterAPISynapse(bt.Synapse):
         description="An optional string that's user of twitter's username",
     )
 
-    user_fields: Optional[str] = pydantic.Field(
+    max_users_per_query: Optional[str] = pydantic.Field(
         None,
-        title="User Fields",
-        description="User fields param for specifying data types to fetch. Used as 'user.fields'"
-    )
- 
-    expansions: Optional[str] = pydantic.Field(
-        None,
-        title="Expansions",
-        description="User field param to enable you to request additional data objects that relate to the originally returned users. At this time, the only expansion available to endpoints that primarily return user objects is expansions=pinned_tweet_id. You will find the expanded Tweet data object living in the includes response object."
-    )
-    
-    max_results: Optional[str] = pydantic.Field(
-        None,
-        title="Max Results",
-        description="The maximum number of results to be returned per page. This can be a number between 1 and the 1000. By default, each page will return 100 results."
-    )
-    
-    pagination_token: Optional[str] = pydantic.Field(
-        None,
-        title="Pagination Token",
-        description="Used to request the next page of results if all results weren't returned with the latest request, or to go back to the previous page of results. To return the next page, pass the next_token returned in your previous response. To go back one page, pass the previous_token returned in your previous response.",
-    )
-    
-    tweet_fields: Optional[str] = pydantic.Field(
-        None,
-        title="Tweet Fields",
-        description="This fields parameter enables you to select which specific Tweet fields will deliver in each returned pinned Tweet."
+        title="Max Users per Query",
+        description="The maximum number of users to be returned per query"
     )
 
     results: Optional[Dict[str, Any]] = pydantic.Field(
