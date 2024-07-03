@@ -682,11 +682,7 @@ class ScraperValidator:
                 request_type=body.get('request_type').value,
                 user_id=body.get('user_id'),
                 username=body.get('username'),
-                user_fields=body.get('user_fields'),
-                expansions=body.get('expansions'),
-                max_results=body.get('max_results'),
-                tweet_fields=body.get('tweet_fields'),
-                pagination_token=body.get('pagination_token'),
+                max_users_per_query=body.get('max_users_per_query'),
             )
 
             synapse: TwitterAPISynapse = await self.neuron.dendrite.call(
