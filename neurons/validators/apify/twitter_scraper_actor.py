@@ -121,7 +121,7 @@ class TwitterScraperActor:
                 run_input=run_input
             )
 
-            users = []
+            user = None
             async for item in self.client.dataset(
                 run["defaultDatasetId"]
             ).iterate_items():
