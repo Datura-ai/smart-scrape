@@ -155,83 +155,7 @@ async def search(
         bt.logging.error(f"error in search {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
 
-USER_FIELDS_DESCRIPTION = (
-    "This fields parameter enables you to select which specific user fields "
-    "will be delivered with each returned user object. Specify the desired fields "
-    "in a comma-separated list without spaces between commas and fields. These specified "
-    "user fields will display directly in the user data objects.\n\n"
-    "Possible fields are:\n"
-    "- id\n"
-    "- created_at\n"
-    "- description\n"
-    "- entities\n"
-    "- location\n"
-    "- most_recent_tweet_id\n"
-    "- name\n"
-    "- pinned_tweet_id\n"
-    "- profile_image_url\n"
-    "- protected\n"
-    "- public_metrics\n"
-    "- url\n"
-    "- username\n"
-    "- verified\n"
-    "- verified_type\n"
-    "- withheld"
-)
-
-EXPANSIONS_DESCRIPTION = (
-    "Expansions enable you to request additional data "
-    "objects that relate to the originally returned users.\n "
-    "At this time, the only expansion available to endpoints "
-    "that primarily return user objects is expansions=pinned_tweet_id.\n"
-    "You will find the expanded Tweet data object living in the includes response object."
-)
-
-
-MAX_RESULTS_DESCRIPTION = (
-    "The maximum number of results to be returned per page.\n"
-    "This can be a number between 1 and the 1000.\n"
-    "By default, each page will return 100 results.\n"
-)
-
-PAGINATION_TOKEN_DESCRIPTION = (
-    "Used to request the next page of results if all "
-    "results weren't returned with the latest request, "
-    "or to go back to the previous page of results.\n"
-    "To return the next page, pass the next_token returned in your previous response.\n"
-    "To go back one page, pass the previous_token returned in your previous response."
-)
-
-TWEET_FIELDS_DESCRIPTION = (
-    "This fields parameter enables you to select which specific Tweet fields "
-    "will deliver in each returned pinned Tweet. Specify the desired fields "
-    "in a comma-separated list without spaces between commas and fields. \n"
-    "The Tweet fields will only return if the user has a pinned Tweet and "
-    "if you've also included the expansions=pinned_tweet_id query parameter in your request. "
-    "While the referenced Tweet ID will be located in the original Tweet object, "
-    "you will find this ID and all additional Tweet fields in the includes data object. \n"
-    "Possible fields are:\n"
-    " - attachments\n"
-    " - author_id\n"
-    " - context_annotations\n"
-    " - conversation_id\n"
-    " - created_at\n"
-    " - edit_controls\n"
-    " - entities\n"
-    " - geo\n"
-    " - id\n"
-    " - in_reply_to_user_id\n"
-    " - lang, non_public_metrics\n"
-    " - public_metrics\n"
-    " - organic_metrics\n"
-    " - promoted_metrics\n"
-    " - possibly_sensitive\n"
-    " - referenced_tweets\n"
-    " - reply_settings\n"
-    " - source\n"
-    " - text\n"
-    " - withheld\n"
-)
+MAX_USERS_PER_QUERY_DESCRIPTION = "Maximum number of users to return per query"
 
 twitter_api_router = APIRouter(prefix='/twitter')
 
@@ -252,30 +176,10 @@ twitter_api_router = APIRouter(prefix='/twitter')
 )
 async def get_user_followings(
     user_id: str,
-    user_fields: Optional[str] = Query(
+    max_users_per_query: Optional[int] = Query(
         None,
-        alias="user.fields",
-        description=USER_FIELDS_DESCRIPTION,
-    ),
-    expansions: Optional[str] = Query(
-        None,
-        alias="expansions",
-        description=EXPANSIONS_DESCRIPTION
-    ),
-    max_results: Optional[int] = Query(
-        None,
-        alias="max_results",
-        description=MAX_RESULTS_DESCRIPTION,
-    ),
-    pagination_token: Optional[str] = Query(
-        None,
-        alias="pagination_token",
-        description=PAGINATION_TOKEN_DESCRIPTION,
-    ),
-    tweet_fields: Optional[str] = Query(
-        None,
-        alias="tweet.fields",
-        description=TWEET_FIELDS_DESCRIPTION,
+        alias="max_users_per_query",
+        description=MAX_USERS_PER_QUERY_DESCRIPTION,
     ),
 ):
     try:
@@ -283,11 +187,7 @@ async def get_user_followings(
             body={
                 "user_id": user_id,
                 "request_type": TwitterAPISynapseCall.GET_USER_FOLLOWINGS,
-                "user_fields": user_fields,
-                "expansions": expansions,
-                "max_results": max_results,
-                "tweet_fields": tweet_fields,
-                "pagination_token": pagination_token,
+                "max_users_per_query": max_users_per_query,
             }
         )
         return response
@@ -314,42 +214,12 @@ async def get_user_followings(
 )
 async def get_user_by_id(
     user_id: str,
-    user_fields: Optional[str] = Query(
-        None,
-        alias="user.fields",
-        description=USER_FIELDS_DESCRIPTION,
-    ),
-    expansions: Optional[str] = Query(
-        None,
-        alias="expansions",
-        description=EXPANSIONS_DESCRIPTION
-    ),
-    max_results: Optional[int] = Query(
-        None,
-        alias="max_results",
-        description=MAX_RESULTS_DESCRIPTION,
-    ),
-    pagination_token: Optional[str] = Query(
-        None,
-        alias="pagination_token",
-        description=PAGINATION_TOKEN_DESCRIPTION,
-    ),
-    tweet_fields: Optional[str] = Query(
-        None,
-        alias="tweet.fields",
-        description=TWEET_FIELDS_DESCRIPTION,
-    ),
 ):
     try:
         response = await neu.scraper_validator.get_twitter_user(
             body={
                 "user_id": user_id,
                 "request_type": TwitterAPISynapseCall.GET_USER,
-                "user_fields": user_fields,
-                "expansions": expansions,
-                "max_results": max_results,
-                "tweet_fields": tweet_fields,
-                "pagination_token": pagination_token,
             }
         )
         return response
@@ -376,42 +246,12 @@ async def get_user_by_id(
 )
 async def get_user_by_username(
     username: str,
-    user_fields: Optional[str] = Query(
-        None,
-        alias="user.fields",
-        description=USER_FIELDS_DESCRIPTION,
-    ),
-    expansions: Optional[str] = Query(
-        None,
-        alias="expansions",
-        description=EXPANSIONS_DESCRIPTION
-    ),
-    max_results: Optional[int] = Query(
-        None,
-        alias="max_results",
-        description=MAX_RESULTS_DESCRIPTION,
-    ),
-    pagination_token: Optional[str] = Query(
-        None,
-        alias="pagination_token",
-        description=PAGINATION_TOKEN_DESCRIPTION,
-    ),
-    tweet_fields: Optional[str] = Query(
-        None,
-        alias="tweet.fields",
-        description=TWEET_FIELDS_DESCRIPTION,
-    ),
 ):
     try:
         response = await neu.scraper_validator.get_twitter_user(
             body={
                 "username": username,
                 "request_type": TwitterAPISynapseCall.GET_USER_WITH_USERNAME,
-                "user_fields": user_fields,
-                "expansions": expansions,
-                "max_results": max_results,
-                "tweet_fields": tweet_fields,
-                "pagination_token": pagination_token,
             }
         )
         return response
