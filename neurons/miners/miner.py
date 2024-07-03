@@ -127,7 +127,7 @@ class StreamMiner(ABC):
         ).attach(
             forward_fn=self._search,
         ).attach(
-            forward_fn=self._get_twitter_user,
+            forward_fn=self._execute_twitter_search,
         )
         bt.logging.info(f"Axon created: {self.axon}")
 
@@ -151,8 +151,8 @@ class StreamMiner(ABC):
     async def _search(self, synapse: SearchSynapse) -> SearchSynapse:
         return await self.search(synapse)
 
-    async def _get_twitter_user(self, synapse: TwitterAPISynapse) -> TwitterAPISynapse:
-        return await self.get_twitter_user(synapse)
+    async def _execute_twitter_search(self, synapse: TwitterAPISynapse) -> TwitterAPISynapse:
+        return await self.execute_twitter_search(synapse)
 
     def base_blacklist(self, synapse, blacklist_amt=20000) -> Tuple[bool, str]:
         try:
@@ -255,7 +255,7 @@ class StreamMiner(ABC):
     async def search(self, synapse: SearchSynapse) -> SearchSynapse: ...
 
     @abstractmethod
-    async def get_twitter_user(self, synapse: TwitterAPISynapse) -> TwitterAPISynapse: ...
+    async def execute_twitter_search(self, synapse: TwitterAPISynapse) -> TwitterAPISynapse: ...
 
     def run(self):
         if not self.subtensor.is_hotkey_registered(
@@ -370,10 +370,10 @@ class StreamingTemplateMiner(StreamMiner):
         search_miner = SearchMiner(self)
         return await search_miner.search(synapse)
 
-    async def get_twitter_user(self, synapse: TwitterAPISynapse) -> TwitterAPISynapse:
+    async def execute_twitter_search(self, synapse: TwitterAPISynapse) -> TwitterAPISynapse:
         bt.logging.info(f"started processing for twitter api synapse {synapse}")
         twitter_api_miner = TwitterAPIMiner(self)
-        return await twitter_api_miner.get_user(synapse)
+        return await twitter_api_miner.execute_twitter_search(synapse)
 
 
 def get_valid_hotkeys(config):

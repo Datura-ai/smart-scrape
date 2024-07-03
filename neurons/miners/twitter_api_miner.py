@@ -7,10 +7,10 @@ class TwitterAPIMiner:
         self.miner = miner
         self.client = TwitterScraperActor()
 
-    async def get_user(self, synapse: TwitterAPISynapse):
-        max_users_per_query = synapse.max_users_per_query
-        if max_users_per_query:
-            max_users_per_query = int(max_users_per_query)
+    async def execute_twitter_search(self, synapse: TwitterAPISynapse):
+        max_items = synapse.max_items
+        if max_items:
+            max_items = int(max_items)
         if synapse.request_type == TwitterAPISynapseCall.GET_USER.value:
             response = await self.client.get_user_by_id(
                 id=synapse.user_id,
@@ -24,7 +24,7 @@ class TwitterAPIMiner:
         elif synapse.request_type == TwitterAPISynapseCall.GET_USER_FOLLOWINGS.value:
             response = await self.client.get_user_followings(
                 id=synapse.user_id,
-                maxUsersPerQuery=max_users_per_query,
+                maxUsersPerQuery=max_items,
             )
             synapse.results = response
 

@@ -97,7 +97,6 @@ class TwitterScraperActor:
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.warning("\n".join(tb_str) + error_message)
             return []
-        
 
     async def get_tweets_advanced(
         self,
@@ -220,7 +219,6 @@ class TwitterScraperActor:
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.warning("\n".join(tb_str) + error_message)
             return []
-        
 
     async def get_user_by_id(
         self,

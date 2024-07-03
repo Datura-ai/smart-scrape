@@ -625,6 +625,7 @@ class TwitterAPISynapseCall(Enum):
     GET_USER_FOLLOWINGS = "GET_USER_FOLLOWINGS"
     GET_USER = "GET_USER"
     GET_USER_WITH_USERNAME = "GET_USER_WITH_USERNAME"
+    SEARCH_TWEETS = "SEARCH_TWEETS"
 
 
 class TwitterAPISynapse(bt.Synapse):
@@ -647,10 +648,52 @@ class TwitterAPISynapse(bt.Synapse):
         description="An optional string that's user of twitter's username",
     )
 
-    max_users_per_query: Optional[str] = pydantic.Field(
+    max_items: Optional[str] = pydantic.Field(
         None,
-        title="Max Users per Query",
-        description="The maximum number of users to be returned per query"
+        title="Max Results",
+        description="The maximum number of results to be returned per query"
+    )
+
+    min_retweets: Optional[str] = pydantic.Field(
+        None,
+        title="Minimum Retweets",
+        description="Filter to get tweets with minimum number of retweets"
+    )
+
+    min_likes: Optional[str] = pydantic.Field(
+        None,
+        title="Minimum Likes",
+        description="Filter to get tweets with minimum number of likes"
+    )
+
+    only_verified: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Verified",
+        description="Filter to get only verified users' tweets"
+    )
+
+    only_twitter_blue: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Twitter Blue",
+        description="Filter to get only twitter blue users' tweets"
+    )
+
+    only_video: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Video",
+        description="Filter to get only those tweets which has video embedded"
+    )
+
+    only_image: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Image",
+        description="Filter to get only those tweets which has image embedded"
+    )
+
+    only_quote: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Quote",
+        description="Filter to get only those tweets which has quote embedded"
     )
 
     results: Optional[Dict[str, Any]] = pydantic.Field(
