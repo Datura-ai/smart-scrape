@@ -36,6 +36,7 @@ from neurons.validators.reward.reward_llm import RewardLLM
 from datura.services.twitter_utils import TwitterUtils
 import json
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
+from neurons.validators.reward.config import DefaultSummaryRelevanceWeightConfig
 
 
 class SummaryRelevanceRewardModel(BaseRewardModel):
@@ -114,12 +115,12 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             bt.logging.error(f"Summary Relevance get_scoring_text: {str(e)}")
             return None
 
-    async def score_tweet_descriptions(self, responses: List[ScraperStreamingSynapse]):
+    async def process_tweet_scoring_messages(self, responses):
         scoring_messages = []
 
         scoring_prompt = TweetContentPrompt()
 
-        link_with_descriptions_list = []
+        scoring_keys_list = []
 
         # Accumulate scoring messages to compare scraped tweet texts with markdown link descriptions
         for response in responses:
@@ -129,7 +130,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 twitter_completion
             )
 
-            link_with_descriptions_list.append(link_with_descriptions)
+            scoring_keys = []
 
             for link, description in link_with_descriptions:
                 validator_tweet = next(
@@ -157,32 +158,44 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     {"role": "user", "content": scoring_prompt_text},
                 ]
 
-                scoring_messages.append({description: scoring_text})
+                scoring_key = f"{validator_tweet.id}/{description}"
+
+                scoring_keys.append(scoring_key)
+                scoring_messages.append({scoring_key: scoring_text})
+
+            scoring_keys_list.append(scoring_keys)
 
         if not scoring_messages:
-            return [0 for _ in responses]
+            return [0 for _ in responses], scoring_keys_list
 
         score_responses = await self.reward_llm.llm_processing(scoring_messages)
+
+        return score_responses, scoring_keys_list
+
+    async def score_tweet_descriptions(self, responses: List[ScraperStreamingSynapse]):
+        score_responses, scoring_keys_list = await self.process_tweet_scoring_messages(
+            responses
+        )
+
+        scoring_prompt = TweetContentPrompt()
 
         average_scores = []
         expected_links = 10
 
-        for response, link_with_descriptions in zip(
-            responses, link_with_descriptions_list
-        ):
+        for scoring_keys in scoring_keys_list:
             tweet_description_scores = []
 
             # Parse scores from LLM response
-            for link, description in link_with_descriptions:
-                score_result = score_responses.get(description)
+            for scoring_key in scoring_keys:
+                score_result = score_responses.get(scoring_key)
                 score = scoring_prompt.extract_score(score_result)
 
                 if score is not None:
                     tweet_description_scores.append(score)
 
             # Calculate average score and scale down to 0-1 range
-            average_score = sum(tweet_description_scores) / expected_links / 10
-            average_score = min(average_score, 0.5)
+            average_score = sum(tweet_description_scores) / expected_links / 5
+            average_score = min(average_score, 1)
             average_scores.append(average_score)
 
         return average_scores
@@ -261,12 +274,39 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             zero_scores = {}
             non_zero_scores = {}
 
+            summary_weight = torch.tensor(
+                DefaultSummaryRelevanceWeightConfig.summary_weight,
+                device=self.device,
+                dtype=torch.float32,
+            )
+
+            link_content_weight = torch.tensor(
+                DefaultSummaryRelevanceWeightConfig.link_content_weight,
+                device=self.device,
+                dtype=torch.float32,
+            )
+
             for (index, response), tweet_description_score, uid_tensor in zip(
                 enumerate(responses), tweet_description_scores, uids
             ):
                 uid = uid_tensor.item()
-                summary_score = scores.get(str(index), 0) / 2
-                score = min(summary_score + tweet_description_score, 1)
+
+                summary_score = scores.get(str(index), 0)
+
+                summary_score = (
+                    torch.tensor(summary_score, device=self.device, dtype=torch.float32)
+                    * summary_weight
+                )
+
+                links_score = (
+                    torch.tensor(
+                        tweet_description_score, device=self.device, dtype=torch.float32
+                    )
+                    * link_content_weight
+                )
+
+                score = torch.clamp(summary_score + links_score, max=1.0)
+                score = score.item()
                 score_explain = score_text.get(str(index), "")
 
                 reward_event = BaseRewardEvent()

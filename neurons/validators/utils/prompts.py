@@ -180,10 +180,10 @@ class TweetContentPrompt(ScoringPrompt):
 
     def __init__(self):
         super().__init__()
-        self.template = tweet_content_and_description_template
+        self.template = text_and_summarized_description_template
 
     def get_system_message(self):
-        return tweet_content_scoring_template
+        return text_and_summarized_description_scoring_template
 
 
 class SearchSummaryRelevancePrompt(ScoringPrompt):
@@ -350,45 +350,34 @@ Output Format:
 Score: [2, 5, or 9], Explanation:
 """
 
-
-tweet_content_scoring_template = """
+text_and_summarized_description_scoring_template = """
 Relevance Scoring Guide:
 
 Role: As an evaluator, your task is to determine how well a full tweet text relates to summarized description on the presence of keywords and the depth of content.
 
 Scoring Criteria:
-
 Score 0:
-- Criteria: Content does not mention the question’s keywords/themes.
-- Example:
-    - Tweet: "Just finished my morning run. Beautiful day outside!"
-    - Description: "Discussion on the impact of artificial intelligence on job markets."
-    - Output: Score: 0, Explanation: The tweet content is completely unrelated to the description. There is no mention of artificial intelligence or job markets in the tweet about a morning run.
-
-Score 2:
-- Criteria: Content mentions keywords/themes but lacks detailed analysis.
-- Example:
-    - Tweet: "AI is changing everything these days. Crazy times we live in!"
-    - Description: "Analysis of how artificial intelligence is reshaping various industries and job markets, with specific examples and potential future impacts."
-    - Output: Score: 2, Explanation: The tweet mentions AI and acknowledges its impact, which is relevant to the description. However, it lacks any specific examples, analysis of industries, or discussion of job markets. It's a superficial mention without the detailed analysis the description suggests.
-
+    - Criteria: Content does not match the summarized description or mentions unrelated themes.
+    - Example:
+        - Tweet: "Just finished my morning run. Beautiful day outside!"
+        - Description: "John discusses the latest advancements in quantum computing and their potential impact on cryptography."
+        - Output: Score: 0, Explanation: The tweet content is completely unrelated to the summarized description. The tweet talks about a morning run, while the description is about quantum computing and cryptography. There's no match between the content and the description.
 Score 5:
-- Criteria: Content mentions multiple keywords/themes and provides detailed analysis with examples or evidence.
-- Example:
-    - Tweet: "Love this picture, although I suspect it's AI generated. Maybe because my favourite colour is blue."
-    - Description: "Paul McLoughlin shares an AI-generated picture, expressing a preference for blue, sparking discussions on AI art."
-    - Output: Score 5, Explanation: Detailed description of the tweet content and its relevance to AI art.
+    - Criteria: Content closely matches the summarized description, mentioning relevant keywords/themes and providing detailed information.
+    - Example:
+        - Tweet: "Excited to share my latest article on quantum computing breakthroughs! Our team's research shows promising results in improving qubit stability, potentially revolutionizing cryptography. Check out the full paper for technical details and implications for data security."
+        - Description: "John discusses the latest advancements in quantum computing and their potential impact on cryptography."
+        - Output: Score 5, Explanation: The tweet content perfectly matches the summarized description. It mentions quantum computing advancements, discusses their impact on cryptography, and provides specific details about the research. The content is highly relevant and aligns closely with the description.
 
 Important Rules:
 1. Identify Keywords: Extract keywords/themes from the question.
 2. Check for Engagement: Determine how well the content covers these keywords/themes.
 3. Scoring:
-   - 0: No relevant keywords.
-   - 2: Superficial mention.
-   - 5: Detailed analysis.
+    - 0: Content does not match the description or is entirely unrelated.
+    - 5: Content closely matches the description with relevant details.
 
 Output Format:
-Score: [0, 2, or 5], Explanation:
+Score: [0 or 5], Explanation:
 """
 
 
@@ -406,16 +395,16 @@ And the answer content:
 Please evaluate the above <Question></Question> and <Answer></Answer> using relevance Scoring Guide in the system message.
 """
 
-tweet_content_and_description_template = """
-Here is the tweet content:
-<Tweet>
+text_and_summarized_description_template = """
+Here is the text content:
+<Text>
 {}
-</Tweet>
+</Text>
 
 And the summarized description:
-<Description>
+<SummarizedDescription>
 {}
-</Description>
+</SummarizedDescription>
 
-Please evaluate the above <Tweet></Tweet> and <Description></Description> using relevance Scoring Guide in the system message.
+Please evaluate the above <Text></Text> and <SummarizedDescription></SummarizedDescription> using relevance Scoring Guide in the system message.
 """
