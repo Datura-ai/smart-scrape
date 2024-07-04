@@ -175,6 +175,17 @@ class LinkContentPrompt(ScoringPrompt):
         return 0
 
 
+class TweetContentPrompt(ScoringPrompt):
+    r"""Compares a tweet content with tweet summary description"""
+
+    def __init__(self):
+        super().__init__()
+        self.template = tweet_content_and_description_template
+
+    def get_system_message(self):
+        return tweet_content_scoring_template
+
+
 class SearchSummaryRelevancePrompt(ScoringPrompt):
     r"""Scores a summary on a scale from 0 to 10, given a context."""
 
@@ -340,6 +351,47 @@ Score: [2, 5, or 9], Explanation:
 """
 
 
+tweet_content_scoring_template = """
+Relevance Scoring Guide:
+
+Role: As an evaluator, your task is to determine how well a full tweet text relates to summarized description on the presence of keywords and the depth of content.
+
+Scoring Criteria:
+
+Score 0:
+- Criteria: Content does not mention the question’s keywords/themes.
+- Example:
+    - Tweet: "Just finished my morning run. Beautiful day outside!"
+    - Description: "Discussion on the impact of artificial intelligence on job markets."
+    - Output: Score: 0, Explanation: The tweet content is completely unrelated to the description. There is no mention of artificial intelligence or job markets in the tweet about a morning run.
+
+Score 2:
+- Criteria: Content mentions keywords/themes but lacks detailed analysis.
+- Example:
+    - Tweet: "AI is changing everything these days. Crazy times we live in!"
+    - Description: "Analysis of how artificial intelligence is reshaping various industries and job markets, with specific examples and potential future impacts."
+    - Output: Score: 2, Explanation: The tweet mentions AI and acknowledges its impact, which is relevant to the description. However, it lacks any specific examples, analysis of industries, or discussion of job markets. It's a superficial mention without the detailed analysis the description suggests.
+
+Score 5:
+- Criteria: Content mentions multiple keywords/themes and provides detailed analysis with examples or evidence.
+- Example:
+    - Tweet: "Love this picture, although I suspect it's AI generated. Maybe because my favourite colour is blue."
+    - Description: "Paul McLoughlin shares an AI-generated picture, expressing a preference for blue, sparking discussions on AI art."
+    - Output: Score 5, Explanation: Detailed description of the tweet content and its relevance to AI art.
+
+Important Rules:
+1. Identify Keywords: Extract keywords/themes from the question.
+2. Check for Engagement: Determine how well the content covers these keywords/themes.
+3. Scoring:
+   - 0: No relevant keywords.
+   - 2: Superficial mention.
+   - 5: Detailed analysis.
+
+Output Format:
+Score: [0, 2, or 5], Explanation:
+"""
+
+
 user_message_question_answer_template = """
 Here is the question:
 <Question>
@@ -352,4 +404,18 @@ And the answer content:
 </Answer>
 
 Please evaluate the above <Question></Question> and <Answer></Answer> using relevance Scoring Guide in the system message.
+"""
+
+tweet_content_and_description_template = """
+Here is the tweet content:
+<Tweet>
+{}
+</Tweet>
+
+And the summarized description:
+<Description>
+{}
+</Description>
+
+Please evaluate the above <Tweet></Tweet> and <Description></Description> using relevance Scoring Guide in the system message.
 """

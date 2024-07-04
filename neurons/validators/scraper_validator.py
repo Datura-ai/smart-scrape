@@ -122,15 +122,6 @@ class ScraperValidator:
 
         self.reward_functions = [
             (
-                SummaryRelevanceRewardModel(
-                    device=self.neuron.config.neuron.device,
-                    scoring_type=RewardScoringType.summary_relevance_score_template,
-                    llm_reward=self.reward_llm,
-                )
-                if self.neuron.config.reward.summary_relevance_weight > 0
-                else MockRewardModel(RewardModelType.summary_relavance_match.value)
-            ),
-            (
                 TwitterContentRelevanceModel(
                     device=self.neuron.config.neuron.device,
                     scoring_type=RewardScoringType.summary_relevance_score_template,
@@ -138,6 +129,15 @@ class ScraperValidator:
                 )
                 if self.neuron.config.reward.twitter_content_weight > 0
                 else MockRewardModel(RewardModelType.twitter_content_relevance.value)
+            ),
+            (
+                SummaryRelevanceRewardModel(
+                    device=self.neuron.config.neuron.device,
+                    scoring_type=RewardScoringType.summary_relevance_score_template,
+                    llm_reward=self.reward_llm,
+                )
+                if self.neuron.config.reward.summary_relevance_weight > 0
+                else MockRewardModel(RewardModelType.summary_relavance_match.value)
             ),
             (
                 WebSearchContentRelevanceModel(

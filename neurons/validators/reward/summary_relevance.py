@@ -28,11 +28,14 @@ from neurons.validators.reward.reward import BaseRewardModel, BaseRewardEvent
 from neurons.validators.utils.prompts import (
     SummaryRelevancePrompt,
     LinkContentPrompt,
+    TweetContentPrompt,
 )
 
 from datura.protocol import ScraperStreamingSynapse
 from neurons.validators.reward.reward_llm import RewardLLM
+from datura.services.twitter_utils import TwitterUtils
 import json
+from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 
 
 class SummaryRelevanceRewardModel(BaseRewardModel):
@@ -111,6 +114,79 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             bt.logging.error(f"Summary Relevance get_scoring_text: {str(e)}")
             return None
 
+    async def score_tweet_descriptions(self, responses: List[ScraperStreamingSynapse]):
+        scoring_messages = []
+
+        scoring_prompt = TweetContentPrompt()
+
+        link_with_descriptions_list = []
+
+        # Accumulate scoring messages to compare scraped tweet texts with markdown link descriptions
+        for response in responses:
+            # Parse markdown links with descriptions from completion
+            twitter_completion = response.get_twitter_completion()
+            link_with_descriptions = TwitterUtils().find_twitter_link_with_descriptions(
+                twitter_completion
+            )
+
+            link_with_descriptions_list.append(link_with_descriptions)
+
+            for link, description in link_with_descriptions:
+                validator_tweet = next(
+                    (
+                        validator_tweet
+                        for validator_tweet in response.validator_tweets
+                        if f"https://twitter.com/{validator_tweet.user.username}/status/{validator_tweet.id}"
+                        == link
+                    ),
+                    None,
+                )
+
+                if not validator_tweet:
+                    continue
+
+                scoring_prompt_text = scoring_prompt.text(
+                    validator_tweet.full_text, description
+                )
+
+                scoring_text = [
+                    {
+                        "role": "system",
+                        "content": scoring_prompt.get_system_message(),
+                    },
+                    {"role": "user", "content": scoring_prompt_text},
+                ]
+
+                scoring_messages.append({description: scoring_text})
+
+        if not scoring_messages:
+            return [0 for _ in responses]
+
+        score_responses = await self.reward_llm.llm_processing(scoring_messages)
+
+        average_scores = []
+        expected_links = 10
+
+        for response, link_with_descriptions in zip(
+            responses, link_with_descriptions_list
+        ):
+            tweet_description_scores = []
+
+            # Parse scores from LLM response
+            for link, description in link_with_descriptions:
+                score_result = score_responses.get(description)
+                score = scoring_prompt.extract_score(score_result)
+
+                if score is not None:
+                    tweet_description_scores.append(score)
+
+            # Calculate average score and scale down to 0-1 range
+            average_score = sum(tweet_description_scores) / expected_links / 10
+            average_score = min(average_score, 0.5)
+            average_scores.append(average_score)
+
+        return average_scores
+
     def get_rewards(
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> List[BaseRewardEvent]:
@@ -125,6 +201,12 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             bt.logging.trace(
                 f"SummaryRelevanceRewardModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
             )
+
+            # Need to use this scores to calculate rewards
+            tweet_description_scores = asyncio.get_event_loop().run_until_complete(
+                self.score_tweet_descriptions(responses)
+            )
+
             scoring_messages = [
                 self.get_scoring_text(prompt, response) for response in responses
             ]
@@ -179,13 +261,18 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             zero_scores = {}
             non_zero_scores = {}
 
-            for (index, response), uid_tensor in zip(enumerate(responses), uids):
+            for (index, response), tweet_description_score, uid_tensor in zip(
+                enumerate(responses), tweet_description_scores, uids
+            ):
                 uid = uid_tensor.item()
-                score = scores.get(str(index), 0)
+                summary_score = scores.get(str(index), 0) / 2
+                score = min(summary_score + tweet_description_score, 1)
                 score_explain = score_text.get(str(index), "")
+
                 reward_event = BaseRewardEvent()
                 reward_event.reward = score
                 reward_events.append(reward_event)
+
                 if score == 0:
                     zero_scores[uid] = score
                 else:
