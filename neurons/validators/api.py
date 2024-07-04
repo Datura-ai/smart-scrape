@@ -276,9 +276,13 @@ async def get_user_by_username(
     },
 )
 async def search_twitter(
-    username: str,
+    search_terms: str = Query(
+        "",
+        alias="query",
+        description="Query text to search tweets with",
+    ),
     max_items: Optional[int] = Query(
-        None,
+        100,
         alias="max_items",
         description="Max items to be returned per query"
     ),
@@ -293,36 +297,46 @@ async def search_twitter(
         description="Filter to get tweets with minimum number of likes"
     ),
     only_verified: Optional[bool] = Query(
-        None,
+        False,
         alias="only_verified",
         description="Filter to get only verified users' tweets"
     ),
     only_twitter_blue: Optional[bool] = Query(
-        None,
+        False,
         alias="only_twitter_blue",
         description="Filter to get only twitter blue users' tweets"
     ),
     only_video: Optional[bool] = Query(
-        None,
+        False,
         alias="only_video",
         description="Filter to get only those tweets which has video embedded"
     ),
     only_image: Optional[bool] = Query(
-        None,
+        False,
         alias="only_image",
         description="Filter to get only those tweets which has image embedded"
     ),
     only_quote: Optional[bool] = Query(
-        None,
+        False,
         alias="only_quote",
         description="Filter to get only those tweets which has quote embedded"
     ),
+    start_date: Optional[str] = Query(
+        None,
+        alias="start_date",
+        description="Date range field for tweet, combine with end_date field to set a time range",
+    ),
+    end_date: Optional[str] = Query(
+        None,
+        alias="end_date",
+        description="Date range field for tweet, combine with start_date field to set a time range",
+    )
 ):
     try:
         response = await neu.scraper_validator.execute_twitter_search(
             body={
-                "username": username,
                 "request_type": TwitterAPISynapseCall.SEARCH_TWEETS,
+                "search_terms": search_terms,
                 "max_items": max_items,
                 "min_retweets": min_retweets,
                 "min_likes": min_likes,
@@ -331,6 +345,8 @@ async def search_twitter(
                 "only_video": only_video,
                 "only_image": only_image,
                 "only_quote": only_quote,
+                "start_date": start_date,
+                "end_date": end_date,
             }
         )
         return response

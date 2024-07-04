@@ -100,7 +100,7 @@ class TwitterScraperActor:
 
     async def get_tweets_advanced(
         self,
-        urls: List[str],
+        urls: Optional[List[str]],
         author: Optional[str] = None,
         conversationIds: Optional[List[str]] = None,
         start: Optional[str] = None,
@@ -110,7 +110,6 @@ class TwitterScraperActor:
         inReplyTo: Optional[str] = None,
         includeSearchTerms: Optional[bool] = None,
         maxItems: Optional[int] = None,
-        maxTweetsPerQuery: Optional[int] = None,
         mentioning: Optional[str] = None,
         minimumFavorites: Optional[str] = None,
         minimumReplies: Optional[str] = None,
@@ -126,12 +125,11 @@ class TwitterScraperActor:
         tweetLanguage: Optional[str] = None,
         twitterHandles: Optional[List[str]] = None,
         withinRadius: Optional[str] = None,
-    ) -> List[dict]:
+    ) -> dict:
         if not APIFY_API_KEY:
-            bt.logging.warning(
-                "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
-            )
-            return []
+            error = "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
+            bt.logging.warning(error)
+            return {"error": error}
         try:
             run_input = {
                 "startUrls": urls,
@@ -143,8 +141,7 @@ class TwitterScraperActor:
                 "geotaggedNear": geotaggedNear,
                 "inReplyTo": inReplyTo,
                 "includeSearchTerms": includeSearchTerms,
-                "maxItems": maxItems,
-                "maxTweetsPerQuery": maxTweetsPerQuery,
+                "maxTweetsPerQuery": maxItems,
                 "mentioning": mentioning,
                 "minimumFavorites": minimumFavorites,
                 "minimumReplies": minimumReplies,
@@ -211,14 +208,18 @@ class TwitterScraperActor:
 
                 tweets.append(tweet.dict())
 
-            return tweets
+            return {
+                "data": tweets
+            }
         except Exception as e:
             error_message = (
-                f"TwitterScraperActor: Failed to scrape tweets {urls}: {str(e)}"
+                f"TwitterScraperActor: Failed to scrape tweets {searchTerms}: {str(e)}"
             )
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.warning("\n".join(tb_str) + error_message)
-            return []
+            return {
+                "error": error_message,
+            }
 
     async def get_user_by_id(
         self,

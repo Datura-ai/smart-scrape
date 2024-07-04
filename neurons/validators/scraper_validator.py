@@ -684,6 +684,7 @@ class ScraperValidator:
                 user_id=body.get('user_id'),
                 username=body.get('username'),
                 max_items=body.get('max_items'),
+                search_terms=body.get('search_terms'),
                 min_retweets=body.get('min_retweets'),
                 min_likes=body.get('min_likes'),
                 only_verified=body.get('only_verified'),
@@ -691,6 +692,8 @@ class ScraperValidator:
                 only_video=body.get('only_video'),
                 only_image=body.get('only_image'),
                 only_quote=body.get('only_quote'),
+                start_date=body.get('start_date'),
+                end_date=body.get('end_date'),
             )
 
             synapse: TwitterAPISynapse = await self.neuron.dendrite.call(

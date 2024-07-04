@@ -648,6 +648,12 @@ class TwitterAPISynapse(bt.Synapse):
         description="An optional string that's user of twitter's username",
     )
 
+    search_terms: Optional[str] = pydantic.Field(
+        None,
+        title="Search Terms",
+        description="Search terms to search tweets with",
+    )
+
     max_items: Optional[str] = pydantic.Field(
         None,
         title="Max Results",
@@ -694,6 +700,18 @@ class TwitterAPISynapse(bt.Synapse):
         None,
         title="Only Quote",
         description="Filter to get only those tweets which has quote embedded"
+    )
+
+    start_date: Optional[str] = pydantic.Field(
+        None,
+        title="Start Date",
+        description="Date range field for tweet, combine with end_date field to set a time range"
+    )
+
+    end_date: Optional[str] = pydantic.Field(
+        None,
+        title="End Date",
+        description="Date range field for tweet, combine with start_date field to set a time range"
     )
 
     results: Optional[Dict[str, Any]] = pydantic.Field(
