@@ -35,7 +35,6 @@ from datura.protocol import ScraperStreamingSynapse
 from neurons.validators.reward.reward_llm import RewardLLM
 from datura.services.twitter_utils import TwitterUtils
 import json
-from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from neurons.validators.reward.config import DefaultSummaryRelevanceWeightConfig
 
 
