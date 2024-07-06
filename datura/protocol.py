@@ -627,15 +627,22 @@ class TwitterAPISynapseCall(Enum):
     GET_USER_WITH_USERNAME = "GET_USER_WITH_USERNAME"
     SEARCH_TWEETS = "SEARCH_TWEETS"
 
-
-class TwitterAPISynapse(bt.Synapse):
-    """A class to represent twitter api synapse"""
-
+class TwitterUserSynapse(bt.Synapse):
+    """
+    A class to represetn twitter api's user synapse
+    """
+    
     request_type: Optional[str] = pydantic.Field(
         None,
         title="Request type field to decide the method to call"
     )
-
+    
+    max_items: Optional[str] = pydantic.Field(
+        None,
+        title="Max Results",
+        description="The maximum number of results to be returned per query"
+    )
+    
     user_id: Optional[str] = pydantic.Field(
         None,
         title="User ID",
@@ -647,6 +654,15 @@ class TwitterAPISynapse(bt.Synapse):
         title="User ID",
         description="An optional string that's user of twitter's username",
     )
+    
+    results: Optional[Dict[str, Any]] = pydantic.Field(
+        default_factory=dict,
+        title="Response dictionary",
+        description="A dictionary of results returned by twitter api",
+    )
+
+class TwitterTweetSynapse(bt.Synapse):
+    """A class to represent twitter api's tweet synapse"""
 
     search_terms: Optional[str] = pydantic.Field(
         None,

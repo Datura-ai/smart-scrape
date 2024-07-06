@@ -182,7 +182,7 @@ async def get_user_followings(
     ),
 ):
     try:
-        response = await neu.scraper_validator.execute_twitter_search(
+        response = await neu.scraper_validator.get_twitter_user(
             body={
                 "user_id": user_id,
                 "request_type": TwitterAPISynapseCall.GET_USER_FOLLOWINGS,
@@ -215,7 +215,7 @@ async def get_user_by_id(
     user_id: str,
 ):
     try:
-        response = await neu.scraper_validator.execute_twitter_search(
+        response = await neu.scraper_validator.get_twitter_user(
             body={
                 "user_id": user_id,
                 "request_type": TwitterAPISynapseCall.GET_USER,
@@ -247,7 +247,7 @@ async def get_user_by_username(
     username: str,
 ):
     try:
-        response = await neu.scraper_validator.execute_twitter_search(
+        response = await neu.scraper_validator.get_twitter_user(
             body={
                 "username": username,
                 "request_type": TwitterAPISynapseCall.GET_USER_WITH_USERNAME,
@@ -333,9 +333,8 @@ async def search_twitter(
     )
 ):
     try:
-        response = await neu.scraper_validator.execute_twitter_search(
+        response = await neu.scraper_validator.get_tweets(
             body={
-                "request_type": TwitterAPISynapseCall.SEARCH_TWEETS,
                 "search_terms": search_terms,
                 "max_items": max_items,
                 "min_retweets": min_retweets,
