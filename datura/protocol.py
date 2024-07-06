@@ -625,16 +625,24 @@ class TwitterAPISynapseCall(Enum):
     GET_USER_FOLLOWINGS = "GET_USER_FOLLOWINGS"
     GET_USER = "GET_USER"
     GET_USER_WITH_USERNAME = "GET_USER_WITH_USERNAME"
+    SEARCH_TWEETS = "SEARCH_TWEETS"
 
-
-class TwitterAPISynapse(bt.Synapse):
-    """A class to represent twitter api synapse"""
-
+class TwitterUserSynapse(bt.Synapse):
+    """
+    A class to represetn twitter api's user synapse
+    """
+    
     request_type: Optional[str] = pydantic.Field(
         None,
         title="Request type field to decide the method to call"
     )
-
+    
+    max_items: Optional[str] = pydantic.Field(
+        None,
+        title="Max Results",
+        description="The maximum number of results to be returned per query"
+    )
+    
     user_id: Optional[str] = pydantic.Field(
         None,
         title="User ID",
@@ -646,11 +654,80 @@ class TwitterAPISynapse(bt.Synapse):
         title="User ID",
         description="An optional string that's user of twitter's username",
     )
+    
+    results: Optional[Dict[str, Any]] = pydantic.Field(
+        default_factory=dict,
+        title="Response dictionary",
+        description="A dictionary of results returned by twitter api",
+    )
 
-    max_users_per_query: Optional[str] = pydantic.Field(
+class TwitterTweetSynapse(bt.Synapse):
+    """A class to represent twitter api's tweet synapse"""
+
+    search_terms: Optional[str] = pydantic.Field(
         None,
-        title="Max Users per Query",
-        description="The maximum number of users to be returned per query"
+        title="Search Terms",
+        description="Search terms to search tweets with",
+    )
+
+    max_items: Optional[str] = pydantic.Field(
+        None,
+        title="Max Results",
+        description="The maximum number of results to be returned per query"
+    )
+
+    min_retweets: Optional[str] = pydantic.Field(
+        None,
+        title="Minimum Retweets",
+        description="Filter to get tweets with minimum number of retweets"
+    )
+
+    min_likes: Optional[str] = pydantic.Field(
+        None,
+        title="Minimum Likes",
+        description="Filter to get tweets with minimum number of likes"
+    )
+
+    only_verified: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Verified",
+        description="Filter to get only verified users' tweets"
+    )
+
+    only_twitter_blue: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Twitter Blue",
+        description="Filter to get only twitter blue users' tweets"
+    )
+
+    only_video: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Video",
+        description="Filter to get only those tweets which has video embedded"
+    )
+
+    only_image: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Image",
+        description="Filter to get only those tweets which has image embedded"
+    )
+
+    only_quote: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Quote",
+        description="Filter to get only those tweets which has quote embedded"
+    )
+
+    start_date: Optional[str] = pydantic.Field(
+        None,
+        title="Start Date",
+        description="Date range field for tweet, combine with end_date field to set a time range"
+    )
+
+    end_date: Optional[str] = pydantic.Field(
+        None,
+        title="End Date",
+        description="Date range field for tweet, combine with start_date field to set a time range"
     )
 
     results: Optional[Dict[str, Any]] = pydantic.Field(

@@ -8,7 +8,8 @@ import bittensor as bt
 from base_validator import AbstractNeuron
 from datura.protocol import (
     ScraperStreamingSynapse,
-    TwitterAPISynapse,
+    TwitterTweetSynapse,
+    TwitterUserSynapse,
     SearchSynapse,
 )
 from datura.stream import process_async_responses
@@ -677,15 +678,15 @@ class ScraperValidator:
 
             axon = self.neuron.metagraph.axons[uid]
 
-            synapse = TwitterAPISynapse(
+            synapse = TwitterUserSynapse(
                 # excpected as TwitterAPISynapseCall
                 request_type=body.get('request_type').value,
                 user_id=body.get('user_id'),
                 username=body.get('username'),
-                max_users_per_query=body.get('max_users_per_query'),
+                max_items=body.get('max_items'),
             )
 
-            synapse: TwitterAPISynapse = await self.neuron.dendrite.call(
+            synapse: TwitterUserSynapse = await self.neuron.dendrite.call(
                 target_axon=axon,
                 synapse=synapse,
                 timeout=self.timeout,
@@ -694,5 +695,57 @@ class ScraperValidator:
 
             return synapse.results
         except Exception as e:
-            bt.logging.error(f"Error in search: {e}")
+            bt.logging.error(f"Error in getting twitter user: {e}")
             raise e
+
+    async def get_tweets(self, body: dict, uid: int | None = None):
+        try:
+            task_name = "get_tweets"
+
+            if not len(self.neuron.available_uids):
+                bt.logging.info("Not available uids")
+                raise StopAsyncIteration("Not available uids")
+
+            bt.logging.debug("run_task", task_name)
+
+            # If uid is not provided, get random uids
+            if uid is None:
+                uids = await self.neuron.get_uids(
+                    strategy=QUERY_MINERS.RANDOM,
+                    is_only_allowed_miner=False,
+                    specified_uids=None,
+                )
+
+                if uids:
+                    uid = uids[0]
+                else:
+                    raise StopAsyncIteration("No available uids")
+
+            axon = self.neuron.metagraph.axons[uid]
+
+            synapse = TwitterTweetSynapse(
+                search_terms=body.get('search_terms'),
+                max_items=body.get('max_items'),
+                min_retweets=body.get('min_retweets'),
+                min_likes=body.get('min_likes'),
+                only_verified=body.get('only_verified'),
+                only_twitter_blue=body.get('only_twitter_blue'),
+                only_video=body.get('only_video'),
+                only_image=body.get('only_image'),
+                only_quote=body.get('only_quote'),
+                start_date=body.get('start_date'),
+                end_date=body.get('end_date'),
+            )
+
+            synapse: TwitterTweetSynapse = await self.neuron.dendrite.call(
+                target_axon=axon,
+                synapse=synapse,
+                timeout=self.timeout,
+                deserialize=False,
+            )
+
+            return synapse.results
+        except Exception as e:
+            bt.logging.error(f"Error in get_tweets: {e}")
+            raise e
+

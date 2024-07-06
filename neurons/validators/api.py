@@ -155,7 +155,6 @@ async def search(
         bt.logging.error(f"error in search {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
 
-MAX_USERS_PER_QUERY_DESCRIPTION = "Maximum number of users to return per query"
 
 twitter_api_router = APIRouter(prefix='/twitter')
 
@@ -176,10 +175,10 @@ twitter_api_router = APIRouter(prefix='/twitter')
 )
 async def get_user_followings(
     user_id: str,
-    max_users_per_query: Optional[int] = Query(
+    max_items: Optional[int] = Query(
         None,
-        alias="max_users_per_query",
-        description=MAX_USERS_PER_QUERY_DESCRIPTION,
+        alias="max_items",
+        description="Maximum number of users to return per query"
     ),
 ):
     try:
@@ -187,7 +186,7 @@ async def get_user_followings(
             body={
                 "user_id": user_id,
                 "request_type": TwitterAPISynapseCall.GET_USER_FOLLOWINGS,
-                "max_users_per_query": max_users_per_query,
+                "max_items": max_items,
             }
         )
         return response
@@ -261,6 +260,100 @@ async def get_user_by_username(
         )
         raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
 
+
+@twitter_api_router.get(
+    '/search',
+    summary="Search Tweets",
+    description="Search",
+    response_description="List of tweets returned from search query",
+    responses={
+        200: {
+            "description": "List of tweets returned from search query",
+            "content": {
+                "application/json": {"example": {"data": {}}}
+            },
+        }
+    },
+)
+async def search_twitter(
+    search_terms: str = Query(
+        "",
+        alias="query",
+        description="Query text to search tweets with",
+    ),
+    max_items: Optional[int] = Query(
+        100,
+        alias="max_items",
+        description="Max items to be returned per query"
+    ),
+    min_retweets: Optional[int] = Query(
+        None,
+        alias="min_retweets",
+        description="Filter to get tweets with minimum number of retweets"
+    ),
+    min_likes: Optional[int] = Query(
+        None,
+        alias="min_likes",
+        description="Filter to get tweets with minimum number of likes"
+    ),
+    only_verified: Optional[bool] = Query(
+        False,
+        alias="only_verified",
+        description="Filter to get only verified users' tweets"
+    ),
+    only_twitter_blue: Optional[bool] = Query(
+        False,
+        alias="only_twitter_blue",
+        description="Filter to get only twitter blue users' tweets"
+    ),
+    only_video: Optional[bool] = Query(
+        False,
+        alias="only_video",
+        description="Filter to get only those tweets which has video embedded"
+    ),
+    only_image: Optional[bool] = Query(
+        False,
+        alias="only_image",
+        description="Filter to get only those tweets which has image embedded"
+    ),
+    only_quote: Optional[bool] = Query(
+        False,
+        alias="only_quote",
+        description="Filter to get only those tweets which has quote embedded"
+    ),
+    start_date: Optional[str] = Query(
+        None,
+        alias="start_date",
+        description="Date range field for tweet, combine with end_date field to set a time range",
+    ),
+    end_date: Optional[str] = Query(
+        None,
+        alias="end_date",
+        description="Date range field for tweet, combine with start_date field to set a time range",
+    )
+):
+    try:
+        response = await neu.scraper_validator.get_tweets(
+            body={
+                "search_terms": search_terms,
+                "max_items": max_items,
+                "min_retweets": min_retweets,
+                "min_likes": min_likes,
+                "only_verified": only_verified,
+                "only_twitter_blue": only_twitter_blue,
+                "only_video": only_video,
+                "only_image": only_image,
+                "only_quote": only_quote,
+                "start_date": start_date,
+                "end_date": end_date,
+            }
+        )
+        return response
+    except Exception as e:
+        bt.logging.error(
+            f"Error in get_user_followings for GET_USER_WITH_USERNAME: {traceback.format_exc()}"
+        )
+        raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
 
 @app.get("/")
 async def health_check():

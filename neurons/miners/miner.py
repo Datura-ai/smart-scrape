@@ -24,11 +24,11 @@ from typing import List, Dict, Tuple
 
 from datura.utils import get_version
 
-from datura.protocol import IsAlive, ScraperStreamingSynapse, SearchSynapse, TwitterAPISynapse
-from datura.services.twitter_api_wrapper import TwitterAPIClient
+from datura.protocol import IsAlive, ScraperStreamingSynapse, SearchSynapse, TwitterTweetSynapse, TwitterUserSynapse
 from neurons.miners.scraper_miner import ScraperMiner
 from neurons.miners.search_miner import SearchMiner
-from neurons.miners.twitter_api_miner import TwitterAPIMiner
+from neurons.miners.twitter_user_miner import TwitterUserMiner
+from neurons.miners.twitter_tweet_miner import TwitterTweetMiner
 
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
 if not OpenAI.api_key:
@@ -128,6 +128,8 @@ class StreamMiner(ABC):
             forward_fn=self._search,
         ).attach(
             forward_fn=self._get_twitter_user,
+        ).attach(
+            forward_fn=self._get_tweets,
         )
         bt.logging.info(f"Axon created: {self.axon}")
 
@@ -151,8 +153,11 @@ class StreamMiner(ABC):
     async def _search(self, synapse: SearchSynapse) -> SearchSynapse:
         return await self.search(synapse)
 
-    async def _get_twitter_user(self, synapse: TwitterAPISynapse) -> TwitterAPISynapse:
+    async def _get_twitter_user(self, synapse: TwitterUserSynapse) -> TwitterUserSynapse:
         return await self.get_twitter_user(synapse)
+
+    async def _get_tweets(self, synapse: TwitterTweetSynapse) -> TwitterTweetSynapse:
+        return await self.get_tweets(synapse)
 
     def base_blacklist(self, synapse, blacklist_amt=20000) -> Tuple[bool, str]:
         try:
@@ -255,7 +260,10 @@ class StreamMiner(ABC):
     async def search(self, synapse: SearchSynapse) -> SearchSynapse: ...
 
     @abstractmethod
-    async def get_twitter_user(self, synapse: TwitterAPISynapse) -> TwitterAPISynapse: ...
+    async def get_twitter_user(self, synapse: TwitterUserSynapse) -> TwitterUserSynapse: ...
+
+    @abstractmethod
+    async def get_tweets(self, synapse: TwitterTweetSynapse) -> TwitterTweetSynapse: ...
 
     def run(self):
         if not self.subtensor.is_hotkey_registered(
@@ -370,10 +378,15 @@ class StreamingTemplateMiner(StreamMiner):
         search_miner = SearchMiner(self)
         return await search_miner.search(synapse)
 
-    async def get_twitter_user(self, synapse: TwitterAPISynapse) -> TwitterAPISynapse:
-        bt.logging.info(f"started processing for twitter api synapse {synapse}")
-        twitter_api_miner = TwitterAPIMiner(self)
-        return await twitter_api_miner.get_user(synapse)
+    async def get_twitter_user(self, synapse: TwitterUserSynapse) -> TwitterUserSynapse:
+        bt.logging.info(f"started processing for twitter user synapse {synapse}")
+        twitter_user_miner = TwitterUserMiner(self)
+        return await twitter_user_miner.get_user(synapse)
+
+    async def get_tweets(self, synapse: TwitterTweetSynapse) -> TwitterTweetSynapse:
+        bt.logging.info(f"started processing for twitter tweet synapse {synapse}")
+        twitter_tweet_miner = TwitterTweetMiner(self)
+        return await twitter_tweet_miner.get_tweets(synapse)
 
 
 def get_valid_hotkeys(config):
