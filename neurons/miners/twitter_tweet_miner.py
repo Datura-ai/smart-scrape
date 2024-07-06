@@ -10,7 +10,7 @@ class TwitterTweetMiner:
     async def get_tweets(self, synapse: TwitterTweetSynapse):
         response = await self.client.get_tweets_advanced(
             urls=None,
-            searchTerms=[synapse.search_terms],
+            searchTerms=synapse.search_terms.split(" "),
             start=synapse.start_date,
             end=synapse.end_date,
             maxItems=int(synapse.max_items) if synapse.max_items else 100,
