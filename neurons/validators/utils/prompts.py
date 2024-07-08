@@ -176,7 +176,7 @@ class LinkContentPrompt(ScoringPrompt):
 
 
 class TweetContentPrompt(ScoringPrompt):
-    r"""Compares a tweet content with tweet summary description"""
+    r"""Compares a tweet with summarized description in markdown"""
 
     def __init__(self):
         super().__init__()
@@ -357,31 +357,38 @@ Score: [2, 5, or 9], Explanation:
 text_and_summarized_description_scoring_template = """
 Relevance Scoring Guide:
 
-Role: As an evaluator, your task is to determine how well a full tweet text relates to summarized description on the presence of keywords and the depth of content.
+Role: As an evaluator, your task is to determine how well a tweet text relates to both the summarized description and the question, based on the presence of keywords and the depth of content.
 
 Scoring Criteria:
 Score 0:
-    - Criteria: Content does not match the summarized description or mentions unrelated themes.
-    - Example:
+    - Criteria: Content does not match the summarized description, does not relate to the question, or mentions unrelated themes.
+    - Example 1:
         - Tweet: "Just finished my morning run. Beautiful day outside!"
         - Description: "John discusses the latest advancements in quantum computing and their potential impact on cryptography."
-        - Output: Score: 0, Explanation: The tweet content is completely unrelated to the summarized description. The tweet talks about a morning run, while the description is about quantum computing and cryptography. There's no match between the content and the description.
+        - Question: "How does quantum computing affect modern cryptography?"
+        - Output: Score: 0, Explanation: The tweet content is completely unrelated to both the summarized description and the question. The tweet talks about a morning run, while the description and question are about quantum computing and cryptography. There's no match between the content, the description, and the question.
+    - Example 2:
+        - Tweet: "Check out my new recipe for chocolate chip cookies! They're crispy on the outside and gooey on the inside."
+        - Description: "Sarah explains the impact of artificial intelligence on job markets in the next decade."
+        - Question: "What are the potential effects of AI on employment?"
+        - Output: Score: 0, Explanation: While the description is related to the question (both about AI's impact on jobs), the tweet content is entirely unrelated. The tweet discusses a cookie recipe, which has no connection to AI or job markets. There's no relevance between the tweet and either the description or the question.
 Score 5:
-    - Criteria: Content closely matches the summarized description, mentioning relevant keywords/themes and providing detailed information.
+    - Criteria: Content matches both the summarized description and the question, mentioning relevant keywords/themes and providing detailed information.
     - Example:
         - Tweet: "Excited to share my latest article on quantum computing breakthroughs! Our team's research shows promising results in improving qubit stability, potentially revolutionizing cryptography. Check out the full paper for technical details and implications for data security."
         - Description: "John discusses the latest advancements in quantum computing and their potential impact on cryptography."
-        - Output: Score 5, Explanation: The tweet content perfectly matches the summarized description. It mentions quantum computing advancements, discusses their impact on cryptography, and provides specific details about the research. The content is highly relevant and aligns closely with the description.
+        - Question: "How does quantum computing affect modern cryptography?"
+        - Output: Score 5, Explanation: The tweet content matches both the summarized description and the question. It mentions quantum computing advancements, discusses their impact on cryptography, and provides specific details about the research. The content is relevant and aligns with both the description and the question.
 
 Important Rules:
-1. Identify Keywords: Extract keywords/themes from the question.
-2. Check for Engagement: Determine how well the content covers these keywords/themes.
+1. Identify Keywords: Extract keywords/themes from both the description and the question.
+2. Check for Engagement: Determine how well the content covers these keywords/themes in relation to both the description and the question.
 3. Scoring:
-    - 0: Content does not match the description or is entirely unrelated.
-    - 5: Content closely matches the description with relevant details.
+    - 0: Content does not match the description, does not relate to the question, or is entirely unrelated to both.
+    - 5: Content matches both the description and the question with relevant details.
 
 Output Format:
-Score: [0 or 5], Explanation:
+Score: [0 or 5], Explanation: [Provide a brief explanation for the score, considering both the description and the question]
 """
 
 
@@ -400,15 +407,20 @@ Please evaluate the above <Question></Question> and <Answer></Answer> using rele
 """
 
 text_and_summarized_description_template = """
+Here is the question:
+<Question>
+{}
+</Question>
+
 Here is the text content:
 <Text>
 {}
 </Text>
 
-And the summarized description:
+And the summarized description of the text content:
 <SummarizedDescription>
 {}
 </SummarizedDescription>
 
-Please evaluate the above <Text></Text> and <SummarizedDescription></SummarizedDescription> using relevance Scoring Guide in the system message.
+Please evaluate the above <Question></Question>, <Text></Text> and <SummarizedDescription></SummarizedDescription> using relevance Scoring Guide in the system message.
 """

@@ -114,7 +114,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             bt.logging.error(f"Summary Relevance get_scoring_text: {str(e)}")
             return None
 
-    async def process_tweet_scoring_messages(self, responses):
+    async def process_tweet_scoring_messages(self, prompt, responses):
         scoring_messages = []
 
         scoring_prompt = TweetContentPrompt()
@@ -146,7 +146,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     continue
 
                 scoring_prompt_text = scoring_prompt.text(
-                    validator_tweet.full_text, description
+                    prompt, validator_tweet.full_text, description
                 )
 
                 scoring_text = [
@@ -171,9 +171,11 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
         return score_responses, scoring_keys_list
 
-    async def score_tweet_descriptions(self, responses: List[ScraperStreamingSynapse]):
+    async def score_tweet_descriptions(
+        self, prompt: str, responses: List[ScraperStreamingSynapse], uids
+    ):
         score_responses, scoring_keys_list = await self.process_tweet_scoring_messages(
-            responses
+            prompt, responses
         )
 
         scoring_prompt = TweetContentPrompt()
@@ -197,6 +199,12 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             average_score = min(average_score, 1)
             average_scores.append(average_score)
 
+        uid_to_average_score = dict(zip(uids.tolist(), average_scores))
+
+        bt.logging.info(
+            f"SummaryRelevanceRewardModel | prompt: {prompt}, average scores: {uid_to_average_score}"
+        )
+
         return average_scores
 
     def get_rewards(
@@ -216,7 +224,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
             # Need to use this scores to calculate rewards
             tweet_description_scores = asyncio.get_event_loop().run_until_complete(
-                self.score_tweet_descriptions(responses)
+                self.score_tweet_descriptions(prompt, responses, uids)
             )
 
             scoring_messages = [

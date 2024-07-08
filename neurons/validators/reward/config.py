@@ -55,7 +55,7 @@ class DefaultSummaryRelevanceWeightConfig:
     """
 
     # Checks if summary is relevant to the prompt
-    summary_weight: float = 0.30
+    summary_weight: float = 0.60
 
     # Compares markdown descriptions to content of tweet or link title
-    link_content_weight: float = 0.70
+    link_content_weight: float = 0.40
