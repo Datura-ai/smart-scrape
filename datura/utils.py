@@ -315,7 +315,9 @@ async def save_logs(prompt, logs, netuid):
         logging_endpoint_url = "https://api-logs-dev.smartscrape.ai"
 
     try:
-        async with aiohttp.ClientSession(timeout=600) as session:
+        timeout = aiohttp.ClientTimeout(total=600)
+
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             result = await session.post(
                 logging_endpoint_url,
                 json={
