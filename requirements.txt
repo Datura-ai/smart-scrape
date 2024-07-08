@@ -34,3 +34,4 @@ pinecone-client
 openai
 python-dateutil
 pytz
+faker==25.9.1

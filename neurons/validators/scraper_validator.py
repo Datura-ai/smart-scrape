@@ -24,6 +24,9 @@ from neurons.validators.reward.twitter_content_relevance import (
 from neurons.validators.reward.search_content_relevance import (
     WebSearchContentRelevanceModel,
 )
+from neurons.validators.reward.performance_reward import (
+    PerformanceRewardModel,
+)
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask, SearchTask
 
@@ -49,16 +52,34 @@ class ScraperValidator:
         self.neuron = neuron
         self.timeout = 180
         self.tools = [
-            ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
             ["Twitter Search", "Reddit Search"],
-            ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
+            ["Twitter Search", "Reddit Search"],
+            ["Twitter Search", "Google Search"],
+            ["Twitter Search", "Google Search"],
+            ["Twitter Search", "Google Search"],
             ["Twitter Search", "Google Search"],
             ["Twitter Search", "Hacker News Search"],
-            ["Twitter Search", "Google Search", "Wikipedia Search", "ArXiv Search"],
-            ["Twitter Search", "Youtube Search", "Wikipedia Search"],
+            ["Twitter Search", "Hacker News Search"],
             ["Twitter Search", "Youtube Search"],
+            ["Twitter Search", "Youtube Search"],
+            ["Twitter Search", "Youtube Search"],
+            ["Twitter Search", "Google News Search"],
+            ["Twitter Search", "Reddit Search"],
+            ["Twitter Search", "Reddit Search"],
+            ["Twitter Search", "Hacker News Search"],
+            ["Twitter Search", "ArXiv Search"],
             ["Twitter Search", "ArXiv Search"],
             ["Twitter Search", "Wikipedia Search"],
+            ["Twitter Search", "Wikipedia Search"],
+            ["Twitter Search", "Google Search"],
+            ["Twitter Search", "Google News Search"],
+            ["Twitter Search", "Google News Search"],
+            # ["Google Search"],
+            # ["Reddit Search"],
+            # ["Hacker News Search"],
+            # ["Youtube Search"],
+            # ["ArXiv Search"],
+            # ["Wikipedia Search"],
         ]
         self.language = "en"
         self.region = "us"
@@ -76,6 +97,7 @@ class ScraperValidator:
                 self.neuron.config.reward.summary_relevance_weight,
                 self.neuron.config.reward.twitter_content_weight,
                 self.neuron.config.reward.web_search_relavance_weight,
+                self.neuron.config.reward.performance_weight,
             ],
             dtype=torch.float32,
         ).to(self.neuron.config.neuron.device)
@@ -89,11 +111,11 @@ class ScraperValidator:
             raise Exception(message)
 
         self.reward_llm = RewardLLM()
-        if (
-            self.neuron.config.reward.twitter_content_weight > 0
-            or self.neuron.config.reward.summary_relevance_weight > 0
-        ) and not self.neuron.config.neuron.is_disable_tokenizer_reward:
-            self.reward_llm.init_pipe_zephyr()
+        # if (
+        #     self.neuron.config.reward.twitter_content_weight > 0
+        #     or self.neuron.config.reward.summary_relevance_weight > 0
+        # ) and not self.neuron.config.neuron.is_disable_tokenizer_reward:
+        #     self.reward_llm.init_pipe_zephyr()
 
         self.reward_functions = [
             (
@@ -122,6 +144,13 @@ class ScraperValidator:
                 )
                 if self.neuron.config.reward.web_search_relavance_weight > 0
                 else MockRewardModel(RewardModelType.search_content_relevance.value)
+            ),
+            (
+                PerformanceRewardModel(
+                    device=self.neuron.config.neuron.device,
+                )
+                if self.neuron.config.reward.performance_weight > 0
+                else MockRewardModel(RewardModelType.performance_score.value)
             ),
         ]
 
@@ -188,6 +217,47 @@ class ScraperValidator:
             streaming=self.streaming,
             deserialize=False,
         )
+
+        axon_group_1 = axons[:80]
+        axon_group_2 = axons[80:160]
+        axon_group_3 = axons[160:]
+
+        async_response_groups = await asyncio.gather(
+            *[
+                asyncio.create_task(
+                    self.neuron.dendrite1.forward(
+                        axons=axon_group_1,
+                        synapse=synapse,
+                        timeout=self.timeout,
+                        streaming=self.streaming,
+                        deserialize=False,
+                    )
+                ),
+                asyncio.create_task(
+                    self.neuron.dendrite2.forward(
+                        axons=axon_group_2,
+                        synapse=synapse,
+                        timeout=self.timeout,
+                        streaming=self.streaming,
+                        deserialize=False,
+                    )
+                ),
+                asyncio.create_task(
+                    self.neuron.dendrite3.forward(
+                        axons=axon_group_3,
+                        synapse=synapse,
+                        timeout=self.timeout,
+                        streaming=self.streaming,
+                        deserialize=False,
+                    )
+                ),
+            ]
+        )
+
+        async_responses = []
+
+        for async_response_group in async_response_groups:
+            async_responses.extend(async_response_group)
 
         return async_responses, uids, event, start_time
 
@@ -264,6 +334,10 @@ class ScraperValidator:
                 "responses": {},
                 "scores": {},
                 "timestamps": {},
+                "summary_reward": {},
+                "twitter_reward": {},
+                "search_reward": {},
+                "latency_reward": {},
             }
             bt.logging.info(
                 f"======================== Reward ==========================="
@@ -294,13 +368,39 @@ class ScraperValidator:
                 f"======================== Reward ==========================="
             )
 
-            for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
+            summary_rewards = all_rewards[0]
+            twitter_rewards = all_rewards[1]
+            search_rewards = all_rewards[2]
+            latency_rewards = all_rewards[3]
+            zipped_rewards = zip(
+                uids,
+                rewards.tolist(),
+                responses,
+                summary_rewards,
+                twitter_rewards,
+                search_rewards,
+                latency_rewards,
+            )
+
+            for (
+                uid_tensor,
+                reward,
+                response,
+                summary_reward,
+                twitter_reward,
+                search_reward,
+                latency_reward,
+            ) in zipped_rewards:
                 uid = uid_tensor.item()  # Convert tensor to int
                 uid_scores_dict[uid] = reward
                 scores[uid] = reward  # Now 'uid' is an int, which is a valid key type
                 wandb_data["scores"][uid] = reward
                 wandb_data["responses"][uid] = response.completion
                 wandb_data["prompts"][uid] = prompt
+                wandb_data["summary_reward"][uid] = summary_reward
+                wandb_data["twitter_reward"][uid] = twitter_reward
+                wandb_data["search_reward"][uid] = search_reward
+                wandb_data["latency_reward"][uid] = latency_reward
 
             await self.neuron.update_scores(
                 wandb_data=wandb_data,
@@ -361,6 +461,10 @@ class ScraperValidator:
                 bt.logging.info("No available UIDs, skipping task execution.")
                 return
 
+            bt.logging.debug(
+                f"Query and score running with prompt: {prompt} and tools: {tools}"
+            )
+
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=strategy,
@@ -373,7 +477,9 @@ class ScraperValidator:
             )
 
             final_synapses = []
-            async for value in process_async_responses(async_responses):
+            async for value in process_async_responses(
+                async_responses, uids, start_time
+            ):
                 if isinstance(value, bt.Synapse):
                     final_synapses.append(value)
                 else:
@@ -415,7 +521,8 @@ class ScraperValidator:
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=QUERY_MINERS.RANDOM,
-                is_only_allowed_miner=True,
+                # This is set to false on Finney to allow all miners to participate from Datura UI
+                is_only_allowed_miner=self.neuron.config.subtensor.network != "finney",
                 is_intro_text=True,
                 tools=tools,
                 language=self.language,
@@ -464,7 +571,11 @@ class ScraperValidator:
         try:
             prompt = query["content"]
             tools = query.get("tools", [])
-            date_filter_type = query.get("date_filter", DateFilterType.PAST_WEEK.value)
+            # tools = ["Google Search", "Youtube Search"]
+            # tools = ["Twitter Search"]
+            date_filter_type = query.get(
+                "date_filter", DateFilterType.PAST_2_DAYS.value
+            )
             date_filter_type = DateFilterType(date_filter_type)
             response_order = query.get('response_order', ResponseOrder.SUMMARY_FIRST.value)
 

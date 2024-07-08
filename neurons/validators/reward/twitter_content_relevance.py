@@ -30,7 +30,6 @@ from .reward import BaseRewardModel, BaseRewardEvent, pattern_to_check
 from neurons.validators.utils.prompts import (
     SummaryRelevancePrompt,
     LinkContentPrompt,
-    extract_score_and_explanation,
 )
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from datura.protocol import (
@@ -42,7 +41,8 @@ from datura.protocol import (
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.reward_llm import RewardLLM
-from neurons.validators.utils.prompts import ScoringPrompt
+from neurons.validators.utils.prompts import LinkContentPrompt
+from datura.utils import clean_text
 import json
 from datetime import datetime
 import pytz
@@ -68,6 +68,9 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         self.scoring_type = scoring_type
         self.tw_client = TwitterAPIClient()
 
+    def clean_text(self, text):
+        return clean_text(text)
+
     async def llm_process_validator_tweets(self, prompt, tweets_list):
         start_llm_time = time.time()
         scoring_messages = []
@@ -80,7 +83,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             if result:
                 scoring_prompt, scoring_text = result
                 scoring_messages.append({str(val_tweet_id): scoring_text})
-        score_responses = self.reward_llm.llm_processing(scoring_messages)
+        score_responses = await self.reward_llm.llm_processing(scoring_messages)
 
         end_llm_time = time.time()
         llm_duration_minutes = (end_llm_time - start_llm_time) / 60
@@ -180,14 +183,14 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             return {}
 
     def format_text_for_match(self, text):
+        # Unescape HTML entities first
+        text = html.unescape(text)
         # url shorteners can cause problems with tweet verification, so remove urls from the text comparison.
         text = re.sub(r"(https?://)?\S+\.\S+\/?(\S+)?", "", text)
         # Some scrapers put the mentions at the front of the text, remove them.
         text = re.sub(r"^(@\w+\s*)+", "", text)
         # And some trim trailing whitespace at the end of newlines, so ignore whitespace.
         text = re.sub(r"\s+", "", text)
-        # And some have special characters escaped as html entities
-        text = html.unescape(text)
         # The validator apify actor uses the tweet.text field and not the note_tweet field (> 280) charts, so only
         # use the first 280 chars for comparison.
         text = text[:280]
@@ -366,6 +369,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 bt.logging.debug("Twitter Content is empty")
                 return None
 
+            content = self.clean_text(content)
+
             scoring_prompt_text = scoring_prompt.text(prompt, content)
 
             return scoring_prompt, [
@@ -402,7 +407,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             ]
 
             reward_events = []
-            scoring_prompt = ScoringPrompt()
+            scoring_prompt = LinkContentPrompt()
 
             grouped_val_score_responses = []
 
@@ -415,6 +420,14 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 uid = uid_tensor.item()
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
+                if "Twitter Search" not in response.tools:
+                    if response.completion_links:
+                        reward_event.reward = 0
+                    else:
+                        reward_event.reward = 1
+                    reward_events.append(reward_event)
+                    grouped_val_score_responses.append({})
+                    continue
 
                 score_result = None
                 response_scores = {}
@@ -427,8 +440,9 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
                 unique_tweet_texts = {}
                 for val_tweet in response.validator_tweets:
-                    if val_tweet.full_text not in unique_tweet_texts:
-                        unique_tweet_texts[val_tweet.full_text] = val_tweet
+                    text = self.format_text_for_match(val_tweet.full_text)
+                    if text not in unique_tweet_texts:
+                        unique_tweet_texts[text] = val_tweet
 
                 unique_validator_tweets = list(unique_tweet_texts.values())
 
@@ -466,8 +480,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 reward_events.append(reward_event)
                 grouped_val_score_responses.append(response_scores)
 
-                zero_scores = {}
-                non_zero_scores = {}
+            zero_scores = {}
+            non_zero_scores = {}
 
             for (index, response), uid_tensor, reward_e in zip(
                 enumerate(responses), uids, reward_events
