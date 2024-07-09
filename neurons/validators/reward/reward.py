@@ -223,7 +223,7 @@ class BaseRewardModel:
         successful_completions_indices: List[int] = [
             idx
             for idx, resp in enumerate(responses)
-            if resp.dendrite.status_code == 200 and resp.completion_links
+            if resp.dendrite.status_code == 200
         ]
 
         reward_events, val_score_responses = self.get_rewards(

@@ -315,7 +315,9 @@ async def save_logs(prompt, logs, netuid):
         logging_endpoint_url = "https://api-logs-dev.smartscrape.ai"
 
     try:
-        async with aiohttp.ClientSession() as session:
+        timeout = aiohttp.ClientTimeout(total=600)
+
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             result = await session.post(
                 logging_endpoint_url,
                 json={
@@ -339,11 +341,14 @@ async def save_logs_in_chunks(
     summary_rewards,
     twitter_rewards,
     search_rewards,
+    performance_rewards,
     original_summary_rewards,
     original_twitter_rewards,
     original_search_rewards,
+    original_performance_rewards,
     tweet_scores,
     search_scores,
+    summary_link_scores,
     weights,
     neuron,
     netuid,
@@ -358,11 +363,14 @@ async def save_logs_in_chunks(
                 "summary_score": summary_reward,
                 "twitter_score": twitter_reward,
                 "search_score": search_reward,
+                "performance_score": performance_reward,
                 "original_summary_score": original_summary_reward,
                 "original_twitter_score": original_twitter_reward,
                 "original_search_score": original_search_reward,
+                "original_performance_score": original_performance_reward,
                 "tweet_scores": tweet_score,
                 "link_scores": search_score,
+                "summary_link_scores": summary_link_score,
                 "search_results": {
                     "google": response.search_results,
                     "google_news": response.google_news_search_results,
@@ -414,18 +422,21 @@ async def save_logs_in_chunks(
                 },
                 "time": response.dendrite.process_time,
             }
-            for response, uid, reward, summary_reward, twitter_reward, search_reward, original_summary_reward, original_twitter_reward, original_search_reward, tweet_score, search_score in zip(
+            for response, uid, reward, summary_reward, twitter_reward, search_reward, performance_reward, original_summary_reward, original_twitter_reward, original_search_reward, original_performance_reward, tweet_score, search_score, summary_link_score in zip(
                 responses,
                 uids.tolist(),
                 rewards.tolist(),
                 summary_rewards.tolist(),
                 twitter_rewards.tolist(),
                 search_rewards.tolist(),
+                performance_rewards.tolist(),
                 original_summary_rewards,
                 original_twitter_rewards,
                 original_search_rewards,
+                original_performance_rewards,
                 tweet_scores,
                 search_scores,
+                summary_link_scores,
             )
         ]
 

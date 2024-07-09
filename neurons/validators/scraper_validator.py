@@ -77,12 +77,12 @@ class ScraperValidator:
             ["Twitter Search", "Google Search"],
             ["Twitter Search", "Google News Search"],
             ["Twitter Search", "Google News Search"],
-            # ["Google Search"],
-            # ["Reddit Search"],
-            # ["Hacker News Search"],
-            # ["Youtube Search"],
-            # ["ArXiv Search"],
-            # ["Wikipedia Search"],
+            ["Google Search"],
+            ["Reddit Search"],
+            ["Hacker News Search"],
+            ["Youtube Search"],
+            ["ArXiv Search"],
+            ["Wikipedia Search"],
         ]
         self.language = "en"
         self.region = "us"
@@ -122,15 +122,6 @@ class ScraperValidator:
 
         self.reward_functions = [
             (
-                SummaryRelevanceRewardModel(
-                    device=self.neuron.config.neuron.device,
-                    scoring_type=RewardScoringType.summary_relevance_score_template,
-                    llm_reward=self.reward_llm,
-                )
-                if self.neuron.config.reward.summary_relevance_weight > 0
-                else MockRewardModel(RewardModelType.summary_relavance_match.value)
-            ),
-            (
                 TwitterContentRelevanceModel(
                     device=self.neuron.config.neuron.device,
                     scoring_type=RewardScoringType.summary_relevance_score_template,
@@ -147,6 +138,15 @@ class ScraperValidator:
                 )
                 if self.neuron.config.reward.web_search_relavance_weight > 0
                 else MockRewardModel(RewardModelType.search_content_relevance.value)
+            ),
+            (
+                SummaryRelevanceRewardModel(
+                    device=self.neuron.config.neuron.device,
+                    scoring_type=RewardScoringType.summary_relevance_score_template,
+                    llm_reward=self.reward_llm,
+                )
+                if self.neuron.config.reward.summary_relevance_weight > 0
+                else MockRewardModel(RewardModelType.summary_relavance_match.value)
             ),
             (
                 PerformanceRewardModel(
@@ -369,8 +369,8 @@ class ScraperValidator:
                 f"======================== Reward ==========================="
             )
 
-            summary_rewards = all_rewards[0]
-            twitter_rewards = all_rewards[1]
+            summary_rewards = all_rewards[1]
+            twitter_rewards = all_rewards[0]
             search_rewards = all_rewards[2]
             latency_rewards = all_rewards[3]
             zipped_rewards = zip(
