@@ -3,6 +3,7 @@ from typing import Type
 import bittensor as bt
 from pydantic import BaseModel, Field
 from starlette.types import Send
+from datura.protocol import TwitterScraperMedia, TwitterScraperTweet, TwitterScraperUser
 from datura.tools.base import BaseTool
 from datura.services.twitter_prompt_analyzer import TwitterPromptAnalyzer
 from datura.dataset.date_filters import get_specified_date_filter, DateFilterType
@@ -99,9 +100,43 @@ class TwitterSearchTool(BaseTool):
         #     bt.logging.info("Prompt Analysis sent")
 
         if tweets:
-            tweets_amount = tweets.get("meta", {}).get("result_count", 0)
+            modified_tweets = []
+            users = tweets.get("includes").get("users")
+            medias = tweets.get("includes").get("media", [])
+            for tweet in tweets.get("data"):
+                user = next((user for user in users if user.get("id") == tweet.get("author_id")), {})
+                parsed_medias = [
+                     TwitterScraperMedia(
+                         media_url=media.get("url", ""),
+                         type=media.get("type", ""),
+                     )
+                     for media in medias
+                ]
+                tweet = TwitterScraperTweet(
+                    id=tweet.get("id"),
+                    retweet_count=tweet.get("public_metrics").get("retweet_count"),
+                    reply_count=tweet.get("public_metrics").get("reply_count"),
+                    like_count=tweet.get("public_metrics").get("like_count"),
+                    quote_count=tweet.get("public_metrics").get("quote_count"),
+                    impression_count=tweet.get("public_metrics").get("impression_count"),
+                    bookmark_count=tweet.get("public_metrics").get("bookmark_count"),
+                    possibly_sensitive=tweet.get("possibly_sensitive"),
+                    created_at=tweet.get("created_at"),
+                    full_text=tweet.get("text"),
+                    edit_history_tweet_ids=tweet.get("edit_history_tweet_ids"),
+                    url=f"https://x.com/{user.get('username')}/status/{tweet.get('id')}",
+                    user=TwitterScraperUser(
+                        id=user.get("id"),
+                        username=user.get("username"),
+                        name=user.get("name"),
+                        created_at=user.get("created_at"),
+                        url=f"https://x.com/{user.get('username')}"
+                    ),
+                    media=parsed_medias,
+                )
+                modified_tweets.append(tweet.dict())
 
-            tweets_response_body = {"type": "tweets", "content": tweets}
+            tweets_response_body = {"type": "tweets", "content": modified_tweets}
             response_streamer.more_body = False
 
             await send(
@@ -111,4 +146,4 @@ class TwitterSearchTool(BaseTool):
                     "more_body": False,
                 }
             )
-            bt.logging.info(f"Tweet data sent. Number of tweets: {tweets_amount}")
+            bt.logging.info(f"Tweet data sent. Number of tweets: {len(modified_tweets)}")

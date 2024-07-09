@@ -73,11 +73,15 @@ class TwitterScraperTweet(BaseModel):
     like_count: Optional[int] = 0
     view_count: Optional[int] = 0
     quote_count: Optional[int] = 0
+    impression_count: Optional[int] = 0
+    bookmark_count: Optional[int] = 0
     url: Optional[str] = ""
     created_at: Optional[str] = ""
     is_quote_tweet: Optional[bool] = False
     is_retweet: Optional[bool] = False
     media: Optional[List[TwitterScraperMedia]] = []
+    possibly_sensitive: Optional[bool]
+    edit_history_tweet_ids: Optional[List[str]]
 
 
 class ScraperTextRole(str, Enum):
@@ -183,8 +187,8 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         default_factory=list, title="Links", description="Fetched Links Data."
     )
 
-    miner_tweets: Optional[Dict[str, Any]] = pydantic.Field(
-        default_factory=dict,
+    miner_tweets: Optional[List[Dict[str, Any]]] = pydantic.Field(
+        default_factory=list,
         title="Miner Tweets",
         description="Optional JSON object containing tweets data from the miner.",
     )
@@ -767,16 +771,22 @@ class TwitterTweetSynapse(bt.Synapse):
         description="Region specified by user.",
     )
 
+    completion_links: Optional[List[str]] = pydantic.Field(
+        default_factory=list,
+        title="Links Content",
+        description="A list of JSON objects representing the extracted links content from the tweets.",
+    )
+
+    miner_tweets: Optional[List[Dict[str, Any]]] = pydantic.Field(
+        default_factory=list,
+        title="Miner Tweets",
+        description="Optional JSON object containing tweets data from the miner.",
+    )
+
     validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
         default_factory=list,
         title="tweets",
         description="Fetched Tweets Data.",
-    )
-
-    miner_tweets: Optional[Dict[str, Any]] = pydantic.Field(
-        default_factory=dict,
-        title="Miner Tweets",
-        description="Optional JSON object containing tweets data from the miner.",
     )
 
     results: Optional[Dict[str, Any]] = pydantic.Field(
@@ -785,71 +795,8 @@ class TwitterTweetSynapse(bt.Synapse):
         description="A dictionary of results returned by twitter api",
     )
 
+    def get_twitter_completion(self) -> Optional[str]:
+        return self.texts.get(ScraperTextRole.TWITTER_SUMMARY.value, "")
+
     def deserialize(self) -> str:
         return self
-
-
-class MinerTweetEntityUrl(BaseModel):
-    start: int
-    end: int
-    url: str
-    expanded_url: str
-    display_url: str
-
-
-class MinerTweetEntityMention(BaseModel):
-    start: int
-    end: int
-    username: str
-    id: str
-
-
-class MinerTweetEntityAnnotation(BaseModel):
-    start: int
-    end: int
-    probability: float
-    type: str
-    normalized_text: str
-
-
-class MinerTweetEntityTag(BaseModel):
-    start: int
-    end: int
-    tag: str
-
-
-class MinerTweetEntity(BaseModel):
-    urls: Optional[List[MinerTweetEntityUrl]]
-    hashtags: Optional[List[MinerTweetEntityTag]]
-    cashtags: Optional[List[MinerTweetEntityTag]]
-    mentions: Optional[List[MinerTweetEntityMention]]
-    annotations: Optional[List[MinerTweetEntityAnnotation]]
-
-
-class MinerTweetPublicMetrics(BaseModel):
-    retweet_count: int
-    reply_count: int
-    like_count: int
-    quote_count: int
-    bookmark_count: int
-    impression_count: int
-
-
-class MinerTweet(BaseModel):
-    id: str
-    author_id: str
-    text: str
-    possibly_sensitive: Optional[bool]
-    edit_history_tweet_ids: List[str]
-    created_at: datetime = Field(
-        ..., description="ISO 8601 format: YYYY-MM-DDTHH:mm:ss.sssZ"
-    )
-    public_metrics: Optional[MinerTweetPublicMetrics]
-    entities: Optional[MinerTweetEntity]
-
-
-class MinerTweetAuthor(BaseModel):
-    id: str
-    name: str
-    username: str
-    created_at: str
