@@ -206,7 +206,7 @@ class ScraperValidator:
             language=language,
             region=region,
             google_date_filter=google_date_filter,
-            response_order=response_order.value,
+            response_order=response_order,
         )
 
         # Make calls to the network with the prompt.
