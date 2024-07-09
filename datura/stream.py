@@ -1,6 +1,5 @@
 from datura.protocol import (
     ScraperStreamingSynapse,
-    TwitterPromptAnalysisResult,
     extract_json_chunk,
 )
 import bittensor as bt

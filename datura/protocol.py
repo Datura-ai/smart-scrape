@@ -93,10 +93,10 @@ class ScraperTextRole(str, Enum):
 
 
 class ScraperStreamingSynapse(bt.StreamingSynapse):
-    messages: str = pydantic.Field(
+    prompt: str = pydantic.Field(
         ...,
-        title="Messages",
-        description="A list of messages in the StreamPrompting scenario, each containing a role and content. Immutable.",
+        title="Prompt",
+        description="The initial input or question provided by the user to guide the scraping and data collection process.",
         allow_mutation=False,
     )
 
@@ -537,7 +537,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "header_size": int(headers.get("header_size", 0)),
             "dendrite": extract_info("bt_header_dendrite"),
             "axon": extract_info("bt_header_axon"),
-            "messages": self.messages,
+            "prompt": self.prompt,
             # "model": self.model,
             "completion": self.completion,
             "miner_tweets": self.miner_tweets,
@@ -677,10 +677,16 @@ class TwitterUserSynapse(bt.Synapse):
 class TwitterTweetSynapse(bt.Synapse):
     """A class to represent twitter api's tweet synapse"""
 
-    search_terms: Optional[str] = pydantic.Field(
+    prompt: Optional[str] = pydantic.Field(
         None,
         title="Search Terms",
         description="Search terms to search tweets with",
+    )
+
+    completion: str = pydantic.Field(
+        "",
+        title="Completion",
+        description="Completion status of the current StreamPrompting object. This attribute is mutable and can be updated.",
     )
 
     max_items: Optional[str] = pydantic.Field(
@@ -741,6 +747,36 @@ class TwitterTweetSynapse(bt.Synapse):
         None,
         title="End Date",
         description="Date range field for tweet, combine with start_date field to set a time range",
+    )
+
+    date_filter_type: Optional[str] = pydantic.Field(
+        None,
+        title="Date filter enum",
+        description="The date filter enum.",
+    )
+
+    language: Optional[str] = pydantic.Field(
+        "en",
+        title="Language",
+        description="Language specified by user.",
+    )
+
+    region: Optional[str] = pydantic.Field(
+        "us",
+        title="Region",
+        description="Region specified by user.",
+    )
+
+    validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+        default_factory=list,
+        title="tweets",
+        description="Fetched Tweets Data.",
+    )
+
+    miner_tweets: Optional[Dict[str, Any]] = pydantic.Field(
+        default_factory=dict,
+        title="Miner Tweets",
+        description="Optional JSON object containing tweets data from the miner.",
     )
 
     results: Optional[Dict[str, Any]] = pydantic.Field(

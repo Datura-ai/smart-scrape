@@ -195,7 +195,7 @@ class ScraperValidator:
 
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
         synapse = ScraperStreamingSynapse(
-            messages=prompt,
+            prompt=prompt,
             model=self.model,
             seed=self.seed,
             # is_intro_text=is_intro_text,
@@ -837,7 +837,7 @@ class ScraperValidator:
             axon = self.neuron.metagraph.axons[uid]
 
             synapse = TwitterTweetSynapse(
-                search_terms=body.get("search_terms"),
+                prompt=body.get("prompt"),
                 max_items=body.get("max_items"),
                 min_retweets=body.get("min_retweets"),
                 min_likes=body.get("min_likes"),

@@ -22,7 +22,7 @@ class ScraperMiner:
     async def smart_scraper(self, synapse: ScraperStreamingSynapse, send: Send):
         try:
             # model = synapse.model
-            prompt = synapse.messages
+            prompt = synapse.prompt
             # seed = synapse.seed
             tools = synapse.tools
             # is_intro_text = synapse.is_intro_text

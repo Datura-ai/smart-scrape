@@ -266,7 +266,7 @@ async def get_user_by_username(
     },
 )
 async def search_twitter(
-    search_terms: str = Query(
+    prompt: str = Query(
         "",
         alias="query",
         description="Query text to search tweets with",
@@ -323,7 +323,7 @@ async def search_twitter(
     try:
         response = await neu.scraper_validator.get_tweets(
             body={
-                "search_terms": search_terms,
+                "prompt": prompt,
                 "max_items": max_items,
                 "min_retweets": min_retweets,
                 "min_likes": min_likes,
