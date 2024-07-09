@@ -369,9 +369,9 @@ class ScraperValidator:
                 f"======================== Reward ==========================="
             )
 
-            summary_rewards = all_rewards[1]
             twitter_rewards = all_rewards[0]
-            search_rewards = all_rewards[2]
+            search_rewards = all_rewards[1]
+            summary_rewards = all_rewards[2]
             latency_rewards = all_rewards[3]
             zipped_rewards = zip(
                 uids,
