@@ -214,23 +214,30 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         scoring_prompt = LinkContentAndDescriptionPrompt()
 
         average_scores = []
+        link_description_scores_list = []
+
         expected_links = 10
 
+        # Scoring keys list maintains the order of responses
         for scoring_keys in scoring_keys_list:
+            # Store link scores and link with their scores of each response
             link_description_scores = []
+            link_description_scores_map = {}
 
-            # Parse scores from LLM response
+            # Parse scores from LLM response for each link
             for scoring_key in scoring_keys:
                 score_result = score_responses.get(scoring_key)
                 score = scoring_prompt.extract_score(score_result)
 
                 if score is not None:
+                    link_description_scores_map[scoring_key] = score
                     link_description_scores.append(score)
 
             # Calculate average score and scale down to 0-1 range
             average_score = sum(link_description_scores) / expected_links / 5
             average_score = min(average_score, 1)
             average_scores.append(average_score)
+            link_description_scores_list.append(link_description_scores_map)
 
         uid_to_average_score = dict(zip(uids.tolist(), average_scores))
 
@@ -238,7 +245,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             f"SummaryRelevanceRewardModel | prompt: {prompt}, average scores: {uid_to_average_score}"
         )
 
-        return average_scores
+        return average_scores, link_description_scores_list
 
     def get_rewards(
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
@@ -256,7 +263,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             )
 
             # Need to use this scores to calculate rewards
-            link_description_scores = asyncio.get_event_loop().run_until_complete(
+            (
+                average_link_scores,
+                link_description_scores_list,
+            ) = asyncio.get_event_loop().run_until_complete(
                 self.score_link_descriptions(prompt, responses, uids)
             )
 
@@ -326,8 +336,8 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 dtype=torch.float32,
             )
 
-            for (index, response), link_description_score, uid_tensor in zip(
-                enumerate(responses), link_description_scores, uids
+            for (index, response), average_link_score, uid_tensor in zip(
+                enumerate(responses), average_link_scores, uids
             ):
                 uid = uid_tensor.item()
 
@@ -340,7 +350,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
                 links_score = (
                     torch.tensor(
-                        link_description_score, device=self.device, dtype=torch.float32
+                        average_link_score, device=self.device, dtype=torch.float32
                     )
                     * link_content_weight
                 )
@@ -367,7 +377,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             )
             bt.logging.info(json.dumps(non_zero_scores))
 
-            return reward_events, {}
+            return reward_events, link_description_scores_list
         except Exception as e:
             error_message = f"Summary Relevance get_rewards: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
@@ -377,4 +387,4 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
                 reward_events.append(reward_event)
-            return reward_events, {}
+            return reward_events, []
