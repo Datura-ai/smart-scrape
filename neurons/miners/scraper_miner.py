@@ -21,11 +21,11 @@ class ScraperMiner:
 
     async def smart_scraper(self, synapse: ScraperStreamingSynapse, send: Send):
         try:
-            model = synapse.model
+            # model = synapse.model
             prompt = synapse.messages
-            seed = synapse.seed
+            # seed = synapse.seed
             tools = synapse.tools
-            is_intro_text = synapse.is_intro_text
+            # is_intro_text = synapse.is_intro_text
             response_order = response_order_to_str(synapse.response_order)
 
             bt.logging.trace(synapse)
@@ -59,7 +59,7 @@ class ScraperMiner:
                 prompt=prompt,
                 manual_tool_names=tools,
                 send=send,
-                is_intro_text=is_intro_text,
+                # is_intro_text=is_intro_text,
                 miner=self.miner,
                 language=synapse.language,
                 region=synapse.region,

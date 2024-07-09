@@ -55,7 +55,7 @@ async def collect_generator_results(response):
 async def process_single_response(response):
     synapse = ScraperStreamingSynapse(messages="", model="", seed=1)
     completion = ""
-    prompt_analysis = None
+    # prompt_analysis = None
     miner_tweets = []
 
     try:
@@ -76,10 +76,10 @@ async def process_single_response(response):
                             completion += text_content
                             yield (False, text_content)
 
-                        elif content_type == "prompt_analysis":
-                            prompt_analysis_json = json_data.get("content", "{}")
-                            prompt_analysis = TwitterPromptAnalysisResult()
-                            prompt_analysis.fill(prompt_analysis_json)
+                        # elif content_type == "prompt_analysis":
+                        #     prompt_analysis_json = json_data.get("content", "{}")
+                        #     prompt_analysis = TwitterPromptAnalysisResult()
+                        #     prompt_analysis.fill(prompt_analysis_json)
 
                         elif content_type == "tweets":
                             tweets_json = json_data.get("content", "[]")
@@ -115,7 +115,7 @@ async def process_single_response(response):
             synapse.completion = completion
         if miner_tweets:
             synapse.miner_tweets = miner_tweets
-        if prompt_analysis:
-            synapse.prompt_analysis = prompt_analysis
+        # if prompt_analysis:
+        #     synapse.prompt_analysis = prompt_analysis
 
         yield (True, synapse)  # Final value

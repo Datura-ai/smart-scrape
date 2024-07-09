@@ -63,7 +63,7 @@ class ToolManager:
     manual_tool_names: List[str]
     tool_name_to_instance: Dict[str, BaseTool]
 
-    is_intro_text: bool
+    # is_intro_text: bool
     miner: any
     language: str
     region: str
@@ -78,7 +78,7 @@ class ToolManager:
         prompt,
         manual_tool_names,
         send,
-        is_intro_text,
+        # is_intro_text,
         miner,
         language,
         region,
@@ -89,7 +89,7 @@ class ToolManager:
         self.prompt = prompt
         self.manual_tool_names = manual_tool_names
         self.miner = miner
-        self.is_intro_text = is_intro_text
+        # self.is_intro_text = is_intro_text
         self.language = language
         self.region = region
         self.date_filter = date_filter
@@ -272,12 +272,12 @@ class ToolManager:
 
     async def intro_text(self, model, tool_names):
         bt.logging.trace("miner.intro_text => ", self.miner.config.miner.intro_text)
-        bt.logging.trace("Synapse.is_intro_text => ", self.is_intro_text)
+        # bt.logging.trace("Synapse.is_intro_text => ", self.is_intro_text)
         if not self.miner.config.miner.intro_text:
             return
 
-        if not self.is_intro_text:
-            return
+        # if not self.is_intro_text:
+        #     return
 
         bt.logging.trace("Run intro text")
 

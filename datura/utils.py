@@ -352,7 +352,7 @@ async def save_logs_in_chunks(
         logs = [
             {
                 "completion": response.completion,
-                "prompt_analysis": response.prompt_analysis.dict(),
+                # "prompt_analysis": response.prompt_analysis.dict(),
                 "data": response.miner_tweets,
                 "score": reward,
                 "summary_score": summary_reward,

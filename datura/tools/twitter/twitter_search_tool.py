@@ -82,21 +82,21 @@ class TwitterSearchTool(BaseTool):
 
         tweets, prompt_analysis = data
 
-        # Send prompt_analysis
-        if prompt_analysis:
-            prompt_analysis_response_body = {
-                "type": "prompt_analysis",
-                "content": prompt_analysis.dict(),
-            }
+        # # Send prompt_analysis
+        # if prompt_analysis:
+        #     prompt_analysis_response_body = {
+        #         "type": "prompt_analysis",
+        #         "content": prompt_analysis.dict(),
+        #     }
 
-            await send(
-                {
-                    "type": "http.response.body",
-                    "body": json.dumps(prompt_analysis_response_body).encode("utf-8"),
-                    "more_body": True,
-                }
-            )
-            bt.logging.info("Prompt Analysis sent")
+        #     await send(
+        #         {
+        #             "type": "http.response.body",
+        #             "body": json.dumps(prompt_analysis_response_body).encode("utf-8"),
+        #             "more_body": True,
+        #         }
+        #     )
+        #     bt.logging.info("Prompt Analysis sent")
 
         if tweets:
             tweets_amount = tweets.get("meta", {}).get("result_count", 0)

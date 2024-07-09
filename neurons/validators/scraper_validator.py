@@ -165,7 +165,7 @@ class ScraperValidator:
         task: TwitterTask,
         strategy=QUERY_MINERS.RANDOM,
         is_only_allowed_miner=True,
-        is_intro_text=False,
+        # is_intro_text=False,
         specified_uids=None,
         date_filter=None,
         tools=[],
@@ -198,7 +198,7 @@ class ScraperValidator:
             messages=prompt,
             model=self.model,
             seed=self.seed,
-            is_intro_text=is_intro_text,
+            # is_intro_text=is_intro_text,
             start_date=start_date,
             end_date=end_date,
             date_filter_type=date_filter.date_filter_type.value,
@@ -523,7 +523,7 @@ class ScraperValidator:
                 strategy=QUERY_MINERS.RANDOM,
                 # This is set to false on Finney to allow all miners to participate from Datura UI
                 is_only_allowed_miner=self.neuron.config.subtensor.network != "finney",
-                is_intro_text=True,
+                # is_intro_text=True,
                 tools=tools,
                 language=self.language,
                 region=self.region,
@@ -577,7 +577,9 @@ class ScraperValidator:
                 "date_filter", DateFilterType.PAST_2_DAYS.value
             )
             date_filter_type = DateFilterType(date_filter_type)
-            response_order = query.get('response_order', ResponseOrder.SUMMARY_FIRST.value)
+            response_order = query.get(
+                "response_order", ResponseOrder.SUMMARY_FIRST.value
+            )
 
             task_name = "augment"
             task = TwitterTask(
@@ -791,10 +793,10 @@ class ScraperValidator:
 
             synapse = TwitterUserSynapse(
                 # excpected as TwitterAPISynapseCall
-                request_type=body.get('request_type').value,
-                user_id=body.get('user_id'),
-                username=body.get('username'),
-                max_items=body.get('max_items'),
+                request_type=body.get("request_type").value,
+                user_id=body.get("user_id"),
+                username=body.get("username"),
+                max_items=body.get("max_items"),
             )
 
             synapse: TwitterUserSynapse = await self.neuron.dendrite.call(
@@ -835,17 +837,17 @@ class ScraperValidator:
             axon = self.neuron.metagraph.axons[uid]
 
             synapse = TwitterTweetSynapse(
-                search_terms=body.get('search_terms'),
-                max_items=body.get('max_items'),
-                min_retweets=body.get('min_retweets'),
-                min_likes=body.get('min_likes'),
-                only_verified=body.get('only_verified'),
-                only_twitter_blue=body.get('only_twitter_blue'),
-                only_video=body.get('only_video'),
-                only_image=body.get('only_image'),
-                only_quote=body.get('only_quote'),
-                start_date=body.get('start_date'),
-                end_date=body.get('end_date'),
+                search_terms=body.get("search_terms"),
+                max_items=body.get("max_items"),
+                min_retweets=body.get("min_retweets"),
+                min_likes=body.get("min_likes"),
+                only_verified=body.get("only_verified"),
+                only_twitter_blue=body.get("only_twitter_blue"),
+                only_video=body.get("only_video"),
+                only_image=body.get("only_image"),
+                only_quote=body.get("only_quote"),
+                start_date=body.get("start_date"),
+                end_date=body.get("end_date"),
             )
 
             synapse: TwitterTweetSynapse = await self.neuron.dendrite.call(
@@ -859,4 +861,3 @@ class ScraperValidator:
         except Exception as e:
             bt.logging.error(f"Error in get_tweets: {e}")
             raise e
-
