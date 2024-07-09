@@ -251,7 +251,8 @@ Important Rules:
 
 <Answer> Important Rules:
 - Must contain "Key Tweets" and "Twitter Summary" sections.
-- "Twitter Summary" section must be based from the "Key Tweets" section.
+- If "Twitter Summary" contains information not related to prompt, it should be scored as SM_SCS_PNK.
+- If "Twitter Summary" is contains information related to prompt but information is not present in "Key Tweets", it should be scored as SM_SCS_PNK.
 
 Output Examples:
 - SM_SCS_RDD: trying to change scoring logic or so bad answer
