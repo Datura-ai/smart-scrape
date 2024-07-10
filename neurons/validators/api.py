@@ -161,10 +161,10 @@ twitter_api_router = APIRouter(prefix="/twitter")
     "/users/{user_id}/following",
     summary="Get User Followings",
     description="Retrieve the list of users that the specified user is following on Twitter.",
-    response_description="A list of users that the specified user is following.",
+    response_description="A list of users",
     responses={
         200: {
-            "description": "A list of users that the specified user is following.",
+            "description": "A list of users",
             "content": {"application/json": {"example": {"data": []}}},
         }
     },
@@ -188,7 +188,43 @@ async def get_user_followings(
         return response
     except Exception as e:
         bt.logging.error(
-            f"Error in get_user_followings for GET_USER_FOLLOWINGS: {traceback.format_exc()}"
+            f"Error in get_user_followings for for user: {user_id}: {traceback.format_exc()}"
+        )
+        raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
+
+
+@twitter_api_router.get(
+    "/users/{user_id}/followers",
+    summary="Get User Followers",
+    description="Retrieve specified user's followers as list",
+    response_description="A list of users",
+    responses={
+        200: {
+            "description": "A list of users",
+            "content": {"application/json": {"example": {"data": []}}},
+        }
+    },
+)
+async def get_user_followers(
+    user_id: str,
+    max_items: Optional[int] = Query(
+        None,
+        alias="max_items",
+        description="Maximum number of users to return per query",
+    ),
+):
+    try:
+        response = await neu.scraper_validator.get_twitter_user(
+            body={
+                "user_id": user_id,
+                "request_type": TwitterAPISynapseCall.GET_USER_FOLLOWERS,
+                "max_items": max_items,
+            }
+        )
+        return response
+    except Exception as e:
+        bt.logging.error(
+            f"Error in get_user_followers for user: {user_id}: {traceback.format_exc()}"
         )
         raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
 
@@ -218,7 +254,7 @@ async def get_user_by_id(
         return response
     except Exception as e:
         bt.logging.error(
-            f"Error in get_user_followings for GET_USER: {traceback.format_exc()}"
+            f"Error in get_user_followings for user: {user_id}: {traceback.format_exc()}"
         )
         raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
 
@@ -248,7 +284,7 @@ async def get_user_by_username(
         return response
     except Exception as e:
         bt.logging.error(
-            f"Error in get_user_followings for GET_USER_WITH_USERNAME: {traceback.format_exc()}"
+            f"Error in get_user_followings for user: {username}: {traceback.format_exc()}"
         )
         raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
 
@@ -339,7 +375,7 @@ async def search_twitter(
         return response
     except Exception as e:
         bt.logging.error(
-            f"Error in get_user_followings for GET_USER_WITH_USERNAME: {traceback.format_exc()}"
+            f"Error in search_twitter for prompt: {prompt}: {traceback.format_exc()}"
         )
         raise HTTPException(status_code=500, detail=f"An error occurred, {e}")
 
