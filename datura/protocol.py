@@ -293,6 +293,18 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Preffered order type of response, by default it will be SUMMARY_FIRST",
     )
 
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
+    )
+
+    max_items: Optional[int] = pydantic.Field(
+        None,
+        title="Max Results",
+        description="The maximum number of results to be returned per query",
+    )
+
     # def set_prompt_analysis(self, data: any):
     #     self.prompt_analysis = data
 
@@ -675,6 +687,12 @@ class TwitterUserSynapse(bt.Synapse):
         description="An optional string that's user of twitter's username",
     )
 
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
+    )
+
     results: Optional[Dict[str, Any]] = pydantic.Field(
         default_factory=dict,
         title="Response dictionary",
@@ -791,6 +809,12 @@ class TwitterTweetSynapse(bt.Synapse):
         default_factory=list,
         title="tweets",
         description="Fetched Tweets Data.",
+    )
+
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
     )
 
     results: Optional[Dict[str, Any]] = pydantic.Field(
