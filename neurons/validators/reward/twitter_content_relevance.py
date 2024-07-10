@@ -72,7 +72,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         start_llm_time = time.time()
         scoring_messages = []
         for tweet in tweets_list:
-            val_text = tweet.full_text
+            val_text = tweet.text
             val_tweet_id = tweet.id
             result = self.get_scoring_text(
                 prompt=prompt, content=val_text, response=None
@@ -202,7 +202,6 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             if not completion:
                 return 0
 
-
             tweets_data = response.miner_tweets
             # miner_tweets_meta = miner_tweets.get('meta', {})
             tweets_amount = len(tweets_data)
@@ -224,17 +223,13 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             # Iterate over all validator tweets instead of selecting a random one
             for val_tweet in response.validator_tweets:
                 # Extract content, ID, and creation time of the validator tweet
-                val_tweet_content = val_tweet.full_text
+                val_tweet_content = val_tweet.text
                 val_tweet_id = val_tweet.id
                 val_tweet_created_at = val_tweet.created_at
 
                 # Find the corresponding miner tweet by ID
                 tweet = next(
-                    (
-                        tweet
-                        for tweet in tweets_data
-                        if tweet["id"] == val_tweet_id
-                    ),
+                    (tweet for tweet in tweets_data if tweet["id"] == val_tweet_id),
                     None,
                 )
 
@@ -274,10 +269,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                         + "Z"
                     )
 
-                    if (
-                        not tweet.get("created_at")
-                        == converted_val_tweet_created_at
-                    ):
+                    if not tweet.get("created_at") == converted_val_tweet_created_at:
                         tweet_score = 0
 
                     tweet_created_at_aware = datetime.strptime(
@@ -414,7 +406,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
                 unique_tweet_texts = {}
                 for val_tweet in response.validator_tweets:
-                    text = self.format_text_for_match(val_tweet.full_text)
+                    text = self.format_text_for_match(val_tweet.text)
                     if text not in unique_tweet_texts:
                         unique_tweet_texts[text] = val_tweet
 

@@ -71,7 +71,7 @@ class TwitterScraperTweet(BaseModel):
     # Available in both, scraped and api based tweets.
     user: Optional[TwitterScraperUser] = TwitterScraperUser()
     id: Optional[str]
-    full_text: Optional[str]
+    text: Optional[str]
     reply_count: Optional[int]
     retweet_count: Optional[int]
     like_count: Optional[int]

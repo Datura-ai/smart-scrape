@@ -61,7 +61,7 @@ class TwitterScraperActor:
 
                 tweet = TwitterScraperTweet(
                     id=item.get("id"),
-                    full_text=item.get("text"),
+                    text=item.get("text"),
                     reply_count=item.get("replyCount"),
                     retweet_count=item.get("retweetCount"),
                     like_count=item.get("likeCount"),
@@ -180,7 +180,7 @@ class TwitterScraperActor:
 
                 tweet = TwitterScraperTweet(
                     id=item.get("id"),
-                    full_text=item.get("text"),
+                    text=item.get("text"),
                     reply_count=item.get("replyCount"),
                     retweet_count=item.get("retweetCount"),
                     like_count=item.get("likeCount"),
@@ -210,9 +210,7 @@ class TwitterScraperActor:
 
                 tweets.append(tweet.dict())
 
-            return {
-                "data": tweets
-            }
+            return {"data": tweets}
         except Exception as e:
             error_message = (
                 f"TwitterScraperActor: Failed to scrape tweets {searchTerms}: {str(e)}"
@@ -250,16 +248,12 @@ class TwitterScraperActor:
             async for item in self.client.dataset(
                 run["defaultDatasetId"]
             ).iterate_items():
-                if item.get('id') == id:
+                if item.get("id") == id:
                     user = item
 
-            return {
-                "data": user
-            }
+            return {"data": user}
         except Exception as e:
-            error_message = (
-                f"TwitterScraperActor: Failed to scrape user {id}: {str(e)}"
-            )
+            error_message = f"TwitterScraperActor: Failed to scrape user {id}: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.warning("\n".join(tb_str) + error_message)
             return {
@@ -293,12 +287,10 @@ class TwitterScraperActor:
             async for item in self.client.dataset(
                 run["defaultDatasetId"]
             ).iterate_items():
-                if item.get('userName') == username:
+                if item.get("userName") == username:
                     user = item
 
-            return {
-                "data": user
-            }
+            return {"data": user}
         except Exception as e:
             error_message = (
                 f"TwitterScraperActor: Failed to scrape user {username}: {str(e)}"
@@ -340,13 +332,9 @@ class TwitterScraperActor:
             ).iterate_items():
                 users.append(item)
 
-            return {
-                "data": users
-            }
+            return {"data": users}
         except Exception as e:
-            error_message = (
-                f"TwitterScraperActor: Failed to scrape user's followings {id}: {str(e)}"
-            )
+            error_message = f"TwitterScraperActor: Failed to scrape user's followings {id}: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.warning("\n".join(tb_str) + error_message)
             return {
