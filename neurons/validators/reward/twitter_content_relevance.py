@@ -24,19 +24,16 @@ import asyncio
 import re
 import html
 import random
-from typing import List, Union
-from .config import RewardModelType, RewardScoringType
+from typing import List
+from .config import RewardModelType
 from .reward import BaseRewardModel, BaseRewardEvent, pattern_to_check
 from neurons.validators.utils.prompts import (
-    SummaryRelevancePrompt,
     LinkContentPrompt,
 )
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from datura.protocol import (
     ScraperStreamingSynapse,
     TwitterScraperTweet,
-    MinerTweet,
-    MinerTweetAuthor,
 )
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from datura.services.twitter_api_wrapper import TwitterAPIClient
@@ -196,6 +193,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         text = text[:280]
         return text
 
+    # TODO: duplicate this to include advanced fields' checkings with current logic
     def check_response_random_tweet(self, response: ScraperStreamingSynapse):
         try:
             tweet_score = 0
@@ -204,12 +202,10 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             if not completion:
                 return 0
 
-            miner_tweets = response.miner_tweets
 
-            miner_tweets_data = miner_tweets.get("data", [])
+            tweets_data = response.miner_tweets
             # miner_tweets_meta = miner_tweets.get('meta', {})
-            miner_tweets_users = miner_tweets.get("includes", {}).get("users", [])
-            miner_tweets_amount = miner_tweets.get("meta", {}).get("result_count", 0)
+            tweets_amount = len(tweets_data)
 
             # Assign completion links and validator tweets from the response
             completion_links = response.completion_links
@@ -217,7 +213,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             if (
                 not completion_links
                 or len(completion_links) < 2
-                or miner_tweets_amount == 0
+                or tweets_amount == 0
                 or not response.validator_tweets
             ):
                 # Ensure there are at least two twitter links provided by miners and check for the presence of miner and validator tweets
@@ -233,10 +229,10 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 val_tweet_created_at = val_tweet.created_at
 
                 # Find the corresponding miner tweet by ID
-                miner_tweet = next(
+                tweet = next(
                     (
                         tweet
-                        for tweet in miner_tweets_data
+                        for tweet in tweets_data
                         if tweet["id"] == val_tweet_id
                     ),
                     None,
@@ -245,21 +241,21 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 # Initialize the score for this iteration
                 tweet_score = 0
 
-                if miner_tweet:
-                    if not self.is_valid_miner_tweet(miner_tweet, miner_tweets_users):
+                if tweet:
+                    if not self.is_valid_tweet(tweet):
                         tweet_scores.append(0)
                         continue
 
-                    miner_tweet_text = miner_tweet["text"]
+                    tweet_text = tweet["text"]
 
-                    if not miner_tweet_text or re.search(
-                        pattern_to_check, miner_tweet_text, flags=re.IGNORECASE
+                    if not tweet_text or re.search(
+                        pattern_to_check, tweet_text, flags=re.IGNORECASE
                     ):
                         tweet_scores.append(0)
                         continue
 
                     # Prepare texts for comparison by normalizing them
-                    miner_text_compared = self.format_text_for_match(miner_tweet_text)
+                    miner_text_compared = self.format_text_for_match(tweet_text)
                     validator_text_compared = self.format_text_for_match(
                         val_tweet_content
                     )
@@ -279,7 +275,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                     )
 
                     if (
-                        not miner_tweet.get("created_at")
+                        not tweet.get("created_at")
                         == converted_val_tweet_created_at
                     ):
                         tweet_score = 0
@@ -318,36 +314,12 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             bt.logging.error(f"check_response_random_tweet: {str(e)}")
             return 0
 
-    def is_valid_miner_tweet(self, miner_tweet, miner_tweet_users):
+    def is_valid_tweet(self, tweet):
         try:
-            miner_tweet = MinerTweet(**miner_tweet)
+            _ = TwitterScraperTweet(**tweet)
         except ValidationError as e:
             bt.logging.error(f"Invalid miner tweet data: {e}")
             return False
-
-        author = (
-            next(
-                (
-                    user
-                    for user in miner_tweet_users
-                    if user.get("id") == miner_tweet.author_id
-                ),
-                None,
-            )
-            or None
-        )
-
-        if not author:
-            return False
-
-        try:
-            miner_tweet_author = MinerTweetAuthor(**author)
-        except ValidationError as e:
-            bt.logging.error(
-                f"Invalid miner tweet author for tweet id {miner_tweet.id}: {e}"
-            )
-            return False
-
         return True
 
     def get_scoring_text(
@@ -387,10 +359,10 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
-            completions: List[str] = self.get_successful_twitter_completions(responses)
-            bt.logging.debug(
-                f"TwitterContentRelevanceModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
-            )
+            # completions: List[str] = self.get_successful_twitter_completions(responses)
+            # bt.logging.debug(
+            #     f"TwitterContentRelevanceModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
+            # )
             bt.logging.trace(
                 f"TwitterContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
             )
@@ -398,6 +370,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             val_score_responses = asyncio.get_event_loop().run_until_complete(
                 self.process_tweets(prompt=prompt, responses=responses)
             )
+            bt.logging.info(f"VAL_SCORE_RESPONSES: {val_score_responses}")
+
             bt.logging.info(f"TwitterContentRelevanceModel | PROMPT: {prompt}")
             bt.logging.info(
                 f"TwitterContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"

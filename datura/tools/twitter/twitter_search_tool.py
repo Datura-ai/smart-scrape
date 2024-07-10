@@ -6,6 +6,7 @@ from starlette.types import Send
 from datura.tools.base import BaseTool
 from datura.services.twitter_prompt_analyzer import TwitterPromptAnalyzer
 from datura.dataset.date_filters import get_specified_date_filter, DateFilterType
+from datura.tools.twitter.twitter_utils import generalize_tweet_structure
 
 
 class TwitterSearchToolSchema(BaseModel):
@@ -99,9 +100,8 @@ class TwitterSearchTool(BaseTool):
         #     bt.logging.info("Prompt Analysis sent")
 
         if tweets:
-            tweets_amount = tweets.get("meta", {}).get("result_count", 0)
-
-            tweets_response_body = {"type": "tweets", "content": tweets}
+            modified_tweets = generalize_tweet_structure(tweets=tweets)
+            tweets_response_body = {"type": "tweets", "content": modified_tweets}
             response_streamer.more_body = False
 
             await send(
@@ -111,4 +111,4 @@ class TwitterSearchTool(BaseTool):
                     "more_body": False,
                 }
             )
-            bt.logging.info(f"Tweet data sent. Number of tweets: {tweets_amount}")
+            bt.logging.info(f"Tweet data sent. Number of tweets: {len(modified_tweets)}")
