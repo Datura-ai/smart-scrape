@@ -193,8 +193,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         text = text[:280]
         return text
 
-    # TODO: duplicate this to include advanced fields' checkings with current logic
-    def check_response_random_tweet(self, response: ScraperStreamingSynapse):
+    def check_tweet_content(self, response: ScraperStreamingSynapse):
         try:
             tweet_score = 0
 
@@ -303,7 +302,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
             return average_score
         except Exception as e:
-            bt.logging.error(f"check_response_random_tweet: {str(e)}")
+            bt.logging.error(f"check_tweet_content: {str(e)}")
             return 0
 
     def is_valid_tweet(self, tweet):
@@ -368,9 +367,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             bt.logging.info(
                 f"TwitterContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
             )
-            scores = [
-                self.check_response_random_tweet(response) for response in responses
-            ]
+            scores = [self.check_tweet_content(response) for response in responses]
 
             reward_events = []
             scoring_prompt = LinkContentPrompt()
