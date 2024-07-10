@@ -856,35 +856,6 @@ class ScraperValidator:
                 timeout=self.timeout,
                 deserialize=False,
             )
-            
-            
-            # Call one-time in 30m,
-            # Check organic_specified
-            relevance = (TwitterContentRelevanceModel(
-                device=self.neuron.config.neuron.device,
-                scoring_type=RewardScoringType.summary_relevance_score_template,
-                llm_reward=self.reward_llm,
-            )
-                if self.neuron.config.reward.twitter_content_weight > 0
-                else MockRewardModel(RewardModelType.twitter_content_relevance.value)
-            )
-
-            synapse.completion_links = [
-                tweet.get('url') for tweet in synapse.results.get("data")
-            ]
-            synapse.miner_tweets = synapse.results.get("data")
-
-            response = relevance.get_rewards(
-                prompt=body.get('search_terms', ""),
-                responses=[synapse],
-                name="",
-                uids=[uid],
-            )
-            bt.logging.info("============================================================")
-            bt.logging.info(f"response: ")
-            bt.logging.info("============================================================")
-            # TODO: save that result.
-            #
 
             return synapse.results
         except Exception as e:
