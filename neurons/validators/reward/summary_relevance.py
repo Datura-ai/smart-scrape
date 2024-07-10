@@ -28,11 +28,15 @@ from neurons.validators.reward.reward import BaseRewardModel, BaseRewardEvent
 from neurons.validators.utils.prompts import (
     SummaryRelevancePrompt,
     LinkContentPrompt,
+    LinkContentAndDescriptionPrompt,
 )
 
 from datura.protocol import ScraperStreamingSynapse
 from neurons.validators.reward.reward_llm import RewardLLM
+from datura.services.twitter_utils import TwitterUtils
+from datura.services.web_search_utils import WebSearchUtils
 import json
+from neurons.validators.reward.config import DefaultSummaryRelevanceWeightConfig
 
 
 class SummaryRelevanceRewardModel(BaseRewardModel):
@@ -53,7 +57,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         self, prompt: str, response: ScraperStreamingSynapse
     ) -> BaseRewardEvent:
         try:
-            if "Twitter Search" in response.tools:
+            # If tools include Twitter Search it scores summary of twitter, otherwise search
+            is_twitter = "Twitter Search" in response.tools
+
+            if is_twitter:
                 completion = self.get_successful_twitter_completion(response=response)
             else:
                 completion = self.get_successful_search_summary_completion(
@@ -86,9 +93,6 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     completion, completion_links_str
                 )
 
-            # If tools include Twitter Search it scores summary of twitter, otherwise search
-            is_twitter = "Twitter Search" in response.tools
-
             if (
                 scoring_prompt is None
                 or (is_twitter and not response.completion_links)
@@ -103,13 +107,145 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             return scoring_prompt, [
                 {
                     "role": "system",
-                    "content": scoring_prompt.get_system_message(is_twitter=is_twitter),
+                    "content": scoring_prompt.get_system_message(tools=response.tools),
                 },
                 {"role": "user", "content": scoring_prompt_text},
             ]
         except Exception as e:
             bt.logging.error(f"Summary Relevance get_scoring_text: {str(e)}")
             return None
+
+    async def process_link_scoring_messages(
+        self, prompt, responses: List[ScraperStreamingSynapse]
+    ):
+        scoring_messages = []
+
+        scoring_prompt = LinkContentAndDescriptionPrompt()
+
+        scoring_keys_list = []
+
+        # Accumulate scoring messages to compare scraped tweet texts with markdown link descriptions
+        for response in responses:
+            is_twitter = "Twitter Search" in response.tools
+            link_with_descriptions = []
+
+            # Parse markdown links with descriptions from completion
+            if is_twitter:
+                completion = response.get_twitter_completion()
+                link_with_descriptions = (
+                    TwitterUtils().find_twitter_link_with_descriptions(completion)
+                )
+            else:
+                completion = self.get_successful_search_summary_completion(response)
+                link_with_descriptions = WebSearchUtils.find_links_with_descriptions(
+                    completion
+                )
+            scoring_keys = []
+
+            for link, description in link_with_descriptions:
+                link = WebSearchUtils.remove_trailing_slash(link)
+                text = ""
+                scoring_key = ""
+
+                # Find validator scraped tweet or link to compare with miner's link description
+                if is_twitter:
+                    validator_tweet = next(
+                        (
+                            validator_tweet
+                            for validator_tweet in response.validator_tweets
+                            if f"https://twitter.com/{validator_tweet.user.username}/status/{validator_tweet.id}"
+                            == link
+                        ),
+                        None,
+                    )
+
+                    if not validator_tweet:
+                        continue
+
+                    text = validator_tweet.full_text
+                else:
+                    validator_link = next(
+                        (
+                            validator_link
+                            for validator_link in response.validator_links
+                            if WebSearchUtils.remove_trailing_slash(
+                                validator_link.get("url")
+                            )
+                            == link
+                        ),
+                        None,
+                    )
+
+                    if not validator_link:
+                        continue
+
+                    text = validator_link.get("title")
+
+                scoring_key = f"{link}/{description}"
+                scoring_prompt_text = scoring_prompt.text(prompt, text, description)
+
+                scoring_text = [
+                    {
+                        "role": "system",
+                        "content": scoring_prompt.get_system_message(),
+                    },
+                    {"role": "user", "content": scoring_prompt_text},
+                ]
+
+                scoring_keys.append(scoring_key)
+                scoring_messages.append({scoring_key: scoring_text})
+
+            scoring_keys_list.append(scoring_keys)
+
+        if not scoring_messages:
+            return [0 for _ in responses], scoring_keys_list
+
+        score_responses = await self.reward_llm.llm_processing(scoring_messages)
+
+        return score_responses, scoring_keys_list
+
+    async def score_link_descriptions(
+        self, prompt: str, responses: List[ScraperStreamingSynapse], uids
+    ):
+        score_responses, scoring_keys_list = await self.process_link_scoring_messages(
+            prompt, responses
+        )
+
+        scoring_prompt = LinkContentAndDescriptionPrompt()
+
+        average_scores = []
+        link_description_scores_list = []
+
+        expected_links = 10
+
+        # Scoring keys list maintains the order of responses
+        for scoring_keys in scoring_keys_list:
+            # Store link scores and link with their scores of each response
+            link_description_scores = []
+            link_description_scores_map = {}
+
+            # Parse scores from LLM response for each link
+            for scoring_key in scoring_keys:
+                score_result = score_responses.get(scoring_key)
+                score = scoring_prompt.extract_score(score_result)
+
+                if score is not None:
+                    link_description_scores_map[scoring_key] = score
+                    link_description_scores.append(score)
+
+            # Calculate average score and scale down to 0-1 range
+            average_score = sum(link_description_scores) / expected_links / 5
+            average_score = min(average_score, 1)
+            average_scores.append(average_score)
+            link_description_scores_list.append(link_description_scores_map)
+
+        uid_to_average_score = dict(zip(uids.tolist(), average_scores))
+
+        bt.logging.info(
+            f"SummaryRelevanceRewardModel | prompt: {prompt}, average scores: {uid_to_average_score}"
+        )
+
+        return average_scores, link_description_scores_list
 
     def get_rewards(
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
@@ -125,6 +261,15 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             bt.logging.trace(
                 f"SummaryRelevanceRewardModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
             )
+
+            # Need to use this scores to calculate rewards
+            (
+                average_link_scores,
+                link_description_scores_list,
+            ) = asyncio.get_event_loop().run_until_complete(
+                self.score_link_descriptions(prompt, responses, uids)
+            )
+
             scoring_messages = [
                 self.get_scoring_text(prompt, response) for response in responses
             ]
@@ -179,13 +324,45 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             zero_scores = {}
             non_zero_scores = {}
 
-            for (index, response), uid_tensor in zip(enumerate(responses), uids):
+            summary_weight = torch.tensor(
+                DefaultSummaryRelevanceWeightConfig.summary_weight,
+                device=self.device,
+                dtype=torch.float32,
+            )
+
+            link_content_weight = torch.tensor(
+                DefaultSummaryRelevanceWeightConfig.link_content_weight,
+                device=self.device,
+                dtype=torch.float32,
+            )
+
+            for (index, response), average_link_score, uid_tensor in zip(
+                enumerate(responses), average_link_scores, uids
+            ):
                 uid = uid_tensor.item()
-                score = scores.get(str(index), 0)
+
+                summary_score = scores.get(str(index), 0)
+
+                summary_score = (
+                    torch.tensor(summary_score, device=self.device, dtype=torch.float32)
+                    * summary_weight
+                )
+
+                links_score = (
+                    torch.tensor(
+                        average_link_score, device=self.device, dtype=torch.float32
+                    )
+                    * link_content_weight
+                )
+
+                score = torch.clamp(summary_score + links_score, max=1.0)
+                score = score.item()
                 score_explain = score_text.get(str(index), "")
+
                 reward_event = BaseRewardEvent()
                 reward_event.reward = score
                 reward_events.append(reward_event)
+
                 if score == 0:
                     zero_scores[uid] = score
                 else:
@@ -200,9 +377,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             )
             bt.logging.info(json.dumps(non_zero_scores))
 
-            return reward_events, {}
+            return reward_events, link_description_scores_list
         except Exception as e:
-            error_message = f"Summary Relevanc Relevance get_rewards: {str(e)}"
+            error_message = f"Summary Relevance get_rewards: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.error("\n".join(tb_str) + error_message)
             reward_events = []
@@ -210,4 +387,4 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
                 reward_events.append(reward_event)
-            return reward_events, {}
+            return reward_events, []

@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Tuple
 from urllib.parse import urlparse
 
 VALID_DOMAINS = ["twitter.com", "x.com"]
@@ -54,3 +54,27 @@ class TwitterUtils:
             A list of found Twitter links.
         """
         return [match.group() for match in self.twitter_link_regex.finditer(text)]
+
+    def find_twitter_link_with_descriptions(self, text: str) -> List[Tuple[str, str]]:
+        """
+        Find all Twitter links in the given text along with their descriptions.
+
+        Args:
+        text: The text to search for Twitter links and descriptions.
+
+        Returns:
+        A list of tuples, each containing a Twitter link and its description.
+        """
+        results = []
+        lines = text.split("\n")
+        for line in lines:
+            match = self.twitter_link_regex.search(line)
+            if match:
+                link = match.group()
+                # Extract description by removing the link, any surrounding brackets, and leading "-"
+                description = re.sub(r"\[|\]|\(|\)", "", line.replace(link, "")).strip()
+                description = re.sub(
+                    r"^-\s*", "", description
+                )  # Remove leading "-" and any following whitespace
+                results.append((link, description))
+        return results
