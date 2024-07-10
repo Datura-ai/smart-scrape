@@ -304,7 +304,7 @@ class TwitterScraperActor:
     async def get_user_followings(
         self,
         id: str,
-        maxUsersPerQuery: Optional[int] = 100,
+        maxUsersPerQuery: Optional[int],
     ) -> dict:
         if not APIFY_API_KEY:
             error = "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
@@ -335,6 +335,46 @@ class TwitterScraperActor:
             return {"data": users}
         except Exception as e:
             error_message = f"TwitterScraperActor: Failed to scrape user's followings {id}: {str(e)}"
+            tb_str = traceback.format_exception(type(e), e, e.__traceback__)
+            bt.logging.warning("\n".join(tb_str) + error_message)
+            return {
+                "error": error_message,
+            }
+
+    async def get_user_followers(
+        self,
+        id: str,
+        maxUsersPerQuery: Optional[int],
+    ) -> dict:
+        if not APIFY_API_KEY:
+            error = "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
+            bt.logging.warning(error)
+            return {"error": error}
+        try:
+            run_input = {
+                "twitterUserIds": [id],
+                "maxUsersPerQuery": maxUsersPerQuery,
+                "getFollowing": False,
+                "getRetweeters": False,
+                "getFollowers": True,
+                "includeUnavailableUsers": False,
+            }
+            run_input = {k: v for k, v in run_input.items() if v is not None}
+
+            run = await self.client.actor(self.user_scraper_actor_id).call(
+                run_input=run_input
+            )
+
+            users: List[dict] = []
+
+            async for item in self.client.dataset(
+                run["defaultDatasetId"]
+            ).iterate_items():
+                users.append(item)
+
+            return {"data": users}
+        except Exception as e:
+            error_message = f"TwitterScraperActor: Failed to scrape user's followers {id}: {str(e)}"
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.warning("\n".join(tb_str) + error_message)
             return {

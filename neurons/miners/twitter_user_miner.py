@@ -21,7 +21,13 @@ class TwitterUserMiner:
         elif synapse.request_type == TwitterAPISynapseCall.GET_USER_FOLLOWINGS.value:
             response = await self.client.get_user_followings(
                 id=synapse.user_id,
-                maxUsersPerQuery=int(synapse.max_items) if synapse.max_items else 100,
+                maxUsersPerQuery=int(synapse.max_items) if synapse.max_items else None,
+            )
+            synapse.results = response
+        elif synapse.request_type == TwitterAPISynapseCall.GET_USER_FOLLOWERS.value:
+            response = await self.client.get_user_followers(
+                id=synapse.user_id,
+                maxUsersPerQuery=int(synapse.max_items) if synapse.max_items else None,
             )
             synapse.results = response
 
