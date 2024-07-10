@@ -185,6 +185,8 @@ class TwitterScraperActor:
                     retweet_count=item.get("retweetCount"),
                     like_count=item.get("likeCount"),
                     quote_count=item.get("quoteCount"),
+                    impression_count=item.get("viewCount"),
+                    bookmark_count=item.get("bookmarkCount"),
                     url=item.get("url"),
                     created_at=item.get("createdAt"),
                     is_quote_tweet=item.get("isQuote"),

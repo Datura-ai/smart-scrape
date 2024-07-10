@@ -49,39 +49,43 @@ class TwitterScraperMedia(BaseModel):
 
 
 class TwitterScraperUser(BaseModel):
-    id: Optional[str] = ""
-    url: Optional[str] = ""
-    username: Optional[str] = ""
-    description: Optional[str] = ""
-    created_at: Optional[str] = ""
-    favourites_count: Optional[int] = 0
-    followers_count: Optional[int] = 0
-    listed_count: Optional[int] = 0
-    media_count: Optional[int] = 0
-    name: Optional[str] = ""
-    profile_image_url: Optional[str] = ""
-    statuses_count: Optional[int] = 0
-    verified: Optional[bool] = False
+    # Available in both, scraped and api based tweets.
+    id: Optional[str]
+    url: Optional[str]
+    name: Optional[str]
+    username: Optional[str]
+    created_at: Optional[str]
+
+    # Only available in scraped tweets
+    description: Optional[str]
+    favourites_count: Optional[int]
+    followers_count: Optional[int]
+    listed_count: Optional[int]
+    media_count: Optional[int]
+    profile_image_url: Optional[str]
+    statuses_count: Optional[int]
+    verified: Optional[bool]
 
 
 class TwitterScraperTweet(BaseModel):
+    # Available in both, scraped and api based tweets.
     user: Optional[TwitterScraperUser] = TwitterScraperUser()
-    id: Optional[str] = ""
-    full_text: Optional[str] = ""
-    reply_count: Optional[int] = 0
-    retweet_count: Optional[int] = 0
-    like_count: Optional[int] = 0
-    view_count: Optional[int] = 0
-    quote_count: Optional[int] = 0
-    impression_count: Optional[int] = 0
-    bookmark_count: Optional[int] = 0
-    url: Optional[str] = ""
-    created_at: Optional[str] = ""
-    is_quote_tweet: Optional[bool] = False
-    is_retweet: Optional[bool] = False
+    id: Optional[str]
+    full_text: Optional[str]
+    reply_count: Optional[int]
+    retweet_count: Optional[int]
+    like_count: Optional[int]
+    view_count: Optional[int]
+    quote_count: Optional[int]
+    impression_count: Optional[int]
+    bookmark_count: Optional[int]
+    url: Optional[str]
+    created_at: Optional[str]
     media: Optional[List[TwitterScraperMedia]] = []
-    possibly_sensitive: Optional[bool]
-    edit_history_tweet_ids: Optional[List[str]]
+
+    # Only available in scraped tweets
+    is_quote_tweet: Optional[bool]
+    is_retweet: Optional[bool]
 
 
 class ScraperTextRole(str, Enum):

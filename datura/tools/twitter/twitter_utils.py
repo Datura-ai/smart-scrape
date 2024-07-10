@@ -26,10 +26,8 @@ def generalize_tweet_structure(tweets)-> List[dict]:
             quote_count=tweet.get("public_metrics").get("quote_count"),
             impression_count=tweet.get("public_metrics").get("impression_count"),
             bookmark_count=tweet.get("public_metrics").get("bookmark_count"),
-            possibly_sensitive=tweet.get("possibly_sensitive"),
             created_at=tweet.get("created_at"),
             full_text=tweet.get("text"),
-            edit_history_tweet_ids=tweet.get("edit_history_tweet_ids"),
             url=f"https://x.com/{user.get('username')}/status/{tweet.get('id')}",
             user=TwitterScraperUser(
                 id=user.get("id"),
