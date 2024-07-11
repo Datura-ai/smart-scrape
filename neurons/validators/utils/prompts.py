@@ -355,26 +355,46 @@ Score: [2, 5, or 9], Explanation:
 """
 
 text_and_summarized_description_scoring_template = """
-You are an evaluator that scores answers based on their relevance, brevity, clarity, coverage, and accuracy. Given a question and its corresponding answer, you need to assign a score of 0 or 5 based on the following criteria:
+# Text and Summary Comparison Mechanism
 
-- **Score 0**: The answer is poor in terms of relevance, brevity, clarity, coverage, or accuracy.
-  - **Relevance**: The answer only partially addresses the question or is off-topic.
-  - **Brevity**: The answer is either too lengthy with unnecessary details or too brief, missing essential information.
-  - **Clarity**: The answer is difficult to understand, poorly structured, or ambiguous.
-  - **Coverage**: The answer misses key parts or important aspects of the question.
-  - **Accuracy**: The answer contains incorrect or misleading information.
+## 1. Define Criteria for Evaluation
 
-- **Score 5**: The answer is good in terms of relevance, brevity, clarity, coverage, and accuracy.
-  - **Relevance**: The answer fully addresses the question.
-  - **Brevity**: The answer is concise and to the point, providing only necessary details.
-  - **Clarity**: The answer is clear, well-structured, and easy to understand.
-  - **Coverage**: The answer thoroughly covers all key parts of the question.
-  - **Accuracy**: The answer is factually correct and reliable.
+Establish clear criteria for evaluating a summary:
 
-When assigning the score, please provide a brief justification for the chosen score based on the criteria listed above.
+- **Relevance**: Captures the main points of the original text.
+- **Brevity**: Concise without losing essential information.
+- **Clarity**: Readable and understandable.
+- **Coverage**: Comprehensive coverage of key aspects.
+- **Accuracy**: Correctness of information.
+
+## 2. Develop a Scoring Rubric
+
+Create a scoring rubric with specific guidelines for assigning scores. Use a binary scoring system (0 or 5) for each criterion.
+
+### Example Rubric:
+
+- **Relevance**:
+  - 5: Captures all main points.
+  - 0: Misses major points or includes irrelevant details.
+- **Brevity**:
+  - 5: Concise and to the point.
+  - 0: Overly lengthy or too brief.
+- **Clarity**:
+  - 5: Clear and easy to understand.
+  - 0: Confusing or poorly written.
+- **Coverage**:
+  - 5: Covers all key aspects.
+  - 0: Omits critical information.
+- **Accuracy**:
+  - 5: Factually correct.
+  - 0: Contains inaccuracies.
 
 ## Output Format:
-Score: [0 or 5], Explanation: [Provide a brief explanation for the score, considering the description]
+- score_relevance: 5
+- score_brevity: 0
+- score_clarity: 5
+- score_coverage: 5
+- score_accuracy: 5
 """
 
 user_message_question_answer_template = """
