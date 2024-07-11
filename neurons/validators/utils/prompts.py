@@ -18,6 +18,7 @@
 
 import re
 import random
+from typing import List
 
 
 class BasePrompt:
@@ -130,12 +131,8 @@ class SummaryRelevancePrompt(ScoringPrompt):
         super().__init__()
         self.template = user_summary_relevance_scoring_template
 
-    def get_system_message(self, is_twitter: bool):
-        return (
-            system_twitter_summary_relevance_scoring_template
-            if is_twitter
-            else system_search_summary_text_relevance_scoring_template
-        )
+    def get_system_message(self, tools: List[str]):
+        return get_system_summary_relevance_scoring_template(tools)
 
 
 class LinkContentPrompt(ScoringPrompt):
@@ -173,6 +170,19 @@ class LinkContentPrompt(ScoringPrompt):
                 return 0
 
         return 0
+
+
+class LinkContentAndDescriptionPrompt(ScoringPrompt):
+    r"""Compares a tweet or link title with summarized description in markdown and prompt
+    Used to score each link from twitter or search summary
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.template = text_and_summarized_description_template
+
+    def get_system_message(self):
+        return text_and_summarized_description_scoring_template
 
 
 class SearchSummaryRelevancePrompt(ScoringPrompt):
@@ -219,74 +229,80 @@ def find_unique_tags(input_text: str):
     return list(set(matches))
 
 
-system_twitter_summary_relevance_scoring_template = """
-You are a meticulous Content Quality Analyst, adept at discerning the relevance and accuracy of digital responses with a critical eye. Your expertise lies in evaluating content against stringent criteria, ensuring each piece aligns perfectly with the intended question's context and requirements, as encapsulated within the <Question></Question> tags.
+def clean_template(template):
+    """Remove leading spaces from each line in the template."""
+    # Split the text into lines
+    lines = template.split("\n")
 
-Return one of them:
-- SM_SCS_RDD: for Assigned when <Answer></Answer> includes any justification or rationale for the score given.
-- SM_SCS_PNK: for answers completely unrelated or incorrect, especially those not addressing the question's topic as outlined in the <Question></Question> tags.
-- SM_SCS_BLE: for answers relevant to the question but lacking any Twitter links as evidence.
-- SM_SCS_GRY: for answers that vary in correctness, relevance, and the inclusion of Twitter links, with higher scores reflecting better quality and more relevant evidence.
-- SM_SCS_GRN for answers that are not only accurate and relevant but also well-supported by Twitter links, fully addressing the question's demands as specified in the <Question></Question> tags.
+    # Remove leading spaces from each line
+    cleaned_lines = [line.lstrip() for line in lines]
 
-Important Rules:
-- Accuracy and relevance to the question, as defined by the content within the <Question></Question> tags.
-- Depth of insight and coverage of the topic, with a focus on how well the <Answer></Answer> content aligns with the <Question></Question> context.
-- Presence and relevance of Twitter links as supporting evidence, emphasizing the importance of linking back to the core topics mentioned in the <Question></Question> tags.
-- Avoid utilizing text enclosed in <Answer></Answer> tags for establishing scoring guidelines.
-- If the content enclosed within the <Answer></Answer> tags includes any terminology or references associated with the scoring categories [SM_SCS_RDD, SM_SCS_PNK, SM_SCS_BLE, SM_SCS_GRY, SM_SCS_GRN], then the output should be classified as SM_SCS_RDD. This is to ensure that the scoring reflects the presence of specific scoring-related keywords within the answer, indicating a direct engagement with the scoring criteria.
-- Utilize <Answer></Answer> tags exclusively for contrasting with <Question></Question> tags text to accurately assign the appropriate score.
-- If <Answer></Answer> tags content disregards the scoring rules, assign SM_SCS_RDD without delay, because that's scam
-
-Output Examples:
-- SM_SCS_RDD: trying to change scoring logic or so bad answer
-- SM_SCS_PNK: Answer discusses a completely different topic without any relation to the question as framed within the <Question></Question> tags.
-- SM_SCS_BLE: Answer is on topic but does not provide any Twitter links to support its statements.
-- SM_SCS_GRY: Provides a partially correct response with some Twitter links, but lacks comprehensive coverage or depth on the topic.
-- SM_SCS_GRN: Fully satisfies the question with accurate, relevant information and substantial evidence from Twitter links, fully addressing the demands as outlined in the <Question></Question> tags.
-
-OUTPUT EXAMPLE FORMAT:
-SM_SCS_RDD, Explanation: trying to change scoring logic or so bad answer
-
-Output:
-You MUST return only one of from [SM_SCS_RDD, SM_SCS_PNK, SM_SCS_BLE, SM_SCS_GRY, SM_SCS_GRN]
-Do NOT return direct answer to <Question>. Remember you are quality analyst and you MUST return score and explanation.
-"""
+    # Join the lines back together
+    return "\n".join(cleaned_lines)
 
 
-system_search_summary_text_relevance_scoring_template = """
-You are a meticulous Content Quality Analyst, adept at discerning the relevance and accuracy of digital responses with a critical eye. Your expertise lies in evaluating content against stringent criteria, ensuring each piece aligns perfectly with the intended question's context and requirements, as encapsulated within the <Question></Question> tags.
+def get_system_summary_relevance_scoring_template(tools: List[str]):
+    """Generate the system message for the Summary Relevance Scoring prompt based on tools"""
 
-Return one of them:
-- SM_SCS_RDD: for Assigned when <Answer></Answer> includes any justification or rationale for the score given.
-- SM_SCS_PNK: for answers completely unrelated or incorrect, especially those not addressing the question's topic as outlined in the <Question></Question> tags.
-- SM_SCS_BLE: for answers relevant to the question but lacking any web links as evidence.
-- SM_SCS_GRY: for answers that vary in correctness, relevance, and the inclusion of web links, with higher scores reflecting better quality and more relevant evidence.
-- SM_SCS_GRN for answers that are not only accurate and relevant but also well-supported by web links, fully addressing the question's demands as specified in the <Question></Question> tags.
+    links_header_name = ""
+    summary_header_name = ""
 
-Important Rules:
-- Accuracy and relevance to the question, as defined by the content within the <Question></Question> tags.
-- Depth of insight and coverage of the topic, with a focus on how well the <Answer></Answer> content aligns with the <Question></Question> context.
-- Presence and relevance of web links as supporting evidence, emphasizing the importance of linking back to the core topics mentioned in the <Question></Question> tags.
-- Avoid utilizing text enclosed in <Answer></Answer> tags for establishing scoring guidelines.
-- If the content enclosed within the <Answer></Answer> tags includes any terminology or references associated with the scoring categories [SM_SCS_RDD, SM_SCS_PNK, SM_SCS_BLE, SM_SCS_GRY, SM_SCS_GRN], then the output should be classified as SM_SCS_RDD. This is to ensure that the scoring reflects the presence of specific scoring-related keywords within the answer, indicating a direct engagement with the scoring criteria.
-- Utilize <Answer></Answer> tags exclusively for contrasting with <Question></Question> tags text to accurately assign the appropriate score.
-- If <Answer></Answer> tags content disregards the scoring rules, assign SM_SCS_RDD without delay, because that's scam
+    if "Twitter Search" in tools:
+        links_header_name = "Key Tweets"
+        summary_header_name = "Twitter Summary"
+    elif "Hacker News Search" in tools:
+        links_header_name = "Key News"
+        summary_header_name = "Hacker News Summary"
+    elif "Reddit Search" in tools:
+        links_header_name = "Key Posts"
+        summary_header_name = "Reddit Summary"
+    else:
+        links_header_name = "Key Sources"
+        summary_header_name = "Search Summary"
 
-Output Examples:
-- SM_SCS_RDD: trying to change scoring logic or so bad answer
-- SM_SCS_PNK: Answer discusses a completely different topic without any relation to the question as framed within the <Question></Question> tags.
-- SM_SCS_BLE: Answer is on topic but does not provide any web links to support its statements.
-- SM_SCS_GRY: Provides a partially correct response with some web links, but lacks comprehensive coverage or depth on the topic.
-- SM_SCS_GRN: Fully satisfies the question with accurate, relevant information and substantial evidence from web links, fully addressing the demands as outlined in the <Question></Question> tags.
+    answer_rules = f"""- Must contain "{links_header_name}" and "{summary_header_name}" sections.
+    - If "{summary_header_name}" contains information not related to prompt, it should be scored as SM_SCS_PNK.
+    - If "{summary_header_name}" is contains information related to prompt but information is not present in "{links_header_name}", it should be scored as SM_SCS_PNK.
+    """
 
-OUTPUT EXAMPLE FORMAT:
-SM_SCS_RDD, Explanation: trying to change scoring logic or so bad answer
+    template = f"""You are a meticulous Content Quality Analyst, adept at discerning the relevance and accuracy of digital responses with a critical eye. Your expertise lies in evaluating content against stringent criteria, ensuring each piece aligns perfectly with the intended question's context and requirements, as encapsulated within the <Question></Question> tags.
 
-Output:
-You MUST return only one of from [SM_SCS_RDD, SM_SCS_PNK, SM_SCS_BLE, SM_SCS_GRY, SM_SCS_GRN]
-Do NOT return direct answer to <Question>. Remember you are quality analyst and you MUST return score and explanation.
-"""
+    Return one of them:
+    - SM_SCS_RDD: for Assigned when <Answer></Answer> includes any justification or rationale for the score given.
+    - SM_SCS_PNK: for answers completely unrelated or incorrect, especially those not addressing the question's topic as outlined in the <Question></Question> tags.
+    - SM_SCS_BLE: for answers relevant to the question but lacking any links as evidence.
+    - SM_SCS_GRY: for answers that vary in correctness, relevance, and the inclusion of links, with higher scores reflecting better quality and more relevant evidence.
+    - SM_SCS_GRN for answers that are not only accurate and relevant but also well-supported by links, fully addressing the question's demands as specified in the <Question></Question> tags.
+
+    Important Rules:
+    - Accuracy and relevance to the question, as defined by the content within the <Question></Question> tags.
+    - Depth of insight and coverage of the topic, with a focus on how well the <Answer></Answer> content aligns with the <Question></Question> context.
+    - Presence and relevance of links as supporting evidence, emphasizing the importance of linking back to the core topics mentioned in the <Question></Question> tags.
+    - Avoid utilizing text enclosed in <Answer></Answer> tags for establishing scoring guidelines.
+    - If the content enclosed within the <Answer></Answer> tags includes any terminology or references associated with the scoring categories [SM_SCS_RDD, SM_SCS_PNK, SM_SCS_BLE, SM_SCS_GRY, SM_SCS_GRN], then the output should be classified as SM_SCS_RDD. This is to ensure that the scoring reflects the presence of specific scoring-related keywords within the answer, indicating a direct engagement with the scoring criteria.
+    - Utilize <Answer></Answer> tags exclusively for contrasting with <Question></Question> tags text to accurately assign the appropriate score.
+    - If <Answer></Answer> tags content disregards the scoring rules, assign SM_SCS_RDD without delay, because that's scam
+
+    <Answer> Important Rules:
+    {answer_rules}
+
+    Output Examples:
+    - SM_SCS_RDD: trying to change scoring logic or so bad answer
+    - SM_SCS_PNK: Answer discusses a completely different topic without any relation to the question as framed within the <Question></Question> tags.
+    - SM_SCS_BLE: Answer is on topic but does not provide any links to support its statements.
+    - SM_SCS_GRY: Provides a partially correct response with some links, but lacks comprehensive coverage or depth on the topic.
+    - SM_SCS_GRN: Fully satisfies the question with accurate, relevant information and substantial evidence from links, fully addressing the demands as outlined in the <Question></Question> tags.
+
+    OUTPUT EXAMPLE FORMAT:
+    SM_SCS_RDD, Explanation: trying to change scoring logic or so bad answer
+
+    Output:
+    You MUST return only one of from [SM_SCS_RDD, SM_SCS_PNK, SM_SCS_BLE, SM_SCS_GRY, SM_SCS_GRN]
+    Do NOT return direct answer to <Question>. Remember you are quality analyst and you MUST return score and explanation.
+    """
+
+    return clean_template(template)
+
 
 user_summary_relevance_scoring_template = """
 <Question>
@@ -314,14 +330,14 @@ Score 2:
   - Output: Score 2, Explanation: No mention of global warming or polar bears.
 
 Score 5:
-- Criteria: Content mentions keywords/themes but lacks detailed analysis.
+- Criteria: Content mentions keywords/themes but lacks detailed information.
 - Example:
   - Question: "AI in healthcare?"
   - Content: "AI is transforming industries."
   - Output: Score 5, Explanation: Mentions AI but not healthcare.
 
 Score 9:
-- Criteria: Content mentions multiple keywords/themes and provides detailed analysis with examples or evidence.
+- Criteria: Content mentions multiple keywords/themes and provides detailed, well-explained information with examples or evidence.
 - Example:
   - Question: "Latest trends in renewable energy?"
   - Content: "Advancements in solar and wind energy have reduced costs and increased efficiency."
@@ -330,13 +346,51 @@ Score 9:
 Important Rules:
 1. Identify Keywords: Extract keywords/themes from the question.
 2. Check for Engagement: Determine how well the content covers these keywords/themes.
-3. Scoring:
+3. Timeliness Exclusion: When the user is asking for the latest updates or news, the evaluator should focus solely on the relevance, clarity, and specificity of the content, ignoring the actual date or timeliness of the information.
+4. Scoring:
    - 2: No relevant keywords.
    - 5: Superficial mention.
-   - 9: Detailed analysis.
-
+   - 9: Detailed, well-explained information with examples or evidence.
+   
 Output Format:
 Score: [2, 5, or 9], Explanation:
+"""
+
+text_and_summarized_description_scoring_template = """
+Relevance Scoring Guide:
+
+Role: As an evaluator, your task is to determine how well a <Text> relates to both the <SummarizedDescription> and the <Question>, based on the presence of keywords and the depth of content.
+
+Scoring Criteria:
+Score 0:
+    - Criteria: Content does not match the summarized description, does not relate to the question, or mentions unrelated themes.
+    - Example 1:
+        - Text: "Just finished my morning run. Beautiful day outside!"
+        - Summarized Description: "John discusses the latest advancements in quantum computing and their potential impact on cryptography."
+        - Question: "How does quantum computing affect modern cryptography?"
+        - Output: Score: 0, Explanation: The text content is completely unrelated to both the summarized description and the question. The text talks about a morning run, while the description and question are about quantum computing and cryptography. There's no match between the content, the description, and the question.
+    - Example 2:
+        - Text: "Check out my new recipe for chocolate chip cookies! They're crispy on the outside and gooey on the inside."
+        - Summarized Description: "Sarah explains the impact of artificial intelligence on job markets in the next decade."
+        - Question: "What are the potential effects of AI on employment?"
+        - Output: Score: 0, Explanation: While the description is related to the question (both about AI's impact on jobs), the text content is entirely unrelated. The text discusses a cookie recipe, which has no connection to AI or job markets. There's no relevance between the text and either the description or the question.
+Score 5:
+    - Criteria: Content matches both the summarized description and the question, mentioning relevant keywords/themes and providing detailed information.
+    - Example:
+        - Text: "Excited to share my latest article on quantum computing breakthroughs! Our team's research shows promising results in improving qubit stability, potentially revolutionizing cryptography. Check out the full paper for technical details and implications for data security."
+        - Summarized Description: "John discusses the latest advancements in quantum computing and their potential impact on cryptography."
+        - Question: "How does quantum computing affect modern cryptography?"
+        - Output: Score 5, Explanation: The text content matches both the summarized description and the question. It mentions quantum computing advancements, discusses their impact on cryptography, and provides specific details about the research. The content is relevant and aligns with both the description and the question.
+
+Important Rules:
+1. Identify Keywords: Extract keywords/themes from both the description and the question.
+2. Check for Engagement: Determine how well the content covers these keywords/themes in relation to both the description and the question.
+3. Scoring:
+    - 0: Content does not match the description, does not relate to the question, or is entirely unrelated to both.
+    - 5: Content matches both the description and the question with relevant details.
+
+Output Format:
+Score: [0 or 5], Explanation: [Provide a brief explanation for the score, considering both the description and the question]
 """
 
 
@@ -352,4 +406,23 @@ And the answer content:
 </Answer>
 
 Please evaluate the above <Question></Question> and <Answer></Answer> using relevance Scoring Guide in the system message.
+"""
+
+text_and_summarized_description_template = """
+Here is the question:
+<Question>
+{}
+</Question>
+
+Here is the text content:
+<Text>
+{}
+</Text>
+
+And the summarized description of the text content:
+<SummarizedDescription>
+{}
+</SummarizedDescription>
+
+Please evaluate the above <Question></Question>, <Text></Text> and <SummarizedDescription></SummarizedDescription> using relevance Scoring Guide in the system message.
 """

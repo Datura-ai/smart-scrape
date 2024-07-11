@@ -172,7 +172,7 @@ twitter_api_router = APIRouter(prefix="/twitter")
 async def get_user_followings(
     user_id: str,
     max_items: Optional[int] = Query(
-        None,
+        100,
         alias="max_items",
         description="Maximum number of users to return per query",
     ),
@@ -208,7 +208,7 @@ async def get_user_followings(
 async def get_user_followers(
     user_id: str,
     max_items: Optional[int] = Query(
-        None,
+        100,
         alias="max_items",
         description="Maximum number of users to return per query",
     ),

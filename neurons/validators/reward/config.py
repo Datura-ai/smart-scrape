@@ -46,3 +46,16 @@ class DefaultRewardFrameworkConfig:
     twitter_content_weight: float = 0.45
     web_search_relavance_weight: float = 0.30
     performance_weight: float = 0.05
+
+
+@dataclass(frozen=True)
+class DefaultSummaryRelevanceWeightConfig:
+    """Summary relevance weights configuration.
+    Note: All the weights should add up to 1.0.
+    """
+
+    # Checks if summary is relevant to the prompt
+    summary_weight: float = 0.60
+
+    # Compares markdown descriptions to content of tweet or link title
+    link_content_weight: float = 0.40

@@ -8,6 +8,7 @@ import bittensor as bt
 from neurons.validators.utils.prompts import LinkContentPrompt
 from datura.utils import clean_text
 from neurons.validators.apify.web_scraper_actor import WebScraperActor
+from neurons.validators.apify.reddit_scraper_actor import RedditScraperActor
 import re
 import asyncio
 from neurons.validators.utils.prompts import (
@@ -60,12 +61,33 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
         non_fetched_links = urls
         links_with_metadata = []
 
+        # Separate Reddit URLs from other URLs
+        reddit_urls = []
+        other_urls = []
+
+        for url in urls:
+            if "reddit.com" in url:
+                reddit_urls.append(url)
+            else:
+                other_urls.append(url)
+
         for retry in range(max_retries):
             if not non_fetched_links:
                 break
 
-            fetched_links_with_metadata = await WebScraperActor().scrape_metadata(
-                urls=non_fetched_links
+            # Fetch Reddit URLs
+            reddit_fetched_links_with_metadata = (
+                await RedditScraperActor().scrape_metadata(urls=reddit_urls)
+            )
+
+            # Fetch other URLs
+            other_fetched_links_with_metadata = await WebScraperActor().scrape_metadata(
+                urls=other_urls
+            )
+
+            # Combine results
+            fetched_links_with_metadata = (
+                reddit_fetched_links_with_metadata + other_fetched_links_with_metadata
             )
             fetched_links_with_metadata = [
                 link for link in fetched_links_with_metadata if link.get("url")
