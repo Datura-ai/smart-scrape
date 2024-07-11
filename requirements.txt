@@ -26,4 +26,12 @@ llama-index==0.10.28
 llama-index-vector-stores-pinecone==0.1.4
 llama-index-embeddings-openai>=0.1.5,<0.2.0
 pinecone-client>=3.0.2,<4.0.0
+discord.py
+psycopg2-binary
+SQLAlchemy
+llama-index==0.10.28
+pinecone-client
+openai
+python-dateutil
+pytz
 faker==25.9.1

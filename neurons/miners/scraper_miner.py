@@ -1,6 +1,7 @@
 import traceback
 import bittensor as bt
 from starlette.types import Send
+from datura.dataset.tool_return import ResponseOrder
 from datura.protocol import (
     ScraperStreamingSynapse,
 )
@@ -20,11 +21,12 @@ class ScraperMiner:
 
     async def smart_scraper(self, synapse: ScraperStreamingSynapse, send: Send):
         try:
-            model = synapse.model
-            prompt = synapse.messages
-            seed = synapse.seed
+            # model = synapse.model
+            prompt = synapse.prompt
+            # seed = synapse.seed
             tools = synapse.tools
-            is_intro_text = synapse.is_intro_text
+            # is_intro_text = synapse.is_intro_text
+            response_order = ResponseOrder(synapse.response_order)
 
             bt.logging.trace(synapse)
 
@@ -57,12 +59,13 @@ class ScraperMiner:
                 prompt=prompt,
                 manual_tool_names=tools,
                 send=send,
-                is_intro_text=is_intro_text,
+                # is_intro_text=is_intro_text,
                 miner=self.miner,
                 language=synapse.language,
                 region=synapse.region,
                 date_filter=date_filter,
                 google_date_filter=synapse.google_date_filter,
+                response_order=response_order,
             )
 
             await tool_manager.run()

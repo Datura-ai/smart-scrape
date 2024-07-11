@@ -21,6 +21,7 @@ class BaseToolkit(BaseModel):
     description: str
     slug: str
     is_active: bool = Field(default=True)
+    tool_manager: Any = None
 
     @abstractmethod
     def get_tools(self) -> List[BaseTool]:

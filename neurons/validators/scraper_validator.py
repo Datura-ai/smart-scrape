@@ -1,4 +1,5 @@
 import math
+from datura.dataset.tool_return import ResponseOrder
 import torch
 import wandb
 import random
@@ -7,19 +8,15 @@ import bittensor as bt
 from base_validator import AbstractNeuron
 from datura.protocol import (
     ScraperStreamingSynapse,
-    TwitterPromptAnalysisResult,
+    TwitterTweetSynapse,
+    TwitterUserSynapse,
     SearchSynapse,
 )
-from datura.stream import process_async_responses, process_single_response
+from datura.stream import process_async_responses
 from reward import RewardModelType, RewardScoringType
 from typing import List
 from utils.mock import MockRewardModel
 import time
-from neurons.validators.penalty import (
-    TaskValidationPenaltyModel,
-    AccuracyPenaltyModel,
-    LinkValidationPenaltyModel,
-)
 from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
 from neurons.validators.reward.twitter_content_relevance import (
     TwitterContentRelevanceModel,
@@ -33,7 +30,7 @@ from neurons.validators.reward.performance_reward import (
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask, SearchTask
 
-from datura.dataset import MockTwitterQuestionsDataset, QuestionsDataset
+from datura.dataset import QuestionsDataset
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from datura import QUERY_MINERS
 import asyncio
@@ -168,13 +165,14 @@ class ScraperValidator:
         task: TwitterTask,
         strategy=QUERY_MINERS.RANDOM,
         is_only_allowed_miner=True,
-        is_intro_text=False,
+        # is_intro_text=False,
         specified_uids=None,
         date_filter=None,
         tools=[],
         language="en",
         region="us",
         google_date_filter="qdr:w",
+        response_order=ResponseOrder.SUMMARY_FIRST,
     ):
         task_name = task.task_name
         prompt = task.compose_prompt()
@@ -197,10 +195,10 @@ class ScraperValidator:
 
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
         synapse = ScraperStreamingSynapse(
-            messages=prompt,
+            prompt=prompt,
             model=self.model,
             seed=self.seed,
-            is_intro_text=is_intro_text,
+            # is_intro_text=is_intro_text,
             start_date=start_date,
             end_date=end_date,
             date_filter_type=date_filter.date_filter_type.value,
@@ -208,6 +206,7 @@ class ScraperValidator:
             language=language,
             region=region,
             google_date_filter=google_date_filter,
+            response_order=response_order.value,
         )
 
         # Make calls to the network with the prompt.
@@ -524,7 +523,7 @@ class ScraperValidator:
                 strategy=QUERY_MINERS.RANDOM,
                 # This is set to false on Finney to allow all miners to participate from Datura UI
                 is_only_allowed_miner=self.neuron.config.subtensor.network != "finney",
-                is_intro_text=True,
+                # is_intro_text=True,
                 tools=tools,
                 language=self.language,
                 region=self.region,
@@ -578,6 +577,9 @@ class ScraperValidator:
                 "date_filter", DateFilterType.PAST_2_DAYS.value
             )
             date_filter_type = DateFilterType(date_filter_type)
+            response_order = query.get(
+                "response_order", ResponseOrder.SUMMARY_FIRST.value
+            )
 
             task_name = "augment"
             task = TwitterTask(
@@ -603,6 +605,7 @@ class ScraperValidator:
                 region=self.region,
                 date_filter=date_filter,
                 google_date_filter=self.date_filter,
+                response_order=response_order,
             )
 
             async def stream_response(uid, async_response):
@@ -761,4 +764,100 @@ class ScraperValidator:
             return synapse.results
         except Exception as e:
             bt.logging.error(f"Error in search: {e}")
+            raise e
+
+    async def get_twitter_user(self, body: dict, uid: int | None = None):
+        try:
+            task_name = "get_twitter_user"
+
+            if not len(self.neuron.available_uids):
+                bt.logging.info("Not available uids")
+                raise StopAsyncIteration("Not available uids")
+
+            bt.logging.debug("run_task", task_name)
+
+            # If uid is not provided, get random uids
+            if uid is None:
+                uids = await self.neuron.get_uids(
+                    strategy=QUERY_MINERS.RANDOM,
+                    is_only_allowed_miner=False,
+                    specified_uids=None,
+                )
+
+                if uids:
+                    uid = uids[0]
+                else:
+                    raise StopAsyncIteration("No available uids")
+
+            axon = self.neuron.metagraph.axons[uid]
+
+            synapse = TwitterUserSynapse(
+                # excpected as TwitterAPISynapseCall
+                request_type=body.get("request_type").value,
+                user_id=body.get("user_id"),
+                username=body.get("username"),
+                max_items=body.get("max_items"),
+            )
+
+            synapse: TwitterUserSynapse = await self.neuron.dendrite.call(
+                target_axon=axon,
+                synapse=synapse,
+                timeout=self.timeout,
+                deserialize=False,
+            )
+
+            return synapse.results
+        except Exception as e:
+            bt.logging.error(f"Error in getting twitter user: {e}")
+            raise e
+
+    async def get_tweets(self, body: dict, uid: int | None = None):
+        try:
+            task_name = "get_tweets"
+
+            if not len(self.neuron.available_uids):
+                bt.logging.info("Not available uids")
+                raise StopAsyncIteration("Not available uids")
+
+            bt.logging.debug("run_task", task_name)
+
+            # If uid is not provided, get random uids
+            if uid is None:
+                uids = await self.neuron.get_uids(
+                    strategy=QUERY_MINERS.RANDOM,
+                    is_only_allowed_miner=False,
+                    specified_uids=None,
+                )
+
+                if uids:
+                    uid = uids[0]
+                else:
+                    raise StopAsyncIteration("No available uids")
+
+            axon = self.neuron.metagraph.axons[uid]
+
+            synapse = TwitterTweetSynapse(
+                prompt=body.get("prompt"),
+                max_items=body.get("max_items"),
+                min_retweets=body.get("min_retweets"),
+                min_likes=body.get("min_likes"),
+                only_verified=body.get("only_verified"),
+                only_twitter_blue=body.get("only_twitter_blue"),
+                only_video=body.get("only_video"),
+                only_image=body.get("only_image"),
+                only_quote=body.get("only_quote"),
+                start_date=body.get("start_date"),
+                end_date=body.get("end_date"),
+            )
+
+            synapse: TwitterTweetSynapse = await self.neuron.dendrite.call(
+                target_axon=axon,
+                synapse=synapse,
+                timeout=self.timeout,
+                deserialize=False,
+            )
+
+            return synapse.results
+        except Exception as e:
+            bt.logging.error(f"Error in get_tweets: {e}")
             raise e

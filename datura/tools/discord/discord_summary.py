@@ -1,4 +1,5 @@
 from openai import AsyncOpenAI
+from datura.dataset.tool_return import ResponseOrder
 from datura.protocol import ScraperTextRole
 
 client = AsyncOpenAI(timeout=60.0)
@@ -42,6 +43,7 @@ async def summarize_discord_data(
     prompt: str,
     model: str,
     filtered_messages,
+    response_order: ResponseOrder
 ):
     content = f"""
     In <UserPrompt> provided User's prompt (Question).
@@ -81,15 +83,9 @@ def prepare_message(message):
 
 
 def prepare_messages_data_for_summary(messages):
-    body = messages.get("body", [])
-
-    # Error handling
-    if isinstance(body, str):
-        return []
-
     normalized_messages = []
 
-    for message in body:
+    for message in messages:
         normalized_messages.append(
             {
                 **prepare_message(message),

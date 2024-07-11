@@ -20,6 +20,9 @@ class WebScraperActor:
             )
             return []
 
+        if not urls:
+            return []
+
         try:
             run_input = {
                 "debugLog": False,
@@ -30,7 +33,10 @@ class WebScraperActor:
                 "pageFunction": 'async function pageFunction(context) {\n    const { $, request, log } = context;\n\n    // The "$" property contains the Cheerio object which is useful\n    // for querying DOM elements and extracting data from them.\n    const pageTitle = $(\'title\').first().text();\n\n    // The "request" property contains various information about the web page loaded. \n    const url = request.url;\n    \n    // Use "log" object to print information to actor log.\n    log.info(\'Page scraped\', { url, pageTitle });\n\n    // Return an object with the data extracted from the page.\n    // It will be stored to the resulting dataset.\n    return {\n        url,\n        pageTitle\n    };\n}',
                 "postNavigationHooks": '// We need to return array of (possibly async) functions here.\n// The functions accept a single argument: the "crawlingContext" object.\n[\n    async (crawlingContext) => {\n        // ...\n    },\n]',
                 "preNavigationHooks": '// We need to return array of (possibly async) functions here.\n// The functions accept two arguments: the "crawlingContext" object\n// and "requestAsBrowserOptions" which are passed to the `requestAsBrowser()`\n// function the crawler calls to navigate..\n[\n    async (crawlingContext, requestAsBrowserOptions) => {\n        // ...\n    }\n]',
-                "proxyConfiguration": {"useApifyProxy": True, "apifyProxyGroups": [ "RESIDENTIAL" ]},
+                "proxyConfiguration": {
+                    "useApifyProxy": True,
+                    "apifyProxyGroups": ["RESIDENTIAL"],
+                },
                 "startUrls": [{"url": url} for url in urls],
             }
 

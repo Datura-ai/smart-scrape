@@ -6,6 +6,7 @@ from datura.tools.discord.discord_toolkit import DiscordToolkit
 from datura.tools.reddit.reddit_toolkit import RedditToolkit
 from datura.tools.hacker_news.hacker_news_toolkit import HackerNewsToolkit
 from datura.tools.bittensor.bittensor_toolkit import BittensorToolkit
+from datura.tools.subnets_source_code.subnets_source_code_toolkit import SubnetsSourceCodeToolkit
 
 TOOLKITS: List[BaseToolkit] = [
     SearchToolkit(),
@@ -14,6 +15,7 @@ TOOLKITS: List[BaseToolkit] = [
     RedditToolkit(),
     HackerNewsToolkit(),
     BittensorToolkit(),
+    SubnetsSourceCodeToolkit()
 ]
 
 

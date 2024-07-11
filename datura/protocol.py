@@ -8,7 +8,6 @@ from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from enum import Enum
-
 from aiohttp import ClientResponse
 from datura.services.twitter_utils import TwitterUtils
 from datura.services.web_search_utils import WebSearchUtils
@@ -50,35 +49,43 @@ class TwitterScraperMedia(BaseModel):
 
 
 class TwitterScraperUser(BaseModel):
-    id: Optional[str] = ""
-    url: Optional[str] = ""
-    username: Optional[str] = ""
-    description: Optional[str] = ""
-    created_at: Optional[str] = ""
-    favourites_count: Optional[int] = 0
-    followers_count: Optional[int] = 0
-    listed_count: Optional[int] = 0
-    media_count: Optional[int] = 0
-    name: Optional[str] = ""
-    profile_image_url: Optional[str] = ""
-    statuses_count: Optional[int] = 0
-    verified: Optional[bool] = False
+    # Available in both, scraped and api based tweets.
+    id: Optional[str]
+    url: Optional[str]
+    name: Optional[str]
+    username: Optional[str]
+    created_at: Optional[str]
+
+    # Only available in scraped tweets
+    description: Optional[str]
+    favourites_count: Optional[int]
+    followers_count: Optional[int]
+    listed_count: Optional[int]
+    media_count: Optional[int]
+    profile_image_url: Optional[str]
+    statuses_count: Optional[int]
+    verified: Optional[bool]
 
 
 class TwitterScraperTweet(BaseModel):
+    # Available in both, scraped and api based tweets.
     user: Optional[TwitterScraperUser] = TwitterScraperUser()
-    id: Optional[str] = ""
-    full_text: Optional[str] = ""
-    reply_count: Optional[int] = 0
-    retweet_count: Optional[int] = 0
-    like_count: Optional[int] = 0
-    view_count: Optional[int] = 0
-    quote_count: Optional[int] = 0
-    url: Optional[str] = ""
-    created_at: Optional[str] = ""
-    is_quote_tweet: Optional[bool] = False
-    is_retweet: Optional[bool] = False
+    id: Optional[str]
+    text: Optional[str]
+    reply_count: Optional[int]
+    retweet_count: Optional[int]
+    like_count: Optional[int]
+    view_count: Optional[int]
+    quote_count: Optional[int]
+    impression_count: Optional[int]
+    bookmark_count: Optional[int]
+    url: Optional[str]
+    created_at: Optional[str]
     media: Optional[List[TwitterScraperMedia]] = []
+
+    # Only available in scraped tweets
+    is_quote_tweet: Optional[bool]
+    is_retweet: Optional[bool]
 
 
 class ScraperTextRole(str, Enum):
@@ -89,14 +96,15 @@ class ScraperTextRole(str, Enum):
     REDDIT_SUMMARY = "reddit_summary"
     HACKER_NEWS_SUMMARY = "hacker_news_summary"
     BITTENSOR_SUMMARY = "bittensor_summary"
+    SUBNETS_SOURCE_CODE_SUMMARY = "subnets_source_code_summary"
     FINAL_SUMMARY = "summary"
 
 
 class ScraperStreamingSynapse(bt.StreamingSynapse):
-    messages: str = pydantic.Field(
+    prompt: str = pydantic.Field(
         ...,
-        title="Messages",
-        description="A list of messages in the StreamPrompting scenario, each containing a role and content. Immutable.",
+        title="Prompt",
+        description="The initial input or question provided by the user to guide the scraping and data collection process.",
         allow_mutation=False,
     )
 
@@ -106,24 +114,24 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Completion status of the current StreamPrompting object. This attribute is mutable and can be updated.",
     )
 
-    required_hash_fields: List[str] = pydantic.Field(
-        ["messages"],
-        title="Required Hash Fields",
-        description="A list of required fields for the hash.",
-        allow_mutation=False,
-    )
+    # required_hash_fields: List[str] = pydantic.Field(
+    #     ["messages"],
+    #     title="Required Hash Fields",
+    #     description="A list of required fields for the hash.",
+    #     allow_mutation=False,
+    # )
 
-    seed: int = pydantic.Field(
-        "",
-        title="Seed",
-        description="Seed for text generation. This attribute is immutable and cannot be updated.",
-    )
+    # seed: int = pydantic.Field(
+    #     "",
+    #     title="Seed",
+    #     description="Seed for text generation. This attribute is immutable and cannot be updated.",
+    # )
 
-    model: Optional[str] = pydantic.Field(
-        "",
-        title="model",
-        description="The model that which to use when calling openai for your response.",
-    )
+    # model: Optional[str] = pydantic.Field(
+    #     "",
+    #     title="model",
+    #     description="The model that which to use when calling openai for your response.",
+    # )
 
     tools: Optional[List[str]] = pydantic.Field(
         default_factory=list,
@@ -167,11 +175,11 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Date filter specified by user.",
     )
 
-    prompt_analysis: TwitterPromptAnalysisResult = pydantic.Field(
-        default_factory=lambda: TwitterPromptAnalysisResult(),
-        title="Prompt Analysis",
-        description="Analysis of the Twitter query result.",
-    )
+    # prompt_analysis: TwitterPromptAnalysisResult = pydantic.Field(
+    #     default_factory=lambda: TwitterPromptAnalysisResult(),
+    #     title="Prompt Analysis",
+    #     description="Analysis of the Twitter query result.",
+    # )
 
     validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
         default_factory=list,
@@ -183,8 +191,8 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         default_factory=list, title="Links", description="Fetched Links Data."
     )
 
-    miner_tweets: Optional[Dict[str, Any]] = pydantic.Field(
-        default_factory=dict,
+    miner_tweets: Optional[List[Dict[str, Any]]] = pydantic.Field(
+        default_factory=list,
         title="Miner Tweets",
         description="Optional JSON object containing tweets data from the miner.",
     )
@@ -255,11 +263,23 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Optional JSON object containing search results from Discord",
     )
 
-    is_intro_text: bool = pydantic.Field(
-        False,
-        title="Is Intro Text",
-        description="Indicates whether the text is an introductory text.",
+    bittensor_docs_results: Optional[Any] = pydantic.Field(
+        default_factory=dict,
+        title="Bittensor Docs Search Results",
+        description="Optional JSON object containing search results from Bittensor Docs",
     )
+
+    subnets_source_code_result: Optional[Any] = pydantic.Field(
+        default_factory=dict,
+        title="Subnets Source Code Search Results",
+        description="Optional JSON object containing search results from Subnets Source Code",
+    )
+
+    # is_intro_text: bool = pydantic.Field(
+    #     False,
+    #     title="Is Intro Text",
+    #     description="Indicates whether the text is an introductory text.",
+    # )
 
     texts: Optional[Dict[str, str]] = pydantic.Field(
         default_factory=dict,
@@ -267,8 +287,26 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="A dictionary of texts in the StreamPrompting scenario, containing a role (intro, twitter summary, search summary, summary) and content. Immutable.",
     )
 
-    def set_prompt_analysis(self, data: any):
-        self.prompt_analysis = data
+    response_order: Optional[str] = pydantic.Field(
+        "",
+        title="Response Order",
+        description="Preffered order type of response, by default it will be SUMMARY_FIRST",
+    )
+
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
+    )
+
+    max_items: Optional[int] = pydantic.Field(
+        None,
+        title="Max Results",
+        description="The maximum number of results to be returned per query",
+    )
+
+    # def set_prompt_analysis(self, data: any):
+    #     self.prompt_analysis = data
 
     def set_tweets(self, data: any):
         self.tweets = data
@@ -382,11 +420,11 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                         self.completion = completion
 
                         yield json.dumps({"type": "completion", "content": completion})
-                    elif content_type == "prompt_analysis":
-                        prompt_analysis_json = json_data.get("content", "{}")
-                        prompt_analysis = TwitterPromptAnalysisResult()
-                        prompt_analysis.fill(prompt_analysis_json)
-                        self.set_prompt_analysis(prompt_analysis)
+                    # elif content_type == "prompt_analysis":
+                    #     prompt_analysis_json = json_data.get("content", "{}")
+                    #     prompt_analysis = TwitterPromptAnalysisResult()
+                    #     prompt_analysis.fill(prompt_analysis_json)
+                    #     self.set_prompt_analysis(prompt_analysis)
 
                     elif content_type == "tweets":
                         tweets_json = json_data.get("content", "[]")
@@ -447,6 +485,23 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                             {"type": "discord_search", "content": search_json}
                         )
 
+                    elif content_type == "bittensor_docs_search":
+                        search_json = json_data.get("content", "{}")
+                        self.bittensor_docs_results = search_json
+                        yield json.dumps(
+                            {"type": "bittensor_docs_search", "content": search_json}
+                        )
+
+                    elif content_type == "subnets_source_code_search":
+                        search_json = json_data.get("content", "{}")
+                        self.subnets_source_code_result = search_json
+                        yield json.dumps(
+                            {
+                                "type": "subnets_source_code_search",
+                                "content": search_json,
+                            }
+                        )
+
                     elif content_type == "google_image_search":
                         search_json = json_data.get("content", "{}")
                         self.google_image_search_results = search_json
@@ -475,7 +530,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             bt.logging.debug(
                 f"process_streaming_response: Host: {host}:{port}, hotkey: {hotkey}, ERROR: {e}, DETAILS: {error_details}, chunk: {chunk}"
             )
-            
+
     def deserialize(self) -> str:
         return self.completion
 
@@ -502,8 +557,8 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "header_size": int(headers.get("header_size", 0)),
             "dendrite": extract_info("bt_header_dendrite"),
             "axon": extract_info("bt_header_axon"),
-            "messages": self.messages,
-            "model": self.model,
+            "prompt": self.prompt,
+            # "model": self.model,
             "completion": self.completion,
             "miner_tweets": self.miner_tweets,
             "search_results": self.search_results,
@@ -513,7 +568,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "arxiv_search_results": self.arxiv_search_results,
             "hacker_news_search_results": self.hacker_news_search_results,
             "reddit_search_results": self.reddit_search_results,
-            "prompt_analysis": self.prompt_analysis.dict(),
+            # "prompt_analysis": self.prompt_analysis.dict(),
             "completion_links": completion_links,
             "search_completion_links": search_completion_links,
             "texts": self.texts,
@@ -568,7 +623,7 @@ class SearchSynapse(bt.Synapse):
 
     query: str = pydantic.Field(
         "",
-        title="model",
+        title="query",
         description="The query to run tools with. Example: 'What are the recent sport events?'. Immutable.",
         allow_mutation=False,
     )
@@ -598,67 +653,179 @@ class SearchSynapse(bt.Synapse):
         return self
 
 
-class MinerTweetEntityUrl(BaseModel):
-    start: int
-    end: int
-    url: str
-    expanded_url: str
-    display_url: str
+class TwitterAPISynapseCall(Enum):
+    GET_USER_FOLLOWERS = "GET_USER_FOLLOWERS"
+    GET_USER_FOLLOWINGS = "GET_USER_FOLLOWINGS"
+    GET_USER = "GET_USER"
+    GET_USER_WITH_USERNAME = "GET_USER_WITH_USERNAME"
+    SEARCH_TWEETS = "SEARCH_TWEETS"
 
 
-class MinerTweetEntityMention(BaseModel):
-    start: int
-    end: int
-    username: str
-    id: str
+class TwitterUserSynapse(bt.Synapse):
+    """
+    A class to represetn twitter api's user synapse
+    """
 
-
-class MinerTweetEntityAnnotation(BaseModel):
-    start: int
-    end: int
-    probability: float
-    type: str
-    normalized_text: str
-
-
-class MinerTweetEntityTag(BaseModel):
-    start: int
-    end: int
-    tag: str
-
-
-class MinerTweetEntity(BaseModel):
-    urls: Optional[List[MinerTweetEntityUrl]]
-    hashtags: Optional[List[MinerTweetEntityTag]]
-    cashtags: Optional[List[MinerTweetEntityTag]]
-    mentions: Optional[List[MinerTweetEntityMention]]
-    annotations: Optional[List[MinerTweetEntityAnnotation]]
-
-
-class MinerTweetPublicMetrics(BaseModel):
-    retweet_count: int
-    reply_count: int
-    like_count: int
-    quote_count: int
-    bookmark_count: int
-    impression_count: int
-
-
-class MinerTweet(BaseModel):
-    id: str
-    author_id: str
-    text: str
-    possibly_sensitive: Optional[bool]
-    edit_history_tweet_ids: List[str]
-    created_at: datetime = Field(
-        ..., description="ISO 8601 format: YYYY-MM-DDTHH:mm:ss.sssZ"
+    request_type: Optional[str] = pydantic.Field(
+        None, title="Request type field to decide the method to call"
     )
-    public_metrics: Optional[MinerTweetPublicMetrics]
-    entities: Optional[MinerTweetEntity]
+
+    max_items: Optional[str] = pydantic.Field(
+        None,
+        title="Max Results",
+        description="The maximum number of results to be returned per query",
+    )
+
+    user_id: Optional[str] = pydantic.Field(
+        None,
+        title="User ID",
+        description="An optional string that's user of twitter's user id",
+    )
+
+    username: Optional[str] = pydantic.Field(
+        None,
+        title="User ID",
+        description="An optional string that's user of twitter's username",
+    )
+
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
+    )
+
+    results: Optional[Dict[str, Any]] = pydantic.Field(
+        default_factory=dict,
+        title="Response dictionary",
+        description="A dictionary of results returned by twitter api",
+    )
 
 
-class MinerTweetAuthor(BaseModel):
-    id: str
-    name: str
-    username: str
-    created_at: str
+class TwitterTweetSynapse(bt.Synapse):
+    """A class to represent twitter api's tweet synapse"""
+
+    prompt: Optional[str] = pydantic.Field(
+        None,
+        title="Search Terms",
+        description="Search terms to search tweets with",
+    )
+
+    completion: str = pydantic.Field(
+        "",
+        title="Completion",
+        description="Completion status of the current StreamPrompting object. This attribute is mutable and can be updated.",
+    )
+
+    max_items: Optional[str] = pydantic.Field(
+        None,
+        title="Max Results",
+        description="The maximum number of results to be returned per query",
+    )
+
+    min_retweets: Optional[str] = pydantic.Field(
+        None,
+        title="Minimum Retweets",
+        description="Filter to get tweets with minimum number of retweets",
+    )
+
+    min_likes: Optional[str] = pydantic.Field(
+        None,
+        title="Minimum Likes",
+        description="Filter to get tweets with minimum number of likes",
+    )
+
+    only_verified: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Verified",
+        description="Filter to get only verified users' tweets",
+    )
+
+    only_twitter_blue: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Twitter Blue",
+        description="Filter to get only twitter blue users' tweets",
+    )
+
+    only_video: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Video",
+        description="Filter to get only those tweets which has video embedded",
+    )
+
+    only_image: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Image",
+        description="Filter to get only those tweets which has image embedded",
+    )
+
+    only_quote: Optional[bool] = pydantic.Field(
+        None,
+        title="Only Quote",
+        description="Filter to get only those tweets which has quote embedded",
+    )
+
+    start_date: Optional[str] = pydantic.Field(
+        None,
+        title="Start Date",
+        description="Date range field for tweet, combine with end_date field to set a time range",
+    )
+
+    end_date: Optional[str] = pydantic.Field(
+        None,
+        title="End Date",
+        description="Date range field for tweet, combine with start_date field to set a time range",
+    )
+
+    date_filter_type: Optional[str] = pydantic.Field(
+        None,
+        title="Date filter enum",
+        description="The date filter enum.",
+    )
+
+    language: Optional[str] = pydantic.Field(
+        "en",
+        title="Language",
+        description="Language specified by user.",
+    )
+
+    region: Optional[str] = pydantic.Field(
+        "us",
+        title="Region",
+        description="Region specified by user.",
+    )
+
+    completion_links: Optional[List[str]] = pydantic.Field(
+        default_factory=list,
+        title="Links Content",
+        description="A list of JSON objects representing the extracted links content from the tweets.",
+    )
+
+    miner_tweets: Optional[List[Dict[str, Any]]] = pydantic.Field(
+        default_factory=list,
+        title="Miner Tweets",
+        description="Optional JSON object containing tweets data from the miner.",
+    )
+
+    validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+        default_factory=list,
+        title="tweets",
+        description="Fetched Tweets Data.",
+    )
+
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
+    )
+
+    results: Optional[Dict[str, Any]] = pydantic.Field(
+        default_factory=dict,
+        title="Response dictionary",
+        description="A dictionary of results returned by twitter api",
+    )
+
+    def get_twitter_completion(self) -> Optional[str]:
+        return self.texts.get(ScraperTextRole.TWITTER_SUMMARY.value, "")
+
+    def deserialize(self) -> str:
+        return self

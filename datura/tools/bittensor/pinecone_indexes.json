@@ -1,7 +1,6 @@
 {
   "documentation": {
     "bittensor-documentation": "Provides information about technical documentation of bittensor",
-    "otf-weights": "Provides detailed information about subnets' Communication Protocols, Incentives Mechanism, Testnet Information, and etc",
     "alpha-1": "Provides information about Text Prompting, subnet 1, alpha 1, sub 1, and SN 1, owned by opentensor-foundation",
     "beta-2": "Provides information about Omoron, subnet 2, beta 1, sub 1, and SN 2, owned by omoron-ai",
     "gamma-3": "Provides information about MyShell TTS, Scraping subnet, subnet 3, gamma 3, sub 3, and SN 3, owned by gitphantomman",
