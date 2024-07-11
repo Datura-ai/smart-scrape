@@ -357,42 +357,27 @@ Score: [2, 5, or 9], Explanation:
 """
 
 text_and_summarized_description_scoring_template = """
-Relevance Scoring Guide:
+You are an evaluator that scores answers based on their relevance, brevity, clarity, coverage, and accuracy. Given a question and its corresponding answer, you need to assign a score of 0 or 5 based on the following criteria:
 
-Role: As an evaluator, your task is to determine how well a <Text> relates to both the <SummarizedDescription> and the <Question>, based on the presence of keywords and the depth of content.
+- **Score 0**: The answer is poor in terms of relevance, brevity, clarity, coverage, or accuracy.
+  - **Relevance**: The answer only partially addresses the question or is off-topic.
+  - **Brevity**: The answer is either too lengthy with unnecessary details or too brief, missing essential information.
+  - **Clarity**: The answer is difficult to understand, poorly structured, or ambiguous.
+  - **Coverage**: The answer misses key parts or important aspects of the question.
+  - **Accuracy**: The answer contains incorrect or misleading information.
 
-Scoring Criteria:
-Score 0:
-    - Criteria: Content does not match the summarized description, does not relate to the question, or mentions unrelated themes.
-    - Example 1:
-        - Text: "Just finished my morning run. Beautiful day outside!"
-        - Summarized Description: "John discusses the latest advancements in quantum computing and their potential impact on cryptography."
-        - Question: "How does quantum computing affect modern cryptography?"
-        - Output: Score: 0, Explanation: The text content is completely unrelated to both the summarized description and the question. The text talks about a morning run, while the description and question are about quantum computing and cryptography. There's no match between the content, the description, and the question.
-    - Example 2:
-        - Text: "Check out my new recipe for chocolate chip cookies! They're crispy on the outside and gooey on the inside."
-        - Summarized Description: "Sarah explains the impact of artificial intelligence on job markets in the next decade."
-        - Question: "What are the potential effects of AI on employment?"
-        - Output: Score: 0, Explanation: While the description is related to the question (both about AI's impact on jobs), the text content is entirely unrelated. The text discusses a cookie recipe, which has no connection to AI or job markets. There's no relevance between the text and either the description or the question.
-Score 5:
-    - Criteria: Content matches both the summarized description and the question, mentioning relevant keywords/themes and providing detailed information.
-    - Example:
-        - Text: "Excited to share my latest article on quantum computing breakthroughs! Our team's research shows promising results in improving qubit stability, potentially revolutionizing cryptography. Check out the full paper for technical details and implications for data security."
-        - Summarized Description: "John discusses the latest advancements in quantum computing and their potential impact on cryptography."
-        - Question: "How does quantum computing affect modern cryptography?"
-        - Output: Score 5, Explanation: The text content matches both the summarized description and the question. It mentions quantum computing advancements, discusses their impact on cryptography, and provides specific details about the research. The content is relevant and aligns with both the description and the question.
+- **Score 5**: The answer is good in terms of relevance, brevity, clarity, coverage, and accuracy.
+  - **Relevance**: The answer fully addresses the question.
+  - **Brevity**: The answer is concise and to the point, providing only necessary details.
+  - **Clarity**: The answer is clear, well-structured, and easy to understand.
+  - **Coverage**: The answer thoroughly covers all key parts of the question.
+  - **Accuracy**: The answer is factually correct and reliable.
 
-Important Rules:
-1. Identify Keywords: Extract keywords/themes from both the description and the question.
-2. Check for Engagement: Determine how well the content covers these keywords/themes in relation to both the description and the question.
-3. Scoring:
-    - 0: Content does not match the description, does not relate to the question, or is entirely unrelated to both.
-    - 5: Content matches both the description and the question with relevant details.
+When assigning the score, please provide a brief justification for the chosen score based on the criteria listed above.
 
-Output Format:
-Score: [0 or 5], Explanation: [Provide a brief explanation for the score, considering both the description and the question]
+## Output Format:
+Score: [0 or 5], Explanation: [Provide a brief explanation for the score, considering the description]
 """
-
 
 user_message_question_answer_template = """
 Here is the question:
@@ -409,20 +394,15 @@ Please evaluate the above <Question></Question> and <Answer></Answer> using rele
 """
 
 text_and_summarized_description_template = """
-Here is the question:
-<Question>
-{}
-</Question>
-
 Here is the text content:
 <Text>
 {}
 </Text>
 
 And the summarized description of the text content:
-<SummarizedDescription>
+<SummarizedText>
 {}
-</SummarizedDescription>
+</SummarizedText>
 
-Please evaluate the above <Question></Question>, <Text></Text> and <SummarizedDescription></SummarizedDescription> using relevance Scoring Guide in the system message.
+Please evaluate the above, <Text></Text> and <SummarizedText></SummarizedText> using relevance Scoring Guide in the system message.
 """
