@@ -153,8 +153,8 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                         (
                             validator_tweet
                             for validator_tweet in response.validator_tweets
-                            if f"https://twitter.com/{validator_tweet.user.username}/status/{validator_tweet.id}"
-                            == link
+                            if f"{validator_tweet.user.username}/status/{validator_tweet.id}"
+                            in link
                         ),
                         None,
                     )
@@ -162,7 +162,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     if not validator_tweet:
                         continue
 
-                    text = validator_tweet.full_text
+                    text = validator_tweet.text
                 else:
                     validator_link = next(
                         (
