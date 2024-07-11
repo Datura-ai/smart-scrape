@@ -716,19 +716,19 @@ class TwitterTweetSynapse(bt.Synapse):
         description="Completion status of the current StreamPrompting object. This attribute is mutable and can be updated.",
     )
 
-    max_items: Optional[str] = pydantic.Field(
+    max_items: Optional[int] = pydantic.Field(
         None,
         title="Max Results",
         description="The maximum number of results to be returned per query",
     )
 
-    min_retweets: Optional[str] = pydantic.Field(
+    min_retweets: Optional[int] = pydantic.Field(
         None,
         title="Minimum Retweets",
         description="Filter to get tweets with minimum number of retweets",
     )
 
-    min_likes: Optional[str] = pydantic.Field(
+    min_likes: Optional[int] = pydantic.Field(
         None,
         title="Minimum Likes",
         description="Filter to get tweets with minimum number of likes",
