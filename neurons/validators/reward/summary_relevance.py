@@ -182,7 +182,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     text = validator_link.get("title")
 
                 scoring_key = f"{link}/{description}"
-                scoring_prompt_text = scoring_prompt.text(prompt, text, description)
+                scoring_prompt_text = scoring_prompt.text(text, description)
 
                 scoring_text = [
                     {
@@ -234,7 +234,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     link_description_scores.append(score)
 
             # Calculate average score and scale down to 0-1 range
-            average_score = sum(link_description_scores) / expected_links / 5
+            average_score = sum(link_description_scores) / expected_links
             average_score = min(average_score, 1)
             average_scores.append(average_score)
             link_description_scores_list.append(link_description_scores_map)
