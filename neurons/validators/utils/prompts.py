@@ -330,14 +330,14 @@ Score 2:
   - Output: Score 2, Explanation: No mention of global warming or polar bears.
 
 Score 5:
-- Criteria: Content mentions keywords/themes but lacks detailed analysis.
+- Criteria: Content mentions keywords/themes but lacks detailed information.
 - Example:
   - Question: "AI in healthcare?"
   - Content: "AI is transforming industries."
   - Output: Score 5, Explanation: Mentions AI but not healthcare.
 
 Score 9:
-- Criteria: Content mentions multiple keywords/themes and provides detailed analysis with examples or evidence.
+- Criteria: Content mentions multiple keywords/themes and provides detailed, well-explained information with examples or evidence.
 - Example:
   - Question: "Latest trends in renewable energy?"
   - Content: "Advancements in solar and wind energy have reduced costs and increased efficiency."
@@ -346,11 +346,12 @@ Score 9:
 Important Rules:
 1. Identify Keywords: Extract keywords/themes from the question.
 2. Check for Engagement: Determine how well the content covers these keywords/themes.
-3. Scoring:
+3. Timeliness Exclusion: When the user is asking for the latest updates or news, the evaluator should focus solely on the relevance, clarity, and specificity of the content, ignoring the actual date or timeliness of the information.
+4. Scoring:
    - 2: No relevant keywords.
    - 5: Superficial mention.
-   - 9: Detailed analysis.
-
+   - 9: Detailed, well-explained information with examples or evidence.
+   
 Output Format:
 Score: [2, 5, or 9], Explanation:
 """
