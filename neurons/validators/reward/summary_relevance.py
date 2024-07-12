@@ -118,7 +118,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
     async def process_link_scoring_messages(
         self, prompt, responses: List[ScraperStreamingSynapse]
     ):
-        scoring_messages = []
+        scoring_messages = {}
 
         scoring_prompt = LinkContentAndDescriptionPrompt()
 
@@ -193,9 +193,14 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 ]
 
                 scoring_keys.append(scoring_key)
-                scoring_messages.append({scoring_key: scoring_text})
+                scoring_messages[scoring_key] = scoring_text
 
             scoring_keys_list.append(scoring_keys)
+
+        scoring_messages = [
+            {scoring_key: scoring_text}
+            for scoring_key, scoring_text in scoring_messages.items()
+        ]
 
         if not scoring_messages:
             return [0 for _ in responses], scoring_keys_list
