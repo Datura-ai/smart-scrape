@@ -2,25 +2,20 @@ from typing import List
 from .reward import BaseRewardModel, BaseRewardEvent
 from .config import RewardModelType
 from neurons.validators.reward.reward_llm import RewardLLM
-from datura.protocol import ScraperStreamingSynapse, ScraperTextRole
+from datura.protocol import ScraperStreamingSynapse
 import traceback
 import bittensor as bt
-from neurons.validators.utils.prompts import LinkContentPrompt
 from datura.utils import clean_text
+from neurons.validators.apify.cheerio_scraper_actor import CheerioScraperActor
 from neurons.validators.apify.web_scraper_actor import WebScraperActor
 from neurons.validators.apify.reddit_scraper_actor import RedditScraperActor
-import re
 import asyncio
 from neurons.validators.utils.prompts import (
     SearchSummaryRelevancePrompt,
 )
 import random
 import json
-from neurons.validators.utils.prompts import SearchSummaryRelevancePrompt
 import time
-import asyncio
-import re
-import html
 
 APIFY_LINK_SCRAPE_AMOUNT = 10
 
@@ -45,8 +40,13 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
         for link_with_metadata in links_with_metadata:
             url = link_with_metadata.get("url")
             title = link_with_metadata.get("title", "")
+            description = link_with_metadata.get("description", "")
 
-            result = self.get_scoring_text(prompt=prompt, content=title, response=None)
+            result = self.get_scoring_text(
+                prompt=prompt,
+                content=f"Title: {title}, Description: {description}",
+                response=None,
+            )
             if result:
                 scoring_prompt, scoring_text = result
                 scoring_messages.append({url: scoring_text})
@@ -57,7 +57,8 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
         return score_responses
 
     async def scrape_links_with_retries(self, urls):
-        max_retries = 4
+        max_retries = 6
+        cheerio_max_retries = 3
         non_fetched_links = urls
         links_with_metadata = []
 
@@ -76,14 +77,24 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 break
 
             # Fetch Reddit URLs
+            reddit_non_fetched = [
+                url for url in reddit_urls if url in non_fetched_links
+            ]
             reddit_fetched_links_with_metadata = (
-                await RedditScraperActor().scrape_metadata(urls=reddit_urls)
+                await WebScraperActor().scrape_metadata(urls=reddit_non_fetched)
             )
 
             # Fetch other URLs
-            other_fetched_links_with_metadata = await WebScraperActor().scrape_metadata(
-                urls=other_urls
-            )
+            other_non_fetched = [url for url in other_urls if url in non_fetched_links]
+
+            if retry < cheerio_max_retries:
+                other_fetched_links_with_metadata = (
+                    await CheerioScraperActor().scrape_metadata(urls=other_non_fetched)
+                )
+            else:
+                other_fetched_links_with_metadata = (
+                    await WebScraperActor().scrape_metadata(urls=other_non_fetched)
+                )
 
             # Combine results
             fetched_links_with_metadata = (
@@ -96,12 +107,14 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             non_fetched_links = [
                 link for link in non_fetched_links if link not in fetched_links
             ]
-
             links_with_metadata.extend(fetched_links_with_metadata)
 
             if non_fetched_links:
                 bt.logging.info(
-                    f"Retrying fetching non-fetched {len(non_fetched_links)} links: {non_fetched_links}. Retries left: {max_retries - retry - 1}"
+                    f"Retry {retry + 1}/{max_retries}: Fetched {len(fetched_links)} links. "
+                )
+                bt.logging.info(
+                    f"Non-fetched {len(non_fetched_links)} links: {non_fetched_links}. "
                 )
                 await asyncio.sleep(3)
 
