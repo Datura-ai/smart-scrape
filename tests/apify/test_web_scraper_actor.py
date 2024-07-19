@@ -12,7 +12,7 @@ class TestWebScraperActor(IsolatedAsyncioTestCase):
                 "https://www.nytimes.com/2023/10/31/technology/school-smartphone-bans.html",
                 "https://www.reddit.com/r/MobileLegendsGame/comments/1bbxeic/how_good_is_claude_these_days/",
                 "https://www.reddit.com/r/OpenAI/comments/183hhbp/is_claude_ai_currently_better_than_chatgpt/",
-                "https://www.reddit.com/r/singularity/comments/1b922bo/claude_is_really_impressive/",
+                "https://www.reddit.com/r/datascience/comments/1e6fpeq/how_much_does_hyperparameter_tuning_actually/",
             ]
         )
 
@@ -43,9 +43,9 @@ class TestWebScraperActor(IsolatedAsyncioTestCase):
                 "url": "https://www.reddit.com/r/OpenAI/comments/183hhbp/is_claude_ai_currently_better_than_chatgpt/",
             },
             {
-                "title": "Claude is really impressive : r/singularity",
-                "description": "I feel bad just leaving him hanging like that, but I need a lot more time to write up a response than he does",
-                "url": "https://www.reddit.com/r/singularity/comments/1b922bo/claude_is_really_impressive/",
+                "title": "How much does hyperparameter tuning actually matter : r/datascience",
+                "description": 'I say this as in: yes obvioisly if you set ridiculous values for your learning rate and batch sizes and penalties or whatever else, obviously your model will be ass.But once you arrive at a set of "reasonable" hyper parameters, as in theyre probably not globally optimal or even close but they produce OK results and is pretty close to what you normally see in papers. How much gain is there to be had from tuning hyper parameters extensively?',
+                "url": "https://www.reddit.com/r/datascience/comments/1e6fpeq/how_much_does_hyperparameter_tuning_actually/",
             },
         ]
 

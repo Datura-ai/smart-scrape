@@ -240,9 +240,6 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             bt.logging.error(f"check_response_random_link: {str(e)}")
             return 0
 
-    def clean_text(self, text):
-        return clean_text(text)
-
     def get_scoring_text(
         self, prompt: str, content: str, response: ScraperStreamingSynapse
     ) -> BaseRewardEvent:
@@ -259,7 +256,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 bt.logging.debug("Search Content is empty.")
                 return None
 
-            content = self.clean_text(content)
+            content = clean_text(content)
 
             scoring_prompt_text = None
             scoring_prompt = SearchSummaryRelevancePrompt()
