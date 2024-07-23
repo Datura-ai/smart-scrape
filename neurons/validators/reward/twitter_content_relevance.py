@@ -190,7 +190,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         text = re.sub(r"\s+", "", text)
         # The validator apify actor uses the tweet.text field and not the note_tweet field (> 280) charts, so only
         # use the first 280 chars for comparison.
-        text = text[:280]
+        # text = text[:280]
         return text
 
     def check_tweet_content(self, response: ScraperStreamingSynapse):
