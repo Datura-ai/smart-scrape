@@ -29,9 +29,12 @@ def get_config() -> "bt.Config":
     parser.add_argument(
         "--axon.port", type=int, default=8098, help="Port to run the axon on."
     )
-    # External IP 
+    # External IP
     parser.add_argument(
-        "--axon.external_ip", type=str, default=bt.utils.networking.get_external_ip(), help="IP for the metagraph"
+        "--axon.external_ip",
+        type=str,
+        default=bt.utils.networking.get_external_ip(),
+        help="IP for the metagraph",
     )
     # Subtensor network to connect to
     parser.add_argument(
@@ -87,13 +90,13 @@ def get_config() -> "bt.Config":
 
     parser.add_argument(
         "--miner.openai_summary_model",
-        default="gpt-3.5-turbo-0125",
+        default="gpt-4o-mini",
         help="OpenAI model used for summarizing content.",
     )
 
     parser.add_argument(
         "--miner.openai_query_model",
-        default="gpt-3.5-turbo-0125",
+        default="gpt-4o-mini",
         help="OpenAI model used for generating queries.",
     )
 

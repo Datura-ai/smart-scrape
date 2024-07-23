@@ -16,7 +16,7 @@ async def main():
             prompt
         )
         res, role = await summarize_discord_data(
-            prompt, "gpt-3.5-turbo-0125", result_json, prompt_analysis
+            prompt, "gpt-4o-mini", result_json, prompt_analysis
         )
         bt.logging.info("===================================================")
         bt.logging.info(f"Messages {result_json}")
