@@ -141,7 +141,7 @@ class TwitterScraperActor:
                 "geotaggedNear": geotaggedNear,
                 "inReplyTo": inReplyTo,
                 "includeSearchTerms": includeSearchTerms,
-                "maxTweetsPerQuery": maxItems,
+                "maxItems": maxItems,
                 "mentioning": mentioning,
                 "minimumFavorites": minimumFavorites,
                 "minimumReplies": minimumReplies,
@@ -232,7 +232,7 @@ class TwitterScraperActor:
         try:
             run_input = {
                 "twitterUserIds": [id],
-                "maxUsersPerQuery": 1,
+                "maxItems": 1,
                 "getFollowing": True,
                 "getRetweeters": False,
                 "getFollowers": False,
@@ -271,7 +271,7 @@ class TwitterScraperActor:
         try:
             run_input = {
                 "twitterHandles": [username],
-                "maxUsersPerQuery": 1,
+                "maxItems": 1,
                 "getFollowing": True,
                 "getRetweeters": False,
                 "getFollowers": False,
@@ -304,7 +304,7 @@ class TwitterScraperActor:
     async def get_user_followings(
         self,
         id: str,
-        maxUsersPerQuery: Optional[int],
+        maxUsersPerQuery: Optional[int] = 10,
     ) -> dict:
         if not APIFY_API_KEY:
             error = "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
@@ -313,7 +313,7 @@ class TwitterScraperActor:
         try:
             run_input = {
                 "twitterUserIds": [id],
-                "maxUsersPerQuery": maxUsersPerQuery,
+                "maxItems": maxUsersPerQuery,
                 "getFollowing": True,
                 "getRetweeters": False,
                 "getFollowers": False,
@@ -344,7 +344,7 @@ class TwitterScraperActor:
     async def get_user_followers(
         self,
         id: str,
-        maxUsersPerQuery: Optional[int],
+        maxUsersPerQuery: Optional[int] = 10,
     ) -> dict:
         if not APIFY_API_KEY:
             error = "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
@@ -353,7 +353,7 @@ class TwitterScraperActor:
         try:
             run_input = {
                 "twitterUserIds": [id],
-                "maxUsersPerQuery": maxUsersPerQuery,
+                "maxItems": maxUsersPerQuery,
                 "getFollowing": False,
                 "getRetweeters": False,
                 "getFollowers": True,
