@@ -10,7 +10,7 @@ class TwitterToolkit(BaseToolkit, ABC):
     name: str = "Twitter Toolkit"
     description: str = "Toolkit containing tools for retrieving tweets."
     slug: str = "twitter"
-    toolkit_id = "0e0ae6fb-0f1c-4d00-bc84-1feb2a6824c6"
+    toolkit_id: str = "0e0ae6fb-0f1c-4d00-bc84-1feb2a6824c6"
 
     def get_tools(self) -> List[BaseTool]:
         return [TwitterSearchTool(), TwitterAdvancedSearchTool()]

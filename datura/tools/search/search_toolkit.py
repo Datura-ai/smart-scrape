@@ -27,9 +27,8 @@ class SearchToolkit(BaseToolkit, ABC):
     description: str = (
         "Toolkit containing tools for performing web, youtube, wikipedia and other searches."
     )
-
     slug: str = "web-search"
-    toolkit_id = "fed46dde-ee8e-420b-a1bb-4a161aa01dca"
+    toolkit_id: str = "fed46dde-ee8e-420b-a1bb-4a161aa01dca"
 
     def get_tools(self) -> List[BaseTool]:
         return TOOLS

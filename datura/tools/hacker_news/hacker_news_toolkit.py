@@ -7,17 +7,15 @@ from .hacker_news_summary import (
 )
 from .hacker_news_search_tool import HackerNewsSearchTool
 
-TOOLS = [HackerNewsSearchTool()]
-
 
 class HackerNewsToolkit(BaseToolkit, ABC):
     name: str = "Hacker News Toolkit"
     description: str = "Toolkit containing tools for searching hacker news."
     slug: str = "hacker-news"
-    toolkit_id = "28a7dba6-c79b-4489-badc-d75948c37935"
+    toolkit_id: str = "28a7dba6-c79b-4489-badc-d75948c37935"
 
     def get_tools(self) -> List[BaseTool]:
-        return TOOLS
+        return [HackerNewsSearchTool()]
 
     async def summarize(self, prompt, model, data):
         data = next(iter(data.values()))

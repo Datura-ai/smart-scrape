@@ -69,7 +69,7 @@ class TwitterScraperUser(BaseModel):
 
 class TwitterScraperTweet(BaseModel):
     # Available in both, scraped and api based tweets.
-    user: Optional[TwitterScraperUser] = TwitterScraperUser()
+    user: Optional[TwitterScraperUser] = Field(default_factory=TwitterScraperUser)
     id: Optional[str]
     text: Optional[str]
     reply_count: Optional[int]
@@ -81,7 +81,7 @@ class TwitterScraperTweet(BaseModel):
     bookmark_count: Optional[int]
     url: Optional[str]
     created_at: Optional[str]
-    media: Optional[List[TwitterScraperMedia]] = []
+    media: Optional[List[TwitterScraperMedia]] = Field(default_factory=list)
 
     # Only available in scraped tweets
     is_quote_tweet: Optional[bool]

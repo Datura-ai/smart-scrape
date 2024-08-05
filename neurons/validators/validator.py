@@ -53,6 +53,12 @@ class Neuron(AbstractNeuron):
         self.config = Neuron.config()
         self.check_config(self.config)
         bt.logging(config=self.config, logging_dir=self.config.neuron.full_path)
+        bt.logging.on()
+        if self.config.logging.debug:
+            bt.logging.set_debug(True)
+        if self.config.logging.trace:
+            bt.logging.set_trace(True)
+        bt.turn_console_on()
         print(self.config)
         bt.logging.info("neuron.__init__()")
 
@@ -86,6 +92,12 @@ class Neuron(AbstractNeuron):
 
     def initialize_components(self):
         bt.logging(config=self.config, logging_dir=self.config.full_path)
+        bt.logging.on()
+        if self.config.logging.debug:
+            bt.logging.set_debug(True)
+        if self.config.logging.trace:
+            bt.logging.set_trace(True)
+        bt.turn_console_on()
         bt.logging.info(
             f"Running validator for subnet: {self.config.netuid} on network: {self.config.subtensor.chain_endpoint}"
         )

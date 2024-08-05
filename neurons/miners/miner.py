@@ -70,6 +70,12 @@ class StreamMiner(ABC):
 
         # Activating Bittensor's logging with the set configurations.
         bt.logging(config=self.config, logging_dir=self.config.full_path)
+        bt.logging.on()
+        if self.config.logging.debug:
+            bt.logging.set_debug(True)
+        if self.config.logging.trace:
+            bt.logging.set_trace(True)
+        bt.turn_console_on()
         bt.logging.info("Setting up bittensor objects.")
 
         # Wallet holds cryptographic information, ensuring secure transactions and communication.

@@ -9,7 +9,7 @@ class BittensorToolkit(BaseToolkit, ABC):
     name: str = "Bittensor Toolkit"
     description: str = "Toolkit containing tools for interacting with Bittensor."
     slug: str = "bittensor"
-    toolkit_id = "f4f14493-79a4-430a-9eab-f6c0e9d9e369"
+    toolkit_id: str = "f4f14493-79a4-430a-9eab-f6c0e9d9e369"
 
     def get_tools(self) -> List[BaseTool]:
         return [BittensorDocsTool()]
