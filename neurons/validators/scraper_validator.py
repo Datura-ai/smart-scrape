@@ -174,92 +174,96 @@ class ScraperValidator:
         google_date_filter="qdr:w",
         response_order=ResponseOrder.SUMMARY_FIRST,
     ):
-        task_name = task.task_name
-        prompt = task.compose_prompt()
+        try:
+            task_name = task.task_name
+            prompt = task.compose_prompt()
 
-        bt.logging.debug("run_task", task_name)
+            bt.logging.debug("run_task", task_name)
 
-        # Record event start time.
-        event = {"name": task_name, "task_type": task.task_type}
-        start_time = time.time()
+            # Record event start time.
+            event = {"name": task_name, "task_type": task.task_type}
+            start_time = time.time()
 
-        # Get random id on that step
-        uids = await self.neuron.get_uids(
-            strategy=strategy,
-            is_only_allowed_miner=is_only_allowed_miner,
-            specified_uids=specified_uids,
-        )
+            # Get random id on that step
+            uids = await self.neuron.get_uids(
+                strategy=strategy,
+                is_only_allowed_miner=is_only_allowed_miner,
+                specified_uids=specified_uids,
+            )
 
-        start_date = date_filter.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-        end_date = date_filter.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            start_date = date_filter.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+            end_date = date_filter.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        axons = [self.neuron.metagraph.axons[uid] for uid in uids]
-        synapse = ScraperStreamingSynapse(
-            prompt=prompt,
-            model=self.model,
-            seed=self.seed,
-            # is_intro_text=is_intro_text,
-            start_date=start_date,
-            end_date=end_date,
-            date_filter_type=date_filter.date_filter_type.value,
-            tools=tools,
-            language=language,
-            region=region,
-            google_date_filter=google_date_filter,
-            response_order=response_order.value,
-        )
+            axons = [self.neuron.metagraph.axons[uid] for uid in uids]
+            synapse = ScraperStreamingSynapse(
+                prompt=prompt,
+                model=self.model,
+                seed=self.seed,
+                # is_intro_text=is_intro_text,
+                start_date=start_date,
+                end_date=end_date,
+                date_filter_type=date_filter.date_filter_type.value,
+                tools=tools,
+                language=language,
+                region=region,
+                google_date_filter=google_date_filter,
+                response_order=response_order.value,
+            )
 
-        # Make calls to the network with the prompt.
-        async_responses = await self.neuron.dendrite.forward(
-            axons=axons,
-            synapse=synapse,
-            timeout=self.timeout,
-            streaming=self.streaming,
-            deserialize=False,
-        )
+            # Make calls to the network with the prompt.
+            async_responses = await self.neuron.dendrite.forward(
+                axons=axons,
+                synapse=synapse,
+                timeout=self.timeout,
+                streaming=self.streaming,
+                deserialize=False,
+            )
 
-        axon_group_1 = axons[:80]
-        axon_group_2 = axons[80:160]
-        axon_group_3 = axons[160:]
+            axon_group_1 = axons[:80]
+            axon_group_2 = axons[80:160]
+            axon_group_3 = axons[160:]
 
-        async_response_groups = await asyncio.gather(
-            *[
-                asyncio.create_task(
-                    self.neuron.dendrite1.forward(
-                        axons=axon_group_1,
-                        synapse=synapse,
-                        timeout=self.timeout,
-                        streaming=self.streaming,
-                        deserialize=False,
-                    )
-                ),
-                asyncio.create_task(
-                    self.neuron.dendrite2.forward(
-                        axons=axon_group_2,
-                        synapse=synapse,
-                        timeout=self.timeout,
-                        streaming=self.streaming,
-                        deserialize=False,
-                    )
-                ),
-                asyncio.create_task(
-                    self.neuron.dendrite3.forward(
-                        axons=axon_group_3,
-                        synapse=synapse,
-                        timeout=self.timeout,
-                        streaming=self.streaming,
-                        deserialize=False,
-                    )
-                ),
-            ]
-        )
+            async_response_groups = await asyncio.gather(
+                *[
+                    asyncio.create_task(
+                        self.neuron.dendrite1.forward(
+                            axons=axon_group_1,
+                            synapse=synapse,
+                            timeout=self.timeout,
+                            streaming=self.streaming,
+                            deserialize=False,
+                        )
+                    ),
+                    asyncio.create_task(
+                        self.neuron.dendrite2.forward(
+                            axons=axon_group_2,
+                            synapse=synapse,
+                            timeout=self.timeout,
+                            streaming=self.streaming,
+                            deserialize=False,
+                        )
+                    ),
+                    asyncio.create_task(
+                        self.neuron.dendrite3.forward(
+                            axons=axon_group_3,
+                            synapse=synapse,
+                            timeout=self.timeout,
+                            streaming=self.streaming,
+                            deserialize=False,
+                        )
+                    ),
+                ]
+            )
 
-        async_responses = []
+            async_responses = []
 
-        for async_response_group in async_response_groups:
-            async_responses.extend(async_response_group)
+            for async_response_group in async_response_groups:
+                async_responses.extend(async_response_group)
 
-        return async_responses, uids, event, start_time
+            return async_responses, uids, event, start_time
+        except Exception as e:
+            bt.logging.error("[!] The error: {e}")
+
 
     async def compute_rewards_and_penalties(
         self, event, prompt, task, responses, uids, start_time

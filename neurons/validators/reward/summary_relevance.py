@@ -136,10 +136,13 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     TwitterUtils().find_twitter_link_with_descriptions(completion)
                 )
             else:
+                print('-------------------------------------- LOGGING COMPLETION --------------------------------------')
                 completion = self.get_successful_search_summary_completion(response)
+                print(completion)
                 link_with_descriptions = WebSearchUtils.find_links_with_descriptions(
-                    completion
+                    completion or ""
                 )
+                print('-------------------------------------- LOGGING COMPLETION --------------------------------------')
             scoring_keys = []
 
             for link, description in link_with_descriptions:

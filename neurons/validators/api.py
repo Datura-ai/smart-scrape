@@ -135,12 +135,12 @@ async def search(
     tools: str = Query(
         ...,
         description="A JSON encoded list of tools to search with",
-        example=json.dumps([tool for tool in available_tools]),
+        examples=[json.dumps([tool for tool in available_tools])],
     ),
-    query: str = Query(..., example="What are the recent sport events?"),
+    query: str = Query(..., examples=["What are the recent sport events?"]),
     uid: Optional[int] = Query(
         None,
-        example=0,
+        examples=[0],
         description="Optional miner uid to run. If not provided, a random miner will be selected.",
     ),
 ):

@@ -20,6 +20,9 @@ class ScraperMiner:
         self.miner = miner
 
     async def smart_scraper(self, synapse: ScraperStreamingSynapse, send: Send):
+        print('--------------------------------------')
+        print(synapse)
+        print('--------------------------------------')
         try:
             # model = synapse.model
             prompt = synapse.prompt

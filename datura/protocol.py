@@ -108,6 +108,15 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         allow_mutation=False,
     )
 
+    # axon: Optional[TerminalInfo] = Field(
+    #     title="axon",
+    #     description="Axon Terminal Information",
+    #     examples=["bittensor.TerminalInfo"],
+    #     default=TerminalInfo(),
+    #     frozen=False,
+    #     repr=False,
+    # )
+
     completion: str = pydantic.Field(
         "",
         title="Completion",
@@ -550,6 +559,9 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         completion_links = TwitterUtils().find_twitter_links(self.completion)
         search_completion_links = self.get_search_links()
 
+        print('--------------------- BT HEADER AXON ------------------')
+        print(f'{extract_info("bt_header_axon")}')
+        print('--------------------- BT HEADER AXON ------------------')
         return {
             "name": headers.get("name", ""),
             "timeout": float(headers.get("timeout", 0)),
@@ -670,7 +682,7 @@ class TwitterUserSynapse(bt.Synapse):
         None, title="Request type field to decide the method to call"
     )
 
-    max_items: Optional[str] = pydantic.Field(
+    max_items: Optional[int] = pydantic.Field(
         None,
         title="Max Results",
         description="The maximum number of results to be returned per query",
@@ -716,19 +728,19 @@ class TwitterTweetSynapse(bt.Synapse):
         description="Completion status of the current StreamPrompting object. This attribute is mutable and can be updated.",
     )
 
-    max_items: Optional[str] = pydantic.Field(
+    max_items: Optional[int] = pydantic.Field(
         None,
         title="Max Results",
         description="The maximum number of results to be returned per query",
     )
 
-    min_retweets: Optional[str] = pydantic.Field(
+    min_retweets: Optional[int] = pydantic.Field(
         None,
         title="Minimum Retweets",
         description="Filter to get tweets with minimum number of retweets",
     )
 
-    min_likes: Optional[str] = pydantic.Field(
+    min_likes: Optional[int] = pydantic.Field(
         None,
         title="Minimum Likes",
         description="Filter to get tweets with minimum number of likes",
