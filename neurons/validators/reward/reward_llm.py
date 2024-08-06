@@ -124,7 +124,7 @@ class RewardLLM:
             bt.logging.warning(f"Error calling Subnet 18 scoring: {e}")
             return None
 
-    async def get_score_by_openai(self, messages, model=None):
+    async def get_score_by_openai(self, messages):
         try:
             start_time = time.time()  # Start timing for query execution
             query_tasks = []
@@ -137,7 +137,7 @@ class RewardLLM:
                             messages=message,
                             temperature=0.0001,
                             top_p=0.0001,
-                            model=model if model else "gpt-3.5-turbo-0125",
+                            model="gpt-4o-mini",
                         )
                     except Exception as e:
                         print(f"Error sending message to OpenAI: {e}")
@@ -165,13 +165,13 @@ class RewardLLM:
             print(f"Error processing OpenAI queries: {e}")
             return None
 
-    async def get_score_by_source(self, messages, source: ScoringSource, model=None):
+    async def get_score_by_source(self, messages, source: ScoringSource):
         if source == ScoringSource.Subnet18:
             return self.call_to_subnet_18_scoring(messages)
         else:
-            return await self.get_score_by_openai(messages=messages, model=model)
+            return await self.get_score_by_openai(messages=messages)
 
-    async def llm_processing(self, messages, model=None):
+    async def llm_processing(self, messages):
         # Initialize score_responses as an empty dictionary to hold the scoring results
         score_responses = {}
 
@@ -186,7 +186,7 @@ class RewardLLM:
         for source in scoring_sources:
             # Attempt to score with the current source
             current_score_responses = await self.get_score_by_source(
-                messages=messages, source=source, model=model
+                messages=messages, source=source
             )
             if current_score_responses:
                 # Update the score_responses with the new scores
