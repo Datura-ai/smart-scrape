@@ -193,7 +193,6 @@ class ScraperValidator:
 
             start_date = date_filter.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
             end_date = date_filter.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-
             axons = [self.neuron.metagraph.axons[uid] for uid in uids]
             synapse = ScraperStreamingSynapse(
                 prompt=prompt,
@@ -262,7 +261,7 @@ class ScraperValidator:
 
             return async_responses, uids, event, start_time
         except Exception as e:
-            bt.logging.error("[!] The error: {e}")
+            bt.logging.error(f"[!] The error: {e}")
 
 
     async def compute_rewards_and_penalties(

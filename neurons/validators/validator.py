@@ -1,4 +1,3 @@
-import torch
 import wandb
 import asyncio
 import concurrent
@@ -8,6 +7,12 @@ import copy
 import bittensor as bt
 import datura.utils as utils
 import os
+
+# Force to use torch instead of numpy.
+# Check for more details: https://docs.bittensor.com/bittensor-rel-notes
+os.environ['USE_TORCH'] = "1"
+
+import torch
 import time
 import sys
 from typing import List
@@ -201,12 +206,18 @@ class Neuron(AbstractNeuron):
 
         if strategy == QUERY_MINERS.RANDOM:
             uids = (
-                torch.tensor([random.choice(uid_list)])
+                torch.tensor([random.choice(uid_list)], dtype=torch.long)
                 if uid_list
-                else torch.tensor([])
+                else torch.tensor([], dtype=torch.long)
             )
         elif strategy == QUERY_MINERS.ALL:
-            uids = torch.tensor(uid_list) if uid_list else torch.tensor([])
+            uids = torch.tensor(
+                uid_list,
+                dtype=torch.long
+            ) if uid_list else torch.tensor(
+                [],
+                dtype=torch.long
+            )
         bt.logging.info(f"Run uids ---------- Amount: {len(uids)} | {uids}")
         # uid_list = list(available_uids.keys())
         return uids.to(self.config.neuron.device)
