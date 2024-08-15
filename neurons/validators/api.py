@@ -407,10 +407,18 @@ app.include_router(twitter_api_router)
 app.openapi = custom_openapi
 
 
-def run_fastapi():
-    uvicorn.run(app, host="0.0.0.0", port=8005, timeout_keep_alive=300)
+async def run_fastapi():
+    config = uvicorn.Config(app, host="0.0.0.0", port=8005, timeout_keep_alive=300)
+    server = uvicorn.Server(config)
+    await server.serve()
 
+async def run_neu():
+    await neu.run()
+
+async def main():
+    fastapi_task = asyncio.create_task(run_fastapi())
+    neu_task = asyncio.create_task(run_neu())
+    await asyncio.gather(fastapi_task, neu_task)
 
 if __name__ == "__main__":
-    asyncio.get_event_loop().create_task(neu.run())
-    run_fastapi()
+    asyncio.run(main())
