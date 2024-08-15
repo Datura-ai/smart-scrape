@@ -78,8 +78,6 @@ class Neuron(AbstractNeuron):
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(
             thread_name_prefix="asyncio"
         )
-        # Init sync with the network. Updates the metagraph.
-        self.sync()
 
     async def run_sync_in_async(self, fn):
         return await self.loop.run_in_executor(self.thread_executor, fn)
@@ -305,7 +303,7 @@ class Neuron(AbstractNeuron):
 
             sync_start_time = time.time()
             bt.logging.info("Calling sync method")
-            self.sync()
+            await self.run_sync_in_async(self.sync)
             bt.logging.info("Completed calling sync method")
 
             sync_end_time = time.time()
@@ -396,8 +394,7 @@ class Neuron(AbstractNeuron):
         return True  # Update right not based on interval of synthetic data
 
     async def run(self):
-        await asyncio.sleep(10)
-        self.sync()
+        await self.run_sync_in_async(self.sync)
         self.loop.create_task(self.update_available_uids_periodically())
         bt.logging.info(f"Validator starting at block: {self.block}")
 
