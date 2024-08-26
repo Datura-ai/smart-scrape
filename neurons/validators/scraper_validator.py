@@ -172,7 +172,7 @@ class ScraperValidator:
         language="en",
         region="us",
         google_date_filter="qdr:w",
-        response_order=ResponseOrder.SUMMARY_FIRST,
+        response_order=ResponseOrder.SUMMARY_FIRST.value,
     ):
         try:
             task_name = task.task_name
@@ -206,7 +206,7 @@ class ScraperValidator:
                 language=language,
                 region=region,
                 google_date_filter=google_date_filter,
-                response_order=response_order.value,
+                response_order=response_order,
             )
 
             # Make calls to the network with the prompt.
