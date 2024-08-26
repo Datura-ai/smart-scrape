@@ -66,7 +66,7 @@ class RedditSearchTool(BaseTool):
             {
                 "type": "http.response.body",
                 "body": json.dumps(search_results_response_body).encode("utf-8"),
-                "more_body": False,
+                "more_body": True,
             }
         )
 

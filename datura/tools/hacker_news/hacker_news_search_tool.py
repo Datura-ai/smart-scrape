@@ -59,13 +59,11 @@ class HackerNewsSearchTool(BaseTool):
             "content": data,
         }
 
-        response_streamer.more_body = False
-
         await send(
             {
                 "type": "http.response.body",
                 "body": json.dumps(search_results_response_body).encode("utf-8"),
-                "more_body": False,
+                "more_body": True,
             }
         )
 

@@ -66,7 +66,7 @@ class DiscordSearchTool(BaseTool):
                 {
                     "type": "http.response.body",
                     "body": json.dumps(messages_response_body).encode("utf-8"),
-                    "more_body": False,
+                    "more_body": True,
                 }
             )
             bt.logging.info("Discord search results data sent")

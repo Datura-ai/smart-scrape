@@ -84,7 +84,7 @@ class SubnetsSourceCodeTool(BaseTool):
                 {
                     "type": "http.response.body",
                     "body": json.dumps(response_body).encode("utf-8"),
-                    "more_body": False,
+                    "more_body": True,
                 }
             )
             bt.logging.info("Subnets Source Code search results data sent")
