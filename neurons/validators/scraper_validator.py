@@ -94,9 +94,9 @@ class ScraperValidator:
 
         self.reward_weights = torch.tensor(
             [
-                self.neuron.config.reward.summary_relevance_weight,
                 self.neuron.config.reward.twitter_content_weight,
                 self.neuron.config.reward.web_search_relavance_weight,
+                self.neuron.config.reward.summary_relevance_weight,
                 self.neuron.config.reward.performance_weight,
             ],
             dtype=torch.float32,
