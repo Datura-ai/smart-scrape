@@ -209,15 +209,6 @@ class ScraperValidator:
                 response_order=response_order,
             )
 
-            # Make calls to the network with the prompt.
-            async_responses = await self.neuron.dendrite.forward(
-                axons=axons,
-                synapse=synapse,
-                timeout=self.timeout,
-                streaming=self.streaming,
-                deserialize=False,
-            )
-
             axon_group_1 = axons[:80]
             axon_group_2 = axons[80:160]
             axon_group_3 = axons[160:]
