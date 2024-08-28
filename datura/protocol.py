@@ -108,15 +108,6 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         allow_mutation=False,
     )
 
-    # axon: Optional[TerminalInfo] = Field(
-    #     title="axon",
-    #     description="Axon Terminal Information",
-    #     examples=["bittensor.TerminalInfo"],
-    #     default=TerminalInfo(),
-    #     frozen=False,
-    #     repr=False,
-    # )
-
     completion: str = pydantic.Field(
         "",
         title="Completion",
@@ -559,9 +550,6 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         completion_links = TwitterUtils().find_twitter_links(self.completion)
         search_completion_links = self.get_search_links()
 
-        print('--------------------- BT HEADER AXON ------------------')
-        print(f'{extract_info("bt_header_axon")}')
-        print('--------------------- BT HEADER AXON ------------------')
         return {
             "name": headers.get("name", ""),
             "timeout": float(headers.get("timeout", 0)),
