@@ -547,7 +547,8 @@ class ScraperValidator:
                     else:
                         yield value
 
-            for uid, synapse in zip(uids, final_synapses):
+            for uiditem, synapse in zip(uids, final_synapses):
+                uid = uiditem.item()
                 organic_synapses[uid] = synapse
             self.organic_synapses = organic_synapses
 
