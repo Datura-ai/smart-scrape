@@ -160,6 +160,10 @@ class ScraperValidator:
         ]
         self.twitter_api = TwitterAPIClient()
 
+        # The collection of status based responses of organic query.
+        # Where the key is miner uid, and value is [ScraperStreamingSynapse]
+        self.organic_synapses = {}
+
     async def run_task_and_score(
         self,
         task: TwitterTask,
@@ -444,6 +448,8 @@ class ScraperValidator:
                 yield (True, final_synapse)  # Yield final synapse with a flag
 
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
+        # TODO: check in self.organic_synapses if miner synapse is failed
+
         try:
             dataset = QuestionsDataset()
             tools = random.choice(self.tools)
@@ -499,6 +505,7 @@ class ScraperValidator:
 
     async def organic(self, query):
         try:
+            # self.organic_synapses = {}
             prompt = query["content"]
             tools = query.get("tools", [])
             date_filter_type = query.get("date_filter", DateFilterType.PAST_WEEK.value)
@@ -530,13 +537,19 @@ class ScraperValidator:
                 date_filter=date_filter,
                 google_date_filter=self.date_filter,
             )
+
             final_synapses = []
+            organic_synapses = {}
             for response in async_responses:
                 async for value in response:
                     if isinstance(value, bt.Synapse):
                         final_synapses.append(value)
                     else:
                         yield value
+
+            for uid, synapse in zip(uids, final_synapses):
+                organic_synapses[uid] = synapse
+            self.organic_synapses = organic_synapses
 
             async def process_and_score_responses():
                 await self.compute_rewards_and_penalties(
