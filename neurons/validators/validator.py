@@ -20,6 +20,7 @@ from base_validator import AbstractNeuron
 from datura import QUERY_MINERS
 from datura.misc import ttl_get_block
 from datura.utils import resync_metagraph, save_logs_in_chunks
+from neurons.validators.proxy.uid_manager import UIDManager
 
 
 class Neuron(AbstractNeuron):
@@ -44,6 +45,8 @@ class Neuron(AbstractNeuron):
     moving_average_scores: torch.Tensor = None
     uid: int = None
     shutdown_event: asyncio.Event()
+
+    uid_manager: UIDManager
 
     @property
     def block(self):
@@ -78,8 +81,6 @@ class Neuron(AbstractNeuron):
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(
             thread_name_prefix="asyncio"
         )
-        # Init sync with the network. Updates the metagraph.
-        self.sync()
 
     async def run_sync_in_async(self, fn):
         return await self.loop.run_in_executor(self.thread_executor, fn)
@@ -108,11 +109,17 @@ class Neuron(AbstractNeuron):
         while True:
             start_time = time.time()
             try:
-                # if self.should_sync_metagraph():
-                #     resync_metagraph(self)
-
-                # unless it's used elsewhere.
                 self.available_uids = await self.get_available_uids_is_alive()
+
+                if not hasattr(self, "uid_manager"):
+                    self.uid_manager = UIDManager(
+                        wallet=self.wallet,
+                        metagraph=self.metagraph,
+                        available_uids=self.available_uids,
+                    )
+
+                self.uid_manager.resync()
+
                 bt.logging.info(
                     f"Number of available UIDs for periodic update: Amount: {len(self.available_uids)}, UIDs: {self.available_uids}"
                 )
@@ -188,11 +195,8 @@ class Neuron(AbstractNeuron):
         ]
 
         if strategy == QUERY_MINERS.RANDOM:
-            uids = (
-                torch.tensor([random.choice(uid_list)])
-                if uid_list
-                else torch.tensor([])
-            )
+            uid = self.uid_manager.get_miner_uid()
+            uids = torch.tensor([uid]) if uid else torch.tensor([])
         elif strategy == QUERY_MINERS.ALL:
             uids = torch.tensor(uid_list) if uid_list else torch.tensor([])
         bt.logging.info(f"Run uids ---------- Amount: {len(uids)} | {uids}")
@@ -305,7 +309,7 @@ class Neuron(AbstractNeuron):
 
             sync_start_time = time.time()
             bt.logging.info("Calling sync method")
-            self.sync()
+            await self.run_sync_in_async(self.sync)
             bt.logging.info("Completed calling sync method")
 
             sync_end_time = time.time()
@@ -396,8 +400,7 @@ class Neuron(AbstractNeuron):
         return True  # Update right not based on interval of synthetic data
 
     async def run(self):
-        await asyncio.sleep(10)
-        self.sync()
+        await self.run_sync_in_async(self.sync)
         self.loop.create_task(self.update_available_uids_periodically())
         bt.logging.info(f"Validator starting at block: {self.block}")
 
