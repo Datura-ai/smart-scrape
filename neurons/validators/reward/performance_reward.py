@@ -74,7 +74,7 @@ class PerformanceRewardModel(BaseRewardModel):
         """
         return 0.2 * self.sigmoid_scale(axon_time)
 
-    def get_rewards(
+    async def get_rewards(
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> Tuple[List[BaseRewardEvent]]:
         """

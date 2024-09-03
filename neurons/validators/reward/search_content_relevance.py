@@ -262,7 +262,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             bt.logging.error(f"Error in Prompt reward method: {str(e)}")
             return None
 
-    def get_rewards(
+    async def get_rewards(
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
@@ -273,9 +273,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             bt.logging.trace(
                 f"WebSearchContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
             )
-            val_score_responses = asyncio.get_event_loop().run_until_complete(
-                self.process_links(prompt=prompt, responses=responses)
-            )
+            val_score_responses = await self.process_links(prompt=prompt, responses=responses)
 
             bt.logging.info(
                 f"WebSearchContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"

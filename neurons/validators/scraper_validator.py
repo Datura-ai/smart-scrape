@@ -288,7 +288,9 @@ class ScraperValidator:
                     reward_event,
                     val_score_responses,
                     original_rewards,
-                ) = reward_fn_i.apply(task.base_text, responses, task.task_name, uids)
+                ) = await reward_fn_i.apply(
+                    task.base_text, responses, task.task_name, uids
+                )
 
                 all_rewards.append(reward_i_normalized)
                 all_original_rewards.append(original_rewards)

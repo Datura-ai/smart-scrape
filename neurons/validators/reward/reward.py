@@ -61,7 +61,7 @@ class BaseRewardModel:
         return str(self.name)
 
     @abstractmethod
-    def get_rewards(
+    async def get_rewards(
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]: ...
 
@@ -214,7 +214,7 @@ class BaseRewardModel:
             if completion is not None
         ]
 
-    def apply(
+    async def apply(
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]:
         """Applies the reward model across each call. Unsuccessful responses are zeroed."""
@@ -226,7 +226,7 @@ class BaseRewardModel:
             if resp.dendrite.status_code == 200
         ]
 
-        reward_events, val_score_responses = self.get_rewards(
+        reward_events, val_score_responses = await self.get_rewards(
             prompt, responses, name, uids
         )
 

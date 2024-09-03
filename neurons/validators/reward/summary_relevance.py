@@ -247,7 +247,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
         return average_scores, link_description_scores_list
 
-    def get_rewards(
+    async def get_rewards(
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
@@ -266,9 +266,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             (
                 average_link_scores,
                 link_description_scores_list,
-            ) = asyncio.get_event_loop().run_until_complete(
-                self.score_link_descriptions(prompt, responses, uids)
-            )
+            ) = await self.score_link_descriptions(prompt, responses, uids)
 
             scoring_messages = [
                 self.get_scoring_text(prompt, response) for response in responses
@@ -298,9 +296,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 bt.logging.info(
                     f"Executing llm_processing on {len(messages)} summary relevance messages."
                 )
-                score_responses = asyncio.get_event_loop().run_until_complete(
-                    self.reward_llm.llm_processing(messages)
-                )
+                score_responses = await self.reward_llm.llm_processing(messages)
 
                 if score_responses and isinstance(
                     score_responses, dict
