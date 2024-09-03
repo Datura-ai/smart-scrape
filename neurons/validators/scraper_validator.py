@@ -161,7 +161,8 @@ class ScraperValidator:
         self.twitter_api = TwitterAPIClient()
 
         # The collection of status based responses of organic query.
-        # Where the key is miner uid, and value is [ScraperStreamingSynapse]
+        # Where the key is miner uid, and value is (ScraperStreamingSynapse, bool)
+        # tuple, where the boolean is the indicator of the state.
         self.organic_synapses = {}
 
     async def run_task_and_score(
@@ -447,9 +448,20 @@ class ScraperValidator:
             if final_synapse:
                 yield (True, final_synapse)  # Yield final synapse with a flag
 
+
+    async def query_random_synapse(self):
+        if not self.organic_synapses:
+            bt.logging.info("No record of organic synapses found")
+            return
+
+        random_uid = random.choice(list(self.organic_synapses.keys()))
+        random_synapse = self.organic_synapses[random_uid]
+        
+        self.organic()
+
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         # TODO: check in self.organic_synapses if miner synapse is failed
-
+        # take information from compute_rewards_and_penalties.
         try:
             dataset = QuestionsDataset()
             tools = random.choice(self.tools)
@@ -550,10 +562,9 @@ class ScraperValidator:
             for uiditem, synapse in zip(uids, final_synapses):
                 uid = uiditem.item()
                 organic_synapses[uid] = synapse
-            self.organic_synapses = organic_synapses
-
+            
             async def process_and_score_responses():
-                await self.compute_rewards_and_penalties(
+                rewards, reward_uids, val_score_responses_list, _ = await self.compute_rewards_and_penalties(
                     event=event,
                     prompt=prompt,
                     task=task,
@@ -561,6 +572,11 @@ class ScraperValidator:
                     uids=uids,
                     start_time=start_time,
                 )
+                for uid, score in zip(reward_uids, val_score_responses_list):
+                    if score == 0:
+                        organic_synapses[uid] = (organic_synapses[uid], False)
+                    else:
+                        organic_synapses[uid] = (organic_synapses[uid], True)
 
             asyncio.create_task(process_and_score_responses())
         except Exception as e:

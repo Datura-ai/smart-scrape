@@ -402,7 +402,6 @@ class Neuron(AbstractNeuron):
         bt.logging.info(f"Validator starting at block: {self.block}")
 
         try:
-
             async def run_with_interval(interval, strategy):
                 query_count = 0  # Initialize query count
                 while True:
@@ -422,6 +421,23 @@ class Neuron(AbstractNeuron):
                         bt.logging.error(f"Error during task execution: {e}")
                         await asyncio.sleep(interval)  # Wait before retrying
 
+            async def run_score_with_interval():
+                while True:
+                    try:
+                        if not self.available_uids:
+                            bt.logging.info(
+                                "No available UIDs, sleeping for 10 seconds."
+                            )
+                            await asyncio.sleep(10)
+                            continue
+                        self.loop.create_task(self.scraper_validator.query_random_synapse())
+                        await asyncio.sleep(
+                            10800
+                        )  # Wait for 10800 seconds (3 hours)
+                    except Exception as e:
+                        bt.logging.error(f"Error during task execution: {e}")
+                        await asyncio.sleep(10800)  # Wait before retrying
+
             if self.config.neuron.run_random_miner_syn_qs_interval > 0:
                 self.loop.create_task(
                     run_with_interval(
@@ -437,7 +453,9 @@ class Neuron(AbstractNeuron):
                         QUERY_MINERS.ALL,
                     )
                 )
-                # If someone intentionally stops the validator, it'll safely terminate operations.
+                
+            self.loop.create_task(run_score_with_interval()) 
+            # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
             self.axon.stop()
             bt.logging.success("Validator killed by keyboard interrupt.")
