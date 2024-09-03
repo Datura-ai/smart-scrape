@@ -576,6 +576,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "end_date": self.end_date,
             "date_filter_type": self.date_filter_type,
             "tools": self.tools,
+            "max_execution_time": self.max_execution_time,
         }
 
     class Config:

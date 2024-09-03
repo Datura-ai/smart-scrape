@@ -28,7 +28,7 @@ from .config import RewardModelType
 from .reward import BaseRewardModel, BaseRewardEvent
 from datura.protocol import ScraperStreamingSynapse
 
-from neurons.validators.constants import QUERY_TIMEOUT, STEEPNESS, FACTOR
+from neurons.validators.constants import STEEPNESS, FACTOR
 
 
 class PerformanceRewardModel(BaseRewardModel):
@@ -41,7 +41,9 @@ class PerformanceRewardModel(BaseRewardModel):
         self.device = device
         self.is_default_normalization = False
 
-    def get_response_times(self, uids: List[int], responses) -> Dict[int, float]:
+    def get_response_times(
+        self, uids: List[int], responses: List[ScraperStreamingSynapse]
+    ) -> Dict[int, float]:
         """
         Returns a dictionary of axons based on their response times.
         Adds a check for successful completion of the response.
@@ -51,28 +53,28 @@ class PerformanceRewardModel(BaseRewardModel):
                 response.dendrite.process_time
                 if response.dendrite.process_time is not None
                 and self.get_successful_completion(response)
-                else QUERY_TIMEOUT
+                else response.max_execution_time
             )
             for idx, response in enumerate(responses)
         }
         return axon_times
 
-    def sigmoid_scale(self, axon_time: float) -> float:
+    def sigmoid_scale(self, axon_time: float, query_timeout: int) -> float:
         """
         Scales the axon time using a sigmoid function.
         """
         offset = -10.0 / FACTOR
         return (
             (1 / (1 + math.exp(STEEPNESS * axon_time + offset)))
-            if axon_time < QUERY_TIMEOUT
+            if axon_time < query_timeout
             else 0
         )
 
-    def reward(self, axon_time: float) -> float:
+    def reward(self, axon_time: float, query_timeout: int) -> float:
         """
         Calculates the reward for a miner based on axon time and APY.
         """
-        return 0.2 * self.sigmoid_scale(axon_time)
+        return 0.2 * self.sigmoid_scale(axon_time, query_timeout)
 
     async def get_rewards(
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
@@ -95,9 +97,11 @@ class PerformanceRewardModel(BaseRewardModel):
             # # Now we can safely calculate max_apy
             # max_apy = max(miner_apy.values()) if miner_apy else 1.0
 
-            for uid in uids:
+            for uid, response in zip(uids, responses):
                 reward_event = BaseRewardEvent()
-                reward_event.reward = self.reward(axon_times[uid])
+                reward_event.reward = self.reward(
+                    axon_times[uid], response.max_execution_time
+                )
                 reward_events.append(reward_event)
 
             zero_rewards = [event for event in reward_events if event.reward == 0]

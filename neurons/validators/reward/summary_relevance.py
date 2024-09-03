@@ -138,7 +138,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             else:
                 completion = self.get_successful_search_summary_completion(response)
                 link_with_descriptions = WebSearchUtils.find_links_with_descriptions(
-                    completion
+                    completion or ""
                 )
             scoring_keys = []
 
