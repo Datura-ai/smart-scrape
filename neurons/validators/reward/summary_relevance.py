@@ -118,7 +118,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
     async def process_link_scoring_messages(
         self, prompt, responses: List[ScraperStreamingSynapse]
     ):
-        scoring_messages = []
+        scoring_messages = {}
 
         scoring_prompt = LinkContentAndDescriptionPrompt()
 
@@ -153,8 +153,8 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                         (
                             validator_tweet
                             for validator_tweet in response.validator_tweets
-                            if f"https://twitter.com/{validator_tweet.user.username}/status/{validator_tweet.id}"
-                            == link
+                            if f"{validator_tweet.user.username}/status/{validator_tweet.id}"
+                            in link
                         ),
                         None,
                     )
@@ -162,7 +162,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     if not validator_tweet:
                         continue
 
-                    text = validator_tweet.full_text
+                    text = validator_tweet.text
                 else:
                     validator_link = next(
                         (
@@ -182,7 +182,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     text = validator_link.get("title")
 
                 scoring_key = f"{link}/{description}"
-                scoring_prompt_text = scoring_prompt.text(prompt, text, description)
+                scoring_prompt_text = scoring_prompt.text(text, description)
 
                 scoring_text = [
                     {
@@ -193,9 +193,14 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 ]
 
                 scoring_keys.append(scoring_key)
-                scoring_messages.append({scoring_key: scoring_text})
+                scoring_messages[scoring_key] = scoring_text
 
             scoring_keys_list.append(scoring_keys)
+
+        scoring_messages = [
+            {scoring_key: scoring_text}
+            for scoring_key, scoring_text in scoring_messages.items()
+        ]
 
         if not scoring_messages:
             return [0 for _ in responses], scoring_keys_list
@@ -234,7 +239,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     link_description_scores.append(score)
 
             # Calculate average score and scale down to 0-1 range
-            average_score = sum(link_description_scores) / expected_links / 5
+            average_score = sum(link_description_scores) / expected_links
             average_score = min(average_score, 1)
             average_scores.append(average_score)
             link_description_scores_list.append(link_description_scores_map)

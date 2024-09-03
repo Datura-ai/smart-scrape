@@ -94,9 +94,9 @@ class ScraperValidator:
 
         self.reward_weights = torch.tensor(
             [
-                self.neuron.config.reward.summary_relevance_weight,
                 self.neuron.config.reward.twitter_content_weight,
                 self.neuron.config.reward.web_search_relavance_weight,
+                self.neuron.config.reward.summary_relevance_weight,
                 self.neuron.config.reward.performance_weight,
             ],
             dtype=torch.float32,
@@ -172,7 +172,7 @@ class ScraperValidator:
         language="en",
         region="us",
         google_date_filter="qdr:w",
-        response_order=ResponseOrder.SUMMARY_FIRST,
+        response_order=ResponseOrder.SUMMARY_FIRST.value,
     ):
         task_name = task.task_name
         prompt = task.compose_prompt()
@@ -206,18 +206,10 @@ class ScraperValidator:
             language=language,
             region=region,
             google_date_filter=google_date_filter,
-            response_order=response_order.value,
+            response_order=response_order,
         )
 
-        # Make calls to the network with the prompt.
-        async_responses = await self.neuron.dendrite.forward(
-            axons=axons,
-            synapse=synapse,
-            timeout=self.timeout,
-            streaming=self.streaming,
-            deserialize=False,
-        )
-
+        # Make calls in groups to avoid AioHTTP 100 connections limit
         axon_group_1 = axons[:80]
         axon_group_2 = axons[80:160]
         axon_group_3 = axons[160:]

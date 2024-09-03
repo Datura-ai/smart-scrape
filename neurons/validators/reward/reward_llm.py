@@ -137,7 +137,7 @@ class RewardLLM:
                             messages=message,
                             temperature=0.0001,
                             top_p=0.0001,
-                            model="gpt-3.5-turbo-0125",
+                            model="gpt-4o-mini",
                         )
                     except Exception as e:
                         print(f"Error sending message to OpenAI: {e}")

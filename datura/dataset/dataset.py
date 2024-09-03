@@ -1415,7 +1415,7 @@ class QuestionsDataset:
             new_question = await call_openai(
                 messages=[{"role": "system", "content": prompt}],
                 temperature=0.3,  # Lower temperature for less creativity and more straightforward output
-                model="gpt-3.5-turbo-0125",
+                model="gpt-4o-mini",
                 seed=None,
             )
             # bt.logging.warning(f"{word1}, {word2}, {word3} --- {new_question.strip()}")
