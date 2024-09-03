@@ -51,6 +51,7 @@ class ScraperValidator:
         self.seed = 1234
         self.neuron = neuron
         self.timeout = 180
+        self.max_execution_times = [10, 20, 30, 30, 30, 30, 60, 60, 60, 120, 120, 180]
         self.tools = [
             ["Twitter Search", "Reddit Search"],
             ["Twitter Search", "Reddit Search"],
@@ -173,6 +174,7 @@ class ScraperValidator:
         region="us",
         google_date_filter="qdr:w",
         response_order=ResponseOrder.SUMMARY_FIRST,
+        timeout=60,
     ):
         task_name = task.task_name
         prompt = task.compose_prompt()
@@ -192,8 +194,8 @@ class ScraperValidator:
 
         start_date = date_filter.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
         end_date = date_filter.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
+
         synapse = ScraperStreamingSynapse(
             prompt=prompt,
             model=self.model,
@@ -207,15 +209,7 @@ class ScraperValidator:
             region=region,
             google_date_filter=google_date_filter,
             response_order=response_order.value,
-        )
-
-        # Make calls to the network with the prompt.
-        async_responses = await self.neuron.dendrite.forward(
-            axons=axons,
-            synapse=synapse,
-            timeout=self.timeout,
-            streaming=self.streaming,
-            deserialize=False,
+            max_execution_time=timeout,
         )
 
         axon_group_1 = axons[:80]
@@ -228,7 +222,7 @@ class ScraperValidator:
                     self.neuron.dendrite1.forward(
                         axons=axon_group_1,
                         synapse=synapse,
-                        timeout=self.timeout,
+                        timeout=timeout,
                         streaming=self.streaming,
                         deserialize=False,
                     )
@@ -237,7 +231,7 @@ class ScraperValidator:
                     self.neuron.dendrite2.forward(
                         axons=axon_group_2,
                         synapse=synapse,
-                        timeout=self.timeout,
+                        timeout=timeout,
                         streaming=self.streaming,
                         deserialize=False,
                     )
@@ -246,7 +240,7 @@ class ScraperValidator:
                     self.neuron.dendrite3.forward(
                         axons=axon_group_3,
                         synapse=synapse,
-                        timeout=self.timeout,
+                        timeout=timeout,
                         streaming=self.streaming,
                         deserialize=False,
                     )
@@ -467,6 +461,8 @@ class ScraperValidator:
                 f"Query and score running with prompt: {prompt} and tools: {tools}"
             )
 
+            max_execution_time = random.choice(self.max_execution_times)
+
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
                 strategy=strategy,
@@ -476,6 +472,7 @@ class ScraperValidator:
                 language=self.language,
                 region=self.region,
                 google_date_filter=self.date_filter,
+                timeout=max_execution_time,
             )
 
             final_synapses = []
@@ -531,6 +528,7 @@ class ScraperValidator:
                 region=self.region,
                 date_filter=date_filter,
                 google_date_filter=self.date_filter,
+                timeout=10,
             )
             final_synapses = []
             for response in async_responses:
