@@ -9,8 +9,8 @@ APIFY_API_KEY = os.environ.get("APIFY_API_KEY")
 
 class WebScraperActor:
     def __init__(self) -> None:
-        # Actor: https://apify.com/apify/cheerio-scraper
-        self.actor_id = "YrQuEkowkNCLdk4j2"
+        # Actor: https://apify.com/apify/web-scraper
+        self.actor_id = "moJRLRc85AitArpNN"
         self.client = ApifyClientAsync(token=APIFY_API_KEY)
 
     async def scrape_metadata(self, urls: List[str]) -> List[TwitterScraperTweet]:
@@ -24,20 +24,30 @@ class WebScraperActor:
             return []
 
         try:
+            # Web scraper
             run_input = {
                 "debugLog": False,
-                "excludes": [{"glob": "/**/*.{png,jpg,jpeg}"}],
-                "forceResponseEncoding": False,
+                "breakpointLocation": "NONE",
+                "browserLog": False,
+                "closeCookieModals": False,
+                "downloadCss": False,
+                "downloadMedia": False,
+                "headless": True,
+                "ignoreCorsAndCsp": False,
                 "ignoreSslErrors": False,
+                "injectJQuery": True,
                 "keepUrlFragments": False,
-                "pageFunction": 'async function pageFunction(context) {\n    const { $, request, log } = context;\n\n    // The "$" property contains the Cheerio object which is useful\n    // for querying DOM elements and extracting data from them.\n    const pageTitle = $(\'title\').first().text();\n\n    // The "request" property contains various information about the web page loaded. \n    const url = request.url;\n    \n    // Use "log" object to print information to actor log.\n    log.info(\'Page scraped\', { url, pageTitle });\n\n    // Return an object with the data extracted from the page.\n    // It will be stored to the resulting dataset.\n    return {\n        url,\n        pageTitle\n    };\n}',
+                "pageFunction": "async function pageFunction(context) {\n  const $ = context.jQuery;\n  const pageTitle = $('title').first().text();\n  let description = $('meta[name=\"description\"]').attr('content') || '';\n\n  if (!description) {\n      description = $('meta[property=\"og:description\"]').attr('content') || '';\n  }\n\n  const isRedditUrl = context.request.url.includes('reddit.com');\n  \n  if (isRedditUrl) {\n    // Extract content from the first p in the first div.text-neutral-content\n    description = $('div.text-neutral-content').first().find('p').map(function() {\n      return $(this).text().trim();\n    }).get().join('');\n  }\n\n  return {\n    url: context.request.url,\n    pageTitle,\n    description,\n  };\n}",
                 "postNavigationHooks": '// We need to return array of (possibly async) functions here.\n// The functions accept a single argument: the "crawlingContext" object.\n[\n    async (crawlingContext) => {\n        // ...\n    },\n]',
-                "preNavigationHooks": '// We need to return array of (possibly async) functions here.\n// The functions accept two arguments: the "crawlingContext" object\n// and "requestAsBrowserOptions" which are passed to the `requestAsBrowser()`\n// function the crawler calls to navigate..\n[\n    async (crawlingContext, requestAsBrowserOptions) => {\n        // ...\n    }\n]',
+                "preNavigationHooks": '// We need to return array of (possibly async) functions here.\n// The functions accept two arguments: the "crawlingContext" object\n// and "gotoOptions".\n[\n    async (crawlingContext, gotoOptions) => {\n        // ...\n    },\n]\n',
                 "proxyConfiguration": {
                     "useApifyProxy": True,
                     "apifyProxyGroups": ["RESIDENTIAL"],
                 },
+                "runMode": "PRODUCTION",
                 "startUrls": [{"url": url} for url in urls],
+                "useChrome": False,
+                "waitUntil": ["networkidle2"],
             }
 
             run = await self.client.actor(self.actor_id).call(run_input=run_input)
@@ -49,7 +59,14 @@ class WebScraperActor:
             ).iterate_items():
                 url = item.get("url", "")
                 title = item.get("pageTitle")
-                result.append({"title": title, "url": url})
+                description = item.get("description")
+                result.append(
+                    {
+                        "title": title,
+                        "description": description,
+                        "url": url,
+                    }
+                )
 
             return result
         except Exception as e:

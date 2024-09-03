@@ -95,9 +95,9 @@ class ScraperValidator:
 
         self.reward_weights = torch.tensor(
             [
-                self.neuron.config.reward.summary_relevance_weight,
                 self.neuron.config.reward.twitter_content_weight,
                 self.neuron.config.reward.web_search_relavance_weight,
+                self.neuron.config.reward.summary_relevance_weight,
                 self.neuron.config.reward.performance_weight,
             ],
             dtype=torch.float32,
@@ -212,6 +212,7 @@ class ScraperValidator:
             max_execution_time=timeout,
         )
 
+        # Make calls in groups to avoid AioHTTP 100 connections limit
         axon_group_1 = axons[:80]
         axon_group_2 = axons[80:160]
         axon_group_3 = axons[160:]
