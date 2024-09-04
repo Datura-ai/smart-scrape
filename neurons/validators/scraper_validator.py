@@ -294,14 +294,24 @@ class ScraperValidator:
             all_original_rewards = []
             val_score_responses_list = []
 
-            organic_penalties = (
-                [
-                    self.organic_query_state.has_penalty(response.axon.hotkey)
-                    for response in responses
-                ]
-                if is_synthetic
-                else None
-            )
+            organic_penalties = []
+
+            if is_synthetic:
+                penalized_uids = []
+
+                for uid, response in zip(uids.tolist(), responses):
+                    has_penalty = self.organic_query_state.has_penalty(
+                        response.axon.hotkey
+                    )
+
+                    organic_penalties.append(has_penalty)
+
+                    if has_penalty:
+                        penalized_uids.append(uid)
+
+                bt.logging.info(
+                    f"Following UIDs will be penalized as they failed organic query: {penalized_uids}"
+                )
 
             for weight_i, reward_fn_i in zip(
                 self.reward_weights, self.reward_functions
@@ -437,6 +447,7 @@ class ScraperValidator:
                 all_rewards=all_rewards,
                 all_original_rewards=all_original_rewards,
                 val_score_responses_list=val_score_responses_list,
+                organic_penalties=organic_penalties,
                 neuron=self.neuron,
             )
 

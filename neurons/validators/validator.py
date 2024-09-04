@@ -216,6 +216,7 @@ class Neuron(AbstractNeuron):
         all_rewards,
         all_original_rewards,
         val_score_responses_list,
+        organic_penalties,
         neuron,
     ):
         try:
@@ -243,6 +244,7 @@ class Neuron(AbstractNeuron):
                     weights=get_weights(self),
                     neuron=neuron,
                     netuid=self.config.netuid,
+                    organic_penalties=organic_penalties,
                 )
             )
         except Exception as e:
@@ -333,10 +335,8 @@ class Neuron(AbstractNeuron):
             )
 
     async def run_organic_queries(self):
-        uids = await self.get_uids(strategy=QUERY_MINERS.ALL)
-
         result = self.scraper_validator.organic_query_state.get_random_organic_query(
-            uids.tolist(), self.metagraph.neurons
+            self.available_uids, self.metagraph.neurons
         )
 
         if not result:
