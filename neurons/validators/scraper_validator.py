@@ -40,6 +40,7 @@ from datura.dataset.date_filters import (
     get_specified_date_filter,
     DateFilterType,
 )
+from neurons.validators.organic_query_state import OrganicQueryState
 
 
 class ScraperValidator:
@@ -81,12 +82,24 @@ class ScraperValidator:
             ["Youtube Search"],
             ["ArXiv Search"],
             ["Wikipedia Search"],
+            ["Twitter Search", "Youtube Search", "ArXiv Search", "Wikipedia Search"],
+            ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
+            [
+                "Twitter Search",
+                "Google Search",
+                "Reddit Search",
+                "Hacker News Search",
+                "Youtube Search",
+                "ArXiv Search",
+                "Wikipedia Search",
+            ],
         ]
         self.language = "en"
         self.region = "us"
         self.date_filter = "qdr:w"  # Past week
         self.max_tools_result_amount = 10
 
+        self.organic_query_state = OrganicQueryState()
         # Init device.
         bt.logging.debug("loading", "device")
         bt.logging.debug(
@@ -257,7 +270,14 @@ class ScraperValidator:
         return async_responses, uids, event, start_time
 
     async def compute_rewards_and_penalties(
-        self, event, prompt, task, responses, uids, start_time
+        self,
+        event,
+        prompt,
+        task,
+        responses,
+        uids,
+        start_time,
+        is_synthetic=False,
     ):
         try:
             if not len(uids):
@@ -274,6 +294,15 @@ class ScraperValidator:
             all_original_rewards = []
             val_score_responses_list = []
 
+            organic_penalties = (
+                [
+                    self.organic_query_state.has_penalty(response.axon.hotkey)
+                    for response in responses
+                ]
+                if is_synthetic
+                else None
+            )
+
             for weight_i, reward_fn_i in zip(
                 self.reward_weights, self.reward_functions
             ):
@@ -284,7 +313,7 @@ class ScraperValidator:
                     val_score_responses,
                     original_rewards,
                 ) = await reward_fn_i.apply(
-                    task.base_text, responses, task.task_name, uids
+                    task.base_text, responses, task.task_name, uids, organic_penalties
                 )
 
                 all_rewards.append(reward_i_normalized)
@@ -411,7 +440,7 @@ class ScraperValidator:
                 neuron=self.neuron,
             )
 
-            return rewards, uids, val_score_responses_list, event
+            return rewards, uids, val_score_responses_list, event, all_original_rewards
         except Exception as e:
             bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
             raise e
@@ -492,17 +521,34 @@ class ScraperValidator:
                 responses=final_synapses,
                 uids=uids,
                 start_time=start_time,
+                is_synthetic=True,
             )
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")
             raise e
 
-    async def organic(self, query):
+    async def organic(
+        self,
+        query,
+        random_synapse: ScraperStreamingSynapse = None,
+        random_uid=None,
+        specified_uids=None,
+    ):
+        """Receives question from user and returns the response from the miners.
+        Also used to run occasional random query to all miners except the one that failed the previous query.
+        """
+        is_interval_query = random_synapse is not None
+
         try:
             prompt = query["content"]
             tools = query.get("tools", [])
-            date_filter_type = query.get("date_filter", DateFilterType.PAST_WEEK.value)
-            date_filter_type = DateFilterType(date_filter_type)
+
+            date_filter = query.get("date_filter", DateFilterType.PAST_WEEK.value)
+
+            # If the date filter is a string, convert it to a DateFilterType otherwise use the provided date filter
+            if isinstance(date_filter, str):
+                date_filter_type = DateFilterType(date_filter)
+                date_filter = get_specified_date_filter(date_filter_type)
 
             task_name = "augment"
             task = TwitterTask(
@@ -516,11 +562,9 @@ class ScraperValidator:
                 bt.logging.info("Not available uids")
                 raise StopAsyncIteration("Not available uids")
 
-            date_filter = get_specified_date_filter(date_filter_type)
-
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 task=task,
-                strategy=QUERY_MINERS.RANDOM,
+                strategy=QUERY_MINERS.ALL if specified_uids else QUERY_MINERS.RANDOM,
                 # This is set to false on Finney to allow all miners to participate from Datura UI
                 is_only_allowed_miner=self.neuron.config.subtensor.network != "finney",
                 # is_intro_text=True,
@@ -530,17 +574,34 @@ class ScraperValidator:
                 date_filter=date_filter,
                 google_date_filter=self.date_filter,
                 timeout=10,
+                specified_uids=specified_uids,
             )
+
             final_synapses = []
-            for response in async_responses:
-                async for value in response:
+
+            if not specified_uids:
+                # Stream random miner to the UI
+                for response in async_responses:
+                    async for value in response:
+                        if isinstance(value, bt.Synapse):
+                            final_synapses.append(value)
+                        else:
+                            yield value
+            else:
+                # Collect specified uids from responses and score
+                async for value in process_async_responses(
+                    async_responses, uids, start_time
+                ):
                     if isinstance(value, bt.Synapse):
                         final_synapses.append(value)
-                    else:
-                        yield value
 
-            async def process_and_score_responses():
-                await self.compute_rewards_and_penalties(
+            async def process_and_score_responses(uids):
+                if is_interval_query:
+                    # Add the random_synapse to final_synapses and its UID to uids
+                    final_synapses.append(random_synapse)
+                    uids = torch.cat([uids, torch.tensor([random_uid])])
+
+                _, _, _, _, original_rewards = await self.compute_rewards_and_penalties(
                     event=event,
                     prompt=prompt,
                     task=task,
@@ -549,7 +610,12 @@ class ScraperValidator:
                     start_time=start_time,
                 )
 
-            asyncio.create_task(process_and_score_responses())
+                if not is_interval_query:
+                    self.organic_query_state.save_organic_queries(
+                        final_synapses, uids, original_rewards
+                    )
+
+            asyncio.create_task(process_and_score_responses(uids))
         except Exception as e:
             bt.logging.error(f"Error in organic: {e}")
             raise e

@@ -215,7 +215,12 @@ class BaseRewardModel:
         ]
 
     async def apply(
-        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
+        self,
+        prompt: str,
+        responses: List[ScraperStreamingSynapse],
+        name: str,
+        uids,
+        organic_penalties: List[bool] = None,
     ) -> Union[torch.FloatTensor, dict]:
         """Applies the reward model across each call. Unsuccessful responses are zeroed."""
         # Get indices of correctly responding calls.
@@ -236,6 +241,21 @@ class BaseRewardModel:
         successful_rewards = torch.tensor(
             reward_events.pop("reward"), dtype=torch.float32
         )
+
+        # Penalize responses that failed the organic query.
+        if organic_penalties:
+            penalized_uids = []
+
+            for idx, (_, uid, has_penalty) in enumerate(
+                zip(successful_rewards, uids, organic_penalties)
+            ):
+                if has_penalty:
+                    penalized_uids.append(uid.item())
+                    successful_rewards[idx] = torch.tensor(0.0, dtype=torch.float32)
+
+            bt.logging.info(
+                f"{self.name}: Following UIDs got penalty as they failed organic query: {penalized_uids}"
+            )
 
         original_rewards = successful_rewards.tolist()
 

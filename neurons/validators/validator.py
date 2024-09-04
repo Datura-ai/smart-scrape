@@ -119,6 +119,9 @@ class Neuron(AbstractNeuron):
                     )
 
                 self.uid_manager.resync()
+                self.scraper_validator.organic_query_state.remove_deregistered_hotkeys(
+                    self.metagraph.axons
+                )
 
                 bt.logging.info(
                     f"Number of available UIDs for periodic update: Amount: {len(self.available_uids)}, UIDs: {self.available_uids}"
@@ -329,6 +332,29 @@ class Neuron(AbstractNeuron):
                 f"Total execution time for run_synthetic_queries: {total_execution_time:.2f} minutes"
             )
 
+    async def run_organic_queries(self):
+        uids = await self.get_uids(strategy=QUERY_MINERS.ALL)
+
+        result = self.scraper_validator.organic_query_state.get_random_organic_query(
+            uids.tolist(), self.metagraph.neurons
+        )
+
+        if not result:
+            bt.logging.info("No organic queries are in history to run")
+            return
+
+        synapse, query, synapse_uid, specified_uids = result
+
+        bt.logging.info(f"Running organic queries for prompt: {synapse.prompt}")
+
+        async for _ in self.scraper_validator.organic(
+            query=query,
+            random_synapse=synapse,
+            random_uid=synapse_uid,
+            specified_uids=specified_uids,
+        ):
+            pass
+
     def sync(self):
         """
         Wrapper for synchronizing the state of the network for the given miner or validator.
@@ -425,22 +451,38 @@ class Neuron(AbstractNeuron):
                         bt.logging.error(f"Error during task execution: {e}")
                         await asyncio.sleep(interval)  # Wait before retrying
 
-            if self.config.neuron.run_random_miner_syn_qs_interval > 0:
-                self.loop.create_task(
-                    run_with_interval(
-                        self.config.neuron.run_all_miner_syn_qs_interval,
-                        QUERY_MINERS.RANDOM,
-                    )
-                )
+            async def run_organic_with_interval(interval):
+                while True:
+                    try:
+                        if not self.available_uids:
+                            await asyncio.sleep(10)
+                            continue
+                        self.loop.create_task(self.run_organic_queries())
 
-            if self.config.neuron.run_all_miner_syn_qs_interval > 0:
-                self.loop.create_task(
-                    run_with_interval(
-                        self.config.neuron.run_all_miner_syn_qs_interval,
-                        QUERY_MINERS.ALL,
-                    )
-                )
-                # If someone intentionally stops the validator, it'll safely terminate operations.
+                        await asyncio.sleep(interval)
+                    except Exception as e:
+                        bt.logging.error(f"Error during task execution: {e}")
+                        await asyncio.sleep(interval)  # Wait before retrying
+
+            # if self.config.neuron.run_random_miner_syn_qs_interval > 0:
+            #     self.loop.create_task(
+            #         run_with_interval(
+            #             self.config.neuron.run_all_miner_syn_qs_interval,
+            #             QUERY_MINERS.RANDOM,
+            #         )
+            #     )
+
+            # if self.config.neuron.run_all_miner_syn_qs_interval > 0:
+            #     self.loop.create_task(
+            #         run_with_interval(
+            #             self.config.neuron.run_all_miner_syn_qs_interval,
+            #             QUERY_MINERS.ALL,
+            #         )
+            #     )
+            # If someone intentionally stops the validator, it'll safely terminate operations.
+
+            three_hours_in_seconds = 10800
+            self.loop.create_task(run_organic_with_interval(three_hours_in_seconds))
         except KeyboardInterrupt:
             self.axon.stop()
             bt.logging.success("Validator killed by keyboard interrupt.")
