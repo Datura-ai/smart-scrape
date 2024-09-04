@@ -185,7 +185,7 @@ class BaseRewardModel:
         self, response: ScraperStreamingSynapse
     ):
         # Check if the response is successful.
-        search_completion_dict = response.get_search_completion()
+        search_completion_dict, _ = response.get_search_completion()
         search_completion = "\n".join(search_completion_dict.values())
 
         if response.dendrite.status_code == 200 and search_completion:

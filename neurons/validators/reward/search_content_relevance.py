@@ -17,8 +17,6 @@ import random
 import json
 import time
 
-APIFY_LINK_SCRAPE_AMOUNT = 10
-
 
 class WebSearchContentRelevanceModel(BaseRewardModel):
     reward_model_name: str = "VMware/open-llama-7b-open-instruct"
@@ -127,13 +125,13 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
         start_time = time.time()
 
         for response in responses:
+            _, links_expected = response.get_search_completion()
+
             links = [
                 link
                 for link in random.sample(
                     response.search_completion_links,
-                    min(
-                        APIFY_LINK_SCRAPE_AMOUNT, len(response.search_completion_links)
-                    ),
+                    min(links_expected, len(response.search_completion_links)),
                 )
             ]
 
@@ -283,7 +281,9 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             bt.logging.trace(
                 f"WebSearchContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
             )
-            val_score_responses = await self.process_links(prompt=prompt, responses=responses)
+            val_score_responses = await self.process_links(
+                prompt=prompt, responses=responses
+            )
 
             bt.logging.info(
                 f"WebSearchContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
@@ -305,11 +305,9 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 response_scores = {}
                 total_score = 0
                 num_links = len(response.validator_links)
-                max_links_considered = (
-                    len(response.validator_links)
-                    if len(response.validator_links) > 10
-                    else 10
-                )
+                _, links_expected = response.get_search_completion()
+
+                max_links_considered = max(num_links, links_expected)
 
                 if num_links > 0:
                     for val_link in response.validator_links:
@@ -328,6 +326,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                         reward_event.reward = self.calculate_adjusted_score(
                             links_count=len(response.search_completion_links),
                             score=average_score,
+                            max_links_threshold=links_expected,
                         )
                 else:
                     bt.logging.info(f"UID '{uid}' has no validator links.")

@@ -330,24 +330,24 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             ]
         ):
             search_summary = self.texts.get(ScraperTextRole.SEARCH_SUMMARY.value, "")
-            if search_summary:
-                completions[ScraperTextRole.SEARCH_SUMMARY.value] = search_summary
+            completions[ScraperTextRole.SEARCH_SUMMARY.value] = search_summary
 
         if "Reddit Search" in self.tools:
             reddit_summary = self.texts.get(ScraperTextRole.REDDIT_SUMMARY.value, "")
-            if reddit_summary:
-                completions[ScraperTextRole.REDDIT_SUMMARY.value] = reddit_summary
+            completions[ScraperTextRole.REDDIT_SUMMARY.value] = reddit_summary
 
         if "Hacker News Search" in self.tools:
             hacker_news_summary = self.texts.get(
                 ScraperTextRole.HACKER_NEWS_SUMMARY.value, ""
             )
-            if hacker_news_summary:
-                completions[ScraperTextRole.HACKER_NEWS_SUMMARY.value] = (
-                    hacker_news_summary
-                )
+            completions[ScraperTextRole.HACKER_NEWS_SUMMARY.value] = hacker_news_summary
 
-        return completions
+        links_per_completion = 10
+        links_expected = len(completions) * links_per_completion
+
+        completions = {key: value for key, value in completions.items() if value}
+
+        return completions, links_expected
 
     def get_search_links(self) -> List[str]:
         """Extracts web links from each summary making sure to filter by domain for each tool used.
@@ -356,7 +356,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         Otherwise search summary will only look for Wikipedia, ArXiv, Youtube links.
         """
 
-        completions = self.get_search_completion()
+        completions, _ = self.get_search_completion()
         links = []
 
         for key, value in completions.items():
