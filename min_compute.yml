@@ -47,7 +47,7 @@ compute_spec:
       architecture: "x86_64"  # Architecture type (e.g., x86_64, arm64)
 
     gpu:
-      required: True                       # Does the application require a GPU?
+      required: False                       # Does the application require a GPU?
       min_vram: 24                         # Minimum GPU VRAM (GB)
       recommended_vram: 48                 # Recommended GPU VRAM (GB)
       cuda_cores: 1024                     # Minimum number of CUDA cores (if applicable)

@@ -4,10 +4,6 @@ This document provides detailed instructions for setting up and running a Bitten
 
 We recommend using `pm2` for process management. For installation, see the [pm2 installation guide](https://pm2.io/docs/runtime/guide/installation/).
 
-## Hardware Requirements:
-- **Recommended:** RTX 3090
-- **Minimum:** 24GB VRAM: A4000/A5000/3090 is most cost efficient
-
 ## 0. Install Conda Environment
 Create and activate a new conda environment named `val` with Python 3.10:
 

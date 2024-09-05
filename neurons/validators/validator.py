@@ -20,6 +20,7 @@ from base_validator import AbstractNeuron
 from datura import QUERY_MINERS
 from datura.misc import ttl_get_block
 from datura.utils import resync_metagraph, save_logs_in_chunks
+from neurons.validators.proxy.uid_manager import UIDManager
 
 
 class Neuron(AbstractNeuron):
@@ -44,6 +45,8 @@ class Neuron(AbstractNeuron):
     moving_average_scores: torch.Tensor = None
     uid: int = None
     shutdown_event: asyncio.Event()
+
+    uid_manager: UIDManager
 
     @property
     def block(self):
@@ -78,8 +81,6 @@ class Neuron(AbstractNeuron):
         self.thread_executor = concurrent.futures.ThreadPoolExecutor(
             thread_name_prefix="asyncio"
         )
-        # Init sync with the network. Updates the metagraph.
-        self.sync()
 
     async def run_sync_in_async(self, fn):
         return await self.loop.run_in_executor(self.thread_executor, fn)
@@ -108,11 +109,20 @@ class Neuron(AbstractNeuron):
         while True:
             start_time = time.time()
             try:
-                # if self.should_sync_metagraph():
-                #     resync_metagraph(self)
-
-                # unless it's used elsewhere.
                 self.available_uids = await self.get_available_uids_is_alive()
+
+                if not hasattr(self, "uid_manager"):
+                    self.uid_manager = UIDManager(
+                        wallet=self.wallet,
+                        metagraph=self.metagraph,
+                        available_uids=self.available_uids,
+                    )
+
+                self.uid_manager.resync()
+                self.scraper_validator.organic_query_state.remove_deregistered_hotkeys(
+                    self.metagraph.axons
+                )
+
                 bt.logging.info(
                     f"Number of available UIDs for periodic update: Amount: {len(self.available_uids)}, UIDs: {self.available_uids}"
                 )
@@ -188,11 +198,8 @@ class Neuron(AbstractNeuron):
         ]
 
         if strategy == QUERY_MINERS.RANDOM:
-            uids = (
-                torch.tensor([random.choice(uid_list)])
-                if uid_list
-                else torch.tensor([])
-            )
+            uid = self.uid_manager.get_miner_uid()
+            uids = torch.tensor([uid]) if uid else torch.tensor([])
         elif strategy == QUERY_MINERS.ALL:
             uids = torch.tensor(uid_list) if uid_list else torch.tensor([])
         bt.logging.info(f"Run uids ---------- Amount: {len(uids)} | {uids}")
@@ -209,6 +216,7 @@ class Neuron(AbstractNeuron):
         all_rewards,
         all_original_rewards,
         val_score_responses_list,
+        organic_penalties,
         neuron,
     ):
         try:
@@ -236,6 +244,7 @@ class Neuron(AbstractNeuron):
                     weights=get_weights(self),
                     neuron=neuron,
                     netuid=self.config.netuid,
+                    organic_penalties=organic_penalties,
                 )
             )
         except Exception as e:
@@ -305,7 +314,7 @@ class Neuron(AbstractNeuron):
 
             sync_start_time = time.time()
             bt.logging.info("Calling sync method")
-            self.sync()
+            await self.run_sync_in_async(self.sync)
             bt.logging.info("Completed calling sync method")
 
             sync_end_time = time.time()
@@ -324,6 +333,27 @@ class Neuron(AbstractNeuron):
             bt.logging.info(
                 f"Total execution time for run_synthetic_queries: {total_execution_time:.2f} minutes"
             )
+
+    async def run_organic_queries(self):
+        result = self.scraper_validator.organic_query_state.get_random_organic_query(
+            self.available_uids, self.metagraph.neurons
+        )
+
+        if not result:
+            bt.logging.info("No organic queries are in history to run")
+            return
+
+        synapse, query, synapse_uid, specified_uids = result
+
+        bt.logging.info(f"Running organic queries for prompt: {synapse.prompt}")
+
+        async for _ in self.scraper_validator.organic(
+            query=query,
+            random_synapse=synapse,
+            random_uid=synapse_uid,
+            specified_uids=specified_uids,
+        ):
+            pass
 
     def sync(self):
         """
@@ -396,8 +426,7 @@ class Neuron(AbstractNeuron):
         return True  # Update right not based on interval of synthetic data
 
     async def run(self):
-        await asyncio.sleep(10)
-        self.sync()
+        await self.run_sync_in_async(self.sync)
         self.loop.create_task(self.update_available_uids_periodically())
         bt.logging.info(f"Validator starting at block: {self.block}")
 
@@ -422,6 +451,19 @@ class Neuron(AbstractNeuron):
                         bt.logging.error(f"Error during task execution: {e}")
                         await asyncio.sleep(interval)  # Wait before retrying
 
+            async def run_organic_with_interval(interval):
+                while True:
+                    try:
+                        if not self.available_uids:
+                            await asyncio.sleep(10)
+                            continue
+                        self.loop.create_task(self.run_organic_queries())
+
+                        await asyncio.sleep(interval)
+                    except Exception as e:
+                        bt.logging.error(f"Error during task execution: {e}")
+                        await asyncio.sleep(interval)  # Wait before retrying
+
             if self.config.neuron.run_random_miner_syn_qs_interval > 0:
                 self.loop.create_task(
                     run_with_interval(
@@ -437,7 +479,10 @@ class Neuron(AbstractNeuron):
                         QUERY_MINERS.ALL,
                     )
                 )
-                # If someone intentionally stops the validator, it'll safely terminate operations.
+            # If someone intentionally stops the validator, it'll safely terminate operations.
+
+            three_hours_in_seconds = 10800
+            self.loop.create_task(run_organic_with_interval(three_hours_in_seconds))
         except KeyboardInterrupt:
             self.axon.stop()
             bt.logging.success("Validator killed by keyboard interrupt.")

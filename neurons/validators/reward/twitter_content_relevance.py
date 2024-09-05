@@ -346,7 +346,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             bt.logging.warning("\n".join(tb_str) + error_message)
             return None
 
-    def get_rewards(
+    async def get_rewards(
         self, prompt: str, responses: List[bt.Synapse], name: str, uids
     ) -> List[BaseRewardEvent]:
         try:
@@ -358,8 +358,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 f"TwitterContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
             )
 
-            val_score_responses = asyncio.get_event_loop().run_until_complete(
-                self.process_tweets(prompt=prompt, responses=responses)
+            val_score_responses = await self.process_tweets(
+                prompt=prompt, responses=responses
             )
             bt.logging.info(f"VAL_SCORE_RESPONSES: {val_score_responses}")
 

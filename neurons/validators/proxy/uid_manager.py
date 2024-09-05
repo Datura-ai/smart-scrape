@@ -1,60 +1,56 @@
-import threading
-import time
+from typing import List
+import random
 import bittensor as bt
 
 
 class UIDManager:
     """
-    A UID manager class that takes care of taking best high value miners.
+    UID manager class that chooses random miner UID from top 200 miners
+    UIDs are updated on metagraph resync
     """
 
-    def __init__(self, wallet) -> None:
+    def __init__(
+        self,
+        wallet: bt.wallet,
+        metagraph: bt.metagraph,
+        available_uids: List[int],
+    ) -> None:
         self.wallet = wallet
-        self.dendrite = bt.dendrite(wallet=self.wallet)
-        self.metagraph = bt.metagraph(netuid=22)
+        self.metagraph = metagraph
         self.max_miners_to_use = 200
-        self.validator_uid = self.metagraph.hotkeys.index(wallet.hotkey.ss58_address)
-        self.axon_to_use = self.metagraph.axons[self.validator_uid]
+        self.available_uids = available_uids
+        self.uids = []
 
-        self.init_state()
-        self.start_update_thread()
+    def resync(self):
+        """
+        Resync the state after metagraph resync
+        """
+        if not len(self.available_uids):
+            return
 
-    def init_state(self):
-        """
-        Defines initial state for top_uids and previous uid.
-        """
-        self.top_uids = self.metagraph.I.argsort(descending=True)[:self.max_miners_to_use]
-        self.uid_map = {i: uid for i, uid in enumerate(self.top_uids)}
-        self.current_index = 0
+        self.top_uids = self.metagraph.I.argsort(descending=True)[
+            : self.max_miners_to_use
+        ]
 
-    def update_state(self):
-        """
-        Updates the state every 40 minutes.
-        """
-        while True:
-            # Wait 40 minutes to re-fetch updated top-miner uids.
-            time.sleep(40 * 60)
-            self.top_uids = self.metagraph.I.argsort(descending=True)[:self.max_miners_to_use]
-            new_uid_map = {i: uid for i, uid in enumerate(self.top_uids)}
+        # Reuse uids from previous cycle if they are still in top 200 and available
+        if len(self.uids):
+            self.uids = [uid for uid in self.uids if uid in self.available_uids]
 
-            for i in range(self.max_miners_to_use):
-                self.uid_map[i] = new_uid_map.get(i, self.uid_map.get(i))
-
-            # Ensure the current_index stays within the bounds of the new top_uids
-            self.current_index %= self.max_miners_to_use
-
-    def start_update_thread(self):
-        """
-        Starts the update state thread.
-        """
-        update_thread = threading.Thread(target=self.update_state)
-        update_thread.daemon = True
-        update_thread.start()
+        # If no uids are
+        if not len(self.uids):
+            self.uids = [
+                uid_tensor.item()
+                for uid_tensor in self.top_uids
+                if uid_tensor.item() in self.available_uids
+            ]
 
     def get_miner_uid(self):
         """
-        Get the next miner UID from the top_uids using the uid_map.
+        Get random miner UID from top 200 miners and remove it from the list
         """
-        miner_uid = self.uid_map[self.current_index]
-        self.current_index = (self.current_index + 1) % self.max_miners_to_use
-        return miner_uid
+        if len(self.uids) == 0:
+            self.resync()
+
+        uid = random.choice(self.uids)
+        self.uids.remove(uid)
+        return uid

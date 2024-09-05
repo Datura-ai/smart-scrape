@@ -61,7 +61,7 @@ class BaseRewardModel:
         return str(self.name)
 
     @abstractmethod
-    def get_rewards(
+    async def get_rewards(
         self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]: ...
 
@@ -185,7 +185,7 @@ class BaseRewardModel:
         self, response: ScraperStreamingSynapse
     ):
         # Check if the response is successful.
-        search_completion_dict = response.get_search_completion()
+        search_completion_dict, _ = response.get_search_completion()
         search_completion = "\n".join(search_completion_dict.values())
 
         if response.dendrite.status_code == 200 and search_completion:
@@ -214,8 +214,13 @@ class BaseRewardModel:
             if completion is not None
         ]
 
-    def apply(
-        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
+    async def apply(
+        self,
+        prompt: str,
+        responses: List[ScraperStreamingSynapse],
+        name: str,
+        uids,
+        organic_penalties: List[bool] = [],
     ) -> Union[torch.FloatTensor, dict]:
         """Applies the reward model across each call. Unsuccessful responses are zeroed."""
         # Get indices of correctly responding calls.
@@ -226,7 +231,7 @@ class BaseRewardModel:
             if resp.dendrite.status_code == 200
         ]
 
-        reward_events, val_score_responses = self.get_rewards(
+        reward_events, val_score_responses = await self.get_rewards(
             prompt, responses, name, uids
         )
 
@@ -236,6 +241,14 @@ class BaseRewardModel:
         successful_rewards = torch.tensor(
             reward_events.pop("reward"), dtype=torch.float32
         )
+
+        # Penalize responses that failed the organic query.
+        if organic_penalties:
+            for idx, (_, has_penalty) in enumerate(
+                zip(successful_rewards, organic_penalties)
+            ):
+                if has_penalty:
+                    successful_rewards[idx] = torch.tensor(0.0, dtype=torch.float32)
 
         original_rewards = successful_rewards.tolist()
 

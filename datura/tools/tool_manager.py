@@ -38,7 +38,7 @@ You can use multiple tools to answer the question. Order of tools does not matte
 Here is example of JSON array format to return. Keep in mind that this is example:
 [
   {{
-    "action": "Recent Tweets",
+    "action": "Twitter Search",
     "args": {{
       "query": "AI trends"
     }}
@@ -201,8 +201,7 @@ class ToolManager:
             ]
 
         # Otherwise identify tools to use based on prompt
-        # TODO model
-        llm = ChatOpenAI(model_name="gpt-4-0125-preview", temperature=0.2)
+        llm = ChatOpenAI(model_name="gpt-4o", temperature=0.2)
         chain = prompt_template | llm
 
         tools_description = render_text_description(self.all_tools)

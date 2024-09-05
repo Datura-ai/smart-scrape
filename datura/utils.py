@@ -352,6 +352,7 @@ async def save_logs_in_chunks(
     weights,
     neuron,
     netuid,
+    organic_penalties,
 ):
     try:
         logs = [
@@ -421,8 +422,9 @@ async def save_logs_in_chunks(
                     "date_filter_type": response.date_filter_type,
                 },
                 "time": response.dendrite.process_time,
+                "organic_penalty": organic_penalty,
             }
-            for response, uid, reward, summary_reward, twitter_reward, search_reward, performance_reward, original_summary_reward, original_twitter_reward, original_search_reward, original_performance_reward, tweet_score, search_score, summary_link_score in zip(
+            for response, uid, reward, summary_reward, twitter_reward, search_reward, performance_reward, original_summary_reward, original_twitter_reward, original_search_reward, original_performance_reward, tweet_score, search_score, summary_link_score, organic_penalty in zip(
                 responses,
                 uids.tolist(),
                 rewards.tolist(),
@@ -437,6 +439,7 @@ async def save_logs_in_chunks(
                 tweet_scores,
                 search_scores,
                 summary_link_scores,
+                organic_penalties,
             )
         ]
 
