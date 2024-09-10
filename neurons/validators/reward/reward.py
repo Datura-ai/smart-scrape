@@ -21,7 +21,7 @@ import bittensor as bt
 from typing import List, Union
 from abc import abstractmethod
 from dataclasses import dataclass, asdict, fields
-from datura.protocol import ScraperStreamingSynapse, TwitterScraperTweet
+from datura.protocol import ScraperStreamingSynapse
 import re
 import numpy as np  # Ensure numpy is imported
 
@@ -62,7 +62,7 @@ class BaseRewardModel:
 
     @abstractmethod
     async def get_rewards(
-        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
+        self, responses: List[ScraperStreamingSynapse], name: str, uids
     ) -> Union[torch.FloatTensor, dict]: ...
 
     def __init__(self) -> None:
@@ -216,9 +216,7 @@ class BaseRewardModel:
 
     async def apply(
         self,
-        prompt: str,
         responses: List[ScraperStreamingSynapse],
-        name: str,
         uids,
         organic_penalties: List[bool] = [],
     ) -> Union[torch.FloatTensor, dict]:
@@ -231,9 +229,7 @@ class BaseRewardModel:
             if resp.dendrite.status_code == 200
         ]
 
-        reward_events, val_score_responses = await self.get_rewards(
-            prompt, responses, name, uids
-        )
+        reward_events, val_score_responses = await self.get_rewards(responses, uids)
 
         # Reward each completion.
         reward_events = BaseRewardEvent.parse_reward_events(reward_events)
