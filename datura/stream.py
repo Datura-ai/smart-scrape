@@ -9,6 +9,45 @@ import asyncio
 import time
 
 
+async def collect_response(response, uid, start_time):
+    async for chunk in response:
+        if isinstance(chunk, bt.Synapse):
+            end_time = time.time()
+            duration = end_time - start_time
+            process_time = chunk.dendrite.process_time
+            if process_time is not None:
+                print(
+                    f"Miner uid {uid} finished with final synapse after {duration:.2f}s from start time. Dendrite process time: {process_time:.2f}s"
+                )
+            else:
+                print(
+                    f"Miner uid {uid} finished with final synapse after {duration:.2f}s from start time. Dendrite process time is None"
+                )
+            return chunk
+    return None
+
+
+async def collect_final_synapses(async_responses, uids, start_time, group_size=80):
+    # Split the async_responses into groups of size group_size
+    async_responses_groups = [
+        async_responses[i : i + group_size]
+        for i in range(0, len(async_responses), group_size)
+    ]
+
+    final_synapses = []
+
+    for async_responses_group in async_responses_groups:
+        tasks = [
+            asyncio.create_task(collect_response(resp, uid, start_time))
+            for resp, uid in zip(async_responses_group, uids)
+        ]
+
+        group_final_synapses = await asyncio.gather(*tasks)
+        final_synapses.extend(group_final_synapses)
+
+    return final_synapses
+
+
 async def process_async_responses(async_responses, uids, start_time):
     tasks = [collect_generator_results(resp) for resp in async_responses]
     responses = await asyncio.gather(*tasks)
