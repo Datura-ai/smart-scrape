@@ -17,10 +17,9 @@
 # DEALINGS IN THE SOFTWARE.
 
 import torch
-import asyncio
-import bittensor as bt
-from reward import BaseRewardModel
-from typing import List
+from typing import Union, List
+from reward import BaseRewardModel, BaseRewardEvent
+from datura.protocol import ScraperStreamingSynapse
 
 
 class MockRewardModel(BaseRewardModel):
@@ -43,9 +42,23 @@ class MockRewardModel(BaseRewardModel):
     def set_counter_to_half(self):
         pass
 
-    def apply(self, prompt: str, completion: List[str], name: str, uids) -> torch.FloatTensor:
-        mock_reward = torch.tensor([1 for _ in completion], dtype=torch.float32)
-        return mock_reward, {}
+    async def apply(
+        self,
+        responses: List[ScraperStreamingSynapse],
+        uids,
+        organic_penalties: List[bool] = [],
+    ) -> Union[torch.FloatTensor, dict]:
+        reward_normalized = torch.tensor([1 for _ in responses], dtype=torch.float32)
+        reward_events = [BaseRewardEvent(reward=1) for _ in responses]
+        grouped_val_score_responses = [[{}] for _ in responses]
+        original_rewards = torch.tensor([1 for _ in responses], dtype=torch.float32)
+
+        return (
+            reward_normalized,
+            reward_events,
+            grouped_val_score_responses,
+            original_rewards,
+        )
 
     def reset(self):
         return self
