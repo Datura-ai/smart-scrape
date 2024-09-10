@@ -306,7 +306,7 @@ def resync_metagraph(self):
     self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
 
-async def save_logs(prompt, logs, netuid):
+async def save_logs(logs, netuid):
     logging_endpoint_url = None
 
     if netuid == 22:
@@ -321,7 +321,6 @@ async def save_logs(prompt, logs, netuid):
             result = await session.post(
                 logging_endpoint_url,
                 json={
-                    "prompt": prompt,
                     "logs": logs,
                 },
             )
@@ -334,7 +333,6 @@ async def save_logs(prompt, logs, netuid):
 
 async def save_logs_in_chunks(
     self,
-    prompt,
     responses,
     uids,
     rewards,
@@ -357,6 +355,7 @@ async def save_logs_in_chunks(
     try:
         logs = [
             {
+                "prompt": response.prompt,
                 "completion": response.completion,
                 # "prompt_analysis": response.prompt_analysis.dict(),
                 "data": response.miner_tweets,
@@ -449,7 +448,6 @@ async def save_logs_in_chunks(
 
         for chunk in log_chunks:
             await save_logs(
-                prompt=prompt,
                 logs=chunk,
                 netuid=netuid,
             )

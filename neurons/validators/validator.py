@@ -209,7 +209,6 @@ class Neuron(AbstractNeuron):
     async def update_scores(
         self,
         wandb_data,
-        prompt,
         responses,
         uids,
         rewards,
@@ -226,7 +225,6 @@ class Neuron(AbstractNeuron):
             asyncio.create_task(
                 save_logs_in_chunks(
                     self,
-                    prompt=prompt,
                     responses=responses,
                     uids=uids,
                     rewards=rewards,
