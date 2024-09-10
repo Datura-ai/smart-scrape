@@ -19,15 +19,12 @@
 import traceback
 import torch
 import bittensor as bt
-from typing import List, Tuple, Dict, Any, Union
-import sys
+from typing import List, Tuple, Dict
 import math
-import copy
 import json
 from .config import RewardModelType
 from .reward import BaseRewardModel, BaseRewardEvent
 from datura.protocol import ScraperStreamingSynapse
-
 from neurons.validators.constants import STEEPNESS, FACTOR
 
 
@@ -77,7 +74,7 @@ class PerformanceRewardModel(BaseRewardModel):
         return 0.2 * self.sigmoid_scale(axon_time, query_timeout)
 
     async def get_rewards(
-        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
+        self, responses: List[ScraperStreamingSynapse], uids
     ) -> Tuple[List[BaseRewardEvent]]:
         """
         Returns a list of reward events for the given responses.
