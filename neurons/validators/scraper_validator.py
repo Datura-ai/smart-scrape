@@ -473,7 +473,7 @@ class ScraperValidator:
             )
 
             final_synapses = await collect_final_synapses(
-                async_responses, uids, start_time
+                async_responses, uids, start_time, max_execution_time
             )
 
             await self.compute_rewards_and_penalties(
@@ -526,6 +526,8 @@ class ScraperValidator:
 
             tasks = [task]
 
+            max_execution_time = 10
+
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 tasks=tasks,
                 strategy=QUERY_MINERS.ALL if specified_uids else QUERY_MINERS.RANDOM,
@@ -537,7 +539,7 @@ class ScraperValidator:
                 region=self.region,
                 date_filter=date_filter,
                 google_date_filter=self.date_filter,
-                timeout=10,
+                timeout=max_execution_time,
                 specified_uids=specified_uids,
             )
 
@@ -554,7 +556,7 @@ class ScraperValidator:
             else:
                 # Collect specified uids from responses and score
                 final_synapses = await collect_final_synapses(
-                    async_responses, uids, start_time
+                    async_responses, uids, start_time, max_execution_time
                 )
 
             async def process_and_score_responses(uids):
