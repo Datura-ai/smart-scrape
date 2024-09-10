@@ -32,26 +32,27 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
         self.scoring_type = scoring_type
 
-    async def llm_process_validator_links(self, prompt, links_with_metadata):
+    async def llm_process_validator_links(self, response: ScraperStreamingSynapse):
+        if not response.validator_links:
+            return {}
+
         scoring_messages = []
 
-        for link_with_metadata in links_with_metadata:
-            url = link_with_metadata.get("url")
-            title = link_with_metadata.get("title", "")
-            description = link_with_metadata.get("description", "")
+        for validator_link in response.validator_links:
+            url = validator_link.get("url")
+            title = validator_link.get("title", "")
+            description = validator_link.get("description", "")
 
             result = self.get_scoring_text(
-                prompt=prompt,
+                prompt=response.prompt,
                 content=f"Title: {title}, Description: {description}",
                 response=None,
             )
             if result:
-                scoring_prompt, scoring_text = result
+                _, scoring_text = result
                 scoring_messages.append({url: scoring_text})
 
-        score_responses = await self.reward_llm.llm_processing(
-            scoring_messages
-        )  # Await the coroutine
+        score_responses = await self.reward_llm.llm_processing(scoring_messages)
         return score_responses
 
     async def scrape_links_with_retries(self, urls):
@@ -118,9 +119,9 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
         return links_with_metadata, non_fetched_links
 
-    async def process_links(
-        self, prompt: str, responses: List[ScraperStreamingSynapse]
-    ):
+    async def process_links(self, responses: List[ScraperStreamingSynapse]):
+        default_val_score_responses = [{} for _ in responses]
+
         all_links = []
         start_time = time.time()
 
@@ -141,7 +142,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
         if len(unique_links) == 0:
             bt.logging.info("No unique links found to process.")
-            return {}
+            return default_val_score_responses
 
         links_with_metadata, non_fetched_links = await self.scrape_links_with_retries(
             unique_links
@@ -154,10 +155,6 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 if url in response.search_completion_links:
                     response.validator_links.append(link_with_metadata)
 
-        val_score_responses = await self.llm_process_validator_links(
-            prompt, links_with_metadata
-        )
-
         end_time = time.time()
         bt.logging.info(
             f"Fetched Web links method took {end_time - start_time} seconds. "
@@ -166,14 +163,18 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
         )
 
         bt.logging.info(
-            f"Web links not fetched amount: {len(non_fetched_links)}; List: {non_fetched_links}; For prompt: [{prompt}]"
+            f"Web links not fetched amount: {len(non_fetched_links)}; List: {non_fetched_links}"
         )
         if len(non_fetched_links):
             bt.logging.info(
                 f"Unique Web Links Amount: {len(unique_links)}; List: {unique_links};"
             )
 
-        return val_score_responses
+        val_score_responses_list = await asyncio.gather(
+            *[self.llm_process_validator_links(response) for response in responses]
+        )
+
+        return val_score_responses_list
 
     def check_response_random_link(self, response: ScraperStreamingSynapse):
         try:
@@ -271,23 +272,16 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             return None
 
     async def get_rewards(
-        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
+        self, responses: List[ScraperStreamingSynapse], uids
     ) -> List[BaseRewardEvent]:
         try:
             completions: List[str] = self.get_successful_search_completions(responses)
             bt.logging.debug(
                 f"WebSearchContentRelevanceModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
             )
-            bt.logging.trace(
-                f"WebSearchContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
-            )
-            val_score_responses = await self.process_links(
-                prompt=prompt, responses=responses
-            )
 
-            bt.logging.info(
-                f"WebSearchContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
-            )
+            val_score_responses_list = await self.process_links(responses=responses)
+
             scores = [
                 self.check_response_random_link(response) for response in responses
             ]
@@ -297,7 +291,9 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
             grouped_val_score_responses = []
 
-            for apify_score, response, uid_tensor in zip(scores, responses, uids):
+            for apify_score, response, val_score_responses, uid_tensor in zip(
+                scores, responses, val_score_responses_list, uids
+            ):
                 uid = uid_tensor.item()
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
@@ -316,9 +312,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                             score_result = val_score_responses.get(val_url, None)
                             if score_result is not None:
                                 score = scoring_prompt.extract_score(score_result)
-                                total_score += (
-                                    score / 10.0
-                                )  # Adjust score scaling as needed
+                                total_score += score / 10.0
                                 response_scores[val_url] = score
 
                     if total_score > 0:
@@ -335,8 +329,8 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 reward_events.append(reward_event)
                 grouped_val_score_responses.append(response_scores)
 
-                zero_scores = {}
-                non_zero_scores = {}
+            zero_scores = {}
+            non_zero_scores = {}
 
             for (index, response), uid_tensor, reward_e in zip(
                 enumerate(responses), uids, reward_events
