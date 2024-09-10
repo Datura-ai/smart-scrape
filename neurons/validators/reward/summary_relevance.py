@@ -53,9 +53,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
         self.scoring_type = scoring_type
 
-    def get_scoring_text(
-        self, prompt: str, response: ScraperStreamingSynapse
-    ) -> BaseRewardEvent:
+    def get_scoring_text(self, response: ScraperStreamingSynapse) -> BaseRewardEvent:
         try:
             # If tools include Twitter Search it scores summary of twitter, otherwise search
             is_twitter = "Twitter Search" in response.tools
@@ -102,7 +100,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
             if not scoring_prompt_text:
                 # Format scoring prompt for this completion.
-                scoring_prompt_text = scoring_prompt.text(prompt, completion)
+                scoring_prompt_text = scoring_prompt.text(response.prompt, completion)
 
             return scoring_prompt, [
                 {
@@ -116,7 +114,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             return None
 
     async def process_link_scoring_messages(
-        self, prompt, responses: List[ScraperStreamingSynapse]
+        self, responses: List[ScraperStreamingSynapse]
     ):
         scoring_messages = {}
 
@@ -210,10 +208,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         return score_responses, scoring_keys_list
 
     async def score_link_descriptions(
-        self, prompt: str, responses: List[ScraperStreamingSynapse], uids
+        self, responses: List[ScraperStreamingSynapse], uids
     ):
         score_responses, scoring_keys_list = await self.process_link_scoring_messages(
-            prompt, responses
+            responses
         )
 
         scoring_prompt = LinkContentAndDescriptionPrompt()
@@ -247,34 +245,31 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         uid_to_average_score = dict(zip(uids.tolist(), average_scores))
 
         bt.logging.info(
-            f"SummaryRelevanceRewardModel | prompt: {prompt}, average scores: {uid_to_average_score}"
+            f"SummaryRelevanceRewardModel | average scores: {uid_to_average_score}"
         )
 
         return average_scores, link_description_scores_list
 
     async def get_rewards(
-        self, prompt: str, responses: List[ScraperStreamingSynapse], name: str, uids
+        self, responses: List[ScraperStreamingSynapse], uids
     ) -> List[BaseRewardEvent]:
         try:
             completions: List[str] = self.get_successful_completions_for_summary(
                 responses
             )
-            bt.logging.info(f"SummaryRelevanceRewardModel | PROMPT: {prompt}")
+
             bt.logging.debug(
                 f"SummaryRelevanceRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
-            )
-            bt.logging.trace(
-                f"SummaryRelevanceRewardModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
             )
 
             # Need to use this scores to calculate rewards
             (
                 average_link_scores,
                 link_description_scores_list,
-            ) = await self.score_link_descriptions(prompt, responses, uids)
+            ) = await self.score_link_descriptions(responses, uids)
 
             scoring_messages = [
-                self.get_scoring_text(prompt, response) for response in responses
+                self.get_scoring_text(response) for response in responses
             ]
             filter_scoring_messages = [
                 msg for msg in scoring_messages if msg is not None
@@ -282,9 +277,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             bt.logging.debug(
                 f"SummaryRelevanceRewardModel | Calculating {len(filter_scoring_messages)} rewards (typically < 1 sec/reward)."
             )
-            bt.logging.trace(
-                f"SummaryRelevanceRewardModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
-            )
+
             # # Filter out None items from scoring_messages
             # messages = []
             # messages.extend({index: msg_content} for index, (_, msg_content) in enumerate(scoring_messages) if msg_content)
