@@ -498,6 +498,11 @@ class ScraperValidator:
         """Receives question from user and returns the response from the miners.
         Also used to run occasional random query to all miners except the one that failed the previous query.
         """
+
+        if not len(self.neuron.available_uids):
+            bt.logging.info("Not available uids")
+            raise StopAsyncIteration("Not available uids")
+
         is_interval_query = random_synapse is not None
 
         try:
@@ -519,12 +524,10 @@ class ScraperValidator:
                 criteria=[],
             )
 
-            if not len(self.neuron.available_uids):
-                bt.logging.info("Not available uids")
-                raise StopAsyncIteration("Not available uids")
+            tasks = [task]
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
-                task=task,
+                tasks=tasks,
                 strategy=QUERY_MINERS.ALL if specified_uids else QUERY_MINERS.RANDOM,
                 # This is set to false on Finney to allow all miners to participate from Datura UI
                 is_only_allowed_miner=self.neuron.config.subtensor.network != "finney",
@@ -562,8 +565,7 @@ class ScraperValidator:
 
                 _, _, _, _, original_rewards = await self.compute_rewards_and_penalties(
                     event=event,
-                    prompt=prompt,
-                    task=task,
+                    tasks=tasks,
                     responses=final_synapses,
                     uids=uids,
                     start_time=start_time,
@@ -589,6 +591,10 @@ class ScraperValidator:
         return "\n".join(formatted_scores)
 
     async def organic_specified(self, query, specified_uids=None):
+        if not len(self.neuron.available_uids):
+            bt.logging.info("Not available uids")
+            raise StopAsyncIteration("Not available uids")
+
         def format_response(uid, text):
             return json.dumps(
                 {"uid": uid, "type": "text", "content": text, "role": text}
@@ -597,8 +603,6 @@ class ScraperValidator:
         try:
             prompt = query["content"]
             tools = query.get("tools", [])
-            # tools = ["Google Search", "Youtube Search"]
-            # tools = ["Twitter Search"]
             date_filter_type = query.get(
                 "date_filter", DateFilterType.PAST_2_DAYS.value
             )
@@ -606,23 +610,22 @@ class ScraperValidator:
             response_order = query.get(
                 "response_order", ResponseOrder.SUMMARY_FIRST.value
             )
+            response_order = ResponseOrder(response_order)
 
-            task_name = "augment"
-            task = TwitterTask(
-                base_text=prompt,
-                task_name=task_name,
-                task_type="twitter_scraper",
-                criteria=[],
-            )
-
-            if not len(self.neuron.available_uids):
-                bt.logging.info("Not available uids")
-                raise StopAsyncIteration("Not available uids")
+            tasks = [
+                TwitterTask(
+                    base_text=prompt,
+                    task_name="augment",
+                    task_type="twitter_scraper",
+                    criteria=[],
+                )
+                for _ in range(len(specified_uids))
+            ]
 
             date_filter = get_specified_date_filter(date_filter_type)
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
-                task=task,
+                tasks=tasks,
                 strategy=QUERY_MINERS.ALL,
                 is_only_allowed_miner=False,
                 specified_uids=specified_uids,
@@ -677,8 +680,7 @@ class ScraperValidator:
                 rewards_task = asyncio.create_task(
                     self.compute_rewards_and_penalties(
                         event=event,
-                        prompt=prompt,
-                        task=task,
+                        tasks=tasks,
                         responses=final_synapses,
                         uids=uids,
                         start_time=start_time,
@@ -694,7 +696,7 @@ class ScraperValidator:
                         yield f"Waiting for reward scoring... {elapsed_time // 60} minutes elapsed.\n\n"
                         start_compute_time = time.time()  # Reset the timer
 
-                rewards, uids, val_score_responses_list, event = await rewards_task
+                rewards, uids, val_score_responses_list, event, _ = await rewards_task
                 for i, uid_tensor in enumerate(uids):
                     uid = uid_tensor.item()
                     reward = rewards[i].item()
