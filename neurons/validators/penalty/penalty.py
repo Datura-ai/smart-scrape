@@ -22,14 +22,14 @@ from typing import List
 from abc import ABC, abstractmethod
 from neurons.validators.utils.tasks import Task
 
+
 class BasePenaltyModel(ABC):
     def __init__(self, max_penalty: float):
         self.max_penalty = max_penalty
 
     @property
     @abstractmethod
-    def name(self) -> str:
-        ...
+    def name(self) -> str: ...
 
     def __str__(self) -> str:
         return str(self.name)
@@ -38,14 +38,14 @@ class BasePenaltyModel(ABC):
         return str(self.name)
 
     @abstractmethod
-    def calculate_penalties(task: Task, responses: List[bt.Synapse]) -> torch.FloatTensor:
-        ...
+    def calculate_penalties(
+        responses: List[bt.Synapse], tasks: List[Task]
+    ) -> torch.FloatTensor: ...
 
     def apply_penalties(
-        self, responses: List[bt.Synapse], task: Task
+        self, responses: List[bt.Synapse], tasks: List[Task]
     ) -> torch.FloatTensor:
-        # completions = [response.completion for response in responses]
-        raw_penalties = self.calculate_penalties(task, responses)
+        raw_penalties = self.calculate_penalties(responses, tasks)
 
         # Clip penalties between 0 and 1
         adjusted_penalties = torch.clip(raw_penalties, 0, 1)
@@ -63,3 +63,4 @@ class PenaltyModelType(Enum):
     task_validation_penalty = "task_validation_penalty"
     accuracy_match_penalty = "accuracy_match_penalty"
     link_validation_penalty = "link_validation_penalty"
+    streaming_penalty = "streaming_penalty"

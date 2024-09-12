@@ -22,9 +22,7 @@ from neurons.validators.reward.twitter_content_relevance import (
 from neurons.validators.reward.search_content_relevance import (
     WebSearchContentRelevanceModel,
 )
-from neurons.validators.reward.performance_reward import (
-    PerformanceRewardModel,
-)
+from neurons.validators.reward.performance_reward import PerformanceRewardModel
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask, SearchTask
 
@@ -39,6 +37,7 @@ from datura.dataset.date_filters import (
     DateFilterType,
 )
 from neurons.validators.organic_query_state import OrganicQueryState
+from neurons.validators.penalty.streaming_penalty import StreamingPenaltyModel
 
 
 class ScraperValidator:
@@ -167,8 +166,7 @@ class ScraperValidator:
         ]
 
         self.penalty_functions = [
-            # LinkValidationPenaltyModel(max_penalty=0.7),
-            # AccuracyPenaltyModel(max_penalty=1),
+            StreamingPenaltyModel(max_penalty=1),
         ]
         self.twitter_api = TwitterAPIClient()
 
@@ -306,7 +304,7 @@ class ScraperValidator:
 
             for penalty_fn_i in self.penalty_functions:
                 raw_penalty_i, adjusted_penalty_i, applied_penalty_i = (
-                    penalty_fn_i.apply_penalties(responses, task)
+                    penalty_fn_i.apply_penalties(responses, tasks)
                 )
                 penalty_start_time = time.time()
                 rewards *= applied_penalty_i.to(self.neuron.config.neuron.device)

@@ -2,6 +2,7 @@ import pydantic
 import bittensor as bt
 import typing
 import json
+import asyncio
 from datetime import datetime
 from abc import ABC, abstractmethod
 from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
@@ -287,6 +288,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="A dictionary of texts in the StreamPrompting scenario, containing a role (intro, twitter summary, search summary, summary) and content. Immutable.",
     )
 
+    streamed_text_chunks: List[str] = pydantic.Field(
+        default_factory=list,
+        title="Streamed Text Chunks",
+        description="A list of streamed text chunks.",
+    )
+
     response_order: Optional[str] = pydantic.Field(
         "",
         title="Response Order",
@@ -408,6 +415,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                     if content_type == "text":
                         text_content = json_data.get("content", "")
                         role = json_data.get("role")
+                        self.streamed_text_chunks.append(text_content)
 
                         yield json.dumps(
                             {"type": "text", "role": role, "content": text_content}
@@ -420,11 +428,6 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                         self.completion = completion
 
                         yield json.dumps({"type": "completion", "content": completion})
-                    # elif content_type == "prompt_analysis":
-                    #     prompt_analysis_json = json_data.get("content", "{}")
-                    #     prompt_analysis = TwitterPromptAnalysisResult()
-                    #     prompt_analysis.fill(prompt_analysis_json)
-                    #     self.set_prompt_analysis(prompt_analysis)
 
                     elif content_type == "tweets":
                         tweets_json = json_data.get("content", "[]")
@@ -515,7 +518,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             bt.logging.debug(
                 f"process_streaming_response: Host: {host}:{port}, hotkey: {hotkey}, ERROR: json.JSONDecodeError: {e}, "
             )
-        except TimeoutError as e:
+        except (TimeoutError, asyncio.exceptions.TimeoutError) as e:
             port = response.real_url.port
             host = response.real_url.host
             hotkey = self.axon.hotkey
@@ -577,6 +580,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "date_filter_type": self.date_filter_type,
             "tools": self.tools,
             "max_execution_time": self.max_execution_time,
+            "streamed_text_chunks": self.streamed_text_chunks,
         }
 
     class Config:
