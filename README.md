@@ -35,7 +35,7 @@ Welcome to Smart-Scrape, a cutting-edge tool hosted on the Bittensor network, de
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/surcyf123/smart-scrape.git
+   git clone https://github.com/Datura-ai/smart-scrape.git
    ```
 2. Install the requirements:
    ```bash
