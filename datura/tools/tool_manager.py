@@ -166,22 +166,9 @@ class ToolManager:
             self.response_streamer.get_full_text(),
         )
 
-        await self.response_streamer.send_texts_event()
-        await self.response_streamer.send_completion_event()
-
         await asyncio.gather(*tool_tasks)
 
-        completion_response_body = {
-            "type": "completion",
-            "content": self.response_streamer.get_full_text(),
-        }
-
-        await self.send(
-            {
-                "type": "http.response.body",
-                "body": json.dumps(completion_response_body).encode("utf-8"),
-            }
-        )
+        await self.response_streamer.send_completion_event()
 
         if self.response_streamer.more_body:
             await self.send(

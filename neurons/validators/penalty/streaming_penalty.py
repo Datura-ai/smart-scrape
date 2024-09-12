@@ -23,13 +23,18 @@ class StreamingPenaltyModel(BasePenaltyModel):
         encoding = tiktoken.get_encoding("cl100k_base")
 
         for index, response in enumerate(responses):
-            if not response.streamed_text_chunks:
+            streamed_text_chunks = []
+
+            for chunks in response.text_chunks.values():
+                streamed_text_chunks.extend(chunks)
+
+            if not streamed_text_chunks:
                 accumulated_penalties[index] = 1
                 continue
 
             token_counts = [
                 (len(encoding.encode(chunk)) if chunk is not None else 0)
-                for chunk in response.streamed_text_chunks
+                for chunk in streamed_text_chunks
             ]
 
             # Apply penalty for exceeding max tokens per chunk

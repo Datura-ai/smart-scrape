@@ -176,12 +176,6 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Date filter specified by user.",
     )
 
-    # prompt_analysis: TwitterPromptAnalysisResult = pydantic.Field(
-    #     default_factory=lambda: TwitterPromptAnalysisResult(),
-    #     title="Prompt Analysis",
-    #     description="Analysis of the Twitter query result.",
-    # )
-
     validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
         default_factory=list,
         title="tweets",
@@ -276,23 +270,20 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Optional JSON object containing search results from Subnets Source Code",
     )
 
-    # is_intro_text: bool = pydantic.Field(
-    #     False,
-    #     title="Is Intro Text",
-    #     description="Indicates whether the text is an introductory text.",
-    # )
-
-    texts: Optional[Dict[str, str]] = pydantic.Field(
+    text_chunks: Optional[Dict[str, str]] = pydantic.Field(
         default_factory=dict,
-        title="Texts",
-        description="A dictionary of texts in the StreamPrompting scenario, containing a role (intro, twitter summary, search summary, summary) and content. Immutable.",
+        title="Text Chunks",
     )
 
-    streamed_text_chunks: List[str] = pydantic.Field(
-        default_factory=list,
-        title="Streamed Text Chunks",
-        description="A list of streamed text chunks.",
-    )
+    @property
+    def texts(self) -> Dict[str, str]:
+        """Returns a dictionary of texts, containing a role (twitter summary, search summary, reddit summary, hacker news summary, final summary) and content."""
+        texts = {}
+
+        for key in self.text_chunks:
+            texts[key] = "".join(self.text_chunks[key])
+
+        return texts
 
     response_order: Optional[str] = pydantic.Field(
         "",
@@ -311,9 +302,6 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         title="Max Results",
         description="The maximum number of results to be returned per query",
     )
-
-    # def set_prompt_analysis(self, data: any):
-    #     self.prompt_analysis = data
 
     def set_tweets(self, data: any):
         self.tweets = data
@@ -415,14 +403,16 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                     if content_type == "text":
                         text_content = json_data.get("content", "")
                         role = json_data.get("role")
-                        self.streamed_text_chunks.append(text_content)
+
+                        if role not in self.text_chunks:
+                            self.text_chunks[role] = []
+
+                        self.text_chunks[role].append(text_content)
 
                         yield json.dumps(
                             {"type": "text", "role": role, "content": text_content}
                         )
-                    elif content_type == "texts":
-                        texts = json_data.get("content", "")
-                        self.texts = texts
+
                     elif content_type == "completion":
                         completion = json_data.get("content", "")
                         self.completion = completion
@@ -580,7 +570,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "date_filter_type": self.date_filter_type,
             "tools": self.tools,
             "max_execution_time": self.max_execution_time,
-            "streamed_text_chunks": self.streamed_text_chunks,
+            "text_chunks": self.text_chunks,
         }
 
     class Config:
