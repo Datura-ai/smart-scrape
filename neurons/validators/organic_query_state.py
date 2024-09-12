@@ -153,6 +153,9 @@ class OrganicQueryState:
         """Called after metagraph resync to remove any hotkeys that are no longer registered"""
         hotkeys = [axon.hotkey for axon in axons]
 
+        original_history_count = len(self.organic_history)
+        original_penalties_count = len(self.organic_penalties)
+
         self.organic_history = {
             hotkey: synapses
             for hotkey, synapses in self.organic_history.items()
@@ -165,4 +168,11 @@ class OrganicQueryState:
             if hotkey in hotkeys
         }
 
-        bt.logging.info("Removed deregistered hotkeys from organic query state")
+        log_data = {
+            "organic_history": original_history_count - len(self.organic_history),
+            "organic_penalties": original_penalties_count - len(self.organic_penalties),
+        }
+
+        bt.logging.info(
+            f"Removed deregistered hotkeys from organic query state: {log_data}"
+        )
