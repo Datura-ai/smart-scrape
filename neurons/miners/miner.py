@@ -24,7 +24,13 @@ from typing import List, Dict, Tuple
 
 from datura.utils import get_version
 
-from datura.protocol import IsAlive, ScraperStreamingSynapse, SearchSynapse, TwitterTweetSynapse, TwitterUserSynapse
+from datura.protocol import (
+    IsAlive,
+    ScraperStreamingSynapse,
+    SearchSynapse,
+    TwitterTweetSynapse,
+    TwitterUserSynapse,
+)
 from neurons.miners.scraper_miner import ScraperMiner
 from neurons.miners.search_miner import SearchMiner
 from neurons.miners.twitter_user_miner import TwitterUserMiner
@@ -153,7 +159,9 @@ class StreamMiner(ABC):
     async def _search(self, synapse: SearchSynapse) -> SearchSynapse:
         return await self.search(synapse)
 
-    async def _get_twitter_user(self, synapse: TwitterUserSynapse) -> TwitterUserSynapse:
+    async def _get_twitter_user(
+        self, synapse: TwitterUserSynapse
+    ) -> TwitterUserSynapse:
         return await self.get_twitter_user(synapse)
 
     async def _get_tweets(self, synapse: TwitterTweetSynapse) -> TwitterTweetSynapse:
@@ -264,10 +272,34 @@ class StreamMiner(ABC):
     async def search(self, synapse: SearchSynapse) -> SearchSynapse: ...
 
     @abstractmethod
-    async def get_twitter_user(self, synapse: TwitterUserSynapse) -> TwitterUserSynapse: ...
+    async def get_twitter_user(
+        self, synapse: TwitterUserSynapse
+    ) -> TwitterUserSynapse: ...
 
     @abstractmethod
     async def get_tweets(self, synapse: TwitterTweetSynapse) -> TwitterTweetSynapse: ...
+
+    def sync_metagraph_with_interval(self):
+        first_run = True
+
+        while True:
+            try:
+                if first_run:
+                    bt.logging.debug("Skipping first metagraph sync")
+                    first_run = False
+                else:
+                    bt.logging.info("Resyncing metagraph in background")
+                    self.metagraph.sync(subtensor=self.subtensor)
+                time.sleep(900)
+            except Exception as e:
+                bt.logging.error(f"Error during metagraph sync: {e}")
+                time.sleep(30)
+
+    def start_background_sync(self):
+        self.sync_thread = threading.Thread(
+            target=self.sync_metagraph_with_interval, daemon=True
+        )
+        self.sync_thread.start()
 
     def run(self):
         if not self.subtensor.is_hotkey_registered(
@@ -288,6 +320,9 @@ class StreamMiner(ABC):
         self.last_epoch_block = self.subtensor.get_current_block()
         bt.logging.info(f"Miner starting at block: {self.last_epoch_block}")
         bt.logging.info(f"Starting main loop")
+
+        self.start_background_sync()
+
         step = 0
         try:
             while not self.should_exit:
@@ -349,6 +384,7 @@ class StreamMiner(ABC):
         if self.is_running:
             bt.logging.debug("Stopping miner in background thread.")
             self.should_exit = True
+            self.sync_thread.join(5)
             self.thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
