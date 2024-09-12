@@ -56,7 +56,7 @@ compute_spec:
       recommended_gpu: "RTX A5000"       # Recommended GPU to purchase/rent
 
     memory:
-      min_ram: 16          # Minimum RAM (GB)
+      min_ram: 8          # Minimum RAM (GB)
       min_swap: 4          # Minimum swap space (GB)
       recommended_swap: 8  # Recommended swap space (GB)
       ram_type: "DDR4"     # RAM type (e.g., DDR4, DDR3, etc.)
