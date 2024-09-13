@@ -42,10 +42,7 @@ from neurons.validators.penalty.streaming_penalty import StreamingPenaltyModel
 
 class ScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
-        self.streaming = True
-        self.query_type = "text"
         self.model = "gpt-3.5-turbo-0125"
-        self.weight = 1
         self.seed = 1234
         self.neuron = neuron
         self.timeout = 180
@@ -168,7 +165,6 @@ class ScraperValidator:
         self.penalty_functions = [
             StreamingPenaltyModel(max_penalty=1),
         ]
-        self.twitter_api = TwitterAPIClient()
 
     async def run_task_and_score(
         self,
