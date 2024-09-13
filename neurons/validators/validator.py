@@ -222,6 +222,8 @@ class Neuron(AbstractNeuron):
             if self.config.wandb_on:
                 wandb.log(wandb_data)
 
+            weights = await self.run_sync_in_async(lambda: get_weights(self))
+
             asyncio.create_task(
                 save_logs_in_chunks(
                     self,
@@ -239,7 +241,7 @@ class Neuron(AbstractNeuron):
                     tweet_scores=val_score_responses_list[0],
                     search_scores=val_score_responses_list[1],
                     summary_link_scores=val_score_responses_list[2],
-                    weights=get_weights(self),
+                    weights=weights,
                     neuron=neuron,
                     netuid=self.config.netuid,
                     organic_penalties=organic_penalties,
