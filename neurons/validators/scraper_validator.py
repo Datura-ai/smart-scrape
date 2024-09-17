@@ -217,15 +217,30 @@ class ScraperValidator:
             for task in tasks
         ]
 
-        async_responses = [
-            self.neuron.dendrite1.call_stream(
-                target_axon=axon,
-                synapse=synapse.copy(),
-                timeout=timeout,
-                deserialize=False,
-            )
-            for axon, synapse in zip(axons, synapses)
+        axon_groups = [axons[:80], axons[80:160], axons[160:]]
+        synapse_groups = [synapses[:80], synapses[80:160], synapses[160:]]
+        dendrites = [
+            self.neuron.dendrite1,
+            self.neuron.dendrite2,
+            self.neuron.dendrite3,
         ]
+
+        async_responses = []
+
+        for dendrite, axon_group, synapse_group in zip(
+            dendrites, axon_groups, synapse_groups
+        ):
+            async_responses.extend(
+                [
+                    dendrite.call_stream(
+                        target_axon=axon,
+                        synapse=synapse.copy(),
+                        timeout=timeout,
+                        deserialize=False,
+                    )
+                    for axon, synapse in zip(axon_group, synapse_group)
+                ]
+            )
 
         return async_responses, uids, event, start_time
 

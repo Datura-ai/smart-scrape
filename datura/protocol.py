@@ -270,7 +270,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Optional JSON object containing search results from Subnets Source Code",
     )
 
-    text_chunks: Optional[Dict[str, str]] = pydantic.Field(
+    text_chunks: Optional[Dict[str, List[str]]] = pydantic.Field(
         default_factory=dict,
         title="Text Chunks",
     )
