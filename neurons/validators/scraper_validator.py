@@ -446,12 +446,16 @@ class ScraperValidator:
             dataset = QuestionsDataset()
             tools = random.choice(self.tools)
 
-            prompts = await asyncio.gather(
-                *[
-                    dataset.generate_new_question_with_openai(tools)
-                    for _ in range(len(self.neuron.available_uids))
-                ]
-            )
+            # prompts = await asyncio.gather(
+            #     *[
+            #         dataset.generate_new_question_with_openai(tools)
+            #         for _ in range(len(self.neuron.available_uids))
+            #     ]
+            # )
+
+            # NOTE: Generate single query for all miners for now
+            prompt = await dataset.generate_new_question_with_openai(tools)
+            prompts = [prompt] * len(self.neuron.available_uids)
 
             tasks = [
                 TwitterTask(
