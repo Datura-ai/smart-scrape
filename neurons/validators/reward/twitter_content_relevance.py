@@ -68,17 +68,20 @@ class TwitterContentRelevanceModel(BaseRewardModel):
     def clean_text(self, text):
         return clean_text(text)
 
-    async def llm_process_validator_tweets(self, prompt, tweets_list):
+    async def llm_process_validator_tweets(self, response: ScraperStreamingSynapse):
+        if not response.validator_tweets:
+            return {}
+
         start_llm_time = time.time()
         scoring_messages = []
-        for tweet in tweets_list:
-            val_text = tweet.text
-            val_tweet_id = tweet.id
+        for validator_tweet in response.validator_tweets:
+            val_text = validator_tweet.text
+            val_tweet_id = validator_tweet.id
             result = self.get_scoring_text(
-                prompt=prompt, content=val_text, response=None
+                prompt=response.prompt, content=val_text, response=None
             )
             if result:
-                scoring_prompt, scoring_text = result
+                _, scoring_text = result
                 scoring_messages.append({str(val_tweet_id): scoring_text})
         score_responses = await self.reward_llm.llm_processing(scoring_messages)
 
@@ -119,7 +122,9 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
         return tweets_list, non_fetched_links
 
-    async def process_tweets(self, prompt, responses):
+    async def process_tweets(self, responses: List[ScraperStreamingSynapse]):
+        default_val_score_responses = [{} for _ in responses]
+
         try:
             non_fetched_links = {}
             start_time = time.time()
@@ -138,7 +143,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             )  # Remove duplicates to avoid redundant tasks
             if len(unique_links) == 0:
                 bt.logging.info("No unique links found to process.")
-                return
+                return default_val_score_responses
 
             tweets_list, non_fetched_links = await self.fetch_tweets_with_retries(
                 unique_links
@@ -155,11 +160,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                         response.validator_tweets.append(tweet)
             if len(unique_links) == 0:
                 bt.logging.info("No unique links found to process.")
-                return {}
+                return default_val_score_responses
 
-            val_score_responses = await self.llm_process_validator_tweets(
-                prompt, tweets_list
-            )
             end_time = time.time()
             bt.logging.info(
                 f"Fetched Twitter links method took {end_time - start_time} seconds. "
@@ -168,16 +170,21 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             )
 
             bt.logging.info(
-                f"Twitter Links not fetched Amount: {len(non_fetched_links)}; List: {non_fetched_links}; For prompt: [{prompt}]"
+                f"Twitter Links not fetched Amount: {len(non_fetched_links)}; List: {non_fetched_links}"
             )
             if len(non_fetched_links):
                 bt.logging.info(
                     f"Unique Twitter Links Amount: {len(unique_links)}; List: {unique_links};"
                 )
-            return val_score_responses
+
+            val_score_responses_list = await asyncio.gather(
+                *[self.llm_process_validator_tweets(response) for response in responses]
+            )
+
+            return val_score_responses_list
         except Exception as e:
             bt.logging.error(f"Error in process_tweets: {str(e)}")
-            return {}
+            return default_val_score_responses
 
     def format_text_for_match(self, text):
         # Unescape HTML entities first
@@ -347,26 +354,17 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             return None
 
     async def get_rewards(
-        self, prompt: str, responses: List[bt.Synapse], name: str, uids
+        self, responses: List[bt.Synapse], uids
     ) -> List[BaseRewardEvent]:
         try:
             # completions: List[str] = self.get_successful_twitter_completions(responses)
             # bt.logging.debug(
             #     f"TwitterContentRelevanceModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
             # )
-            bt.logging.trace(
-                f"TwitterContentRelevanceModel | prompt: {repr(prompt[:50])} ... {repr(prompt[-50:])}"
-            )
 
-            val_score_responses = await self.process_tweets(
-                prompt=prompt, responses=responses
-            )
-            bt.logging.info(f"VAL_SCORE_RESPONSES: {val_score_responses}")
+            val_score_responses_list = await self.process_tweets(responses=responses)
+            bt.logging.info(f"VAL_SCORE_RESPONSES: {val_score_responses_list}")
 
-            bt.logging.info(f"TwitterContentRelevanceModel | PROMPT: {prompt}")
-            bt.logging.info(
-                f"TwitterContentRelevanceModel | Keys in val_score_responses: {len(val_score_responses.keys()) if val_score_responses else 'No val_score_responses available'}"
-            )
             scores = [self.check_tweet_content(response) for response in responses]
 
             reward_events = []
@@ -374,10 +372,10 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
             grouped_val_score_responses = []
 
-            # apify_score,
-            for apify_score, response, uid_tensor in zip(
+            for apify_score, response, val_score_responses, uid_tensor in zip(
                 scores,
                 responses,
+                val_score_responses_list,
                 uids,
             ):
                 uid = uid_tensor.item()
@@ -424,9 +422,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                             )
                             if score_result is not None:
                                 score = scoring_prompt.extract_score(score_result)
-                                total_score += (
-                                    score / 10.0
-                                )  # Adjust score scaling as needed
+                                total_score += score / 10.0
                                 response_scores[val_tweet_id] = score
                     if total_score > 0:
                         average_score = (

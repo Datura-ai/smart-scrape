@@ -6,8 +6,8 @@ This comprehensive guide is designed to assist you in configuring the environmen
 
 ### Prerequisites
 
-- Access to a terminal interface.
-- Accounts on OpenAI, Weights & Biases, and Twitter Developer Portal.
+-   Access to a terminal interface.
+-   Accounts on OpenAI, Weights & Biases, and Twitter Developer Portal.
 
 ### Setting Up Variables
 
@@ -15,53 +15,38 @@ Here's a breakdown of the environment variables necessary for the Smart-Scrape s
 
 1. **OPENAI_API_KEY**
 
-   - **Usage**: Authenticates with the OpenAI API.
-   - **How to Obtain**: Sign up or log in at [OpenAI API](https://beta.openai.com/signup/), navigate to the API section, and generate a key.
-   - **Required for**: Validator and Miners.
+    - **Usage**: Authenticates with the OpenAI API.
+    - **How to Obtain**: Sign up or log in at [OpenAI API](https://beta.openai.com/signup/), navigate to the API section, and generate a key.
+    - **Required for**: Validator and Miners.
 
 2. **TWITTER_BEARER_TOKEN**
 
-   - **Usage**: Grants access to the Twitter API.
-   - **How to Obtain**: Create a Twitter Developer account, create an app at [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard), and generate a token.
-   - **Required for**: Miners exclusively.
+    - **Usage**: Grants access to the Twitter API.
+    - **How to Obtain**: Create a Twitter Developer account, create an app at [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard), and generate a token.
+    - **Required for**: Miners exclusively.
 
 3. **WANDB_API_KEY**
 
-   - **Usage**: For experiment tracking with Weights & Biases.
-   - **How to Obtain**: Sign up or log in at [Weights & Biases](https://wandb.ai/), and generate a key in your account settings.
-   - **Required for**: Validator and Miners.
+    - **Usage**: For experiment tracking with Weights & Biases.
+    - **How to Obtain**: Sign up or log in at [Weights & Biases](https://wandb.ai/), and generate a key in your account settings.
+    - **Required for**: Validator and Miners.
 
 4. **EXPECTED_ACCESS_KEY**
 
-   - **Usage**: Secures access to the validator service.
-   - **How to Create**: Generate a unique, strong, and random string.
-   - **Required for**: Validators exclusively.
+    - **Usage**: Secures access to the validator service.
+    - **How to Create**: Generate a unique, strong, and random string.
+    - **Required for**: Validators exclusively.
 
 5. **APIFY_API_KEY**
 
-   - **Usage**: Used for Apify actors
-   - **How to Create**: Sign up or log in at [Apify](https://apify.com/), and generate a key in your account settings.
+    - **Usage**: Used for Apify actors
+    - **How to Create**: Sign up or log in at [Apify](https://apify.com/), and generate a key in your account settings.
+    - **Required for**: Validator and Miners.
 
-6. **URL_SUBNET_18**
-
-   - **Usage**: URL for Subnet 18, utilized for scoring the relevance of summaries.
-   - **How to Create**: Generate a unique, strong, and random string.
-   - **Required for**: Validators exclusively.
-
-7. **SERPAPI_API_KEY**
-   - **Usage**: Used to search web using Serp API
-   - **How to Create**: Sign up or log in at [Serp API](https://serpapi.com/), and generate a key in your account settings.
-   - **Required for**: Miners exclusively.
-
-8. **DISCORD_MESSAGES_DB_URL**:
-   - **Usage**: Used to access bittensor discord messages/channels/users
-   - **How to Create**: Use `discord_db_url_generator.py` to get a read only database url. It will ask you for miner coldkey, and password for it after running the script.
-   - **Required for**: Miners exclusively.
-
-9. **PINECONE_API_KEY**:
-   - **Usage**: Used to read and write pinecone vector indexes for discord messages exclusively.
-   - **How to Create**: Sign up or login at [Pinecone](https://pinecone.io/), and generate a key in your account settings.
-   - **Required for**: Miners exclusively.
+6. **SERPAPI_API_KEY**
+    - **Usage**: Used to search web using Serp API
+    - **How to Create**: Sign up or log in at [Serp API](https://serpapi.com/), and generate a key in your account settings.
+    - **Required for**: Miners exclusively.
 
 ### Executing Commands for Setting Environment Variables
 
@@ -73,9 +58,6 @@ export TWITTER_BEARER_TOKEN=<your_twitter_bearer_token_here>  # Only for Miners
 export EXPECTED_ACCESS_KEY=<your_EXPECTED_ACCESS_KEY_here>  # Only for Validators
 export WANDB_API_KEY=<your_wandb_api_key_here>
 export APIFY_API_KEY=<your_apify_api_key_here>  # Only for Validators
-export URL_SUBNET_18=<your_url_subent_18>
-export DISCORD_MESSAGES_DB_URL=<discord_db_url>
-export PINECONE_API_KEY=<your_pinecone_api_key>
 ```
 
 ### Setting Environment Variables Using `.bashrc`
@@ -83,14 +65,11 @@ export PINECONE_API_KEY=<your_pinecone_api_key>
 If you prefer to use `.bashrc` for setting up environment variables, execute these commands:
 
 ```bash
-echo 'export OPENAI_API_KEY="<your_openai_api_key>"' >> ~/.bashrc
+echo 'export OPENAI_API_KEY="<your_openai_api_key>"' >> ~/.bashrc # Both for Validators and Miners
 echo 'export TWITTER_BEARER_TOKEN="<your_twitter_bearer_token>"' >> ~/.bashrc  # Only for Miners
 echo 'export EXPECTED_ACCESS_KEY="<your_EXPECTED_ACCESS_KEY>"' >> ~/.bashrc  # Only for Validators
-echo 'export WANDB_API_KEY="<your_wandb_api_key>"' >> ~/.bashrc
-echo 'export APIFY_API_KEY="<your_apify_api_key>"' >> ~/.bashrc
-echo 'export URL_SUBNET_18="<your_url_subent_18>"' >> ~/.bashrc
-echo 'export DISCORD_MESSAGES_DB_URL="<read_only_db_url>"' >> ~/.bashrc
-echo 'export PINECONE_API_KEY="<your_pinecone_api_key>"' >> ~/.bashrc
+echo 'export WANDB_API_KEY="<your_wandb_api_key>"' >> ~/.bashrc # Only for Validators
+echo 'export APIFY_API_KEY="<your_apify_api_key>"' >> ~/.bashrc # Both for Validators and Miners
 
 source ~/.bashrc
 ```

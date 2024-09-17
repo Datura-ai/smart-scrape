@@ -11,21 +11,17 @@ Before starting, ensure you have:
 
 ## Setup Process
 
-### 1. Install the smart-scrape Repository
-First, install the smart-scrape repository. In your terminal, navigate to the smart-scrape directory and execute:
+## 1. Clone the smart-scrape repository and install dependencies
+Clone and install the smart-scrape repository in editable mode:
 
 ```sh
-python -m pip install -e ~/smart-scrape
-```
-
-### 2. Install Miner-Specific Requirements
-Install any additional requirements for the miner:
-
-```sh
+git clone https://github.com/Datura-ai/smart-scrape.git
+cd smart-scrape
 python -m pip install -r requirements.txt
+python -m pip install -e .
 ```
 
-### 3. Configure and Run the Miner
+### 2. Configure and Run the Miner
 Configure and launch the miner using PM2:
 
 ```sh
@@ -53,7 +49,6 @@ pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 
 - `--miner.name`: Path for miner data (miner.root / (wallet_cold - wallet_hot) / miner.name).
 - `--miner.mock_dataset`: Set to True to use a mock dataset.
 - `--miner.blocks_per_epoch`: Number of blocks until setting weights on chain.
-- `--miner.intro_text`: If True, the miner will return intro text
 - `--miner.openai_summary_model`: OpenAI model used for summarizing content. Default gpt-3.5-turbo-0125
 - `--miner.openai_query_model`: OpenAI model used for generating queries. Default gpt-3.5-turbo-0125
 - `--miner.openai_fix_query_model`: "OpenAI model used for fixing queries. Default gpt-4-1106-preview

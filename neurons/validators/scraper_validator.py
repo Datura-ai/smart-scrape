@@ -1,7 +1,5 @@
-import math
 from datura.dataset.tool_return import ResponseOrder
 import torch
-import wandb
 import random
 import json
 import bittensor as bt
@@ -12,7 +10,7 @@ from datura.protocol import (
     TwitterUserSynapse,
     SearchSynapse,
 )
-from datura.stream import process_async_responses
+from datura.stream import collect_final_synapses
 from reward import RewardModelType, RewardScoringType
 from typing import List
 from utils.mock import MockRewardModel
@@ -24,9 +22,7 @@ from neurons.validators.reward.twitter_content_relevance import (
 from neurons.validators.reward.search_content_relevance import (
     WebSearchContentRelevanceModel,
 )
-from neurons.validators.reward.performance_reward import (
-    PerformanceRewardModel,
-)
+from neurons.validators.reward.performance_reward import PerformanceRewardModel
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask, SearchTask
 
@@ -41,14 +37,12 @@ from datura.dataset.date_filters import (
     DateFilterType,
 )
 from neurons.validators.organic_query_state import OrganicQueryState
+from neurons.validators.penalty.streaming_penalty import StreamingPenaltyModel
 
 
 class ScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
-        self.streaming = True
-        self.query_type = "text"
         self.model = "gpt-3.5-turbo-0125"
-        self.weight = 1
         self.seed = 1234
         self.neuron = neuron
         self.timeout = 180
@@ -169,14 +163,12 @@ class ScraperValidator:
         ]
 
         self.penalty_functions = [
-            # LinkValidationPenaltyModel(max_penalty=0.7),
-            # AccuracyPenaltyModel(max_penalty=1),
+            StreamingPenaltyModel(max_penalty=1),
         ]
-        self.twitter_api = TwitterAPIClient()
 
     async def run_task_and_score(
         self,
-        task: TwitterTask,
+        tasks: List[TwitterTask],
         strategy=QUERY_MINERS.RANDOM,
         is_only_allowed_miner=True,
         # is_intro_text=False,
@@ -189,13 +181,11 @@ class ScraperValidator:
         response_order=ResponseOrder.SUMMARY_FIRST,
         timeout=60,
     ):
-        task_name = task.task_name
-        prompt = task.compose_prompt()
-
-        bt.logging.debug("run_task", task_name)
-
         # Record event start time.
-        event = {"name": task_name, "task_type": task.task_type}
+        event = {
+            "names": [task.task_name for task in tasks],
+            "task_types": [task.task_type for task in tasks],
+        }
         start_time = time.time()
 
         # Get random id on that step
@@ -209,71 +199,40 @@ class ScraperValidator:
         end_date = date_filter.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
 
-        synapse = ScraperStreamingSynapse(
-            prompt=prompt,
-            model=self.model,
-            seed=self.seed,
-            # is_intro_text=is_intro_text,
-            start_date=start_date,
-            end_date=end_date,
-            date_filter_type=date_filter.date_filter_type.value,
-            tools=tools,
-            language=language,
-            region=region,
-            google_date_filter=google_date_filter,
-            response_order=response_order.value,
-            max_execution_time=timeout,
-        )
+        synapses = [
+            ScraperStreamingSynapse(
+                prompt=task.compose_prompt(),
+                model=self.model,
+                seed=self.seed,
+                start_date=start_date,
+                end_date=end_date,
+                date_filter_type=date_filter.date_filter_type.value,
+                tools=tools,
+                language=language,
+                region=region,
+                google_date_filter=google_date_filter,
+                response_order=response_order.value,
+                max_execution_time=timeout,
+            )
+            for task in tasks
+        ]
 
-        # Make calls in groups to avoid AioHTTP 100 connections limit
-        axon_group_1 = axons[:80]
-        axon_group_2 = axons[80:160]
-        axon_group_3 = axons[160:]
-
-        async_response_groups = await asyncio.gather(
-            *[
-                asyncio.create_task(
-                    self.neuron.dendrite1.forward(
-                        axons=axon_group_1,
-                        synapse=synapse,
-                        timeout=timeout,
-                        streaming=self.streaming,
-                        deserialize=False,
-                    )
-                ),
-                asyncio.create_task(
-                    self.neuron.dendrite2.forward(
-                        axons=axon_group_2,
-                        synapse=synapse,
-                        timeout=timeout,
-                        streaming=self.streaming,
-                        deserialize=False,
-                    )
-                ),
-                asyncio.create_task(
-                    self.neuron.dendrite3.forward(
-                        axons=axon_group_3,
-                        synapse=synapse,
-                        timeout=timeout,
-                        streaming=self.streaming,
-                        deserialize=False,
-                    )
-                ),
-            ]
-        )
-
-        async_responses = []
-
-        for async_response_group in async_response_groups:
-            async_responses.extend(async_response_group)
+        async_responses = [
+            self.neuron.dendrite1.call_stream(
+                target_axon=axon,
+                synapse=synapse.copy(),
+                timeout=timeout,
+                deserialize=False,
+            )
+            for axon, synapse in zip(axons, synapses)
+        ]
 
         return async_responses, uids, event, start_time
 
     async def compute_rewards_and_penalties(
         self,
         event,
-        prompt,
-        task,
+        tasks,
         responses,
         uids,
         start_time,
@@ -322,9 +281,7 @@ class ScraperValidator:
                     reward_event,
                     val_score_responses,
                     original_rewards,
-                ) = await reward_fn_i.apply(
-                    task.base_text, responses, task.task_name, uids, organic_penalties
-                )
+                ) = await reward_fn_i.apply(responses, uids, organic_penalties)
 
                 all_rewards.append(reward_i_normalized)
                 all_original_rewards.append(original_rewards)
@@ -343,7 +300,7 @@ class ScraperValidator:
 
             for penalty_fn_i in self.penalty_functions:
                 raw_penalty_i, adjusted_penalty_i, applied_penalty_i = (
-                    penalty_fn_i.apply_penalties(responses, task)
+                    penalty_fn_i.apply_penalties(responses, tasks)
                 )
                 penalty_start_time = time.time()
                 rewards *= applied_penalty_i.to(self.neuron.config.neuron.device)
@@ -358,9 +315,7 @@ class ScraperValidator:
                 )
 
             scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)
-            self.log_event(
-                task, event, start_time, uids, rewards, prompt=task.compose_prompt()
-            )
+            self.log_event(tasks, event, start_time, uids, rewards)
 
             scores = torch.zeros(len(self.neuron.metagraph.hotkeys))
             uid_scores_dict = {}
@@ -432,7 +387,7 @@ class ScraperValidator:
                 scores[uid] = reward  # Now 'uid' is an int, which is a valid key type
                 wandb_data["scores"][uid] = reward
                 wandb_data["responses"][uid] = response.completion
-                wandb_data["prompts"][uid] = prompt
+                wandb_data["prompts"][uid] = response.prompt
                 wandb_data["summary_reward"][uid] = summary_reward
                 wandb_data["twitter_reward"][uid] = twitter_reward
                 wandb_data["search_reward"][uid] = search_reward
@@ -440,7 +395,6 @@ class ScraperValidator:
 
             await self.neuron.update_scores(
                 wandb_data=wandb_data,
-                prompt=prompt,
                 responses=responses,
                 uids=uids,
                 rewards=rewards,
@@ -456,56 +410,52 @@ class ScraperValidator:
             bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
             raise e
 
-    def log_event(self, task, event, start_time, uids, rewards, prompt):
+    def log_event(self, tasks, event, start_time, uids, rewards):
         event.update(
             {
                 "step_length": time.time() - start_time,
-                "prompt": prompt,
+                "prompts": [task.compose_prompt() for task in tasks],
                 "uids": uids.tolist(),
                 "rewards": rewards.tolist(),
-                "propmt": task.base_text,
             }
         )
-        bt.logging.debug("Run Task event:", str(event))
 
-    async def process_async_responses(async_responses):
-        tasks = [resp for resp in async_responses]
-        responses = await asyncio.gather(*tasks)
-        for response in responses:
-            stream_text = "".join([chunk[1] for chunk in response if not chunk[0]])
-            if stream_text:
-                yield stream_text  # Yield stream text as soon as it's available
-            # Instead of returning, yield final synapse objects with a distinct flag
-            final_synapse = next((chunk[1] for chunk in response if chunk[0]), None)
-            if final_synapse:
-                yield (True, final_synapse)  # Yield final synapse with a flag
+        bt.logging.debug("Run Task event:", event)
 
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
-            dataset = QuestionsDataset()
-            tools = random.choice(self.tools)
-            prompt = await dataset.generate_new_question_with_openai(tools)
-
-            task_name = "augment"
-            task = TwitterTask(
-                base_text=prompt,
-                task_name=task_name,
-                task_type="twitter_scraper",
-                criteria=[],
-            )
-
             if not len(self.neuron.available_uids):
                 bt.logging.info("No available UIDs, skipping task execution.")
                 return
 
+            dataset = QuestionsDataset()
+            tools = random.choice(self.tools)
+
+            prompts = await asyncio.gather(
+                *[
+                    dataset.generate_new_question_with_openai(tools)
+                    for _ in range(len(self.neuron.available_uids))
+                ]
+            )
+
+            tasks = [
+                TwitterTask(
+                    base_text=prompt,
+                    task_name="augment",
+                    task_type="twitter_scraper",
+                    criteria=[],
+                )
+                for prompt in prompts
+            ]
+
             bt.logging.debug(
-                f"Query and score running with prompt: {prompt} and tools: {tools}"
+                f"Query and score running with prompts: {prompts} and tools: {tools}"
             )
 
             max_execution_time = random.choice(self.max_execution_times)
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
-                task=task,
+                tasks=tasks,
                 strategy=strategy,
                 is_only_allowed_miner=False,
                 date_filter=get_random_date_filter(),
@@ -516,19 +466,13 @@ class ScraperValidator:
                 timeout=max_execution_time,
             )
 
-            final_synapses = []
-            async for value in process_async_responses(
-                async_responses, uids, start_time
-            ):
-                if isinstance(value, bt.Synapse):
-                    final_synapses.append(value)
-                else:
-                    pass
+            final_synapses = await collect_final_synapses(
+                async_responses, uids, start_time, max_execution_time
+            )
 
             await self.compute_rewards_and_penalties(
                 event=event,
-                prompt=prompt,
-                task=task,
+                tasks=tasks,
                 responses=final_synapses,
                 uids=uids,
                 start_time=start_time,
@@ -548,6 +492,11 @@ class ScraperValidator:
         """Receives question from user and returns the response from the miners.
         Also used to run occasional random query to all miners except the one that failed the previous query.
         """
+
+        if not len(self.neuron.available_uids):
+            bt.logging.info("Not available uids")
+            raise StopAsyncIteration("Not available uids")
+
         is_interval_query = random_synapse is not None
 
         try:
@@ -569,12 +518,12 @@ class ScraperValidator:
                 criteria=[],
             )
 
-            if not len(self.neuron.available_uids):
-                bt.logging.info("Not available uids")
-                raise StopAsyncIteration("Not available uids")
+            tasks = [task]
+
+            max_execution_time = 10
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
-                task=task,
+                tasks=tasks,
                 strategy=QUERY_MINERS.ALL if specified_uids else QUERY_MINERS.RANDOM,
                 # This is set to false on Finney to allow all miners to participate from Datura UI
                 is_only_allowed_miner=self.neuron.config.subtensor.network != "finney",
@@ -584,7 +533,7 @@ class ScraperValidator:
                 region=self.region,
                 date_filter=date_filter,
                 google_date_filter=self.date_filter,
-                timeout=10,
+                timeout=max_execution_time,
                 specified_uids=specified_uids,
             )
 
@@ -600,11 +549,9 @@ class ScraperValidator:
                             yield value
             else:
                 # Collect specified uids from responses and score
-                async for value in process_async_responses(
-                    async_responses, uids, start_time
-                ):
-                    if isinstance(value, bt.Synapse):
-                        final_synapses.append(value)
+                final_synapses = await collect_final_synapses(
+                    async_responses, uids, start_time, max_execution_time
+                )
 
             async def process_and_score_responses(uids):
                 if is_interval_query:
@@ -614,8 +561,7 @@ class ScraperValidator:
 
                 _, _, _, _, original_rewards = await self.compute_rewards_and_penalties(
                     event=event,
-                    prompt=prompt,
-                    task=task,
+                    tasks=tasks,
                     responses=final_synapses,
                     uids=uids,
                     start_time=start_time,
@@ -641,6 +587,10 @@ class ScraperValidator:
         return "\n".join(formatted_scores)
 
     async def organic_specified(self, query, specified_uids=None):
+        if not len(self.neuron.available_uids):
+            bt.logging.info("Not available uids")
+            raise StopAsyncIteration("Not available uids")
+
         def format_response(uid, text):
             return json.dumps(
                 {"uid": uid, "type": "text", "content": text, "role": text}
@@ -649,8 +599,6 @@ class ScraperValidator:
         try:
             prompt = query["content"]
             tools = query.get("tools", [])
-            # tools = ["Google Search", "Youtube Search"]
-            # tools = ["Twitter Search"]
             date_filter_type = query.get(
                 "date_filter", DateFilterType.PAST_2_DAYS.value
             )
@@ -658,23 +606,22 @@ class ScraperValidator:
             response_order = query.get(
                 "response_order", ResponseOrder.SUMMARY_FIRST.value
             )
+            response_order = ResponseOrder(response_order)
 
-            task_name = "augment"
-            task = TwitterTask(
-                base_text=prompt,
-                task_name=task_name,
-                task_type="twitter_scraper",
-                criteria=[],
-            )
-
-            if not len(self.neuron.available_uids):
-                bt.logging.info("Not available uids")
-                raise StopAsyncIteration("Not available uids")
+            tasks = [
+                TwitterTask(
+                    base_text=prompt,
+                    task_name="augment",
+                    task_type="twitter_scraper",
+                    criteria=[],
+                )
+                for _ in range(len(specified_uids))
+            ]
 
             date_filter = get_specified_date_filter(date_filter_type)
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
-                task=task,
+                tasks=tasks,
                 strategy=QUERY_MINERS.ALL,
                 is_only_allowed_miner=False,
                 specified_uids=specified_uids,
@@ -729,8 +676,7 @@ class ScraperValidator:
                 rewards_task = asyncio.create_task(
                     self.compute_rewards_and_penalties(
                         event=event,
-                        prompt=prompt,
-                        task=task,
+                        tasks=tasks,
                         responses=final_synapses,
                         uids=uids,
                         start_time=start_time,
@@ -746,7 +692,7 @@ class ScraperValidator:
                         yield f"Waiting for reward scoring... {elapsed_time // 60} minutes elapsed.\n\n"
                         start_compute_time = time.time()  # Reset the timer
 
-                rewards, uids, val_score_responses_list, event = await rewards_task
+                rewards, uids, val_score_responses_list, event, _ = await rewards_task
                 for i, uid_tensor in enumerate(uids):
                     uid = uid_tensor.item()
                     reward = rewards[i].item()

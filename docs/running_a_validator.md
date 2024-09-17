@@ -12,19 +12,14 @@ conda create -n val python=3.10
 conda activate val
 ```
 
-## 1. Install Bittensor
-Install Bittensor directly from the GitHub repository on the `revolution` branch:
 
-```sh
-python -m pip install git+https://github.com/opentensor/bittensor.git@revolution
-```
-
-## 2. Clone the smart-scrape Repository
+## 1. Clone the smart-scrape repository and install dependencies
 Clone and install the smart-scrape repository in editable mode:
 
 ```sh
-git clone https://github.com/surcyf123/smart-scrape.git
+git clone https://github.com/Datura-ai/smart-scrape.git
 cd smart-scrape
+python -m pip install -r requirements.txt
 python -m pip install -e .
 ```
 
@@ -47,16 +42,10 @@ btcli subnets register --subtensor.network test
 Please ensure that all required environment variables are set prior to running the validator. For a comprehensive list and setup guide, refer to the [Environment Variables Guide](./env_variables.md).
 
 ## 6. Start the Process
-Identify available GPUs:
+Launch the process with `pm2`. Modify the command as needed:
 
 ```sh
-nvidia-smi
-```
-
-Launch the process with `pm2`, setting `CUDA_VISIBLE_DEVICES` to designate the GPU. Modify the command as needed:
-
-```sh
-CUDA_VISIBLE_DEVICES=1 pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name validator_api -- 
+pm2 start neurons/validators/api.py --interpreter /usr/bin/python3  --name validator_api -- 
     --wallet.name <your-wallet-name>  
     --netuid 22 
     --wallet.hotkey <your-wallet-hot-key>  
