@@ -13,13 +13,15 @@ from sqlalchemy.orm import (
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+# NOTE ignore as discord is not used yet in production
+# DB_URL = os.environ.get("DB_URL")
+# if not DB_URL:
+#     raise Exception("DB_URL is not set")
 
-DB_URL = os.environ.get('DB_URL')
-if not DB_URL:
-    raise Exception("DB_URL is not set")
+# engine = create_engine(DB_URL, echo=False)
+# Session = sessionmaker(engine)
 
-engine = create_engine(DB_URL, echo=False)
-Session = sessionmaker(engine)
+Session = None
 
 
 class Base(DeclarativeBase):
