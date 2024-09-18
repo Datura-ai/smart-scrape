@@ -68,17 +68,17 @@ class TwitterContentRelevanceModel(BaseRewardModel):
     def clean_text(self, text):
         return clean_text(text)
 
-    async def llm_process_validator_tweets(self, prompt, tweets):
-        if not tweets:
+    async def llm_process_validator_tweets(self, response: ScraperStreamingSynapse):
+        if not response.validator_tweets:
             return {}
 
         start_llm_time = time.time()
         scoring_messages = []
-        for validator_tweet in tweets:
+        for validator_tweet in response.validator_tweets:
             val_text = validator_tweet.text
             val_tweet_id = validator_tweet.id
             result = self.get_scoring_text(
-                prompt=prompt, content=val_text, response=None
+                prompt=response.prompt, content=val_text, response=None
             )
             if result:
                 _, scoring_text = result
@@ -177,18 +177,11 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                     f"Unique Twitter Links Amount: {len(unique_links)}; List: {unique_links};"
                 )
 
-            # NOTE: For reverting we use as quick fix
-            prompt = responses[0].prompt
-
-            val_score_responses = await self.llm_process_validator_tweets(
-                prompt, tweets_list
+            val_score_responses_list = await self.process_response_items_in_batches(
+                responses=responses,
+                batch_size=20,
+                process_function=self.llm_process_validator_tweets,
             )
-
-            val_score_responses_list = [val_score_responses for _ in responses]
-
-            # val_score_responses_list = await asyncio.gather(
-            #     *[self.llm_process_validator_tweets(response) for response in responses]
-            # )
 
             return val_score_responses_list
         except Exception as e:
