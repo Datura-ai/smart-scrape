@@ -32,19 +32,19 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
         self.scoring_type = scoring_type
 
-    async def llm_process_validator_links(self, prompt, links):
-        if not links:
+    async def llm_process_validator_links(self, response: ScraperStreamingSynapse):
+        if not response.validator_links:
             return {}
 
         scoring_messages = []
 
-        for validator_link in links:
+        for validator_link in response.validator_links:
             url = validator_link.get("url")
             title = validator_link.get("title", "")
             description = validator_link.get("description", "")
 
             result = self.get_scoring_text(
-                prompt=prompt,
+                prompt=response.prompt,
                 content=f"Title: {title}, Description: {description}",
                 response=None,
             )
@@ -170,18 +170,11 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 f"Unique Web Links Amount: {len(unique_links)}; List: {unique_links};"
             )
 
-        # NOTE: For reverting we use as quick fix
-        prompt = responses[0].prompt
-
-        val_score_responses = await self.llm_process_validator_links(
-            prompt, links_with_metadata
+        val_score_responses_list = await self.process_response_items_in_batches(
+            responses=responses,
+            batch_size=20,
+            process_function=self.llm_process_validator_links,
         )
-
-        val_score_responses_list = [val_score_responses for _ in responses]
-
-        # val_score_responses_list = await asyncio.gather(
-        #     *[self.llm_process_validator_links(response) for response in responses]
-        # )
 
         return val_score_responses_list
 
