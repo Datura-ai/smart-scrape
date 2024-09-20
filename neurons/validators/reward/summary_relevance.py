@@ -203,7 +203,21 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         if not scoring_messages:
             return [0 for _ in responses], scoring_keys_list
 
-        score_responses = await self.reward_llm.llm_processing(scoring_messages)
+        # Process scoring messages in groups to avoid the OpenAI timeouts
+        group_size = 200
+
+        scoring_messages_groups = [
+            scoring_messages[i : i + group_size]
+            for i in range(0, len(scoring_messages), group_size)
+        ]
+
+        score_responses = {}
+
+        for scoring_messages_group in scoring_messages_groups:
+            score_responses_group = await self.reward_llm.llm_processing(
+                scoring_messages_group
+            )
+            score_responses.update(score_responses_group)
 
         return score_responses, scoring_keys_list
 
