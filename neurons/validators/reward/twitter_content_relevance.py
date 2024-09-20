@@ -145,9 +145,24 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 bt.logging.info("No unique links found to process.")
                 return default_val_score_responses
 
-            tweets_list, non_fetched_links = await self.fetch_tweets_with_retries(
-                unique_links
-            )
+            bt.logging.info(f"Fetching {len(unique_links)} unique Twitter links.")
+
+            unique_links_groups = [
+                unique_links[i : i + 200] for i in range(0, len(unique_links), 200)
+            ]
+
+            tasks = [
+                asyncio.create_task(self.fetch_tweets_with_retries(unique_links_group))
+                for unique_links_group in unique_links_groups
+            ]
+
+            tweets_list = []
+            non_fetched_links = []
+
+            for task in asyncio.as_completed(tasks):
+                tweets_list_group, non_fetched_links_group = await task
+                tweets_list.extend(tweets_list_group)
+                non_fetched_links.extend(non_fetched_links_group)
 
             for response in responses:
                 ids = [
