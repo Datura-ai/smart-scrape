@@ -490,19 +490,27 @@ class ScraperValidator:
                 (event, tasks, final_synapses, uids, start_time)
             )
 
-            # Collect synthetic queries and score randomly
-            synthetic_queries_collection_size = 3
-
-            if len(self.synthetic_history) == synthetic_queries_collection_size:
-                await self.score_random_synthetic_query()
+            await self.score_random_synthetic_query()
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")
             raise e
 
     async def score_random_synthetic_query(self):
+        # Collect synthetic queries and score randomly
+        synthetic_queries_collection_size = 3
+
+        if len(self.synthetic_history) < synthetic_queries_collection_size:
+            bt.logging.info(
+                f"Skipping scoring random synthetic query as history length is {len(self.synthetic_history)}"
+            )
+
+            return
+
         event, tasks, final_synapses, uids, start_time = random.choice(
             self.synthetic_history
         )
+
+        bt.logging.info(f"Scoring random synthetic query: {event}")
 
         await self.compute_rewards_and_penalties(
             event=event,
