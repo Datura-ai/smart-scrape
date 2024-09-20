@@ -92,35 +92,57 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         )
         return score_responses
 
-    async def fetch_tweets_with_retries(self, urls):
-        max_retries = 4
-        non_fetched_links = urls
-        tweets_list = []
+    async def scrape_tweets_with_retries(
+        self, urls: List[str], group_size: int, max_attempts: int
+    ):
+        fetched_tweets = []
+        non_fetched_links = urls.copy()
+        attempt = 1
 
-        for retry in range(max_retries):
-            if not non_fetched_links:
-                break
-
-            fetched_tweets = await TwitterScraperActor().get_tweets(
-                urls=non_fetched_links
+        while attempt <= max_attempts and non_fetched_links:
+            bt.logging.info(
+                f"Attempt {attempt}/{max_attempts}, processing {len(non_fetched_links)} links."
             )
-            fetched_tweet_ids = {tweet.id for tweet in fetched_tweets}
 
+            url_groups = [
+                non_fetched_links[i : i + group_size]
+                for i in range(0, len(non_fetched_links), group_size)
+            ]
+
+            tasks = [
+                asyncio.create_task(TwitterScraperActor().get_tweets(urls=group))
+                for group in url_groups
+            ]
+
+            # Wait for tasks to complete
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Combine results and handle exceptions
+            for result in results:
+                if isinstance(result, Exception):
+                    bt.logging.error(
+                        f"Error in TwitterScraperActor attempt {attempt}: {str(result)}"
+                    )
+                    continue
+                fetched_tweets.extend(result)
+
+            # Update non_fetched_links
+            fetched_tweet_ids = {tweet.id for tweet in fetched_tweets}
             non_fetched_links = [
                 link
                 for link in non_fetched_links
                 if self.tw_client.utils.extract_tweet_id(link) not in fetched_tweet_ids
             ]
 
-            tweets_list.extend(fetched_tweets)
-
             if non_fetched_links:
                 bt.logging.info(
-                    f"Retrying fetching non-fetched {len(non_fetched_links)} tweets: {non_fetched_links}. Retries left: {max_retries - retry - 1}"
+                    f"Retrying fetching non-fetched {len(non_fetched_links)} tweets. Retries left: {max_attempts - attempt}"
                 )
                 await asyncio.sleep(3)
 
-        return tweets_list, non_fetched_links
+            attempt += 1
+
+        return fetched_tweets, non_fetched_links
 
     async def process_tweets(self, responses: List[ScraperStreamingSynapse]):
         default_val_score_responses = [{} for _ in responses]
@@ -138,31 +160,16 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                     min(APIFY_LINK_SCRAPE_AMOUNT, len(response.completion_links)),
                 )
             ]
-            unique_links = list(
-                set(all_links)
-            )  # Remove duplicates to avoid redundant tasks
+            unique_links = list(set(all_links))
             if len(unique_links) == 0:
                 bt.logging.info("No unique links found to process.")
                 return default_val_score_responses
 
             bt.logging.info(f"Fetching {len(unique_links)} unique Twitter links.")
 
-            unique_links_groups = [
-                unique_links[i : i + 200] for i in range(0, len(unique_links), 200)
-            ]
-
-            tasks = [
-                asyncio.create_task(self.fetch_tweets_with_retries(unique_links_group))
-                for unique_links_group in unique_links_groups
-            ]
-
-            tweets_list = []
-            non_fetched_links = []
-
-            for task in asyncio.as_completed(tasks):
-                tweets_list_group, non_fetched_links_group = await task
-                tweets_list.extend(tweets_list_group)
-                non_fetched_links.extend(non_fetched_links_group)
+            tweets_list, non_fetched_links = await self.scrape_tweets_with_retries(
+                unique_links, group_size=200, max_attempts=4
+            )
 
             for response in responses:
                 ids = [
