@@ -44,13 +44,22 @@ class RedditScraperActor:
             async for item in self.client.dataset(
                 run["defaultDatasetId"]
             ).iterate_items():
-                url = item.get("url")
+                if item.get("dataType") == "fake":
+                    continue
 
-                if url:
-                    title = item.get("title")
-                    community_name = item.get("communityName")
-                    web_title = f"{title} : {community_name}"
-                    result.append({"title": web_title, "url": url})
+                url = item.get("url")
+                description = item.get("body")
+
+                title = item.get("title")
+                community_name = item.get("communityName")
+                web_title = f"{title} : {community_name}" if title else None
+                result.append(
+                    {
+                        "title": web_title,
+                        "description": description,
+                        "url": url,
+                    }
+                )
 
             return result
         except Exception as e:
