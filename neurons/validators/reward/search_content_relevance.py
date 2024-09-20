@@ -55,69 +55,103 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
         score_responses = await self.reward_llm.llm_processing(scoring_messages)
         return score_responses
 
-    async def scrape_links_with_retries(self, urls):
-        max_retries = 6
-        cheerio_max_retries = 3
-        non_fetched_links = urls
-        links_with_metadata = []
+    async def scrape_with_retries(
+        self, urls, scraper_actor_class, group_size, max_attempts
+    ):
+        fetched_links_with_metadata = []
+        non_fetched_links = urls.copy()
+        attempt = 1
 
+        while attempt <= max_attempts and non_fetched_links:
+            bt.logging.info(
+                f"Attempt {attempt}/{max_attempts} for {scraper_actor_class.__name__}, processing {len(non_fetched_links)} links."
+            )
+
+            url_groups = [
+                non_fetched_links[i : i + group_size]
+                for i in range(0, len(non_fetched_links), group_size)
+            ]
+
+            tasks = [
+                asyncio.create_task(scraper_actor_class().scrape_metadata(urls=group))
+                for group in url_groups
+            ]
+
+            # Wait for tasks to complete
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Combine results and handle exceptions
+            for result in results:
+                if isinstance(result, Exception):
+                    bt.logging.error(
+                        f"Error in {scraper_actor_class.__name__} scraper attempt {attempt}: {str(result)}"
+                    )
+                    continue
+                fetched_links_with_metadata.extend(result)
+
+            # Update non-fetched links
+            fetched_urls = {link.get("url") for link in fetched_links_with_metadata}
+            non_fetched_links = [
+                url for url in non_fetched_links if url not in fetched_urls
+            ]
+
+            attempt += 1
+
+        return fetched_links_with_metadata, non_fetched_links
+
+    async def scrape_links_with_retries(self, urls):
         # Separate Reddit URLs from other URLs
         reddit_urls = []
         other_urls = []
 
         for url in urls:
-            if "reddit.com" in url:
+            if "reddit.com" in url and "comments" in url:
                 reddit_urls.append(url)
             else:
                 other_urls.append(url)
 
-        for retry in range(max_retries):
-            if not non_fetched_links:
-                break
+        # Scrape Reddit URLs with retries
+        reddit_fetched_links_with_metadata = []
+        reddit_non_fetched_links = []
 
-            # Fetch Reddit URLs
-            reddit_non_fetched = [
-                url for url in reddit_urls if url in non_fetched_links
-            ]
-            reddit_fetched_links_with_metadata = (
-                await WebScraperActor().scrape_metadata(urls=reddit_non_fetched)
+        if reddit_urls:
+            reddit_fetched_links_with_metadata, reddit_non_fetched_links = (
+                await self.scrape_with_retries(
+                    urls=reddit_urls,
+                    scraper_actor_class=RedditScraperActor,
+                    group_size=200,
+                    max_attempts=2,
+                )
             )
 
-            # Fetch other URLs
-            other_non_fetched = [url for url in other_urls if url in non_fetched_links]
+        # Scrape other URLs with retries
+        other_fetched_links_with_metadata = []
+        other_non_fetched_links = []
 
-            if retry < cheerio_max_retries:
-                other_fetched_links_with_metadata = (
-                    await CheerioScraperActor().scrape_metadata(urls=other_non_fetched)
+        if other_urls:
+            other_fetched_links_with_metadata, other_non_fetched_links = (
+                await self.scrape_with_retries(
+                    urls=other_urls,
+                    scraper_actor_class=CheerioScraperActor,
+                    group_size=100,
+                    max_attempts=2,
                 )
-            else:
-                other_fetched_links_with_metadata = (
-                    await WebScraperActor().scrape_metadata(urls=other_non_fetched)
-                )
-
-            # Combine results
-            fetched_links_with_metadata = (
-                reddit_fetched_links_with_metadata + other_fetched_links_with_metadata
             )
-            fetched_links_with_metadata = [
-                link for link in fetched_links_with_metadata if link.get("url")
-            ]
-            fetched_links = {link.get("url") for link in fetched_links_with_metadata}
-            non_fetched_links = [
-                link for link in non_fetched_links if link not in fetched_links
-            ]
-            links_with_metadata.extend(fetched_links_with_metadata)
 
-            if non_fetched_links:
-                bt.logging.info(
-                    f"Retry {retry + 1}/{max_retries}: Fetched {len(fetched_links)} links. "
-                )
-                bt.logging.info(
-                    f"Non-fetched {len(non_fetched_links)} links: {non_fetched_links}. "
-                )
-                await asyncio.sleep(3)
+        # Combine non-fetched links
+        non_fetched_links = reddit_non_fetched_links + other_non_fetched_links
 
-        return links_with_metadata, non_fetched_links
+        # Combine all fetched links
+        fetched_links_with_metadata = (
+            reddit_fetched_links_with_metadata + other_fetched_links_with_metadata
+        )
+
+        # Filter out any entries without a URL
+        fetched_links_with_metadata = [
+            link for link in fetched_links_with_metadata if link.get("url")
+        ]
+
+        return fetched_links_with_metadata, non_fetched_links
 
     async def process_links(self, responses: List[ScraperStreamingSynapse]):
         default_val_score_responses = [{} for _ in responses]
@@ -143,6 +177,8 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
         if len(unique_links) == 0:
             bt.logging.info("No unique links found to process.")
             return default_val_score_responses
+
+        bt.logging.info(f"Fetching {len(unique_links)} unique web links.")
 
         links_with_metadata, non_fetched_links = await self.scrape_links_with_retries(
             unique_links
