@@ -388,6 +388,7 @@ class Neuron(AbstractNeuron):
                 bt.logging.info(
                     f"Weight setting execution time: {weight_set_end_time - weight_set_start_time:.2f} seconds"
                 )
+                await asyncio.sleep(300)
 
             await asyncio.sleep(60)
 
