@@ -24,6 +24,8 @@ from dataclasses import dataclass, asdict, fields
 from datura.protocol import ScraperStreamingSynapse
 import re
 import numpy as np  # Ensure numpy is imported
+import asyncio
+from itertools import islice
 
 
 @dataclass
@@ -337,3 +339,23 @@ class BaseRewardModel:
             adjusted_score = max(0, adjusted_score - penalty_score)
 
         return adjusted_score
+
+    async def process_response_items_in_batches(
+        self, responses, batch_size, process_function
+    ):
+        """Process validator links or tweets in sequence groups to avoid OpenAI timeouts."""
+        results = []
+
+        # Helper function to split items into chunks of batch_size
+        def chunked(iterable, size):
+            iterator = iter(iterable)
+            for first in iterator:
+                yield [first] + list(islice(iterator, size - 1))
+
+        # Process items in batches
+        for batch in chunked(responses, batch_size):
+            batch_results = await asyncio.gather(
+                *[process_function(response) for response in batch]
+            )
+            results.extend(batch_results)
+        return results

@@ -11,6 +11,7 @@ import os
 import time
 import sys
 from typing import List
+import substrateinterface
 from datura.protocol import IsAlive
 from neurons.validators.scraper_validator import ScraperValidator
 from config import add_args, check_config, config
@@ -313,13 +314,13 @@ class Neuron(AbstractNeuron):
             bt.logging.info("Completed running coroutines with run_until_complete")
 
             sync_start_time = time.time()
-            bt.logging.info("Calling sync method")
-            await self.run_sync_in_async(self.sync)
-            bt.logging.info("Completed calling sync method")
+            bt.logging.info("Calling sync metagraph method")
+            await self.sync_metagraph()
+            bt.logging.info("Completed calling sync metagraph method")
 
             sync_end_time = time.time()
             bt.logging.info(
-                f"Sync method execution time: {sync_end_time - sync_start_time:.2f} seconds"
+                f"Sync metagraph method execution time: {sync_end_time - sync_start_time:.2f} seconds"
             )
 
             self.step += 1
@@ -355,29 +356,41 @@ class Neuron(AbstractNeuron):
         ):
             pass
 
-    def sync(self):
+    def blocks_until_next_epoch(self):
+        node = substrateinterface.SubstrateInterface(self.subtensor.chain_endpoint)
+        current_block = node.query("System", "Number", []).value
+        tempo = node.query("SubtensorModule", "Tempo", [self.config.netuid]).value
+
+        return tempo - (current_block + self.config.netuid + 1) % (tempo + 1)
+
+    async def sync_metagraph(self):
+        # Ensure validator hotkey is still registered on the network.
+        self.check_registered()
+        bt.logging.info("Syncing metagraph.")
+        await self.run_sync_in_async(lambda: resync_metagraph(self))
+
+    async def sync(self):
         """
         Wrapper for synchronizing the state of the network for the given miner or validator.
         """
-        # Ensure miner or validator hotkey is still registered on the network.
-        self.check_registered()
+        await self.sync_metagraph()
 
-        if self.should_sync_metagraph():
-            bt.logging.info("Syncing metagraph as per condition.")
-            resync_metagraph(self)
-        else:
-            bt.logging.info("No need to sync metagraph at this moment.")
+        while True:
+            blocks_left = self.blocks_until_next_epoch()
 
-        if self.should_set_weights():
-            weight_set_start_time = time.time()
-            bt.logging.info("Setting weights as per condition.")
-            set_weights(self)
-            weight_set_end_time = time.time()
-            bt.logging.info(
-                f"Weight setting execution time: {weight_set_end_time - weight_set_start_time:.2f} seconds"
-            )
-        else:
-            bt.logging.info("No need to set weights at this moment.")
+            bt.logging.debug(f"Blocks left until next epoch: {blocks_left}")
+
+            if blocks_left <= 20 and self.should_set_weights():
+                weight_set_start_time = time.time()
+                bt.logging.info("Setting weights as per condition.")
+                await self.run_sync_in_async(lambda: set_weights(self))
+                weight_set_end_time = time.time()
+                bt.logging.info(
+                    f"Weight setting execution time: {weight_set_end_time - weight_set_start_time:.2f} seconds"
+                )
+                await asyncio.sleep(300)
+
+            await asyncio.sleep(60)
 
     def check_registered(self):
         # --- Check for registration.
@@ -416,17 +429,17 @@ class Neuron(AbstractNeuron):
             return False
 
         # Define appropriate logic for when set weights.
-        difference = self.block - self.metagraph.last_update[self.uid]
-        print(
-            f"Current block: {self.block}, Last update for UID {self.uid}: {self.metagraph.last_update[self.uid]}, Difference: {difference}"
-        )
-        should_set = difference > self.config.neuron.checkpoint_block_length
-        bt.logging.info(f"Should set weights: {should_set}")
+        # difference = self.block - self.metagraph.last_update[self.uid]
+        # print(
+        #     f"Current block: {self.block}, Last update for UID {self.uid}: {self.metagraph.last_update[self.uid]}, Difference: {difference}"
+        # )
+        # should_set = difference > self.config.neuron.checkpoint_block_length
+        # bt.logging.info(f"Should set weights: {should_set}")
         # return should_set
         return True  # Update right not based on interval of synthetic data
 
     async def run(self):
-        await self.run_sync_in_async(self.sync)
+        self.loop.create_task(self.sync())
         self.loop.create_task(self.update_available_uids_periodically())
         bt.logging.info(f"Validator starting at block: {self.block}")
 

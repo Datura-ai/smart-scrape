@@ -40,7 +40,10 @@ class CheerioScraperActor:
                 "startUrls": [{"url": url} for url in urls],
             }
 
-            run = await self.client.actor(self.actor_id).call(run_input=run_input)
+            run = await self.client.actor(self.actor_id).call(
+                run_input=run_input,
+                memory_mbytes=512,
+            )
 
             result = []
 

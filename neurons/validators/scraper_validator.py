@@ -49,7 +49,6 @@ class ScraperValidator:
         self.max_execution_times = [10, 20, 30, 30, 30, 30, 60, 60, 60, 120, 120, 180]
         self.tools = [
             ["Twitter Search", "Reddit Search"],
-            ["Twitter Search", "Reddit Search"],
             ["Twitter Search", "Google Search"],
             ["Twitter Search", "Google Search"],
             ["Twitter Search", "Google Search"],
@@ -93,6 +92,7 @@ class ScraperValidator:
         self.date_filter = "qdr:w"  # Past week
         self.max_tools_result_amount = 10
 
+        self.synthetic_history = []
         self.organic_query_state = OrganicQueryState()
         # Init device.
         bt.logging.debug("loading", "device")
@@ -446,16 +446,12 @@ class ScraperValidator:
             dataset = QuestionsDataset()
             tools = random.choice(self.tools)
 
-            # prompts = await asyncio.gather(
-            #     *[
-            #         dataset.generate_new_question_with_openai(tools)
-            #         for _ in range(len(self.neuron.available_uids))
-            #     ]
-            # )
-
-            # NOTE: Generate single query for all miners for now
-            prompt = await dataset.generate_new_question_with_openai(tools)
-            prompts = [prompt] * len(self.neuron.available_uids)
+            prompts = await asyncio.gather(
+                *[
+                    dataset.generate_new_question_with_openai(tools)
+                    for _ in range(len(self.neuron.available_uids))
+                ]
+            )
 
             tasks = [
                 TwitterTask(
@@ -489,17 +485,43 @@ class ScraperValidator:
                 async_responses, uids, start_time, max_execution_time
             )
 
-            await self.compute_rewards_and_penalties(
-                event=event,
-                tasks=tasks,
-                responses=final_synapses,
-                uids=uids,
-                start_time=start_time,
-                is_synthetic=True,
+            # Store final synapses for scoring later
+            self.synthetic_history.append(
+                (event, tasks, final_synapses, uids, start_time)
             )
+
+            await self.score_random_synthetic_query()
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")
             raise e
+
+    async def score_random_synthetic_query(self):
+        # Collect synthetic queries and score randomly
+        synthetic_queries_collection_size = 3
+
+        if len(self.synthetic_history) < synthetic_queries_collection_size:
+            bt.logging.info(
+                f"Skipping scoring random synthetic query as history length is {len(self.synthetic_history)}"
+            )
+
+            return
+
+        event, tasks, final_synapses, uids, start_time = random.choice(
+            self.synthetic_history
+        )
+
+        bt.logging.info(f"Scoring random synthetic query: {event}")
+
+        await self.compute_rewards_and_penalties(
+            event=event,
+            tasks=tasks,
+            responses=final_synapses,
+            uids=uids,
+            start_time=start_time,
+            is_synthetic=True,
+        )
+
+        self.synthetic_history = []
 
     async def organic(
         self,
