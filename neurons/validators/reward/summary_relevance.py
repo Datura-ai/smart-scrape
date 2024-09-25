@@ -37,6 +37,7 @@ from datura.services.twitter_utils import TwitterUtils
 from datura.services.web_search_utils import WebSearchUtils
 import json
 from neurons.validators.reward.config import DefaultSummaryRelevanceWeightConfig
+from datura.utils import clean_text
 
 
 class SummaryRelevanceRewardModel(BaseRewardModel):
@@ -160,7 +161,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     if not validator_tweet:
                         continue
 
-                    text = validator_tweet.text
+                    text = clean_text(validator_tweet.text)
                 else:
                     validator_link = next(
                         (
