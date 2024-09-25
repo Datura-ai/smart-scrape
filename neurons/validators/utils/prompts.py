@@ -280,9 +280,10 @@ def get_system_summary_relevance_scoring_template(tools: List[str]):
         links_header_name = "Key Sources"
         summary_header_name = "Search Summary"
 
-    answer_rules = f"""- Must contain "{links_header_name}" and "{summary_header_name}" sections.
-    - If "{summary_header_name}" contains information not related to prompt, it should be scored as SM_SCS_PNK.
-    - If "{summary_header_name}" is contains information related to prompt but information is not present in "{links_header_name}", it should be scored as SM_SCS_PNK.
+    answer_rules = f"""- Must contain "{links_header_name}" and "{summary_header_name}" sections, otherwise score as SM_SCS_RDD.
+    - If there is no information in "{summary_header_name}", score as SM_SCS_RDD.
+    - If "{summary_header_name}" contains information that is not related to prompt, score as SM_SCS_PNK.
+    - If "{summary_header_name}" contains information related to prompt but information is not present in "{links_header_name}", score as SM_SCS_PNK.
     """
 
     template = f"""You are a meticulous Content Quality Analyst, adept at discerning the relevance and accuracy of digital responses with a critical eye. Your expertise lies in evaluating content against stringent criteria, ensuring each piece aligns perfectly with the intended question's context and requirements, as encapsulated within the <Question></Question> tags.
