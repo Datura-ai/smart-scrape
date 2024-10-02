@@ -446,7 +446,7 @@ class ScraperValidator:
             dataset = QuestionsDataset()
             tools = random.choice(self.tools)
 
-            prompts_to_generate = 10
+            prompts_to_generate = 33
 
             prompts = await asyncio.gather(
                 *[
@@ -465,7 +465,7 @@ class ScraperValidator:
                 for _ in range(len(self.neuron.available_uids))
             ]
 
-            tasks_per_prompt = len(tasks) // len(prompts)
+            tasks_per_prompt = len(tasks) // len(prompts)  # About 7 miners per prompt
 
             for i, prompt in enumerate(prompts):
                 start_idx = i * tasks_per_prompt
