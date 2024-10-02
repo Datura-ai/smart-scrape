@@ -446,22 +446,34 @@ class ScraperValidator:
             dataset = QuestionsDataset()
             tools = random.choice(self.tools)
 
+            prompts_to_generate = 10
+
             prompts = await asyncio.gather(
                 *[
                     dataset.generate_new_question_with_openai(tools)
-                    for _ in range(len(self.neuron.available_uids))
+                    for _ in range(prompts_to_generate)
                 ]
             )
 
             tasks = [
                 TwitterTask(
-                    base_text=prompt,
+                    base_text="",
                     task_name="augment",
                     task_type="twitter_scraper",
                     criteria=[],
                 )
-                for prompt in prompts
+                for _ in range(len(self.neuron.available_uids))
             ]
+
+            tasks_per_prompt = len(tasks) // len(prompts)
+
+            for i, prompt in enumerate(prompts):
+                start_idx = i * tasks_per_prompt
+                end_idx = (
+                    start_idx + tasks_per_prompt if i < len(prompts) - 1 else len(tasks)
+                )
+                for task in tasks[start_idx:end_idx]:
+                    task.base_text = prompt
 
             bt.logging.debug(
                 f"Query and score running with prompts: {prompts} and tools: {tools}"
