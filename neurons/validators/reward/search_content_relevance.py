@@ -15,6 +15,7 @@ from neurons.validators.utils.prompts import (
 import random
 import json
 import time
+import math
 
 
 class WebSearchContentRelevanceModel(BaseRewardModel):
@@ -161,11 +162,13 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
         for response in responses:
             _, links_expected = response.get_search_completion()
 
+            random_links = math.floor(links_expected / 3)
+
             links = [
                 link
                 for link in random.sample(
                     response.search_completion_links,
-                    min(links_expected, len(response.search_completion_links)),
+                    min(random_links, len(response.search_completion_links)),
                 )
             ]
 

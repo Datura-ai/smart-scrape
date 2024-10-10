@@ -17,7 +17,6 @@
 # DEALINGS IN THE SOFTWARE.
 import traceback
 import time
-import torch
 import bittensor as bt
 import random
 import asyncio
@@ -30,7 +29,6 @@ from .reward import BaseRewardModel, BaseRewardEvent, pattern_to_check
 from neurons.validators.utils.prompts import (
     LinkContentPrompt,
 )
-from transformers import AutoTokenizer, AutoModelForCausalLM
 from datura.protocol import (
     ScraperStreamingSynapse,
     TwitterScraperTweet,
@@ -44,10 +42,10 @@ import json
 from datetime import datetime
 import pytz
 from pydantic import ValidationError
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 
-APIFY_LINK_SCRAPE_AMOUNT = 10
+APIFY_LINK_SCRAPE_AMOUNT = 5
 
 
 class TwitterContentRelevanceModel(BaseRewardModel):
