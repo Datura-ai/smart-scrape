@@ -7,7 +7,6 @@ import traceback
 import bittensor as bt
 from datura.utils import clean_text
 from neurons.validators.apify.cheerio_scraper_actor import CheerioScraperActor
-from neurons.validators.apify.web_scraper_actor import WebScraperActor
 from neurons.validators.apify.reddit_scraper_actor import RedditScraperActor
 import asyncio
 from neurons.validators.utils.prompts import (
