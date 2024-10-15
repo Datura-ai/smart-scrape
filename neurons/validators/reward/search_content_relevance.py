@@ -7,7 +7,6 @@ import traceback
 import bittensor as bt
 from datura.utils import clean_text
 from neurons.validators.apify.cheerio_scraper_actor import CheerioScraperActor
-from neurons.validators.apify.web_scraper_actor import WebScraperActor
 from neurons.validators.apify.reddit_scraper_actor import RedditScraperActor
 import asyncio
 from neurons.validators.utils.prompts import (
@@ -16,6 +15,7 @@ from neurons.validators.utils.prompts import (
 import random
 import json
 import time
+import math
 
 
 class WebSearchContentRelevanceModel(BaseRewardModel):
@@ -162,11 +162,13 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
         for response in responses:
             _, links_expected = response.get_search_completion()
 
+            random_links = math.floor(links_expected / 3)
+
             links = [
                 link
                 for link in random.sample(
                     response.search_completion_links,
-                    min(links_expected, len(response.search_completion_links)),
+                    min(random_links, len(response.search_completion_links)),
                 )
             ]
 

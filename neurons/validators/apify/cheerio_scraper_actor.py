@@ -33,10 +33,8 @@ class CheerioScraperActor:
                 "pageFunction": "async function pageFunction(context) {\n    const { $, request, log } = context;\n\n    // Extract the page title\n    const pageTitle = $('title').first().text();\n\n    // Extract the meta description\n    let description = $('meta[name=\"description\"]').attr('content') || '';\n\n    if (!description) {\n        description = $('meta[property=\"og:description\"]').attr('content')\n    }\n\n    // Get the URL from the request object\n    const url = request.url;\n\n    // Return an object with the extracted data\n    return {\n        url,\n        pageTitle,\n        description,\n    };\n}",
                 "postNavigationHooks": '// We need to return array of (possibly async) functions here.\n// The functions accept a single argument: the "crawlingContext" object.\n[\n    async (crawlingContext) => {\n        // ...\n    },\n]',
                 "preNavigationHooks": '// We need to return array of (possibly async) functions here.\n// The functions accept two arguments: the "crawlingContext" object\n// and "requestAsBrowserOptions" which are passed to the `requestAsBrowser()`\n// function the crawler calls to navigate..\n[\n    async (crawlingContext, requestAsBrowserOptions) => {\n        // ...\n    }\n]',
-                "proxyConfiguration": {
-                    "useApifyProxy": True,
-                    "apifyProxyGroups": ["RESIDENTIAL"],
-                },
+                "proxyConfiguration": self.get_proxy_configuration(urls),
+                "proxyRotation": "RECOMMENDED",
                 "startUrls": [{"url": url} for url in urls],
             }
 
@@ -61,3 +59,30 @@ class CheerioScraperActor:
                 f"CheerioScraperActor: Failed to scrape web links {urls}: {e}"
             )
             return []
+
+    def get_proxy_configuration(self, urls: List[str]) -> dict:
+        """
+        Returns the proxy configuration based on the URLs to scrape.
+        Used to save scraping costs as some urls don't need residential proxies.
+        """
+
+        residential = True
+
+        if all(
+            any(
+                domain in url
+                for domain in ["news.ycombinator.com", "wikipedia.org", "arxiv.org"]
+            )
+            for url in urls
+        ):
+            residential = False
+
+        proxy_configuration = {
+            "useApifyProxy": True,
+            "apifyProxyGroups": [],
+        }
+
+        if residential:
+            proxy_configuration["apifyProxyGroups"].append("RESIDENTIAL")
+
+        return proxy_configuration
