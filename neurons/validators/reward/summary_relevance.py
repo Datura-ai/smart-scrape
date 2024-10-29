@@ -22,7 +22,7 @@ import bittensor as bt
 import random
 import asyncio
 import re
-from typing import List, Union
+from typing import List, Tuple
 from neurons.validators.reward.config import RewardModelType, RewardScoringType
 from neurons.validators.reward.reward import BaseRewardModel, BaseRewardEvent
 from neurons.validators.utils.prompts import (
@@ -31,7 +31,7 @@ from neurons.validators.utils.prompts import (
     LinkContentAndDescriptionPrompt,
 )
 
-from datura.protocol import ScraperStreamingSynapse
+from datura.protocol import ScraperStreamingSynapse, ScraperTextRole
 from neurons.validators.reward.reward_llm import RewardLLM
 from datura.services.twitter_utils import TwitterUtils
 from datura.services.web_search_utils import WebSearchUtils
@@ -54,17 +54,17 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
         self.scoring_type = scoring_type
 
-    def get_scoring_text(self, response: ScraperStreamingSynapse) -> BaseRewardEvent:
+    def get_scoring_text(
+        self, response: ScraperStreamingSynapse, random_completion: Tuple[str, str]
+    ) -> BaseRewardEvent:
         try:
-            # If tools include Twitter Search it scores summary of twitter, otherwise search
-            is_twitter = "Twitter Search" in response.tools
+            # Score random completion
+            summary_key, completion = random_completion
+            is_twitter = summary_key == ScraperTextRole.TWITTER_SUMMARY.value
 
-            if is_twitter:
-                completion = self.get_successful_twitter_completion(response=response)
-            else:
-                completion = self.get_successful_search_summary_completion(
-                    response=response
-                )
+            completion = self.validate_successful_completion(
+                response=response, completion=completion
+            )
 
             if not completion:
                 return None
@@ -115,7 +115,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             return None
 
     async def process_link_scoring_messages(
-        self, responses: List[ScraperStreamingSynapse]
+        self,
+        responses: List[ScraperStreamingSynapse],
+        random_completions: List[Tuple[str, str]],
     ):
         scoring_messages = {}
 
@@ -124,21 +126,22 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         scoring_keys_list = []
 
         # Accumulate scoring messages to compare scraped tweet texts with markdown link descriptions
-        for response in responses:
-            is_twitter = "Twitter Search" in response.tools
+        for response, random_completion in zip(responses, random_completions):
+            summary_key, completion = random_completion
+
+            is_twitter = summary_key == ScraperTextRole.TWITTER_SUMMARY.value
             link_with_descriptions = []
 
             # Parse markdown links with descriptions from completion
             if is_twitter:
-                completion = response.get_twitter_completion()
                 link_with_descriptions = (
-                    TwitterUtils().find_twitter_link_with_descriptions(completion)
+                    TwitterUtils().find_twitter_link_with_descriptions(completion or "")
                 )
             else:
-                completion = self.get_successful_search_summary_completion(response)
                 link_with_descriptions = WebSearchUtils.find_links_with_descriptions(
                     completion or ""
                 )
+
             scoring_keys = []
 
             for link, description in link_with_descriptions:
@@ -223,10 +226,13 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         return score_responses, scoring_keys_list
 
     async def score_link_descriptions(
-        self, responses: List[ScraperStreamingSynapse], uids
+        self,
+        responses: List[ScraperStreamingSynapse],
+        uids,
+        random_completions: List[Tuple[str, str]],
     ):
         score_responses, scoring_keys_list = await self.process_link_scoring_messages(
-            responses
+            responses, random_completions
         )
 
         scoring_prompt = LinkContentAndDescriptionPrompt()
@@ -269,22 +275,27 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         self, responses: List[ScraperStreamingSynapse], uids
     ) -> List[BaseRewardEvent]:
         try:
-            completions: List[str] = self.get_successful_completions_for_summary(
-                responses
+            bt.logging.debug(
+                f"SummaryRelevanceRewardModel | Calculating {len(responses)} rewards (typically < 1 sec/reward)."
             )
 
-            bt.logging.debug(
-                f"SummaryRelevanceRewardModel | Calculating {len(completions)} rewards (typically < 1 sec/reward)."
-            )
+            # Choose random toolkit summary to score
+            random_completions = []
+
+            for response in responses:
+                # Get all available completions based on the tools used and choose random summary (Twitter, Search, Reddit, Hacker News)
+                completions = response.get_all_completions()
+                random_completions.append(random.choice(list(completions.items())))
 
             # Need to use this scores to calculate rewards
             (
                 average_link_scores,
                 link_description_scores_list,
-            ) = await self.score_link_descriptions(responses, uids)
+            ) = await self.score_link_descriptions(responses, uids, random_completions)
 
             scoring_messages = [
-                self.get_scoring_text(response) for response in responses
+                self.get_scoring_text(response, random_completion)
+                for response, random_completion in zip(responses, random_completions)
             ]
             filter_scoring_messages = [
                 msg for msg in scoring_messages if msg is not None
@@ -364,7 +375,14 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                     * link_content_weight
                 )
 
-                score = torch.clamp(summary_score + links_score, max=1.0)
+                score = None
+
+                # If whole summary content is failed, ignore link scores
+                if summary_score != 0:
+                    score = torch.clamp(summary_score + links_score, max=1.0)
+                else:
+                    score = torch.tensor(0, device=self.device, dtype=torch.float32)
+
                 score = score.item()
                 score_explain = score_text.get(str(index), "")
 

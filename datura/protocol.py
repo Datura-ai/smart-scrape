@@ -344,6 +344,16 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
 
         return completions, links_expected
 
+    def get_all_completions(self) -> Dict[str, str]:
+        completions, _ = self.get_search_completion()
+
+        if "Twitter Search" in self.tools:
+            completions[ScraperTextRole.TWITTER_SUMMARY.value] = (
+                self.get_twitter_completion()
+            )
+
+        return completions
+
     def get_search_links(self) -> List[str]:
         """Extracts web links from each summary making sure to filter by domain for each tool used.
         In Reddit and Hacker News Search, the links are filtered by domains.
