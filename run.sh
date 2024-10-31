@@ -250,8 +250,6 @@ if [ "$?" -eq 1 ]; then
                         pip install -e .
 
                         # # Run the Python script with the arguments using pm2
-                        # TODO (shib): Remove this pm2 del in the next spec version update.
-                        pm2 del auto_run_validator
                         echo "Restarting PM2 process"
                         pm2 restart $proc_name
 

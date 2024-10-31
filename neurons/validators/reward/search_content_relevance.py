@@ -160,17 +160,21 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
         start_time = time.time()
 
         for response in responses:
-            _, links_expected = response.get_search_completion()
+            # Extract random links from each summary (Search, Reddit, Hacker News)
+            _, links_per_summary = response.get_search_links()
 
-            random_links = math.floor(links_expected / 3)
+            # If scoring single summary 2 link is selected, for 2 or 3 summaries 1 link is selected from each
+            random_links_per_summary = 2 if len(links_per_summary) == 1 else 1
 
-            links = [
-                link
-                for link in random.sample(
-                    response.search_completion_links,
-                    min(random_links, len(response.search_completion_links)),
+            links = []
+
+            for summary_links in links_per_summary.values():
+                links.extend(
+                    random.sample(
+                        summary_links,
+                        min(random_links_per_summary, len(summary_links)),
+                    )
                 )
-            ]
 
             all_links.extend(links)
 

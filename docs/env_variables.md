@@ -58,6 +58,7 @@ export TWITTER_BEARER_TOKEN=<your_twitter_bearer_token_here>  # Only for Miners
 export EXPECTED_ACCESS_KEY=<your_EXPECTED_ACCESS_KEY_here>  # Only for Validators
 export WANDB_API_KEY=<your_wandb_api_key_here>
 export APIFY_API_KEY=<your_apify_api_key_here>  # Only for Validators
+export SERPAPI_API_KEY<your_serp_api_key_here> # Only for Miners
 ```
 
 ### Setting Environment Variables Using `.bashrc`
@@ -70,6 +71,8 @@ echo 'export TWITTER_BEARER_TOKEN="<your_twitter_bearer_token>"' >> ~/.bashrc  #
 echo 'export EXPECTED_ACCESS_KEY="<your_EXPECTED_ACCESS_KEY>"' >> ~/.bashrc  # Only for Validators
 echo 'export WANDB_API_KEY="<your_wandb_api_key>"' >> ~/.bashrc # Only for Validators
 echo 'export APIFY_API_KEY="<your_apify_api_key>"' >> ~/.bashrc # Both for Validators and Miners
+echo 'export SERPAPI_API_KEY="<your_serp_api_key_here>"' >> ~/.bashrc # Only for Miners
+
 
 source ~/.bashrc
 ```

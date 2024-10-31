@@ -112,6 +112,16 @@ class BaseRewardModel:
 
         return rewards
 
+    def validate_successful_completion(self, response, completion: str):
+        if response.dendrite.status_code == 200 and completion:
+            if re.search(pattern_to_check, completion, flags=re.IGNORECASE):
+                bt.logging.info(
+                    f"Pattern validation issue Hotkey ID: {response.axon.hotkey}."
+                )
+                return None
+
+            return completion.strip()
+
     def get_successful_completion(self, response: ScraperStreamingSynapse):
         # Check if the response is successful.
         if response.dendrite.status_code == 200:

@@ -45,7 +45,7 @@ from pydantic import ValidationError
 from datetime import datetime
 import pytz
 
-APIFY_LINK_SCRAPE_AMOUNT = 5
+APIFY_LINK_SCRAPE_AMOUNT = 3
 
 
 class TwitterContentRelevanceModel(BaseRewardModel):

@@ -344,17 +344,31 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
 
         return completions, links_expected
 
+    def get_all_completions(self) -> Dict[str, str]:
+        completions, _ = self.get_search_completion()
+
+        if "Twitter Search" in self.tools:
+            completions[ScraperTextRole.TWITTER_SUMMARY.value] = (
+                self.get_twitter_completion()
+            )
+
+        return completions
+
     def get_search_links(self) -> List[str]:
         """Extracts web links from each summary making sure to filter by domain for each tool used.
         In Reddit and Hacker News Search, the links are filtered by domains.
         In search summary part, if Google Search or Google News Search is used, the links are allowed from any domain,
         Otherwise search summary will only look for Wikipedia, ArXiv, Youtube links.
+        Returns list of all links and links per each summary role.
         """
 
         completions, _ = self.get_search_completion()
-        links = []
+        all_links = []
+        links_per_summary = {}
 
         for key, value in completions.items():
+            links = []
+
             if key == ScraperTextRole.REDDIT_SUMMARY.value:
                 links.extend(WebSearchUtils.find_links_by_domain(value, "reddit.com"))
             elif key == ScraperTextRole.HACKER_NEWS_SUMMARY.value:
@@ -381,7 +395,10 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                             WebSearchUtils.find_links_by_domain(value, "youtube.com")
                         )
 
-        return links
+            all_links.extend(links)
+            links_per_summary[key] = links
+
+        return all_links, links_per_summary
 
     async def process_streaming_response(self, response: StreamingResponse):
         if self.completion is None:
@@ -541,7 +558,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             }
 
         completion_links = TwitterUtils().find_twitter_links(self.completion)
-        search_completion_links = self.get_search_links()
+        search_completion_links, _ = self.get_search_links()
 
         return {
             "name": headers.get("name", ""),
