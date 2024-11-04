@@ -350,6 +350,7 @@ class Neuron(AbstractNeuron):
 
         async for _ in self.scraper_validator.organic(
             query=query,
+            max_execution_time=synapse.max_execution_time,
             random_synapse=synapse,
             random_uid=synapse_uid,
             specified_uids=specified_uids,

@@ -46,7 +46,7 @@ class ScraperValidator:
         self.seed = 1234
         self.neuron = neuron
         self.timeout = 180
-        self.max_execution_times = [10, 20, 30, 30, 30, 30, 60, 60, 60, 120, 120, 180]
+        self.max_execution_times = [10, 10, 10, 10, 120]
         self.tools = [
             ["Twitter Search", "Reddit Search"],
             ["Twitter Search", "Google Search"],
@@ -526,6 +526,7 @@ class ScraperValidator:
     async def organic(
         self,
         query,
+        max_execution_time: int = 10,
         random_synapse: ScraperStreamingSynapse = None,
         random_uid=None,
         specified_uids=None,
@@ -560,8 +561,6 @@ class ScraperValidator:
             )
 
             tasks = [task]
-
-            max_execution_time = 10
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 tasks=tasks,

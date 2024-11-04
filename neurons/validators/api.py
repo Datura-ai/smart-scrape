@@ -40,6 +40,12 @@ async def response_stream_event(data):
     try:
         last_message = data["messages"][-1]
         uids = None
+
+        max_execution_time = int(data.get("max_execution_time", 10))
+
+        if max_execution_time not in [10, 120]:
+            raise ValueError("max_execution_time must be either 10 or 120.")
+
         if "uids" in data:
             uids = [uid for uid in data["uids"] if uid is not None]
         if uids:
@@ -57,7 +63,9 @@ async def response_stream_event(data):
         else:
             uids = None
             merged_chunks = ""
-            async for response in neu.scraper_validator.organic(last_message):
+            async for response in neu.scraper_validator.organic(
+                last_message, max_execution_time
+            ):
                 # Decode the chunk if necessary and merge
                 chunk = str(response)  # Assuming response is already a string
                 merged_chunks += chunk
