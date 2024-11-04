@@ -46,7 +46,9 @@ class ScraperValidator:
         self.seed = 1234
         self.neuron = neuron
         self.timeout = 180
-        self.max_execution_times = [10, 10, 10, 10, 120]
+        self.execution_time_options = [10, 30, 120]
+        self.execution_time_probabilities = [0.8, 0.1, 0.1]
+
         self.tools = [
             ["Twitter Search", "Reddit Search"],
             ["Twitter Search", "Google Search"],
@@ -166,6 +168,12 @@ class ScraperValidator:
             StreamingPenaltyModel(max_penalty=1),
         ]
 
+    def get_random_execution_time(self):
+        return random.choices(
+            self.execution_time_options, 
+            self.execution_time_probabilities
+        )[0]
+        
     async def run_task_and_score(
         self,
         tasks: List[TwitterTask],
@@ -467,7 +475,7 @@ class ScraperValidator:
                 f"Query and score running with prompts: {prompts} and tools: {tools}"
             )
 
-            max_execution_time = random.choice(self.max_execution_times)
+            max_execution_time = self.get_random_execution_time()
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 tasks=tasks,

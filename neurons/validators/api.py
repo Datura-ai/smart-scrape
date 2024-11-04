@@ -43,7 +43,7 @@ async def response_stream_event(data):
 
         max_execution_time = int(data.get("max_execution_time", 10))
 
-        if max_execution_time not in [10, 120]:
+        if max_execution_time not in [10, 30, 120]:
             raise ValueError("max_execution_time must be either 10 or 120.")
 
         if "uids" in data:
