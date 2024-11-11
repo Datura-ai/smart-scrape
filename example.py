@@ -4,15 +4,15 @@ import json
 
 
 async def search_smart_scrape():
-    # url = "https://api.smartscrape.ai/search"
-    url = "http://localhost:8005/search"  # Local
+    url = "https://api.smartscrape.ai/search"
+    # url = "http://localhost:8005/search"  # Local
 
     body = {
         "prompt": "What are the recent sport news?",
         "tools": [
             "Google Search",
         ],  # ["Twitter Search", "Google Search", "Google News Search", "Google Image Search", "Bing Search", "ArXiv Search", "Wikipedia Search", "Youtube Search", "Hacker News Search", "Reddit Search"]
-        "max_execution_time": 10,
+        "model": "NOVA",  # "NOVA", "ORBIT", "HORIZON"
         "response_order": "LINKS_FIRST",  # "LINKS_FIRST", "SUMMARY_FIRST"
         "date_filter": "PAST_WEEK",  # "PAST_DAY", "PAST_WEEK", "PAST_2_WEEKS", "PAST_MONTH", "PAST_YEAR"
         # "uids": [0, 1, 2],
