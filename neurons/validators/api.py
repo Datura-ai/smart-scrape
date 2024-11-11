@@ -5,6 +5,7 @@ from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, HTTPException, Header
 from datura.dataset.tool_return import ResponseOrder
 from datura.dataset.date_filters import DateFilterType
+from datura.protocol import Model
 import uvicorn
 import bittensor as bt
 import traceback
@@ -42,18 +43,12 @@ available_tools = [
     "Reddit Search",
 ]
 
-SEARCH_DESCRIPTION = """Performs a search across multiple platforms. Available tools are:
-- Twitter Search: Uses Twitter API to search for tweets in past week date range.
-- Google Search: Searches the web using Google.
-- Google News Search: Searches news articles using Google News.
-- Google Image Search: Searches images using Google.
-- Bing Search: Searches the web using Bing.
-- ArXiv Search: Searches academic papers on ArXiv.
-- Wikipedia Search: Searches articles on Wikipedia.
-- Youtube Search: Searches videos on Youtube.
-- Hacker News Search: Searches posts on Hacker News, under the hood it uses Google search.
-- Reddit Search: Searches posts on Reddit, under the hood it uses Google search.
-"""
+
+def format_enum_values(enum):
+    values = [value.value for value in enum]
+    values = ", ".join(values)
+
+    return f"Options: {values}"
 
 
 class SearchRequest(BaseModel):
@@ -67,25 +62,54 @@ class SearchRequest(BaseModel):
     )
     response_order: Optional[ResponseOrder] = Field(
         default=ResponseOrder.LINKS_FIRST,
-        description="Order of the search results. Options are 'LINKS_FIRST' or 'SUMMARY_FIRST'.",
+        description=f"Order of the search results. {format_enum_values(ResponseOrder)}",
     )
     date_filter: Optional[DateFilterType] = Field(
         default=DateFilterType.PAST_WEEK.value,
-        description="Date filter for the search results",
+        description=f"Date filter for the search results.{format_enum_values(DateFilterType)}",
         example=DateFilterType.PAST_WEEK.value,
     )
-    max_execution_time: Optional[int] = Field(
-        default=30,
-        description="Maximum execution time in seconds",
-        ge=10,
-        le=120,
-        enum=[10, 30, 120],
+    model: Optional[Model] = Field(
+        default=Model.NOVA,
+        description=f"Model to use for scraping. {format_enum_values(Model)}",
+        example=Model.NOVA.value,
     )
     uids: Optional[List[int]] = Field(
         default=None,
         description="Optional miner uids to run. If not provided, a random miner will be selected.",
         example=[0, 1, 2],
     )
+
+
+fields = "\n".join(
+    f"- {key}: {item.get('description')}"
+    for key, item in SearchRequest.schema().get("properties", {}).items()
+)
+
+SEARCH_DESCRIPTION = f"""Performs a search across multiple platforms. Available tools are:
+- Twitter Search: Uses Twitter API to search for tweets in past week date range.
+- Google Search: Searches the web using Google.
+- Google News Search: Searches news articles using Google News.
+- Google Image Search: Searches images using Google.
+- Bing Search: Searches the web using Bing.
+- ArXiv Search: Searches academic papers on ArXiv.
+- Wikipedia Search: Searches articles on Wikipedia.
+- Youtube Search: Searches videos on Youtube.
+- Hacker News Search: Searches posts on Hacker News, under the hood it uses Google search.
+- Reddit Search: Searches posts on Reddit, under the hood it uses Google search.
+
+Request Body Fields:
+{fields}
+"""
+
+
+def get_max_execution_time(model: Model):
+    if model == Model.NOVA:
+        return 10
+    elif model == Model.ORBIT:
+        return 30
+    elif model == Model.HORIZON:
+        return 120
 
 
 async def response_stream_event(data: SearchRequest):
@@ -99,6 +123,8 @@ async def response_stream_event(data: SearchRequest):
         }
 
         uids = data.uids
+
+        max_execution_time = get_max_execution_time(data.model)
 
         if uids:
             uids = [uid for uid in data["uids"] if uid is not None]
@@ -114,7 +140,7 @@ async def response_stream_event(data: SearchRequest):
             uids = None
             merged_chunks = ""
             async for response in neu.scraper_validator.organic(
-                query, data.max_execution_time
+                query, max_execution_time
             ):
                 # Decode the chunk if necessary and merge
                 chunk = str(response)  # Assuming response is already a string

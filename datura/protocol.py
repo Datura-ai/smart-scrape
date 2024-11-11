@@ -101,6 +101,12 @@ class ScraperTextRole(str, Enum):
     FINAL_SUMMARY = "summary"
 
 
+class Model(str, Enum):
+    NOVA = "NOVA"
+    ORBIT = "ORBIT"
+    HORIZON = "HORIZON"
+
+
 class ScraperStreamingSynapse(bt.StreamingSynapse):
     prompt: str = pydantic.Field(
         ...,
