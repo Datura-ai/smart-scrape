@@ -65,7 +65,7 @@ class SearchRequest(BaseModel):
         description=f"Order of the search results. {format_enum_values(ResponseOrder)}",
     )
     date_filter: Optional[DateFilterType] = Field(
-        default=DateFilterType.PAST_WEEK.value,
+        default=DateFilterType.PAST_WEEK,
         description=f"Date filter for the search results.{format_enum_values(DateFilterType)}",
         example=DateFilterType.PAST_WEEK.value,
     )
