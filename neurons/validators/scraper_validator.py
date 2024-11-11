@@ -170,10 +170,9 @@ class ScraperValidator:
 
     def get_random_execution_time(self):
         return random.choices(
-            self.execution_time_options, 
-            self.execution_time_probabilities
+            self.execution_time_options, self.execution_time_probabilities
         )[0]
-        
+
     async def run_task_and_score(
         self,
         tasks: List[TwitterTask],
@@ -554,6 +553,7 @@ class ScraperValidator:
             tools = query.get("tools", [])
 
             date_filter = query.get("date_filter", DateFilterType.PAST_WEEK.value)
+            response_order = query.get("response_order", ResponseOrder.LINKS_FIRST)
 
             # If the date filter is a string, convert it to a DateFilterType otherwise use the provided date filter
             if isinstance(date_filter, str):
@@ -583,6 +583,7 @@ class ScraperValidator:
                 google_date_filter=self.date_filter,
                 timeout=max_execution_time,
                 specified_uids=specified_uids,
+                response_order=response_order,
             )
 
             final_synapses = []
