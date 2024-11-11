@@ -48,7 +48,6 @@ POST /search
 | model          | string | No       | Model to use for scraping (NOVA, ORBIT, HORIZON)    | NOVA                              |
 | response_order | string | No       | Order of results ("LINKS_FIRST" or "SUMMARY_FIRST") | "LINKS_FIRST"                     |
 | date_filter    | string | No       | Time range filter for results                       | "PAST_WEEK"                       |
-| uids           | array  | No       | Specific miner UIDs to use                          | [0, 1, 2]                         |
 
 ### Date Filter Options
 

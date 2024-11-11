@@ -15,7 +15,6 @@ async def search_smart_scrape():
         "model": "NOVA",  # "NOVA", "ORBIT", "HORIZON"
         "response_order": "LINKS_FIRST",  # "LINKS_FIRST", "SUMMARY_FIRST"
         "date_filter": "PAST_WEEK",  # "PAST_DAY", "PAST_WEEK", "PAST_2_WEEKS", "PAST_MONTH", "PAST_YEAR"
-        # "uids": [0, 1, 2],
     }
 
     headers = {"Access-Key": "test"}

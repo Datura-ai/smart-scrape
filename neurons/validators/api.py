@@ -74,11 +74,6 @@ class SearchRequest(BaseModel):
         description=f"Model to use for scraping. {format_enum_values(Model)}",
         example=Model.NOVA.value,
     )
-    uids: Optional[List[int]] = Field(
-        default=None,
-        description="Optional miner uids to run. If not provided, a random miner will be selected.",
-        example=[0, 1, 2],
-    )
 
 
 fields = "\n".join(
@@ -114,7 +109,6 @@ def get_max_execution_time(model: Model):
 
 async def response_stream_event(data: SearchRequest):
     try:
-
         query = {
             "content": data.prompt,
             "tools": data.tools,
@@ -122,38 +116,20 @@ async def response_stream_event(data: SearchRequest):
             "response_order": data.response_order,
         }
 
-        uids = data.uids
-
         max_execution_time = get_max_execution_time(data.model)
 
-        if uids:
-            uids = [uid for uid in data["uids"] if uid is not None]
-            print(f"Check uids, {uids}")
-            merged_chunks = ""
-            async for response in neu.scraper_validator.organic_specified(query, uids):
-                chunk = str(response)  # Assuming response is already a string
-                merged_chunks += chunk
-                lines = chunk.split("\n")
-                sse_data = "\n".join(f"data: {line if line else ' '}" for line in lines)
-                yield f"{sse_data}\n\n"
-        else:
-            uids = None
-            merged_chunks = ""
-            async for response in neu.scraper_validator.organic(
-                query, max_execution_time
-            ):
-                # Decode the chunk if necessary and merge
-                chunk = str(response)  # Assuming response is already a string
-                merged_chunks += chunk
-                lines = chunk.split("\n")
-                sse_data = "\n".join(f"data: {line if line else ' '}" for line in lines)
-                # print("sse_data: ", sse_data)
-                yield f"{sse_data}\n\n"
-        # Here you might want to do something with merged_chunks
-        # after the loop has finished
+        merged_chunks = ""
+
+        async for response in neu.scraper_validator.organic(query, max_execution_time):
+            # Decode the chunk if necessary and merge
+            chunk = str(response)  # Assuming response is already a string
+            merged_chunks += chunk
+            lines = chunk.split("\n")
+            sse_data = "\n".join(f"data: {line if line else ' '}" for line in lines)
+            yield f"{sse_data}\n\n"
     except Exception as e:
         bt.logging.error(f"error in response_stream {traceback.format_exc()}")
-        yield f"data: {json.dumps({'error': 'An error occurred'})}\n\n"
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 
 @app.post(
