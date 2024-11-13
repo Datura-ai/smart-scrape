@@ -293,6 +293,8 @@ class ScraperValidator:
                 bt.logging.info(
                     f"Following UIDs will be penalized as they failed organic query: {penalized_uids}"
                 )
+            else:
+                organic_penalties = [False] * len(uids)
 
             for weight_i, reward_fn_i in zip(
                 self.reward_weights, self.reward_functions
