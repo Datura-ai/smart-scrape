@@ -116,10 +116,9 @@ class Neuron(AbstractNeuron):
                     self.uid_manager = UIDManager(
                         wallet=self.wallet,
                         metagraph=self.metagraph,
-                        available_uids=self.available_uids,
                     )
 
-                self.uid_manager.resync()
+                self.uid_manager.resync(self.available_uids)
                 self.scraper_validator.organic_query_state.remove_deregistered_hotkeys(
                     self.metagraph.axons
                 )
