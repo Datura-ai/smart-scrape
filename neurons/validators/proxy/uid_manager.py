@@ -18,6 +18,7 @@ class UIDManager:
         self.metagraph = metagraph
         self.max_miners_to_use = 100
         self.uids = []
+        self.available_uids = []
 
     def resync(self, available_uids: List[int]):
         """
@@ -25,6 +26,8 @@ class UIDManager:
         """
         if not len(available_uids):
             return
+
+        self.available_uids = available_uids
 
         self.top_uids = self.metagraph.I.argsort(descending=True)[
             : self.max_miners_to_use
@@ -47,7 +50,7 @@ class UIDManager:
         Get random miner UID from top 200 miners and remove it from the list
         """
         if len(self.uids) == 0:
-            self.resync()
+            self.resync(self.available_uids)
 
         uid = random.choice(self.uids)
         self.uids.remove(uid)
