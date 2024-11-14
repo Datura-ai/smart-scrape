@@ -60,6 +60,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         try:
             # Score random completion
             summary_key, completion = random_completion
+
+            if not completion:
+                return None
+
             is_twitter = summary_key == ScraperTextRole.TWITTER_SUMMARY.value
 
             completion = self.validate_successful_completion(
@@ -128,6 +132,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
         # Accumulate scoring messages to compare scraped tweet texts with markdown link descriptions
         for response, random_completion in zip(responses, random_completions):
             summary_key, completion = random_completion
+
+            if not completion:
+                scoring_keys_list.append([])
+                continue
 
             is_twitter = summary_key == ScraperTextRole.TWITTER_SUMMARY.value
             link_with_descriptions = []
@@ -285,7 +293,13 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             for response in responses:
                 # Get all available completions based on the tools used and choose random summary (Twitter, Search, Reddit, Hacker News)
                 completions = response.get_all_completions()
-                random_completions.append(random.choice(list(completions.items())))
+                completions_list = list(completions.items())
+
+                random_completions.append(
+                    random.choice(completions_list)
+                    if completions_list
+                    else (None, None)
+                )
 
             # Need to use this scores to calculate rewards
             (

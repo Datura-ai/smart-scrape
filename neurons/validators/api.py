@@ -100,7 +100,7 @@ Request Body Fields:
 
 def get_max_execution_time(model: Model):
     if model == Model.NOVA:
-        return 10
+        return 15
     elif model == Model.ORBIT:
         return 30
     elif model == Model.HORIZON:
