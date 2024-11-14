@@ -16,7 +16,7 @@ class UIDManager:
     ) -> None:
         self.wallet = wallet
         self.metagraph = metagraph
-        self.max_miners_to_use = 150
+        self.max_miners_to_use = 100
         self.uids = []
 
     def resync(self, available_uids: List[int]):
