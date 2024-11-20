@@ -295,7 +295,6 @@ class ScraperValidator:
                 )
             else:
                 organic_penalties = [False] * len(uids)
-
             for weight_i, reward_fn_i in zip(
                 self.reward_weights, self.reward_functions
             ):
@@ -321,7 +320,6 @@ class ScraperValidator:
                 bt.logging.info(
                     f"Applied reward function: {reward_fn_i.name} in {execution_time / 60:.2f} minutes"
                 )
-
             for penalty_fn_i in self.penalty_functions:
                 raw_penalty_i, adjusted_penalty_i, applied_penalty_i = (
                     penalty_fn_i.apply_penalties(responses, tasks)
@@ -337,9 +335,9 @@ class ScraperValidator:
                 bt.logging.info(
                     f"Applied penalty function: {penalty_fn_i.name} in {penalty_execution_time:.2f} seconds"
                 )
-
-            scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)
-            self.log_event(tasks, event, start_time, uids, rewards)
+            if is_synthetic:
+                scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)
+                self.log_event(tasks, event, start_time, uids, rewards)
 
             scores = torch.zeros(len(self.neuron.metagraph.hotkeys))
             uid_scores_dict = {}
@@ -609,7 +607,6 @@ class ScraperValidator:
                     # Add the random_synapse to final_synapses and its UID to uids
                     final_synapses.append(random_synapse)
                     uids = torch.cat([uids, torch.tensor([random_uid])])
-
                 _, _, _, _, original_rewards = await self.compute_rewards_and_penalties(
                     event=event,
                     tasks=tasks,
