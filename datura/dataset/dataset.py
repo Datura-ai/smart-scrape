@@ -3,7 +3,8 @@ import datetime
 import bittensor as bt
 
 # from datasets import load_dataset
-# from bs4 import BeautifulSoup
+# from bs4 import BeautifulSo
+# up
 import time
 import requests
 import html
@@ -1324,6 +1325,80 @@ class MockBittensiorQuestionsDataset:
 
     def next(self):
         return self.generate_question()
+
+
+class SyntheticTwitterQuestionsDataset:
+    def __init__(self):
+        # Core industries/topics that drive meaningful discussions
+        self.topics = [
+            "Artificial Intelligence",
+            "Blockchain Technology",
+            "Cloud Computing",
+            "Cybersecurity",
+            "Digital Transformation",
+            "E-commerce",
+            "Financial Technology",
+            "Healthcare Innovation",
+            "Machine Learning",
+            "Renewable Energy",
+            "Space Technology",
+            "Sustainable Technology",
+            "Virtual Reality",
+            "Web3",
+            "Quantum Computing",
+            "Internet of Things",
+            "Data Privacy",
+            "Digital Banking",
+            "Electric Vehicles",
+            "Smart Cities"
+        ]
+
+    async def generate_question(self):
+        topic = random.choice(self.topics)
+
+        system_message = f"""You are an expert technology analyst creating highly relevant questions about {topic}.
+        
+        Guidelines for question generation:
+        - Focus on current industry developments, trends, and real-world applications
+        - Consider recent announcements, breakthroughs, or market changes
+        - Frame questions that industry professionals and tech enthusiasts would actually ask
+        - Make questions specific enough to generate meaningful discussions
+        - Ensure questions are relevant to current market dynamics
+        - Include context that makes the question valuable for industry insights
+        - Avoid hypothetical or overly broad questions
+        - Focus on practical, real-world implications
+        
+        The question should be something that would generate meaningful engagement on Twitter from industry experts, professionals, and informed enthusiasts."""
+
+        try:
+            
+            print(f"Generating question about {topic}")
+            question = await call_openai(
+                messages=[{
+                    "role": "system",
+                    "content": system_message
+                },
+                {
+                    "role": "user",
+                    "content": f"Generate a specific, timely, and relevant question about {topic} that would drive meaningful discussion on Twitter among industry professionals and experts."
+                }],
+                model="gpt-4o-mini",
+                temperature=0.7
+            )
+        
+            # Ensure question ends with question mark
+            if not question.endswith('?'):
+                question += '?'
+            
+            return question
+            
+        except Exception as e:
+            # Fallback to simple template if API call fails
+            print(f"Failed to generate question about {topic}: {e}")
+            return f"What are the latest developments in {topic} that are transforming the industry?"
+
+    async def next(self):
+        return await self.generate_question()
 
 
 class QuestionsDataset:
