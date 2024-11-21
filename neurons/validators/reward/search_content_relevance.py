@@ -161,6 +161,11 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
 
         for response in responses:
             # Extract random links from each summary (Search, Reddit, Hacker News)
+            completion = self.get_successful_search_summary_completion(response)
+
+            if not completion:
+                continue
+
             _, links_per_summary = response.get_search_links()
 
             # If scoring single summary 2 link is selected, for 2 or 3 summaries 1 link is selected from each
