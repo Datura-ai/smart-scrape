@@ -1348,19 +1348,20 @@ You are an expert technology analyst generating realistic Twitter search queries
 - Ensure queries are relevant to current market dynamics.
 - Use simple and clear language that is easy to understand.
 - Make the query similar to a real user's search input.
-- **Vary the structure and wording of the queries to avoid repetition. Do not rely on specific patterns or templates.**
-- **Occasionally, include common Twitter search phrases (e.g., "News on ", "Updates on "), but ensure that not all queries follow these patterns.**
+- Vary the structure and wording of the queries to avoid repetition. Do not rely on specific patterns or templates.
+- Occasionally, include common Twitter search phrases (e.g., "News on ", "Updates on "), but ensure that not all queries follow these patterns.
+- **Do not include any numbers or specific years (e.g., "2023", "2024") in the query.** Use general terms such as "latest," "recent," or "current" instead.
+- **Avoid phrases that commonly lead to including years, such as "technology trends," "market trends," or "industry trends." Instead, use alternative expressions like "technology updates," "market developments," or "industry news."**
 - Do not generate long queries; keep them short and clear (no more than 8 words).
 - Do not generate multiple queries at a time; make one query at a time.
 - Do not include any guidelines or system prompts in the result; only generate the search query.
 - Avoid phrasing the queries as questions; use concise keywords or phrases instead of interrogative sentences.
 - Do not use question marks "?" or any other punctuation in the query.
-- Do not include exact times or dates in the query. Instead of "AI trends 2024," use "latest AI trends."
-- Avoid using specific years or numbers like "2023" in the query; use general terms such as "latest" or "recent" instead.
+- Do not include exact times or dates in the query.
 - Ensure diversity by varying the wording, structure, and focus of each query.
 - Avoid repetitive phrases like "latest advancements in" or "latest breakthroughs in."
 - Incorporate different angles, keywords, and aspects of the provided words to generate unique queries.
-- **Important:** Do not split the provided list of words; use them together as they are given to generate a meaningful query.
+- **Important:** If it is difficult to create a meaningful query using all the provided words together, you may use only some of them to generate a contextually relevant query.
 
 The search query should be something that would generate meaningful results on Twitter for industry experts, professionals, and informed enthusiasts."""
 
@@ -1386,8 +1387,6 @@ The search query should be something that would generate meaningful results on T
         return await self.generate_question()
 
 import asyncio
-
-# Assuming SyntheticTwitterQuestionsDataset is already imported
 
 async def generate_queries_to_file(filename, num_queries=100, batch_size=100):
     dataset = SyntheticTwitterQuestionsDataset()
