@@ -338,8 +338,9 @@ class ScraperValidator:
                     f"Applied penalty function: {penalty_fn_i.name} in {penalty_execution_time:.2f} seconds"
                 )
 
-            scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)
-            self.log_event(tasks, event, start_time, uids, rewards)
+            if is_synthetic:
+                scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)
+                self.log_event(tasks, event, start_time, uids, rewards)
 
             scores = torch.zeros(len(self.neuron.metagraph.hotkeys))
             uid_scores_dict = {}
