@@ -217,6 +217,7 @@ class Neuron(AbstractNeuron):
         val_score_responses_list,
         organic_penalties,
         neuron,
+        query_type="organic"
     ):
         try:
             if self.config.wandb_on:
