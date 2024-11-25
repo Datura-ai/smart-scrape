@@ -149,15 +149,18 @@ class TwitterContentRelevanceModel(BaseRewardModel):
             non_fetched_links = {}
             start_time = time.time()
 
-            all_links = [
-                link
-                for response in responses
-                if response.completion_links
-                for link in random.sample(
-                    response.completion_links,
-                    min(APIFY_LINK_SCRAPE_AMOUNT, len(response.completion_links)),
-                )
-            ]
+            responses_random_links = [[] for _ in responses]
+            all_links = []
+
+            for response, random_links in zip(responses, responses_random_links):
+                if response.completion_links:
+                    sample_links = random.sample(
+                        response.completion_links,
+                        min(APIFY_LINK_SCRAPE_AMOUNT, len(response.completion_links)),
+                    )
+                    all_links.extend(sample_links)
+                    random_links.extend(sample_links)
+
             unique_links = list(set(all_links))
             if len(unique_links) == 0:
                 bt.logging.info("No unique links found to process.")
@@ -169,18 +172,14 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 unique_links, group_size=200, max_attempts=4
             )
 
-            for response in responses:
+            for response, random_links in zip(responses, responses_random_links):
                 ids = [
-                    self.tw_client.utils.extract_tweet_id(link)
-                    for link in response.completion_links
+                    self.tw_client.utils.extract_tweet_id(link) for link in random_links
                 ]
 
                 for tweet in tweets_list:
                     if tweet.id in ids:
                         response.validator_tweets.append(tweet)
-            if len(unique_links) == 0:
-                bt.logging.info("No unique links found to process.")
-                return default_val_score_responses
 
             end_time = time.time()
             bt.logging.info(
