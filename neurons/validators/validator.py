@@ -477,13 +477,13 @@ class Neuron(AbstractNeuron):
                         bt.logging.error(f"Error during task execution: {e}")
                         await asyncio.sleep(interval)  # Wait before retrying
 
-            if self.config.neuron.run_random_miner_syn_qs_interval > 0:
-                self.loop.create_task(
-                    run_with_interval(
-                        self.config.neuron.run_all_miner_syn_qs_interval,
-                        QUERY_MINERS.RANDOM,
-                    )
-                )
+            # if self.config.neuron.run_random_miner_syn_qs_interval > 0:
+            #     self.loop.create_task(
+            #         run_with_interval(
+            #             self.config.neuron.run_random_miner_syn_qs_interval,
+            #             QUERY_MINERS.RANDOM,
+            #         )
+            #     )
 
             if self.config.neuron.run_all_miner_syn_qs_interval > 0:
                 self.loop.create_task(
@@ -492,7 +492,6 @@ class Neuron(AbstractNeuron):
                         QUERY_MINERS.ALL,
                     )
                 )
-            # If someone intentionally stops the validator, it'll safely terminate operations.
 
             three_hours_in_seconds = 10800
             self.loop.create_task(run_organic_with_interval(three_hours_in_seconds))
