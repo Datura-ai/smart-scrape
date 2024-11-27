@@ -9,6 +9,7 @@ __pycache__/
 wandb/
 
 .vscode
+
 venv/
 .idea/
 

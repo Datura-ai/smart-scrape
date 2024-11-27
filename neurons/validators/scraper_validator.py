@@ -296,6 +296,8 @@ class ScraperValidator:
             else:
                 organic_penalties = [False] * len(uids)
 
+            query_type = "synthetic" if is_synthetic else "organic"
+
             for weight_i, reward_fn_i in zip(
                 self.reward_weights, self.reward_functions
             ):
@@ -428,6 +430,7 @@ class ScraperValidator:
                 val_score_responses_list=val_score_responses_list,
                 organic_penalties=organic_penalties,
                 neuron=self.neuron,
+                query_type=query_type
             )
 
             return rewards, uids, val_score_responses_list, event, all_original_rewards
