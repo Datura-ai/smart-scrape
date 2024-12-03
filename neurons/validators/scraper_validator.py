@@ -180,7 +180,6 @@ class ScraperValidator:
         tasks: List[TwitterTask],
         strategy=QUERY_MINERS.RANDOM,
         is_only_allowed_miner=True,
-        # is_intro_text=False,
         specified_uids=None,
         date_filter=None,
         tools=[],
@@ -189,6 +188,7 @@ class ScraperValidator:
         google_date_filter="qdr:w",
         response_order=ResponseOrder.SUMMARY_FIRST,
         timeout=60,
+        initial_uids=None,
     ):
         # Record event start time.
         event = {
@@ -202,86 +202,7 @@ class ScraperValidator:
             strategy=strategy,
             is_only_allowed_miner=is_only_allowed_miner,
             specified_uids=specified_uids,
-        )
-
-        start_date = date_filter.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-        end_date = date_filter.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-        axons = [self.neuron.metagraph.axons[uid] for uid in uids]
-
-        synapses = [
-            ScraperStreamingSynapse(
-                prompt=task.compose_prompt(),
-                model=self.model,
-                seed=self.seed,
-                start_date=start_date,
-                end_date=end_date,
-                date_filter_type=date_filter.date_filter_type.value,
-                tools=tools,
-                language=language,
-                region=region,
-                google_date_filter=google_date_filter,
-                response_order=response_order.value,
-                max_execution_time=timeout,
-            )
-            for task in tasks
-        ]
-
-        axon_groups = [axons[:80], axons[80:160], axons[160:]]
-        synapse_groups = [synapses[:80], synapses[80:160], synapses[160:]]
-        dendrites = [
-            self.neuron.dendrite1,
-            self.neuron.dendrite2,
-            self.neuron.dendrite3,
-        ]
-
-        async_responses = []
-
-        for dendrite, axon_group, synapse_group in zip(
-            dendrites, axon_groups, synapse_groups
-        ):
-            async_responses.extend(
-                [
-                    dendrite.call_stream(
-                        target_axon=axon,
-                        synapse=synapse.copy(),
-                        timeout=timeout,
-                        deserialize=False,
-                    )
-                    for axon, synapse in zip(axon_group, synapse_group)
-                ]
-            )
-
-        return async_responses, uids, event, start_time
-
-    async def run_task_and_score_with_uids(
-        self,
-        initial_uids,
-        tasks: List[TwitterTask],
-        strategy=QUERY_MINERS.RANDOM,
-        is_only_allowed_miner=True,
-        # is_intro_text=False,
-        specified_uids=None,
-        date_filter=None,
-        tools=[],
-        language="en",
-        region="us",
-        google_date_filter="qdr:w",
-        response_order=ResponseOrder.SUMMARY_FIRST,
-        timeout=60,
-    ):
-        # Record event start time.
-        event = {
-            "names": [task.task_name for task in tasks],
-            "task_types": [task.task_type for task in tasks],
-        }
-        start_time = time.time()
-
-        # Get random id on that step
-        uids = await self.neuron.get_uids_from_list(
-            uids=initial_uids,
-            strategy=strategy,
-            is_only_allowed_miner=is_only_allowed_miner,
-            specified_uids=specified_uids,
+            initial_uids=initial_uids,
         )
 
         start_date = date_filter.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -529,6 +450,46 @@ class ScraperValidator:
 
         bt.logging.debug("Run Task event:", event)
 
+    def get_uids_with_recent_organic_results(self, tools):
+        """Get UIDs that have recent successful organic results with matching tools.
+        
+        Args:
+            tools: List of tools to match against
+            current_time: Current UTC datetime to compare against
+            
+        Returns:
+            Tuple of (uids_with_results, organic_results, organic_rewards)
+        """
+        current_time = datetime.now(pytz.utc)
+        
+        uids_with_recent_results = []
+        recent_organic_results = []
+        recent_organic_rewards = []
+        
+        for uid in self.neuron.available_uids:
+            neuron = next((n for n in self.neuron.metagraph.neurons if n.uid == uid), None)
+            if not neuron:
+                continue
+                
+            hotkey = neuron.hotkey
+            
+            if hotkey in self.neuron.organic_query_state.organic_history:
+                for synapse, is_failed, rewards in self.neuron.organic_query_state.organic_history[hotkey]:
+                    if set(synapse.tools) == set(tools):
+                        synapse_time = datetime.strptime(
+                            synapse.start_date,
+                            "%Y-%m-%dT%H:%M:%SZ" 
+                        ).replace(tzinfo=pytz.utc)
+                        
+                        time_diff_minutes = (current_time - synapse_time).total_seconds() / 60
+                        if time_diff_minutes <= 30 and not is_failed:
+                            uids_with_recent_results.append(uid)
+                            recent_organic_results.append(synapse)
+                            recent_organic_rewards.append(rewards)
+                            break
+        
+        return uids_with_recent_results, recent_organic_results, recent_organic_rewards
+
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
             if not len(self.neuron.available_uids):
@@ -538,44 +499,13 @@ class ScraperValidator:
             dataset = QuestionsDataset()
             tools = random.choice(self.tools)
             # Get current time in UTC
-            current_time = datetime.now(pytz.utc)
             
-            # Track which UIDs already have recent organic results
-            uids_with_recent_results = []
-            recent_organic_results = []
-            recent_organic_rewards = []
-            
-            # Check organic history for each available UID
-            for uid in self.neuron.available_uids:
-                # Get hotkey for this UID
-                neuron = next((n for n in self.neuron.metagraph.neurons if n.uid == uid), None)
-                if not neuron:
-                    continue
-                    
-                hotkey = neuron.hotkey
                 
-                # Check if this hotkey has organic history
-                if hotkey in self.neuron.organic_query_state.organic_history:
-                    for synapse, is_failed, rewards in self.neuron.organic_query_state.organic_history[hotkey]:
-                        # Only consider if tools match
-                        if set(synapse.tools) == set(tools):
-                            # Parse the synapse start date
-                            synapse_time = datetime.strptime(
-                                synapse.start_date, 
-                                "%Y-%m-%dT%H:%M:%SZ"
-                            ).replace(tzinfo=pytz.utc)
-                            
-                            # Check if within last 30 minutes
-                            time_diff_minutes = (current_time - synapse_time).total_seconds() / 60
-                            if time_diff_minutes <= 30 and not is_failed:
-                                uids_with_recent_results.append(uid)
-                                recent_organic_results.append(synapse)
-                                recent_organic_rewards.append(rewards)
-                                break
+            uids_with_recent_results, _, recent_organic_rewards = self.get_uids_with_recent_organic_results(tools)
 
             bt.logging.info(f"Found {len(uids_with_recent_results)} UIDs with recent organic results using same tools")
             
-            uids_needing_queries = list(set(self.neuron.uids_needing_queries) - set(uids_with_recent_results))
+            uids_needing_queries = list(set(self.neuron.available_uids) - set(uids_with_recent_results))
 
             prompts = await asyncio.gather(
                 *[
@@ -600,7 +530,7 @@ class ScraperValidator:
 
             max_execution_time = self.get_random_execution_time()
 
-            async_responses, uids, event, start_time = await self.run_task_and_score_with_uids(
+            async_responses, uids, event, start_time = await self.run_task_and_score(
                 initial_uids=uids_needing_queries,
                 tasks=tasks,
                 strategy=strategy,
@@ -621,16 +551,7 @@ class ScraperValidator:
             self.synthetic_history.append(
                 (event, tasks, final_synapses, uids, start_time)
             )
-            bt.logging.info("Number of Final Synapses : ", len(final_synapses))
-            bt.logging.info("===============EVENTs==============")
-            bt.logging.info("Number of Events : ", len(event))
-            bt.logging.info(event)
-            bt.logging.info("=============================")
-            bt.logging.info("Number of tasks : ", len(tasks))
-            bt.logging.info("----------------------------")
-            bt.logging.info("UIDs : ", uids)
-            # await self.score_random_synthetic_query()
-            
+                        
             await self.compute_rewards_and_penalties(
                 event=event,
                 tasks=tasks,

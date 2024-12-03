@@ -180,47 +180,23 @@ class Neuron(AbstractNeuron):
         strategy=QUERY_MINERS.RANDOM,
         is_only_allowed_miner=False,
         specified_uids=None,
+        initial_uids=None,
     ):
-        if len(self.available_uids) == 0:
-            bt.logging.info("No available UIDs, attempting to refresh list.")
-            return self.available_uids
+        if initial_uids is None:
+            if len(self.available_uids) == 0:
+                bt.logging.info("No available UIDs, attempting to refresh list.")
+                return self.available_uids
+            uid_list = self.available_uids
+        else:
+            if len(initial_uids) == 0:
+                bt.logging.info("No available UIDs, attempting to refresh list.") 
+                return initial_uids
+            uid_list = initial_uids
 
         # Filter uid_list based on specified_uids and only_allowed_miners
         uid_list = [
             uid
-            for uid in self.available_uids
-            if (not specified_uids or uid in specified_uids)
-            and (
-                not is_only_allowed_miner
-                or self.metagraph.axons[uid].coldkey
-                in self.config.neuron.only_allowed_miners
-            )
-        ]
-
-        if strategy == QUERY_MINERS.RANDOM:
-            uid = self.uid_manager.get_miner_uid()
-            uids = torch.tensor([uid]) if uid else torch.tensor([])
-        elif strategy == QUERY_MINERS.ALL:
-            uids = torch.tensor(uid_list) if uid_list else torch.tensor([])
-        bt.logging.info(f"Run uids ---------- Amount: {len(uids)} | {uids}")
-        # uid_list = list(available_uids.keys())
-        return uids.to(self.config.neuron.device)
-
-    async def get_uids_from_list(
-        self,
-        uids,
-        strategy=QUERY_MINERS.RANDOM,
-        is_only_allowed_miner=False,
-        specified_uids=None,
-    ):
-        if len(uids) == 0:
-            bt.logging.info("No available UIDs, attempting to refresh list.")
-            return uids
-
-        # Filter uid_list based on specified_uids and only_allowed_miners
-        uid_list = [
-            uid
-            for uid in uids
+            for uid in uid_list
             if (not specified_uids or uid in specified_uids)
             and (
                 not is_only_allowed_miner
