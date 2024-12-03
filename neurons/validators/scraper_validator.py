@@ -473,8 +473,8 @@ class ScraperValidator:
                 
             hotkey = neuron.hotkey
             
-            if hotkey in self.neuron.organic_query_state.organic_history:
-                for synapse, is_failed, rewards in self.neuron.organic_query_state.organic_history[hotkey]:
+            if hotkey in self.organic_query_state.organic_history:
+                for synapse, is_failed, rewards in self.organic_query_state.organic_history[hotkey]:
                     if set(synapse.tools) == set(tools):
                         synapse_time = datetime.strptime(
                             synapse.start_date,
