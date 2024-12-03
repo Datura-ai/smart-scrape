@@ -180,15 +180,23 @@ class Neuron(AbstractNeuron):
         strategy=QUERY_MINERS.RANDOM,
         is_only_allowed_miner=False,
         specified_uids=None,
+        initial_uids=None,
     ):
-        if len(self.available_uids) == 0:
-            bt.logging.info("No available UIDs, attempting to refresh list.")
-            return self.available_uids
+        if initial_uids is None:
+            if len(self.available_uids) == 0:
+                bt.logging.info("No available UIDs, attempting to refresh list.")
+                return self.available_uids
+            uid_list = self.available_uids
+        else:
+            if len(initial_uids) == 0:
+                bt.logging.info("No available UIDs, attempting to refresh list.") 
+                return initial_uids
+            uid_list = initial_uids
 
         # Filter uid_list based on specified_uids and only_allowed_miners
         uid_list = [
             uid
-            for uid in self.available_uids
+            for uid in uid_list
             if (not specified_uids or uid in specified_uids)
             and (
                 not is_only_allowed_miner
@@ -480,7 +488,7 @@ class Neuron(AbstractNeuron):
             if self.config.neuron.run_random_miner_syn_qs_interval > 0:
                 self.loop.create_task(
                     run_with_interval(
-                        self.config.neuron.run_all_miner_syn_qs_interval,
+                        self.config.neuron.run_random_miner_syn_qs_interval,
                         QUERY_MINERS.RANDOM,
                     )
                 )
@@ -492,7 +500,6 @@ class Neuron(AbstractNeuron):
                         QUERY_MINERS.ALL,
                     )
                 )
-            # If someone intentionally stops the validator, it'll safely terminate operations.
 
             three_hours_in_seconds = 10800
             self.loop.create_task(run_organic_with_interval(three_hours_in_seconds))

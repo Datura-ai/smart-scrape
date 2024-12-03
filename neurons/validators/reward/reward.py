@@ -200,7 +200,11 @@ class BaseRewardModel:
         search_completion_dict, _ = response.get_search_completion()
         search_completion = "\n".join(search_completion_dict.values())
 
-        if response.dendrite.status_code == 200 and search_completion:
+        if (
+            response.dendrite.status_code == 200
+            and search_completion
+            and response.completion
+        ):
             # Get the completion from the successful response.
             successful_completion = search_completion.strip()
 

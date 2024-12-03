@@ -297,7 +297,7 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
                 random_completions.append(
                     random.choice(completions_list)
-                    if completions_list
+                    if completions_list and response.completion
                     else (None, None)
                 )
 

@@ -30,6 +30,8 @@ from datura.dataset import QuestionsDataset
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from datura import QUERY_MINERS
 import asyncio
+from datetime import datetime
+import pytz
 from aiostream import stream
 from datura.dataset.date_filters import (
     get_random_date_filter,
@@ -178,7 +180,6 @@ class ScraperValidator:
         tasks: List[TwitterTask],
         strategy=QUERY_MINERS.RANDOM,
         is_only_allowed_miner=True,
-        # is_intro_text=False,
         specified_uids=None,
         date_filter=None,
         tools=[],
@@ -187,6 +188,7 @@ class ScraperValidator:
         google_date_filter="qdr:w",
         response_order=ResponseOrder.SUMMARY_FIRST,
         timeout=60,
+        initial_uids=None,
     ):
         # Record event start time.
         event = {
@@ -200,6 +202,7 @@ class ScraperValidator:
             strategy=strategy,
             is_only_allowed_miner=is_only_allowed_miner,
             specified_uids=specified_uids,
+            initial_uids=initial_uids,
         )
 
         start_date = date_filter.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -338,8 +341,9 @@ class ScraperValidator:
                     f"Applied penalty function: {penalty_fn_i.name} in {penalty_execution_time:.2f} seconds"
                 )
 
-            scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)
-            self.log_event(tasks, event, start_time, uids, rewards)
+            if is_synthetic:
+                scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)
+                self.log_event(tasks, event, start_time, uids, rewards)
 
             scores = torch.zeros(len(self.neuron.metagraph.hotkeys))
             uid_scores_dict = {}
@@ -446,6 +450,46 @@ class ScraperValidator:
 
         bt.logging.debug("Run Task event:", event)
 
+    def get_uids_with_recent_organic_results(self, tools):
+        """Get UIDs that have recent successful organic results with matching tools.
+        
+        Args:
+            tools: List of tools to match against
+            current_time: Current UTC datetime to compare against
+            
+        Returns:
+            Tuple of (uids_with_results, organic_results, organic_rewards)
+        """
+        current_time = datetime.now(pytz.utc)
+        
+        uids_with_recent_results = []
+        recent_organic_results = []
+        recent_organic_rewards = []
+        
+        for uid in self.neuron.available_uids:
+            neuron = next((n for n in self.neuron.metagraph.neurons if n.uid == uid), None)
+            if not neuron:
+                continue
+                
+            hotkey = neuron.hotkey
+            
+            if hotkey in self.organic_query_state.organic_history:
+                for synapse, is_failed, rewards in self.organic_query_state.organic_history[hotkey]:
+                    if set(synapse.tools) == set(tools):
+                        synapse_time = datetime.strptime(
+                            synapse.start_date,
+                            "%Y-%m-%dT%H:%M:%SZ" 
+                        ).replace(tzinfo=pytz.utc)
+                        
+                        time_diff_minutes = (current_time - synapse_time).total_seconds() / 60
+                        if time_diff_minutes <= 30 and not is_failed:
+                            uids_with_recent_results.append(uid)
+                            recent_organic_results.append(synapse)
+                            recent_organic_rewards.append(rewards)
+                            break
+        
+        return uids_with_recent_results, recent_organic_results, recent_organic_rewards
+
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
             if not len(self.neuron.available_uids):
@@ -454,11 +498,19 @@ class ScraperValidator:
 
             dataset = QuestionsDataset()
             tools = random.choice(self.tools)
+            # Get current time in UTC
+            
+                
+            uids_with_recent_results, _, recent_organic_rewards = self.get_uids_with_recent_organic_results(tools)
+
+            bt.logging.info(f"Found {len(uids_with_recent_results)} UIDs with recent organic results using same tools")
+            
+            uids_needing_queries = list(set(self.neuron.available_uids) - set(uids_with_recent_results))
 
             prompts = await asyncio.gather(
                 *[
                     dataset.generate_new_question_with_openai(tools)
-                    for _ in range(len(self.neuron.available_uids))
+                    for _ in range(len(uids_needing_queries))
                 ]
             )
 
@@ -479,6 +531,7 @@ class ScraperValidator:
             max_execution_time = self.get_random_execution_time()
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
+                initial_uids=uids_needing_queries,
                 tasks=tasks,
                 strategy=strategy,
                 is_only_allowed_miner=False,
@@ -498,8 +551,18 @@ class ScraperValidator:
             self.synthetic_history.append(
                 (event, tasks, final_synapses, uids, start_time)
             )
-
-            await self.score_random_synthetic_query()
+                        
+            await self.compute_rewards_and_penalties(
+                event=event,
+                tasks=tasks,
+                responses=final_synapses,
+                uids=uids,
+                start_time=start_time,
+                is_synthetic=True,
+            )
+            
+            self.neuron.update_moving_averaged_scores(uids_with_recent_results, recent_organic_rewards)
+            
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")
             raise e
