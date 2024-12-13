@@ -261,27 +261,31 @@ def clean_template(template):
     return "\n".join(cleaned_lines)
 
 
-def get_system_summary_relevance_scoring_template(tools: List[str]):
-    """Generate the system message for the Summary Relevance Scoring prompt based on tools"""
+def get_system_summary_relevance_scoring_template(tools: List[str], include_summary: bool = True):
+    """Generate the system message for the Summary Relevance Scoring prompt based on tools and summary inclusion."""
 
     links_header_name = ""
     summary_header_name = ""
 
     if "Twitter Search" in tools:
         links_header_name = "**Key Tweets**"
-        summary_header_name = "**Twitter Summary**"
+        summary_header_name = "**Twitter Summary**" if include_summary else ""
     elif "Hacker News Search" in tools:
         links_header_name = "**Key News**"
-        summary_header_name = "**Hacker News Summary**"
+        summary_header_name = "**Hacker News Summary**" if include_summary else ""
     elif "Reddit Search" in tools:
         links_header_name = "**Key Posts**"
-        summary_header_name = "**Reddit Summary**"
+        summary_header_name = "**Reddit Summary**" if include_summary else ""
     else:
         links_header_name = "**Key Sources**"
-        summary_header_name = "**Search Summary**"
+        summary_header_name = "**Search Summary**" if include_summary else ""
 
     answer_rules = f"""
     - "{links_header_name}" must contain markdown links in the format [Description](URL), otherwise score as SM_SCS_RDD.
+    """
+
+    if include_summary:
+        answer_rules += f"""
     - "{summary_header_name}" must contain a summary of the content without links, otherwise score as SM_SCS_RDD.
     - "{summary_header_name}" must not contain links in summary, otherwise score as SM_SCS_RDD.
     - If "{summary_header_name}" contains information that is not related to prompt, score as SM_SCS_RDD.
@@ -322,6 +326,7 @@ def get_system_summary_relevance_scoring_template(tools: List[str]):
     """
 
     return clean_template(template)
+
 
 
 user_summary_relevance_scoring_template = """
