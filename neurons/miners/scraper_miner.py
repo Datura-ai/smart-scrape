@@ -41,13 +41,14 @@ class ScraperMiner:
             date_filter = get_specified_date_filter(DateFilterType.PAST_2_WEEKS)
 
             if synapse.start_date and synapse.end_date and synapse.date_filter_type:
-                start_date = datetime.strptime(
-                    synapse.start_date, "%Y-%m-%dT%H:%M:%SZ"
-                ).replace(tzinfo=pytz.utc)
+                
+                try:
+                    start_date = datetime.strptime(synapse.start_date, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.utc)
+                    end_date = datetime.strptime(synapse.end_date, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=pytz.utc)
+                except ValueError as ve:
+                    bt.logging.error(f"Date parsing error: {ve}")
+                    raise
 
-                end_date = datetime.strptime(
-                    synapse.end_date, "%Y-%m-%dT%H:%M:%SZ"
-                ).replace(tzinfo=pytz.utc)
 
                 date_filter = DateFilter(
                     start_date=start_date,

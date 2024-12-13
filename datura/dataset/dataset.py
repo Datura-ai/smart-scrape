@@ -10,8 +10,26 @@ import html
 from datura.utils import call_openai
 from faker import Faker
 from faker.providers import company, address, person, lorem, geo
-
+import functools
+import asyncio
 # import json
+
+def retry(exceptions, tries=4, delay=3, backoff=2):
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            _tries, _delay = tries, delay
+            while _tries > 1:
+                try:
+                    return await func(*args, **kwargs)
+                except exceptions as e:
+                    bt.logging.warning(f"{e}, Retrying in {_delay} seconds...")
+                    await asyncio.sleep(_delay)
+                    _tries -= 1
+                    _delay *= backoff
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 class MockTwitterQuestionsDataset:
@@ -1371,7 +1389,17 @@ class QuestionsDataset:
             lambda: self.faker.words(count={"min": 5, "max": 10}),
         ]
 
+    @retry(Exception, tries=4, delay=3, backoff=2)
     async def generate_new_question_with_openai(self, selected_tools):
+        """
+        Generate a new question using OpenAI API with retry mechanism.
+
+        Args:
+            selected_tools (list): List of tools to include in the prompt.
+
+        Returns:
+            str: Generated question or original question on failure.
+        """
         # Select a random dataset and get the next question
         original_question = self.next()
 
@@ -1408,7 +1436,6 @@ class QuestionsDataset:
                       - Don't use hashtags.
                       - Don't include the source Tool API provider in the question, such as {tools}.
                       """
-        # bt.logging.warning(f"Topic: {topic}")
 
         try:
             # Make the call to OpenAI with the new question
@@ -1418,13 +1445,12 @@ class QuestionsDataset:
                 model="gpt-4o-mini",
                 seed=None,
             )
-            # bt.logging.warning(f"{word1}, {word2}, {word3} --- {new_question.strip()}")
             # Check if new_question is None or an empty string
             if not new_question:
                 return original_question
             return new_question.strip()
         except Exception as e:
-            print(f"Failed to call OpenAI: {e}")
+            bt.logging.error(f"Failed to call OpenAI: {e}")
             return original_question
 
     def next(self):

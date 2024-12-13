@@ -27,7 +27,6 @@ from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask, SearchTask
 
 from datura.dataset import QuestionsDataset
-from datura.services.twitter_api_wrapper import TwitterAPIClient
 from datura import QUERY_MINERS
 import asyncio
 from aiostream import stream
@@ -324,7 +323,7 @@ class ScraperValidator:
 
             for penalty_fn_i in self.penalty_functions:
                 raw_penalty_i, adjusted_penalty_i, applied_penalty_i = (
-                    penalty_fn_i.apply_penalties(responses, tasks)
+                    penalty_fn_i.calculate_penalties(responses, tasks)
                 )
                 penalty_start_time = time.time()
                 rewards *= applied_penalty_i.to(self.neuron.config.neuron.device)
@@ -343,7 +342,7 @@ class ScraperValidator:
                 scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)
             else:
                 scattered_rewards = rewards
-                
+
             self.log_event(tasks, event, start_time, uids, rewards)
 
             scores = torch.zeros(len(self.neuron.metagraph.hotkeys))
@@ -438,6 +437,7 @@ class ScraperValidator:
         except Exception as e:
             bt.logging.error(f"Error in compute_rewards_and_penalties: {e}")
             raise e
+
 
     def log_event(self, tasks, event, start_time, uids, rewards):
         event.update(

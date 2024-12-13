@@ -16,9 +16,7 @@ from openai import OpenAI
 from functools import partial
 from collections import deque
 from openai import AsyncOpenAI
-from starlette.types import Send
 from abc import ABC, abstractmethod
-from transformers import GPT2Tokenizer
 from neurons.miners.config import get_config, check_config
 from typing import List, Dict, Tuple
 
@@ -252,11 +250,6 @@ class StreamMiner(ABC):
     @classmethod
     @abstractmethod
     def add_args(cls, parser: argparse.ArgumentParser): ...
-
-    async def _smart_scraper(
-        self, synapse: ScraperStreamingSynapse
-    ) -> ScraperStreamingSynapse:
-        return self.smart_scraper(synapse)
 
     def _is_alive(self, synapse: IsAlive) -> IsAlive:
         bt.logging.info("answered to be active")

@@ -17,8 +17,6 @@
 # DEALINGS IN THE SOFTWARE.
 
 import time
-import math
-import hashlib as rpccheckhealth
 from math import floor
 from typing import Callable, Any
 from functools import lru_cache, update_wrapper

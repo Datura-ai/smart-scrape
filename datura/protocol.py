@@ -3,9 +3,7 @@ import bittensor as bt
 import typing
 import json
 import asyncio
-from datetime import datetime
-from abc import ABC, abstractmethod
-from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
+from typing import List, Dict, Optional, Any
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -279,6 +277,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     text_chunks: Optional[Dict[str, List[str]]] = pydantic.Field(
         default_factory=dict,
         title="Text Chunks",
+    )
+
+    elapsed_time: Optional[float] = pydantic.Field(
+        None,
+        title="Elapsed Time",
+        description="Total time in seconds taken to generate the response.",
     )
 
     @property
