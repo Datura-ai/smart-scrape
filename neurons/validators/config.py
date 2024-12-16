@@ -54,8 +54,11 @@ def check_config(cls, config: "bt.Config"):
         os.makedirs(config.neuron.full_path, exist_ok=True)
 
     if not config.neuron.dont_save_events:
-        # Add custom event logger for the events.
-        logger.level("EVENTS", no=38, icon="📝")
+        # Check if "EVENTS" level already exists before adding it
+        if "EVENTS" not in [level.name for level in logger._core.levels.values()]:
+            logger.level("EVENTS", no=38, icon="📝")
+        
+        # Add logging configuration for "EVENTS"
         logger.add(
             config.neuron.full_path + "/" + "completions.log",
             rotation=config.neuron.events_retention_size,

@@ -38,6 +38,8 @@ from datura.dataset.date_filters import (
 )
 from neurons.validators.organic_query_state import OrganicQueryState
 from neurons.validators.penalty.streaming_penalty import StreamingPenaltyModel
+from neurons.validators.penalty.exponential_penalty import ExponentialTimePenaltyModel
+
 
 
 class ScraperValidator:
@@ -166,6 +168,7 @@ class ScraperValidator:
 
         self.penalty_functions = [
             StreamingPenaltyModel(max_penalty=1),
+            ExponentialTimePenaltyModel(max_penalty=1),
         ]
 
     def get_random_execution_time(self):
