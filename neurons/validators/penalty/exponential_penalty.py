@@ -33,14 +33,6 @@ class ExponentialTimePenaltyModel(BasePenaltyModel):
         for index, response in enumerate(responses):
             process_time = getattr(response.dendrite, "process_time", None)
 
-            if process_time is None:
-                # Apply maximum penalty if process_time is missing
-                bt.logging.warning(
-                    f"Process time is missing for response {index}, applying maximum penalty."
-                )
-                penalties[index] = MAX_PENALTY
-                continue
-
             if process_time <= max_execution_time:
                 # Exponential bonus for tasks within the max execution time
                 normalized_time = process_time / max_execution_time
