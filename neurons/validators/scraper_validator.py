@@ -725,7 +725,7 @@ class ScraperValidator:
                 region=self.region,
                 date_filter=date_filter,
                 google_date_filter=self.date_filter,
-                model=model
+                model=model,
                 response_order=response_order,
             )
 
