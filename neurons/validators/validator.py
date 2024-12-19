@@ -284,15 +284,15 @@ class Neuron(AbstractNeuron):
             bt.logging.error(f"Error in update_moving_averaged_scores: {e}")
             raise e
 
-    async def query_synapse(self, strategy=QUERY_MINERS.RANDOM):
+    async def query_synapse(self, strategy=QUERY_MINERS.RANDOM, model: str = None):
         try:
             # self.metagraph = self.subtensor.metagraph(netuid=self.config.netuid)
-            await self.scraper_validator.query_and_score(strategy)
+            await self.scraper_validator.query_and_score(strategy, model)
         except Exception as e:
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(100)
 
-    async def run_synthetic_queries(self, strategy=QUERY_MINERS.RANDOM):
+    async def run_synthetic_queries(self, strategy=QUERY_MINERS.RANDOM, model: str = None):
         bt.logging.info(f"Starting run_synthetic_queries with strategy={strategy}")
         total_start_time = time.time()
         try:
@@ -302,7 +302,7 @@ class Neuron(AbstractNeuron):
                 bt.logging.info(
                     f"Running step forward for query_synapse, Step: {self.step}"
                 )
-                coroutines = [self.query_synapse(strategy) for _ in range(1)]
+                coroutines = [self.query_synapse(strategy, model) for _ in range(1)]
                 await asyncio.gather(*coroutines)
                 end_time = time.time()
                 bt.logging.info(
@@ -446,7 +446,7 @@ class Neuron(AbstractNeuron):
 
         try:
 
-            async def run_with_interval(interval, strategy):
+            async def run_with_interval(interval, strategy, model: str = None):
                 query_count = 0  # Initialize query count
                 while True:
                     try:
@@ -456,7 +456,7 @@ class Neuron(AbstractNeuron):
                             )
                             await asyncio.sleep(10)
                             continue
-                        self.loop.create_task(self.run_synthetic_queries(strategy))
+                        self.loop.create_task(self.run_synthetic_queries(strategy, model))
 
                         await asyncio.sleep(
                             interval
