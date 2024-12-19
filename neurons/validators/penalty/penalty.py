@@ -64,3 +64,4 @@ class PenaltyModelType(Enum):
     accuracy_match_penalty = "accuracy_match_penalty"
     link_validation_penalty = "link_validation_penalty"
     streaming_penalty = "streaming_penalty"
+    exponential_penalty = "exponential_penalty"
