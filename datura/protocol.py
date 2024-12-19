@@ -134,11 +134,11 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     #     description="Seed for text generation. This attribute is immutable and cannot be updated.",
     # )
 
-    # model: Optional[str] = pydantic.Field(
-    #     "",
-    #     title="model",
-    #     description="The model that which to use when calling openai for your response.",
-    # )
+    model: Optional[str] = pydantic.Field(
+        "",
+        title="model",
+        description="The model that which to use when calling openai for your response.",
+     )
 
     tools: Optional[List[str]] = pydantic.Field(
         default_factory=list,
@@ -307,6 +307,12 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         None,
         title="Max Results",
         description="The maximum number of results to be returned per query",
+    )
+
+    type: Optional[str] = pydantic.Field(
+        "",
+        title="Type",
+        description="Query indicator, organic or synthetic",
     )
 
     def set_tweets(self, data: any):

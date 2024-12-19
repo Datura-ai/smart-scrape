@@ -351,7 +351,7 @@ async def save_logs_in_chunks(
     neuron,
     netuid,
     organic_penalties,
-    query_type = "organic"
+    query_type,
 ):
     try:
         logs = [
@@ -424,7 +424,8 @@ async def save_logs_in_chunks(
                 "time": response.dendrite.process_time,
                 "organic_penalty": organic_penalty,
                 "max_execution_time": response.max_execution_time,
-                "type": query_type
+                "type": query_type,
+                "model": response.model
             }
             for response, uid, reward, summary_reward, twitter_reward, search_reward, performance_reward, original_summary_reward, original_twitter_reward, original_search_reward, original_performance_reward, tweet_score, search_score, summary_link_score, organic_penalty in zip(
                 responses,
