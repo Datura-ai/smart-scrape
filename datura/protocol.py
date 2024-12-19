@@ -309,9 +309,9 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="The maximum number of results to be returned per query",
     )
 
-    type: Optional[str] = pydantic.Field(
+    query_type: Optional[str] = pydantic.Field(
         "",
-        title="Type",
+        title="Query Type",
         description="Query indicator, organic or synthetic",
     )
 

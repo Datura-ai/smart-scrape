@@ -186,6 +186,7 @@ class ScraperValidator:
         google_date_filter="qdr:w",
         response_order=ResponseOrder.SUMMARY_FIRST,
         model: str = None,
+        is_synthetic=False,
     ):
         
         if model is None:
@@ -204,6 +205,8 @@ class ScraperValidator:
         }
         start_time = time.time()
 
+        query_type = "synthetic" if is_synthetic else "organic"
+
         # Get random id on that step
         uids = await self.neuron.get_uids(
             strategy=strategy,
@@ -218,7 +221,6 @@ class ScraperValidator:
         synapses = [
             ScraperStreamingSynapse(
                 prompt=task.compose_prompt(),
-                model=model_enum,
                 seed=self.seed,
                 start_date=start_date,
                 end_date=end_date,
@@ -228,7 +230,9 @@ class ScraperValidator:
                 region=region,
                 google_date_filter=google_date_filter,
                 response_order=response_order.value,
-                max_execution_time=max_execution_time
+                max_execution_time=max_execution_time,
+                model=model_enum,
+                query_type = query_type
             )
             for task in tasks
         ]
@@ -514,6 +518,7 @@ class ScraperValidator:
                 region=self.region,
                 google_date_filter=self.date_filter,
                 model= model,
+                is_synthetic=True
             )
 
             final_synapses = await collect_final_synapses(
@@ -623,7 +628,8 @@ class ScraperValidator:
                 specified_uids=specified_uids,
                 response_order=response_order,
                 max_execution_time = max_execution_time,
-                model=model
+                model=model,
+                is_synthetic=False, 
 
             )
 
@@ -655,6 +661,7 @@ class ScraperValidator:
                     responses=final_synapses,
                     uids=uids,
                     start_time=start_time,
+                    is_synthetic=False
                 )
 
                 if not is_interval_query:
@@ -721,6 +728,7 @@ class ScraperValidator:
                 date_filter=date_filter,
                 google_date_filter=self.date_filter,
                 response_order=response_order,
+                is_synthetic=False, 
             )
 
             async def stream_response(uid, async_response):
