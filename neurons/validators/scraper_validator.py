@@ -676,7 +676,7 @@ class ScraperValidator:
                 formatted_scores.append("{}")  # Empty dictionary
         return "\n".join(formatted_scores)
 
-    async def organic_specified(self, query, specified_uids=None):
+    async def organic_specified(self, query, specified_uids=None, model: str = None):
         if not len(self.neuron.available_uids):
             bt.logging.info("Not available uids")
             raise StopAsyncIteration("Not available uids")
@@ -687,6 +687,11 @@ class ScraperValidator:
             )
 
         try:
+            # Default model if none provided
+            if model is None:
+                model = "NOVA"
+
+            model_enum = Model(model)
             prompt = query["content"]
             tools = query.get("tools", [])
             date_filter_type = query.get(
@@ -720,6 +725,7 @@ class ScraperValidator:
                 region=self.region,
                 date_filter=date_filter,
                 google_date_filter=self.date_filter,
+                model=model
                 response_order=response_order,
             )
 
