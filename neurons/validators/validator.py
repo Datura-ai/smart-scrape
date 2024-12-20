@@ -12,7 +12,7 @@ import time
 import sys
 from typing import List
 import substrateinterface
-from datura.protocol import IsAlive
+from datura.protocol import IsAlive, Model
 from neurons.validators.scraper_validator import ScraperValidator
 from config import add_args, check_config, config
 from weights import init_wandb, set_weights, get_weights
@@ -22,6 +22,7 @@ from datura import QUERY_MINERS
 from datura.misc import ttl_get_block
 from datura.utils import resync_metagraph, save_logs_in_chunks
 from neurons.validators.proxy.uid_manager import UIDManager
+from typing import Optional
 
 
 class Neuron(AbstractNeuron):
@@ -284,15 +285,15 @@ class Neuron(AbstractNeuron):
             bt.logging.error(f"Error in update_moving_averaged_scores: {e}")
             raise e
 
-    async def query_synapse(self, strategy=QUERY_MINERS.RANDOM):
+    async def query_synapse(self, strategy=QUERY_MINERS.RANDOM, model: Optional[Model] = None):
         try:
             # self.metagraph = self.subtensor.metagraph(netuid=self.config.netuid)
-            await self.scraper_validator.query_and_score(strategy)
+            await self.scraper_validator.query_and_score(strategy, model)
         except Exception as e:
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(100)
 
-    async def run_synthetic_queries(self, strategy=QUERY_MINERS.RANDOM):
+    async def run_synthetic_queries(self, strategy=QUERY_MINERS.RANDOM, model: Optional[Model] = None):
         bt.logging.info(f"Starting run_synthetic_queries with strategy={strategy}")
         total_start_time = time.time()
         try:
@@ -302,7 +303,7 @@ class Neuron(AbstractNeuron):
                 bt.logging.info(
                     f"Running step forward for query_synapse, Step: {self.step}"
                 )
-                coroutines = [self.query_synapse(strategy) for _ in range(1)]
+                coroutines = [self.query_synapse(strategy, model) for _ in range(1)]
                 await asyncio.gather(*coroutines)
                 end_time = time.time()
                 bt.logging.info(
@@ -350,7 +351,7 @@ class Neuron(AbstractNeuron):
 
         async for _ in self.scraper_validator.organic(
             query=query,
-            max_execution_time=synapse.max_execution_time,
+            model=synapse.model,
             random_synapse=synapse,
             random_uid=synapse_uid,
             specified_uids=specified_uids,
@@ -446,7 +447,7 @@ class Neuron(AbstractNeuron):
 
         try:
 
-            async def run_with_interval(interval, strategy):
+            async def run_with_interval(interval, strategy, model: Optional[Model] = None):
                 query_count = 0  # Initialize query count
                 while True:
                     try:
@@ -456,7 +457,7 @@ class Neuron(AbstractNeuron):
                             )
                             await asyncio.sleep(10)
                             continue
-                        self.loop.create_task(self.run_synthetic_queries(strategy))
+                        self.loop.create_task(self.run_synthetic_queries(strategy, model))
 
                         await asyncio.sleep(
                             interval
