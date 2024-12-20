@@ -12,7 +12,7 @@ from datura.protocol import (
 )
 from datura.stream import collect_final_synapses
 from reward import RewardModelType, RewardScoringType
-from typing import List
+from typing import List, Optional
 from utils.mock import MockRewardModel
 import time
 from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
@@ -44,7 +44,6 @@ from datura.protocol import Model
 
 class ScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
-        #self.model = "gpt-3.5-turbo-0125"
         self.seed = 1234
         self.neuron = neuron
         self.timeout = 180
@@ -185,18 +184,16 @@ class ScraperValidator:
         region="us",
         google_date_filter="qdr:w",
         response_order=ResponseOrder.SUMMARY_FIRST,
-        model: str = None,
+        model: Optional[Model] = None,
         is_synthetic=False,
     ):
         
         if model is None:
-            model = "NOVA"
+            model = Model.NOVA
 
-        # Convert to Model enum
-        model_enum = Model(model)
-        # Get numeric timeout from the model
+
         from neurons.validators.api import get_max_execution_time
-        max_execution_time = get_max_execution_time(model_enum)
+        max_execution_time = get_max_execution_time(model)
 
         # Record event start time.
         event = {
@@ -221,6 +218,7 @@ class ScraperValidator:
         synapses = [
             ScraperStreamingSynapse(
                 prompt=task.compose_prompt(),
+                model=model,
                 seed=self.seed,
                 start_date=start_date,
                 end_date=end_date,
@@ -231,7 +229,6 @@ class ScraperValidator:
                 google_date_filter=google_date_filter,
                 response_order=response_order.value,
                 max_execution_time=max_execution_time,
-                model=model_enum.value,
                 query_type = query_type
             )
             for task in tasks
@@ -262,7 +259,7 @@ class ScraperValidator:
                     for axon, synapse in zip(axon_group, synapse_group)
                 ]
             )
-
+        
         return async_responses, uids, event, start_time
 
     async def compute_rewards_and_penalties(
@@ -464,20 +461,17 @@ class ScraperValidator:
 
         bt.logging.debug("Run Task event:", event)
 
-    async def query_and_score(self, strategy=QUERY_MINERS.RANDOM, model: str = None):
+    async def query_and_score(self, strategy=QUERY_MINERS.RANDOM, model: Optional[Model] = None):
         try:
             # Default model if none provided
             if model is None:
-                model = "NOVA"
+                model = Model.NOVA
 
-            # Convert to Model enum
-            model_enum = Model(model)
-            # Get numeric timeout from the model
 
             #lazy import that function should be in another .py file
             from neurons.validators.api import get_max_execution_time
 
-            max_execution_time = get_max_execution_time(model_enum)  
+            max_execution_time = get_max_execution_time(model)  
 
             if not len(self.neuron.available_uids):
                 bt.logging.info("No available UIDs, skipping task execution.")
@@ -517,13 +511,15 @@ class ScraperValidator:
                 language=self.language,
                 region=self.region,
                 google_date_filter=self.date_filter,
-                model= model_enum.value,
+                model= model,
                 is_synthetic=True
             )
 
             final_synapses = await collect_final_synapses(
                 async_responses, uids, start_time, max_execution_time
             )
+
+            bt.logging.debug(f"Async responses: {async_responses}")
 
             # Store final synapses for scoring later
             self.synthetic_history.append(
@@ -537,7 +533,7 @@ class ScraperValidator:
 
     async def score_random_synthetic_query(self):
         # Collect synthetic queries and score randomly
-        synthetic_queries_collection_size = 1
+        synthetic_queries_collection_size = 3
 
         if len(self.synthetic_history) < synthetic_queries_collection_size:
             bt.logging.info(
@@ -566,7 +562,7 @@ class ScraperValidator:
     async def organic(
         self,
         query,
-        model: str = None,
+        model: Optional[Model] = None,
         random_synapse: ScraperStreamingSynapse = None,
         random_uid=None,
         specified_uids=None,
@@ -577,14 +573,13 @@ class ScraperValidator:
 
         # Default to NOVA if no executive_time_model provided
         if model is None:
-            model = "NOVA"
+            model = Model.NOVA
 
-        # Convert to Model enum
-        model_enum = Model(model)
+
         # Get numeric timeout from the model
         from neurons.validators.api import get_max_execution_time
 
-        max_execution_time = get_max_execution_time(model_enum)   
+        max_execution_time = get_max_execution_time(model)   
 
         if not len(self.neuron.available_uids):
             bt.logging.info("Not available uids")
@@ -628,7 +623,7 @@ class ScraperValidator:
                 specified_uids=specified_uids,
                 response_order=response_order,
                 max_execution_time = max_execution_time,
-                model=model_enum.value,
+                model=model,
                 is_synthetic=False, 
 
             )
@@ -683,7 +678,7 @@ class ScraperValidator:
                 formatted_scores.append("{}")  # Empty dictionary
         return "\n".join(formatted_scores)
 
-    async def organic_specified(self, query, specified_uids=None):
+    async def organic_specified(self, query, specified_uids=None, model: Optional[Model] = None):
         if not len(self.neuron.available_uids):
             bt.logging.info("Not available uids")
             raise StopAsyncIteration("Not available uids")
@@ -694,6 +689,10 @@ class ScraperValidator:
             )
 
         try:
+            # Default model if none provided
+            if model is None:
+                model = Model.NOVA
+
             prompt = query["content"]
             tools = query.get("tools", [])
             date_filter_type = query.get(
@@ -727,6 +726,7 @@ class ScraperValidator:
                 region=self.region,
                 date_filter=date_filter,
                 google_date_filter=self.date_filter,
+                model=model,
                 response_order=response_order,
                 is_synthetic=False, 
             )

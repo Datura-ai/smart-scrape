@@ -351,7 +351,7 @@ async def save_logs_in_chunks(
     neuron,
     netuid,
     organic_penalties,
-    query_type,
+    query_type
 ):
     try:
         logs = [
@@ -424,7 +424,7 @@ async def save_logs_in_chunks(
                 "time": response.dendrite.process_time,
                 "organic_penalty": organic_penalty,
                 "max_execution_time": response.max_execution_time,
-                "type": query_type,
+                "query_type": query_type,
                 "model": response.model,
                 "language": response.language,
                 "region": response.region,
@@ -451,7 +451,7 @@ async def save_logs_in_chunks(
 
         for idx, log in enumerate(logs, start=1):
             bt.logging.debug(f"Log Entry {idx} - max_execution_time: {log.get('max_execution_time')}, "
-                             f"type: {log.get('type')}, model: {log.get('model')}, "
+                             f"query_type: {log.get('query_type')}, model: {log.get('model')}, "
                              f"language: {log.get('language')}, region: {log.get('region')}, "
                              f"max_items: {log.get('max_items')}")
         chunk_size = 20

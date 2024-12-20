@@ -134,12 +134,11 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     #     description="Seed for text generation. This attribute is immutable and cannot be updated.",
     # )
 
-    model: str = pydantic.Field(
-        "NOVA",
+    model: Model = pydantic.Field(
+        Model.NOVA,
         title="model",
-        description="The model that which to use when calling OpenAI for your response.",
+        description="The model to define the max execution time.",
     )
-
 
     tools: Optional[List[str]] = pydantic.Field(
         default_factory=list,
@@ -311,7 +310,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
     )
 
     query_type: Optional[str] = pydantic.Field(
-        "",
+        None,
         title="Query Type",
         description="Query indicator, organic or synthetic",
     )
