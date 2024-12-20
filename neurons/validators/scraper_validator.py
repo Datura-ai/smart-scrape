@@ -12,7 +12,7 @@ from datura.protocol import (
 )
 from datura.stream import collect_final_synapses
 from reward import RewardModelType, RewardScoringType
-from typing import List
+from typing import List, Optional
 from utils.mock import MockRewardModel
 import time
 from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
@@ -185,17 +185,15 @@ class ScraperValidator:
         region="us",
         google_date_filter="qdr:w",
         response_order=ResponseOrder.SUMMARY_FIRST,
-        model: str = None,
+        model: Optional[Model] = None
     ):
         
         if model is None:
-            model = "NOVA"
+            model = Model.NOVA
 
-        # Convert to Model enum
-        model_enum = Model(model)
-        # Get numeric timeout from the model
+
         from neurons.validators.api import get_max_execution_time
-        max_execution_time = get_max_execution_time(model_enum)
+        max_execution_time = get_max_execution_time(model)
 
         # Record event start time.
         event = {
@@ -218,7 +216,7 @@ class ScraperValidator:
         synapses = [
             ScraperStreamingSynapse(
                 prompt=task.compose_prompt(),
-                model=model_enum,
+                model=model,
                 seed=self.seed,
                 start_date=start_date,
                 end_date=end_date,
@@ -460,20 +458,17 @@ class ScraperValidator:
 
         bt.logging.debug("Run Task event:", event)
 
-    async def query_and_score(self, strategy=QUERY_MINERS.RANDOM, model: str = None):
+    async def query_and_score(self, strategy=QUERY_MINERS.RANDOM, model: Optional[Model] = None):
         try:
             # Default model if none provided
             if model is None:
-                model = "NOVA"
+                model = Model.NOVA
 
-            # Convert to Model enum
-            model_enum = Model(model)
-            # Get numeric timeout from the model
 
             #lazy import that function should be in another .py file
             from neurons.validators.api import get_max_execution_time
 
-            max_execution_time = get_max_execution_time(model_enum)  
+            max_execution_time = get_max_execution_time(model)  
 
             if not len(self.neuron.available_uids):
                 bt.logging.info("No available UIDs, skipping task execution.")
@@ -561,7 +556,7 @@ class ScraperValidator:
     async def organic(
         self,
         query,
-        model: str = None,
+        model: Optional[Model] = None,
         random_synapse: ScraperStreamingSynapse = None,
         random_uid=None,
         specified_uids=None,
@@ -572,14 +567,13 @@ class ScraperValidator:
 
         # Default to NOVA if no executive_time_model provided
         if model is None:
-            model = "NOVA"
+            model = Model.NOVA
 
-        # Convert to Model enum
-        model_enum = Model(model)
+
         # Get numeric timeout from the model
         from neurons.validators.api import get_max_execution_time
 
-        max_execution_time = get_max_execution_time(model_enum)   
+        max_execution_time = get_max_execution_time(model)   
 
         if not len(self.neuron.available_uids):
             bt.logging.info("Not available uids")
@@ -676,7 +670,7 @@ class ScraperValidator:
                 formatted_scores.append("{}")  # Empty dictionary
         return "\n".join(formatted_scores)
 
-    async def organic_specified(self, query, specified_uids=None, model: str = None):
+    async def organic_specified(self, query, specified_uids=None, model: Optional[Model] = None):
         if not len(self.neuron.available_uids):
             bt.logging.info("Not available uids")
             raise StopAsyncIteration("Not available uids")
@@ -689,9 +683,8 @@ class ScraperValidator:
         try:
             # Default model if none provided
             if model is None:
-                model = "NOVA"
+                model = Model.NOVA
 
-            model_enum = Model(model)
             prompt = query["content"]
             tools = query.get("tools", [])
             date_filter_type = query.get(
