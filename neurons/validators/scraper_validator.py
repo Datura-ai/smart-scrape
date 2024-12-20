@@ -44,7 +44,6 @@ from datura.protocol import Model
 
 class ScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
-        #self.model = "gpt-3.5-turbo-0125"
         self.seed = 1234
         self.neuron = neuron
         self.timeout = 180
