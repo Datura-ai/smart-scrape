@@ -231,7 +231,7 @@ class ScraperValidator:
                 google_date_filter=google_date_filter,
                 response_order=response_order.value,
                 max_execution_time=max_execution_time,
-                model=model_enum,
+                model=model_enum.value,
                 query_type = query_type
             )
             for task in tasks
@@ -517,7 +517,7 @@ class ScraperValidator:
                 language=self.language,
                 region=self.region,
                 google_date_filter=self.date_filter,
-                model= model,
+                model= model_enum.value,
                 is_synthetic=True
             )
 
@@ -537,7 +537,7 @@ class ScraperValidator:
 
     async def score_random_synthetic_query(self):
         # Collect synthetic queries and score randomly
-        synthetic_queries_collection_size = 3
+        synthetic_queries_collection_size = 1
 
         if len(self.synthetic_history) < synthetic_queries_collection_size:
             bt.logging.info(
@@ -628,7 +628,7 @@ class ScraperValidator:
                 specified_uids=specified_uids,
                 response_order=response_order,
                 max_execution_time = max_execution_time,
-                model=model,
+                model=model_enum.value,
                 is_synthetic=False, 
 
             )
