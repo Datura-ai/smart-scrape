@@ -40,7 +40,7 @@ from neurons.validators.organic_query_state import OrganicQueryState
 from neurons.validators.penalty.streaming_penalty import StreamingPenaltyModel
 from neurons.validators.penalty.exponential_penalty import ExponentialTimePenaltyModel
 from datura.protocol import Model
-
+from datura.utils import get_max_execution_time
 
 class ScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
@@ -191,7 +191,6 @@ class ScraperValidator:
             model = Model.NOVA
 
 
-        from neurons.validators.api import get_max_execution_time
         max_execution_time = get_max_execution_time(model)
 
         # Record event start time.
@@ -463,10 +462,6 @@ class ScraperValidator:
             if model is None:
                 model = Model.NOVA
 
-
-            #lazy import that function should be in another .py file
-            from neurons.validators.api import get_max_execution_time
-
             max_execution_time = get_max_execution_time(model)  
 
             if not len(self.neuron.available_uids):
@@ -526,7 +521,7 @@ class ScraperValidator:
 
     async def score_random_synthetic_query(self):
         # Collect synthetic queries and score randomly
-        synthetic_queries_collection_size = 3
+        synthetic_queries_collection_size = 1
 
         if len(self.synthetic_history) < synthetic_queries_collection_size:
             bt.logging.info(
@@ -567,10 +562,6 @@ class ScraperValidator:
         # Default to NOVA if no executive_time_model provided
         if model is None:
             model = Model.NOVA
-
-
-        # Get numeric timeout from the model
-        from neurons.validators.api import get_max_execution_time
 
         max_execution_time = get_max_execution_time(model)   
 
