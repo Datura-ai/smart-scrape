@@ -606,7 +606,6 @@ class ScraperValidator:
                 google_date_filter=self.date_filter,
                 specified_uids=specified_uids,
                 response_order=response_order,
-                max_execution_time = max_execution_time,
                 model=model
 
             )
