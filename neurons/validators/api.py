@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, Header
 from datura.dataset.tool_return import ResponseOrder
 from datura.dataset.date_filters import DateFilterType
 from datura.protocol import Model
+from datura.utils import get_max_execution_time
 import uvicorn
 import bittensor as bt
 import traceback
@@ -97,14 +98,6 @@ Request Body Fields:
 {fields}
 """
 
-
-def get_max_execution_time(model: Model):
-    if model == Model.NOVA:
-        return 15
-    elif model == Model.ORBIT:
-        return 30
-    elif model == Model.HORIZON:
-        return 120
 
 
 async def response_stream_event(data: SearchRequest):
