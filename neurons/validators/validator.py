@@ -285,15 +285,15 @@ class Neuron(AbstractNeuron):
             bt.logging.error(f"Error in update_moving_averaged_scores: {e}")
             raise e
 
-    async def query_synapse(self, strategy=QUERY_MINERS.RANDOM, model: Optional[Model] = None):
+    async def query_synapse(self, strategy=QUERY_MINERS.RANDOM,):
         try:
             # self.metagraph = self.subtensor.metagraph(netuid=self.config.netuid)
-            await self.scraper_validator.query_and_score(strategy, model)
+            await self.scraper_validator.query_and_score(strategy)
         except Exception as e:
             bt.logging.error(f"General exception: {e}\n{traceback.format_exc()}")
             await asyncio.sleep(100)
 
-    async def run_synthetic_queries(self, strategy=QUERY_MINERS.RANDOM, model: Optional[Model] = None):
+    async def run_synthetic_queries(self, strategy=QUERY_MINERS.RANDOM):
         bt.logging.info(f"Starting run_synthetic_queries with strategy={strategy}")
         total_start_time = time.time()
         try:
@@ -303,7 +303,7 @@ class Neuron(AbstractNeuron):
                 bt.logging.info(
                     f"Running step forward for query_synapse, Step: {self.step}"
                 )
-                coroutines = [self.query_synapse(strategy, model) for _ in range(1)]
+                coroutines = [self.query_synapse(strategy) for _ in range(1)]
                 await asyncio.gather(*coroutines)
                 end_time = time.time()
                 bt.logging.info(
@@ -395,7 +395,7 @@ class Neuron(AbstractNeuron):
             await asyncio.sleep(60)
 
     def check_registered(self):
-        # --- Check for registration.
+        # --- Check for registration.x
         if not self.subtensor.is_hotkey_registered(
             netuid=self.config.netuid,
             hotkey_ss58=self.wallet.hotkey.ss58_address,
@@ -447,7 +447,7 @@ class Neuron(AbstractNeuron):
 
         try:
 
-            async def run_with_interval(interval, strategy, model: Optional[Model] = None):
+            async def run_with_interval(interval, strategy):
                 query_count = 0  # Initialize query count
                 while True:
                     try:
@@ -457,7 +457,7 @@ class Neuron(AbstractNeuron):
                             )
                             await asyncio.sleep(10)
                             continue
-                        self.loop.create_task(self.run_synthetic_queries(strategy, model))
+                        self.loop.create_task(self.run_synthetic_queries(strategy))
 
                         await asyncio.sleep(
                             interval

@@ -47,7 +47,7 @@ class ScraperValidator:
         self.seed = 1234
         self.neuron = neuron
         self.timeout = 180
-        self.execution_time_options = [10, 30, 120]
+        self.execution_time_options = [Model.NOVA, Model.ORBIT, Model.HORIZON]
         self.execution_time_probabilities = [0.8, 0.1, 0.1]
 
         self.tools = [
@@ -169,6 +169,11 @@ class ScraperValidator:
             StreamingPenaltyModel(max_penalty=1),
             ExponentialTimePenaltyModel(max_penalty=1),
         ]
+
+    def get_random_execution_time(self):
+        return random.choices(
+            self.execution_time_options, self.execution_time_probabilities
+        )[0]
 
 
     async def run_task_and_score(
@@ -456,13 +461,8 @@ class ScraperValidator:
 
         bt.logging.debug("Run Task event:", event)
 
-    async def query_and_score(self, strategy=QUERY_MINERS.RANDOM, model: Optional[Model] = None):
+    async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
-            # Default model if none provided
-            if model is None:
-                model = Model.NOVA
-
-            max_execution_time = get_max_execution_time(model)  
 
             if not len(self.neuron.available_uids):
                 bt.logging.info("No available UIDs, skipping task execution.")
@@ -492,6 +492,8 @@ class ScraperValidator:
                 f"Query and score running with prompts: {prompts} and tools: {tools}"
             )
 
+            random_model = self.get_random_execution_time()
+            max_execution_time = get_max_execution_time(random_model)   
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 tasks=tasks,
@@ -502,7 +504,7 @@ class ScraperValidator:
                 language=self.language,
                 region=self.region,
                 google_date_filter=self.date_filter,
-                model= model,
+                model = random_model
             )
 
             final_synapses = await collect_final_synapses(
