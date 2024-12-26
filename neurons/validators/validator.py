@@ -395,7 +395,7 @@ class Neuron(AbstractNeuron):
             await asyncio.sleep(60)
 
     def check_registered(self):
-        # --- Check for registration.x
+        # --- Check for registration
         if not self.subtensor.is_hotkey_registered(
             netuid=self.config.netuid,
             hotkey_ss58=self.wallet.hotkey.ss58_address,
@@ -498,8 +498,7 @@ class Neuron(AbstractNeuron):
 
             three_hours_in_seconds = 10800
             self.loop.create_task(run_organic_with_interval(three_hours_in_seconds))
-            while True:
-                await asyncio.sleep(10)
+
         except KeyboardInterrupt:
             self.axon.stop()
             bt.logging.success("Validator killed by keyboard interrupt.")
