@@ -523,7 +523,7 @@ class ScraperValidator:
 
     async def score_random_synthetic_query(self):
         # Collect synthetic queries and score randomly
-        synthetic_queries_collection_size = 1
+        synthetic_queries_collection_size = 3
 
         if len(self.synthetic_history) < synthetic_queries_collection_size:
             bt.logging.info(
