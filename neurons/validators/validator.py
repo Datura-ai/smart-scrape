@@ -285,7 +285,7 @@ class Neuron(AbstractNeuron):
             bt.logging.error(f"Error in update_moving_averaged_scores: {e}")
             raise e
 
-    async def query_synapse(self, strategy=QUERY_MINERS.RANDOM,):
+    async def query_synapse(self, strategy=QUERY_MINERS.RANDOM):
         try:
             # self.metagraph = self.subtensor.metagraph(netuid=self.config.netuid)
             await self.scraper_validator.query_and_score(strategy)
