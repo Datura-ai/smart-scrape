@@ -287,17 +287,25 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 f"SummaryRelevanceRewardModel | Calculating {len(responses)} rewards (typically < 1 sec/reward)."
             )
 
+            # Same random completion will be used for all responses
+            random_summary_key = random.choice(
+                list(responses[0].get_all_completions().keys())
+            )
+
             # Choose random toolkit summary to score
             random_completions = []
 
             for response in responses:
                 # Get all available completions based on the tools used and choose random summary (Twitter, Search, Reddit, Hacker News)
                 completions = response.get_all_completions()
-                completions_list = list(completions.items())
+                random_completion = completions.get(random_summary_key, "")
+
+                # Check if all summaries are returned
+                is_full = all(completion for completion in completions.values())
 
                 random_completions.append(
-                    random.choice(completions_list)
-                    if completions_list
+                    (random_summary_key, random_completion)
+                    if random_completion and is_full
                     else (None, None)
                 )
 
