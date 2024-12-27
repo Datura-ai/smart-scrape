@@ -218,7 +218,7 @@ class Neuron(AbstractNeuron):
         val_score_responses_list,
         organic_penalties,
         neuron,
-        query_type="organic"
+        query_type
     ):
         try:
             if self.config.wandb_on:
@@ -247,6 +247,7 @@ class Neuron(AbstractNeuron):
                     neuron=neuron,
                     netuid=self.config.netuid,
                     organic_penalties=organic_penalties,
+                    query_type = query_type
                 )
             )
         except Exception as e:

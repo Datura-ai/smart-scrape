@@ -309,6 +309,11 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="The maximum number of results to be returned per query",
     )
 
+    query_type: Optional[str] = pydantic.Field(
+        None,
+        title="Query Type",
+        description="Query indicator, organic or synthetic",
+    )
 
     def set_tweets(self, data: any):
         self.tweets = data

@@ -57,7 +57,7 @@ def check_config(cls, config: "bt.Config"):
          # Check if "EVENTS" level already exists before adding it
         if "EVENTS" not in [level.name for level in logger._core.levels.values()]:
             logger.level("EVENTS", no=38, icon="📝")
-
+            
         logger.add(
             config.neuron.full_path + "/" + "completions.log",
             rotation=config.neuron.events_retention_size,

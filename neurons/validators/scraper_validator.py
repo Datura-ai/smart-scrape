@@ -189,7 +189,8 @@ class ScraperValidator:
         region="us",
         google_date_filter="qdr:w",
         response_order=ResponseOrder.SUMMARY_FIRST,
-        model: Optional[Model] = None
+        model: Optional[Model] = None,
+        is_synthetic=False,
     ):
         
         if model is None:
@@ -204,6 +205,8 @@ class ScraperValidator:
             "task_types": [task.task_type for task in tasks],
         }
         start_time = time.time()
+
+        query_type = "synthetic" if is_synthetic else "organic"
 
         # Get random id on that step
         uids = await self.neuron.get_uids(
@@ -229,7 +232,8 @@ class ScraperValidator:
                 region=region,
                 google_date_filter=google_date_filter,
                 response_order=response_order.value,
-                max_execution_time=max_execution_time
+                max_execution_time=max_execution_time,
+                query_type = query_type
             )
             for task in tasks
         ]
@@ -259,7 +263,7 @@ class ScraperValidator:
                     for axon, synapse in zip(axon_group, synapse_group)
                 ]
             )
-
+        
         return async_responses, uids, event, start_time
 
     async def compute_rewards_and_penalties(
@@ -505,11 +509,14 @@ class ScraperValidator:
                 region=self.region,
                 google_date_filter=self.date_filter,
                 model = random_model
+
             )
 
             final_synapses = await collect_final_synapses(
                 async_responses, uids, start_time, max_execution_time
             )
+
+            bt.logging.debug(f"Async responses: {async_responses}")
 
             # Store final synapses for scoring later
             self.synthetic_history.append(
@@ -609,7 +616,6 @@ class ScraperValidator:
                 specified_uids=specified_uids,
                 response_order=response_order,
                 model=model
-
             )
 
             final_synapses = []
@@ -640,6 +646,7 @@ class ScraperValidator:
                     responses=final_synapses,
                     uids=uids,
                     start_time=start_time,
+                    is_synthetic=False
                 )
 
                 if not is_interval_query:
@@ -711,6 +718,7 @@ class ScraperValidator:
                 google_date_filter=self.date_filter,
                 model=model,
                 response_order=response_order,
+                is_synthetic=False, 
             )
 
             async def stream_response(uid, async_response):
