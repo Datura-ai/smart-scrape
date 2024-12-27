@@ -23,6 +23,7 @@ from datura.misc import ttl_get_block
 import re
 import html
 import unicodedata
+from datura.protocol import Model
 
 list_update_lock = asyncio.Lock()
 _text_questions_buffer = deque()
@@ -66,6 +67,13 @@ def save_state_to_file(state, filename="state.json"):
         bt.logging.success(f"saved global state to {filename}")
         json.dump(state, file)
 
+def get_max_execution_time(model: Model):
+    if model == Model.NOVA:
+        return 15
+    elif model == Model.ORBIT:
+        return 30
+    elif model == Model.HORIZON:
+        return 120
 
 def preprocess_string(text):
     processed_text = text.replace("\t", "")
