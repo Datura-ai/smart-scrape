@@ -346,7 +346,7 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         links_per_completion = 10
         links_expected = len(completions) * links_per_completion
 
-        completions = {key: value for key, value in completions.items() if value}
+        completions = {key: value for key, value in completions.items()}
 
         return completions, links_expected
 
