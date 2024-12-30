@@ -27,10 +27,10 @@ class ExponentialTimePenaltyModel(BasePenaltyModel):
             max_execution_time = getattr(response, "max_execution_time", None)
 
             # Log the retrieved values for debugging
-            bt.logging.info(f"Full Response: {response}")
+            #bt.logging.info(f"Full Response: {response}")
 
             # If you want to inspect the full dendrite object
-            bt.logging.info(f"Dendrite: {response.dendrite}")
+            #bt.logging.info(f"Dendrite: {response.dendrite}")
 
             if process_time <= max_execution_time:
                 # No penalty if processed within the allowed time
