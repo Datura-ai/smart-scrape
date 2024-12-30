@@ -23,6 +23,7 @@ from datura.misc import ttl_get_block
 import re
 import html
 import unicodedata
+from datura.protocol import Model
 
 list_update_lock = asyncio.Lock()
 _text_questions_buffer = deque()
@@ -66,6 +67,13 @@ def save_state_to_file(state, filename="state.json"):
         bt.logging.success(f"saved global state to {filename}")
         json.dump(state, file)
 
+def get_max_execution_time(model: Model):
+    if model == Model.NOVA:
+        return 15
+    elif model == Model.ORBIT:
+        return 30
+    elif model == Model.HORIZON:
+        return 120
 
 def preprocess_string(text):
     processed_text = text.replace("\t", "")
@@ -351,7 +359,7 @@ async def save_logs_in_chunks(
     neuron,
     netuid,
     organic_penalties,
-    query_type = "organic"
+    query_type
 ):
     try:
         logs = [
@@ -424,7 +432,11 @@ async def save_logs_in_chunks(
                 "time": response.dendrite.process_time,
                 "organic_penalty": organic_penalty,
                 "max_execution_time": response.max_execution_time,
-                "type": query_type
+                "query_type": query_type,
+                "model": response.model,
+                "language": response.language,
+                "region": response.region,
+                "max_items": response.max_items
             }
             for response, uid, reward, summary_reward, twitter_reward, search_reward, performance_reward, original_summary_reward, original_twitter_reward, original_search_reward, original_performance_reward, tweet_score, search_score, summary_link_score, organic_penalty in zip(
                 responses,
@@ -445,6 +457,11 @@ async def save_logs_in_chunks(
             )
         ]
 
+        for idx, log in enumerate(logs, start=1):
+            bt.logging.debug(f"Log Entry {idx} - max_execution_time: {log.get('max_execution_time')}, "
+                             f"query_type: {log.get('query_type')}, model: {log.get('model')}, "
+                             f"language: {log.get('language')}, region: {log.get('region')}, "
+                             f"max_items: {log.get('max_items')}")
         chunk_size = 20
 
         log_chunks = [logs[i : i + chunk_size] for i in range(0, len(logs), chunk_size)]

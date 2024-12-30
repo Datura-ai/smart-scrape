@@ -12,7 +12,7 @@ import time
 import sys
 from typing import List
 import substrateinterface
-from datura.protocol import IsAlive
+from datura.protocol import IsAlive, Model
 from neurons.validators.scraper_validator import ScraperValidator
 from config import add_args, check_config, config
 from weights import init_wandb, set_weights, get_weights
@@ -22,6 +22,7 @@ from datura import QUERY_MINERS
 from datura.misc import ttl_get_block
 from datura.utils import resync_metagraph, save_logs_in_chunks
 from neurons.validators.proxy.uid_manager import UIDManager
+from typing import Optional
 
 
 class Neuron(AbstractNeuron):
@@ -217,7 +218,7 @@ class Neuron(AbstractNeuron):
         val_score_responses_list,
         organic_penalties,
         neuron,
-        query_type="organic"
+        query_type
     ):
         try:
             if self.config.wandb_on:
@@ -246,6 +247,7 @@ class Neuron(AbstractNeuron):
                     neuron=neuron,
                     netuid=self.config.netuid,
                     organic_penalties=organic_penalties,
+                    query_type = query_type
                 )
             )
         except Exception as e:
@@ -350,7 +352,7 @@ class Neuron(AbstractNeuron):
 
         async for _ in self.scraper_validator.organic(
             query=query,
-            max_execution_time=synapse.max_execution_time,
+            model=synapse.model,
             random_synapse=synapse,
             random_uid=synapse_uid,
             specified_uids=specified_uids,
@@ -394,7 +396,7 @@ class Neuron(AbstractNeuron):
             await asyncio.sleep(60)
 
     def check_registered(self):
-        # --- Check for registration.
+        # --- Check for registration
         if not self.subtensor.is_hotkey_registered(
             netuid=self.config.netuid,
             hotkey_ss58=self.wallet.hotkey.ss58_address,
@@ -497,6 +499,7 @@ class Neuron(AbstractNeuron):
 
             three_hours_in_seconds = 10800
             self.loop.create_task(run_organic_with_interval(three_hours_in_seconds))
+
         except KeyboardInterrupt:
             self.axon.stop()
             bt.logging.success("Validator killed by keyboard interrupt.")
