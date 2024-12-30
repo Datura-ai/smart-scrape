@@ -40,14 +40,14 @@ from neurons.validators.organic_query_state import OrganicQueryState
 from neurons.validators.penalty.streaming_penalty import StreamingPenaltyModel
 from neurons.validators.penalty.exponential_penalty import ExponentialTimePenaltyModel
 from datura.protocol import Model
-
+from datura.utils import get_max_execution_time
 
 class ScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
         self.seed = 1234
         self.neuron = neuron
         self.timeout = 180
-        self.execution_time_options = [10, 30, 120]
+        self.execution_time_options = [Model.NOVA, Model.ORBIT, Model.HORIZON]
         self.execution_time_probabilities = [0.8, 0.1, 0.1]
 
         self.tools = [
@@ -170,6 +170,11 @@ class ScraperValidator:
             ExponentialTimePenaltyModel(max_penalty=1),
         ]
 
+    def get_random_execution_time(self):
+        return random.choices(
+            self.execution_time_options, self.execution_time_probabilities
+        )[0]
+
 
     async def run_task_and_score(
         self,
@@ -192,7 +197,6 @@ class ScraperValidator:
             model = Model.NOVA
 
 
-        from neurons.validators.api import get_max_execution_time
         max_execution_time = get_max_execution_time(model)
 
         # Record event start time.
@@ -461,17 +465,8 @@ class ScraperValidator:
 
         bt.logging.debug("Run Task event:", event)
 
-    async def query_and_score(self, strategy=QUERY_MINERS.RANDOM, model: Optional[Model] = None):
+    async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
-            # Default model if none provided
-            if model is None:
-                model = Model.NOVA
-
-
-            #lazy import that function should be in another .py file
-            from neurons.validators.api import get_max_execution_time
-
-            max_execution_time = get_max_execution_time(model)  
 
             if not len(self.neuron.available_uids):
                 bt.logging.info("No available UIDs, skipping task execution.")
@@ -501,6 +496,8 @@ class ScraperValidator:
                 f"Query and score running with prompts: {prompts} and tools: {tools}"
             )
 
+            random_model = self.get_random_execution_time()
+            max_execution_time = get_max_execution_time(random_model)   
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 tasks=tasks,
@@ -511,8 +508,8 @@ class ScraperValidator:
                 language=self.language,
                 region=self.region,
                 google_date_filter=self.date_filter,
-                model= model,
-                is_synthetic=True
+                model = random_model
+
             )
 
             final_synapses = await collect_final_synapses(
@@ -575,10 +572,6 @@ class ScraperValidator:
         if model is None:
             model = Model.NOVA
 
-
-        # Get numeric timeout from the model
-        from neurons.validators.api import get_max_execution_time
-
         max_execution_time = get_max_execution_time(model)   
 
         if not len(self.neuron.available_uids):
@@ -622,10 +615,7 @@ class ScraperValidator:
                 google_date_filter=self.date_filter,
                 specified_uids=specified_uids,
                 response_order=response_order,
-                max_execution_time = max_execution_time,
-                model=model,
-                is_synthetic=False, 
-
+                model=model
             )
 
             final_synapses = []
