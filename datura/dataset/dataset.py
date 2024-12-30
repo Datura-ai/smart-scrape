@@ -3,7 +3,8 @@ import datetime
 import bittensor as bt
 
 # from datasets import load_dataset
-# from bs4 import BeautifulSoup
+# from bs4 import BeautifulSo
+# up
 import time
 import requests
 import html
@@ -1215,7 +1216,7 @@ class MockTwitterQuestionsDataset:
 
     def next(self):
         # Return a generated question
-        return self.generate_question()
+        return self.generate_questionl()
 
 
 class StackOverflowDataset:
@@ -1324,6 +1325,69 @@ class MockBittensiorQuestionsDataset:
 
     def next(self):
         return self.generate_question()
+
+
+class SyntheticTwitterQuestionsDataset:
+    def __init__(self):
+        self.faker = Faker()
+        self.faker.add_provider(lorem)
+
+    async def generate_question(self, question_probability=0.3):
+        # Get 3-4 random words for the topic
+        num_words = random.randint(3,4)
+        topic_words = self.faker.words(num_words)
+        topic = ", ".join(topic_words)
+        # Generate question flag based on probability
+        question_flag = 0 if random.random() < question_probability else 1
+        system_message = f"""
+You are an expert technology analyst generating realistic Twitter search queries based on the following list of words: **{topic}**.
+
+**Guidelines for search query generation:**
+- **Generate only one search query per output; do not generate multiple queries at a time.**
+- Focus on current industry developments, trends, or real-world applications related to the provided words.
+- Create queries that industry professionals and tech enthusiasts would actually use.
+- Make queries specific enough to generate meaningful results.
+- Ensure queries are relevant to current market dynamics.
+- Use simple and clear language that is easy to understand.
+- Make the query similar to a real user's search input.
+- Vary the structure and wording of the queries to avoid repetition. Do not rely on specific patterns or templates.
+- Avoid using personal pronouns (e.g., "she", "he", "we", "they", "wife", "husband") unless they are directly relevant to the topic.
+- Do not include any numbers or specific years (e.g., "2023", "2024") in the query. Use general terms such as "latest," "recent," or "current" instead.
+- Do not generate long queries; keep them short and clear (no more than 8 words).
+- Do not include any guidelines or system prompts in the result; only generate the search query.
+- Do not use any punctuation in the query except for a question mark "?" when the query is phrased as a question.
+- Do not include exact times or dates in the query.
+- Ensure diversity by varying the wording, structure, and focus of each query.
+- Avoid repetitive phrases like "latest advancements in" or "latest breakthroughs in."
+- Incorporate different angles, keywords, and aspects of the provided words to generate unique queries.
+- **Important:** If it is difficult to create a meaningful query using all the provided words together, you may use only some of them to generate a contextually relevant query.
+- **When generating each query, decide whether to phrase it as a question (including a question mark "?" at the end) or as a normal keyword-based query based on the provided question_flag variable provided below. If the value is 0, generate question and if the value is 1, generate normal query.**
+
+question_flag = {question_flag}
+
+The search query should be something that would generate meaningful results on Twitter for industry experts, professionals, and informed enthusiasts.
+"""
+
+        try:
+            print(f"Generating question about {topic}")
+            question = await call_openai(
+                messages=[{
+                    "role": "system", 
+                    "content": system_message
+                }],
+                model="gpt-4o-mini",
+                temperature=0.7
+            )
+            
+            return question
+            
+        except Exception as e:
+            # Fallback to simple template if API call fails
+            print(f"Failed to generate question about {topic}: {e}")
+            return f"What are the latest developments in {topic} that are transforming the industry?"
+
+    async def next(self):
+        return await self.generate_question()
 
 
 class QuestionsDataset:
