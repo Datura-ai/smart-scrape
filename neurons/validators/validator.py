@@ -220,7 +220,7 @@ class Neuron(AbstractNeuron):
         organic_penalties,
         neuron,
         query_type,
-        result_type
+        
     ):
         try:
             if self.config.wandb_on:
@@ -250,7 +250,6 @@ class Neuron(AbstractNeuron):
                     netuid=self.config.netuid,
                     organic_penalties=organic_penalties,
                     query_type = query_type,
-                    result_type=result_type
                 )
             )
         except Exception as e:

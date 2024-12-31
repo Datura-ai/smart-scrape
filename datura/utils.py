@@ -359,8 +359,7 @@ async def save_logs_in_chunks(
     neuron,
     netuid,
     organic_penalties,
-    query_type,
-    result_type
+    query_type
 ):
     try:
         logs = [
@@ -438,7 +437,7 @@ async def save_logs_in_chunks(
                 "language": response.language,
                 "region": response.region,
                 "max_items": response.max_items,
-                "result_type": result_type
+                "result_type": response.result_type
 
             }
             for response, uid, reward, summary_reward, twitter_reward, search_reward, performance_reward, original_summary_reward, original_twitter_reward, original_search_reward, original_performance_reward, tweet_score, search_score, summary_link_score, organic_penalty in zip(

@@ -192,7 +192,6 @@ class ScraperValidator:
         model: Optional[Model] = None,
         result_type: Optional[ResultType] = None,
         is_synthetic=False,
-        initial_uids = None
     ):
         
         if model is None:
@@ -217,7 +216,6 @@ class ScraperValidator:
             strategy=strategy,
             is_only_allowed_miner=is_only_allowed_miner,
             specified_uids=specified_uids,
-            initial_uids=initial_uids
         )
 
         start_date = date_filter.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -456,7 +454,6 @@ class ScraperValidator:
                 organic_penalties=organic_penalties,
                 neuron=self.neuron,
                 query_type=query_type,
-                result_type = result_type
             )
 
             return rewards, uids, val_score_responses_list, event, all_original_rewards
