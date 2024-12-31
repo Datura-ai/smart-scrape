@@ -85,7 +85,7 @@ class OrganicQueryState:
             if not hotkey in self.organic_history:
                 self.organic_history[hotkey] = []
 
-            self.organic_history[hotkey].append((synapse, is_failed_organic))
+            self.organic_history[hotkey].append((synapse, is_failed_organic, original_rewards))
 
     def has_penalty(self, hotkey: str) -> bool:
         """Check if the miner has a penalty and decrement it"""

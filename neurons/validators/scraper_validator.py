@@ -41,6 +41,8 @@ from neurons.validators.penalty.streaming_penalty import StreamingPenaltyModel
 from neurons.validators.penalty.exponential_penalty import ExponentialTimePenaltyModel
 from datura.protocol import Model
 from datura.utils import get_max_execution_time
+from datetime import datetime
+import pytz
 
 class ScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
@@ -465,6 +467,40 @@ class ScraperValidator:
 
         bt.logging.debug("Run Task event:", event)
 
+    def get_uids_with_recent_organic_results(self, tools):
+        """
+        Get UIDs that have recent successful organic results with matching tools.
+        """
+        current_time = datetime.now(pytz.utc)
+
+        uids_with_recent_results = []
+        recent_organic_results = []
+        recent_organic_rewards = []
+
+        for uid in self.neuron.available_uids:
+            neuron = next((n for n in self.neuron.metagraph.neurons if n.uid == uid), None)
+            if not neuron:
+                continue
+
+            hotkey = neuron.hotkey
+
+            if hotkey in self.organic_query_state.organic_history:
+                for synapse, is_failed, rewards in self.organic_query_state.organic_history[hotkey]:
+                    if set(synapse.tools) == set(tools):
+                        synapse_time = datetime.strptime(
+                            synapse.start_date,
+                            "%Y-%m-%dT%H:%M:%SZ" 
+                        ).replace(tzinfo=pytz.utc)
+
+                        time_diff_minutes = (current_time - synapse_time).total_seconds() / 60
+                        if time_diff_minutes <= 30 and not is_failed:
+                            uids_with_recent_results.append(uid)
+                            recent_organic_results.append(synapse)
+                            recent_organic_rewards.append(rewards)
+                            break
+
+        return uids_with_recent_results, recent_organic_results, recent_organic_rewards
+
     async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
         try:
 
@@ -475,10 +511,16 @@ class ScraperValidator:
             dataset = QuestionsDataset()
             tools = random.choice(self.tools)
 
+            uids_with_recent_results, _, recent_organic_rewards = self.get_uids_with_recent_organic_results(tools)
+
+            bt.logging.info(f"Found {len(uids_with_recent_results)} UIDs with recent organic results using same tools")
+
+            uids_needing_queries = list(set(self.neuron.available_uids) - set(uids_with_recent_results))
+
             prompts = await asyncio.gather(
                 *[
                     dataset.generate_new_question_with_openai(tools)
-                    for _ in range(len(self.neuron.available_uids))
+                    for _ in range(len(uids_needing_queries))
                 ]
             )
 
@@ -500,6 +542,7 @@ class ScraperValidator:
             max_execution_time = get_max_execution_time(random_model)   
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
+                initial_uids=uids_needing_queries,
                 tasks=tasks,
                 strategy=strategy,
                 is_only_allowed_miner=False,
@@ -524,6 +567,9 @@ class ScraperValidator:
             )
 
             await self.score_random_synthetic_query()
+
+            self.neuron.update_moving_averaged_scores(uids_with_recent_results, recent_organic_rewards)
+            
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")
             raise e
