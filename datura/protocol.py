@@ -100,14 +100,21 @@ class ScraperTextRole(str, Enum):
     SUBNETS_SOURCE_CODE_SUMMARY = "subnets_source_code_summary"
     FINAL_SUMMARY = "summary"
 
+ 
+class ResultType(str, Enum):
+    ONLY_LINKS = "ONLY_LINKS"
+    LINKS_WITH_SUMMARIES = "LINKS_WITH_SUMMARIES"
+    LINKS_WITH_FINAL_SUMMARY = "LINKS_WITH_FINAL_SUMMARY"   
 
-class Model(str, Enum):
+
+class Model(str, Enum):                              
     NOVA = "NOVA"
     ORBIT = "ORBIT"
     HORIZON = "HORIZON"
 
 
 class ScraperStreamingSynapse(bt.StreamingSynapse):
+
     prompt: str = pydantic.Field(
         ...,
         title="Prompt",
@@ -313,6 +320,13 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         None,
         title="Query Type",
         description="Query indicator, organic or synthetic",
+    )
+
+
+    result_type: ResultType = pydantic.Field(
+        ResultType.ONLY_LINKS,
+        title="result_type",
+        description="The result type for miners",
     )
 
     def set_tweets(self, data: any):

@@ -344,6 +344,16 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 scores, responses, val_score_responses_list, uids
             ):
                 uid = uid_tensor.item()
+
+                #  If only the Twitter tool is used, automatically assign reward=1 and skip normal scoring
+                if len(response.tools) == 1 and "Twitter Search" in response.tools:
+                    reward_event = BaseRewardEvent()
+                    reward_event.reward = 1.0
+                    reward_events.append(reward_event)
+                    # You might append an empty dict or skip for the grouped responses
+                    grouped_val_score_responses.append({})
+                    continue
+
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
 
