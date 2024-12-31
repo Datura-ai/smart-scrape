@@ -39,7 +39,7 @@ from datura.dataset.date_filters import (
 from neurons.validators.organic_query_state import OrganicQueryState
 from neurons.validators.penalty.streaming_penalty import StreamingPenaltyModel
 from neurons.validators.penalty.exponential_penalty import ExponentialTimePenaltyModel
-from datura.protocol import Model
+from datura.protocol import Model, ResultType
 from datura.utils import get_max_execution_time
 
 class ScraperValidator:
@@ -190,12 +190,16 @@ class ScraperValidator:
         google_date_filter="qdr:w",
         response_order=ResponseOrder.SUMMARY_FIRST,
         model: Optional[Model] = None,
+        result_type: Optional[ResultType] = None,
         is_synthetic=False,
+        initial_uids = None
     ):
         
         if model is None:
             model = Model.NOVA
 
+        if result_type is None:
+            result_type = ResultType.LINKS_WITH_SUMMARIES
 
         max_execution_time = get_max_execution_time(model)
 
@@ -213,6 +217,7 @@ class ScraperValidator:
             strategy=strategy,
             is_only_allowed_miner=is_only_allowed_miner,
             specified_uids=specified_uids,
+            initial_uids=initial_uids
         )
 
         start_date = date_filter.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -233,7 +238,8 @@ class ScraperValidator:
                 google_date_filter=google_date_filter,
                 response_order=response_order.value,
                 max_execution_time=max_execution_time,
-                query_type = query_type
+                query_type = query_type,
+                result_type = result_type
             )
             for task in tasks
         ]
@@ -274,6 +280,7 @@ class ScraperValidator:
         uids,
         start_time,
         is_synthetic=False,
+        result_type: Optional[ResultType] = None,
     ):
         try:
             if not len(uids):
@@ -291,6 +298,9 @@ class ScraperValidator:
             val_score_responses_list = []
 
             organic_penalties = []
+
+            if result_type is None:
+                result_type = ResultType.LINKS_WITH_SUMMARIES
 
             if is_synthetic:
                 penalized_uids = []
@@ -445,7 +455,8 @@ class ScraperValidator:
                 val_score_responses_list=val_score_responses_list,
                 organic_penalties=organic_penalties,
                 neuron=self.neuron,
-                query_type=query_type
+                query_type=query_type,
+                result_type = result_type
             )
 
             return rewards, uids, val_score_responses_list, event, all_original_rewards
@@ -524,6 +535,7 @@ class ScraperValidator:
             )
 
             await self.score_random_synthetic_query()
+            
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")
             raise e
@@ -563,16 +575,18 @@ class ScraperValidator:
         random_synapse: ScraperStreamingSynapse = None,
         random_uid=None,
         specified_uids=None,
+        result_type: Optional[ResultType] = None,
+        is_collect_final_synapses: bool = True,  # Flag to collect final synapses
     ):
-        """Receives question from user and returns the response from the miners.
-        Also used to run occasional random query to all miners except the one that failed the previous query.
-        """
+        """Receives question from user and returns the response from the miners."""
 
-        # Default to NOVA if no executive_time_model provided
         if model is None:
             model = Model.NOVA
+            
+        if result_type is None:
+            result_type = ResultType.LINKS_WITH_SUMMARIES
 
-        max_execution_time = get_max_execution_time(model)   
+        max_execution_time = get_max_execution_time(model)
 
         if not len(self.neuron.available_uids):
             bt.logging.info("Not available uids")
@@ -583,31 +597,19 @@ class ScraperValidator:
         try:
             prompt = query["content"]
             tools = query.get("tools", [])
-
             date_filter = query.get("date_filter", DateFilterType.PAST_WEEK.value)
             response_order = query.get("response_order", ResponseOrder.LINKS_FIRST)
 
-            # If the date filter is a string, convert it to a DateFilterType otherwise use the provided date filter
             if isinstance(date_filter, str):
                 date_filter_type = DateFilterType(date_filter)
                 date_filter = get_specified_date_filter(date_filter_type)
 
-            task_name = "augment"
-            task = TwitterTask(
-                base_text=prompt,
-                task_name=task_name,
-                task_type="twitter_scraper",
-                criteria=[],
-            )
-
-            tasks = [task]
+            tasks = [TwitterTask(base_text=prompt, task_name="augment", task_type="twitter_scraper", criteria=[])]
 
             async_responses, uids, event, start_time = await self.run_task_and_score(
                 tasks=tasks,
                 strategy=QUERY_MINERS.ALL if specified_uids else QUERY_MINERS.RANDOM,
-                # This is set to false on Finney to allow all miners to participate from Datura UI
                 is_only_allowed_miner=self.neuron.config.subtensor.network != "finney",
-                # is_intro_text=True,
                 tools=tools,
                 language=self.language,
                 region=self.region,
@@ -615,24 +617,26 @@ class ScraperValidator:
                 google_date_filter=self.date_filter,
                 specified_uids=specified_uids,
                 response_order=response_order,
-                model=model
+                model=model,
+                result_type=result_type,
+                is_synthetic=False,
             )
 
-            final_synapses = []
-
-            if not specified_uids:
-                # Stream random miner to the UI
-                for response in async_responses:
-                    async for value in response:
-                        if isinstance(value, bt.Synapse):
-                            final_synapses.append(value)
-                        else:
-                            yield value
+            if is_collect_final_synapses:
+                # Directly collect and yield final synapses
+                final_synapses = await collect_final_synapses(async_responses, uids, start_time, max_execution_time)
+                for synapse in final_synapses:
+                    yield synapse
             else:
-                # Collect specified uids from responses and score
-                final_synapses = await collect_final_synapses(
-                    async_responses, uids, start_time, max_execution_time
-                )
+                # Stream results
+                if not specified_uids:
+                    for response in async_responses:
+                        async for value in response:
+                            yield value
+                else:
+                    final_synapses = await collect_final_synapses(async_responses, uids, start_time, max_execution_time)
+                    for synapse in final_synapses:
+                        yield synapse
 
             async def process_and_score_responses(uids):
                 if is_interval_query:
@@ -668,7 +672,7 @@ class ScraperValidator:
                 formatted_scores.append("{}")  # Empty dictionary
         return "\n".join(formatted_scores)
 
-    async def organic_specified(self, query, specified_uids=None, model: Optional[Model] = None):
+    async def organic_specified(self, query, specified_uids=None, model: Optional[Model] = None, result_type: Optional[ResultType] = None):
         if not len(self.neuron.available_uids):
             bt.logging.info("Not available uids")
             raise StopAsyncIteration("Not available uids")
@@ -683,6 +687,9 @@ class ScraperValidator:
             if model is None:
                 model = Model.NOVA
 
+            if result_type is None:
+                result_type = ResultType.LINKS_WITH_SUMMARIES
+            
             prompt = query["content"]
             tools = query.get("tools", [])
             date_filter_type = query.get(
@@ -719,6 +726,7 @@ class ScraperValidator:
                 model=model,
                 response_order=response_order,
                 is_synthetic=False, 
+                result_type = result_type
             )
 
             async def stream_response(uid, async_response):

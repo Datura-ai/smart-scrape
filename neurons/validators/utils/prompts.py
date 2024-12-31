@@ -18,7 +18,7 @@
 
 import re
 import random
-from typing import List
+from typing import List, Optional
 import json
 
 
@@ -131,10 +131,16 @@ class SummaryRelevancePrompt(ScoringPrompt):
     def __init__(self):
         super().__init__()
         self.template = user_summary_relevance_scoring_template
+        self.final_template = system_message_final_summary_template
 
-    def get_system_message(self, tools: List[str]):
-        return get_system_summary_relevance_scoring_template(tools)
+    def get_system_message(self, tools: List[str], summary_type: str):
+        if summary_type == "summary":
+            return self.final_template
+        else:
+            return get_system_summary_relevance_scoring_template(tools)
 
+
+    
 
 class LinkContentPrompt(ScoringPrompt):
     r"""Scores a summary on a scale from 0 to 10, given a context."""
@@ -335,6 +341,17 @@ user_summary_relevance_scoring_template = """
 """
 
 
+system_message_final_summary_template = """
+
+You are a meticulous Content Quality Analyst, adept at discerning the relevance and accuracy of digital responses with a critical eye. Your expertise lies in evaluating content against stringent criteria, ensuring each piece aligns perfectly with the intended question's context and requirements, as encapsulated within the <Question></Question> tags.
+
+    Return one of them:
+    - SM_SCS_RDD: for Assigned when <Answer></Answer> includes any justification or rationale for the score given or for answers completely unrelated or incorrect, especially those not addressing the question's topic as outlined in the <Question></Question> tags.
+    - SM_SCS_BLE: for answers relevant to the question but lacking any links as evidence.
+    - SM_SCS_GRY: for answers that vary in correctness, relevance, and the inclusion of links, with higher scores reflecting better quality and more relevant evidence.
+    - SM_SCS_GRN for answers that are not only accurate and relevant but also well-supported by links, fully addressing the question's demands as specified in the <Question></Question> tags.
+
+"""
 system_message_question_answer_template = """
 Relevance Scoring Guide:
 
