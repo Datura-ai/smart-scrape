@@ -10,7 +10,7 @@ class TestCheerioScraperActor(IsolatedAsyncioTestCase):
                 "https://www.nytimes.com/2023/10/31/technology/school-smartphone-bans.html",
                 "https://apnews.com/article/usa-basketball-serbia-paris-olympics-c83403938291464a13d83d54210eeb0c",
                 "https://hokiesports.com/news/2024/07/18/mens-basketball-single-game-tickets-now-available",
-                #"https://arxiv.org/abs/1411.5289v2",
+                "https://arxiv.org/abs/1411.5289v2",
                 "https://en.wikipedia.org/wiki/Python_(programming_language)",
                 "https://news.ycombinator.com/item?id=26005758",
                 "https://news.ycombinator.com/item?id=5674230",
@@ -33,11 +33,11 @@ class TestCheerioScraperActor(IsolatedAsyncioTestCase):
                 "description": "",
                 "url": "https://hokiesports.com/news/2024/07/18/mens-basketball-single-game-tickets-now-available",
             },
-            #{
-            #    "title": "[1411.5289v2] Generalizing the Liveness Based Points-to Analysis",
-            #    "description": "The original liveness based flow and context sensitive points-to analysis (LFCPA) is restricted to scalar pointer variables and scalar pointees on stack and static memory. In this paper, we extend it to support heap memory and pointer expressions involving structures, unions, arrays, and pointer arithmetic. The key idea behind these extensions involves constructing bounded names for locations in terms of compile time constants (names and fixed offsets), and introducing sound approximations when it is not possible to do so. We achieve this by defining a grammar for pointer expressions, suitable memory models and location naming conventions, and some key evaluations of pointer expressions that compute the named locations. These extensions preserve the spirit of the original LFCPA which is evidenced by the fact that although the lattices and flow functions change, the overall data flow equations remain unchanged.",
-            #    "url": "https://arxiv.org/abs/1411.5289v2",
-            #},
+            {
+                "title": "[1411.5289v2] Generalizing the Liveness Based Points-to Analysis",
+                "description": "Abstract page for arXiv paper 1411.5289v2: Generalizing the Liveness Based Points-to Analysis",
+                "url": "https://arxiv.org/abs/1411.5289v2",
+            },
 
             {
                 "title": "Python (programming language) - Wikipedia",
