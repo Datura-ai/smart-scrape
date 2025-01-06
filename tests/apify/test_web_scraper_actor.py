@@ -15,7 +15,8 @@ class TestWebScraperActor(IsolatedAsyncioTestCase):
                 "https://www.reddit.com/r/datascience/comments/1e6fpeq/how_much_does_hyperparameter_tuning_actually/",
                 #"https://arxiv.org/abs/1411.5289v2",
                 "https://en.wikipedia.org/wiki/Python_(programming_language)",
-                "https://news.ycombinator.com/bestcomments"
+                "https://news.ycombinator.com/item?id=26005758",
+                "https://news.ycombinator.com/item?id=5674230",
             ]
         )
 
@@ -56,15 +57,20 @@ class TestWebScraperActor(IsolatedAsyncioTestCase):
             #    "url": "https://arxiv.org/abs/1411.5289v2",
             #},
             {
-                "title": "Python (programming language)",
+                "title": "Python (programming language) - Wikipedia",
                 "description": "Python is a high-level, general-purpose programming language. Its design philosophy emphasizes code readability with the use of significant indentation",
                 "url": "https://en.wikipedia.org/wiki/Python_(programming_language)"
             },
 
             {
-                "title": "Best Comments | Hacker News",
-                "description": "<3 This has been a work of passion for the past two years of my life (off and on). I hope anyone who uses this can feel the love and care I put into this, and subsequently the amazing private beta community (all ~5,000 strong!) that helped improve and polish this into a better release than I ever could alone.Ghostty got a lot of hype (I cover this in my reflection below), but I want to make sure I call out that there is a good group of EXCELLENT terminals out there, and I'm not claiming Ghostty is strictly better than any of them. Ghostty has different design goals and tradeoffs and if it's right for you great, but if not, you have so many good choices.Shout out to Kitty, WezTerm, Foot in particular. iTerm2 gets some hate for being relatively slow but nothing comes close to touching it in terms of feature count. Rio is a super cool newer terminal, too. The world of terminals is great.I’ve posted a personal reflection here, which has a bit more history on why I started this, what’s next, and some of the takeaways from the past two years. https://mitchellh.com/writing/ghostty-1-0-reflection",
-                "url": "https://news.ycombinator.com/bestcomments"
+                "title": "Engineering productivity can be measured, just not how you'd expect | Hacker News",
+                "description": """> Just as a sports team wins or loses together, so too should the engineering team be treated as the fundamental unit of success.A sports team has a play book, does your team?  A sports team practices together, does your team?  A sports team works as a unit, does your team?Too many times I have see engineering teams as only a team on the org chart  In reality they solve tickets as individuals with only a small interaction from pull requests.  Otherwise they might as well not even know each other.  They are a team not as in basketball or football, but like golf where once you get to the tee, it's you and only you to get the ball in the hole.""",
+                "url": "https://news.ycombinator.com/item?id=26005758"
+            },
+            {
+                "title": "Food Practices Banned in Europe But Allowed in the US | Hacker News",
+                "description": """The most sensible European regulations of those listed in the article kindly submitted here are"What Europe did: Banned all forms of animal protein, including chicken litter, in cow feed in 2001."and"What Europe did: In the EU, all antibiotics used in human medicines are banned on farms—and no antibiotics can be used on farms for 'non-medical purposes,' i.e., growth promotion."I'd like to see the United States follow that lead immediately, and I write this as a man who has several uncles and cousins who are farmers, including some who raise cattle. It makes sense to me to have lines of defense against transmission of animal-infecting, and especially antibiotic-resistant-animal-infecting, microbes to human beings, by controlling what animals raised as lifestock eat and how they are treated with veterinary medicines.For the other regulatory practices mentioned in the article, especially washing chicken carcasses, I'd like to see more detailed evidence of the safety trade-offs involved in the practices of the United States and of Europe. I'm less sure on some of the other issues that science actually supports the European practice.""",
+                "url": "https://news.ycombinator.com/item?id=5674230"
             }
         ]
 

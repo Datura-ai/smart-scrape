@@ -72,8 +72,6 @@ class WebScraperActor:
     // Final trim to ensure no extra whitespace
     description = description.trim();
     
-    // Remove " - Wikipedia" from the title if present
-    pageTitle = pageTitle.replace(" - Wikipedia", "");
     } else if (isHackerNewsUrl) {
     // Select the first comment div with classes 'commtext' and 'c00'
     description = $('div.commtext.c00').first()
