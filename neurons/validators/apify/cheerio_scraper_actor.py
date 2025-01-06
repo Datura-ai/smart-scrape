@@ -30,7 +30,62 @@ class CheerioScraperActor:
                 "forceResponseEncoding": False,
                 "ignoreSslErrors": False,
                 "keepUrlFragments": False,
-                "pageFunction": "async function pageFunction(context) {\n    const { $, request, log } = context;\n\n    // Extract the page title\n    const pageTitle = $('title').first().text();\n\n    // Extract the meta description\n    let description = $('meta[name=\"description\"]').attr('content') || '';\n\n    if (!description) {\n        description = $('meta[property=\"og:description\"]').attr('content')\n    }\n\n    // Get the URL from the request object\n    const url = request.url;\n\n    // Return an object with the extracted data\n    return {\n        url,\n        pageTitle,\n        description,\n    };\n}",
+                "pageFunction": """function pageFunction(context) {
+    const $ = context.$;
+    let pageTitle = $('title').first().text().trim();
+    let description = $('meta[name="description"]').attr('content') || '';
+
+    if (!description) {
+        description = $('meta[property="og:description"]').attr('content') || '';
+    }
+
+    const isRedditUrl = context.request.url.includes('reddit.com');
+    const isWikipediaUrl = context.request.url.includes('wikipedia.org');
+    const isHackerNewsUrl = context.request.url.includes('news.ycombinator.com');
+
+    if (isRedditUrl) {
+        // Extract content from the first <p> in the first <div> with class 'text-neutral-content'
+        description = $('div.text-neutral-content').first().find('p').map(function() {
+            return $(this).text().trim();
+        }).get().join('');
+    } else if (isWikipediaUrl) {
+        // Extract text from the first <p> that isn't empty and clean it
+        description = $('p').filter(function() {
+            return $(this).text().trim().length > 0;
+        }).first().text()
+            .replace(/\[\d+\]/g, '')     // Remove citation numbers like [33]
+            .replace(/\s+/g, ' ')        // Normalize whitespace
+            .trim();                     // Initial trim
+
+        // Explicit period removal as a separate step
+        if (description.endsWith('.')) {
+            description = description.slice(0, -1);
+        }
+
+        // Final trim to ensure no extra whitespace
+        description = description.trim();
+
+    } else if (isHackerNewsUrl) {
+        // Select the first comment div with classes 'commtext' and 'c00'
+        description = $('div.commtext.c00').first()
+            // Find all <p> tags within this div and replace them with their text content
+            .find('p').replaceWith(function() {
+                return $(this).text();
+            })
+            // Return to the original selection (div.commtext.c00)
+            .end()
+            // Extract the combined text content and trim any whitespace
+            .text().trim();
+    }
+
+    return {
+        url: context.request.url,
+        pageTitle,
+        description,
+    };
+}"""
+,
+
                 "postNavigationHooks": '// We need to return array of (possibly async) functions here.\n// The functions accept a single argument: the "crawlingContext" object.\n[\n    async (crawlingContext) => {\n        // ...\n    },\n]',
                 "preNavigationHooks": '// We need to return array of (possibly async) functions here.\n// The functions accept two arguments: the "crawlingContext" object\n// and "requestAsBrowserOptions" which are passed to the `requestAsBrowser()`\n// function the crawler calls to navigate..\n[\n    async (crawlingContext, requestAsBrowserOptions) => {\n        // ...\n    }\n]',
                 "proxyConfiguration": self.get_proxy_configuration(urls),
