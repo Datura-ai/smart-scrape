@@ -65,7 +65,6 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             if not completion:
                 return None
 
-            is_twitter = summary_key == ScraperTextRole.TWITTER_SUMMARY.value
             is_final_summary = (
                 response.result_type == ResultType.LINKS_WITH_FINAL_SUMMARY
                 and summary_key == ScraperTextRole.FINAL_SUMMARY.value
@@ -88,13 +87,14 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 # Combine all fields dynamically
                 scoring_prompt = LinkContentAndDescriptionPrompt()
 
-                # Collect all fields except 'summary'
-                all_texts_except_summary = {}
-                for key, text in response.texts.items():
-                    if key != "summary":
-                        field_content = text.strip()
-                        if field_content:
-                            all_texts_except_summary[key] = field_content
+                # Get completions based on tools used
+                completions = response.get_search_completion()
+                
+                # Strip any whitespace from completions
+                all_texts_except_summary = {
+                    key: text.strip() 
+                    for key, text in completions.items()
+                }
 
                 # Get the final summary
                 final_summary = response.texts.get("summary", "").strip()
@@ -116,26 +116,31 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 completion_links_str = str(response.completion_links)
                 scoring_prompt_text = scoring_prompt.text(completion, completion_links_str)
 
-            if (
-                scoring_prompt is None
-                or (is_twitter and not response.completion_links)
-                or (not is_twitter and not response.search_completion_links)
-            ):
+            # Check completion links based on summary type
+            has_required_links = True
+            if summary_key == ScraperTextRole.TWITTER_SUMMARY.value:
+                has_required_links = bool(response.completion_links)
+            elif summary_key == ScraperTextRole.REDDIT_SUMMARY.value:
+                has_required_links = bool(response.completion_links)
+            elif summary_key == ScraperTextRole.HACKER_NEWS_SUMMARY.value:
+                has_required_links = bool(response.completion_links)
+            else:
+                has_required_links = bool(response.search_completion_links)
+
+            if scoring_prompt is None or not has_required_links:
                 return None
 
             if not scoring_prompt_text:
                 scoring_prompt_text = scoring_prompt.text(response.prompt, completion)
 
-            summary_type = (
-                "final_summary"
-                if is_final_summary
-                else ("summary" if not is_twitter else "twitter_summary")
-            )
-
             return scoring_prompt, [
                 {
                     "role": "system",
-                    "content": scoring_prompt.get_system_message(tools=response.tools, summary_type=summary_type),
+                    "content": scoring_prompt.get_system_message(
+                        tools=response.tools,
+                        result_type=response.result_type,
+                        summary_key=summary_key
+                    ),
                 },
                 {"role": "user", "content": scoring_prompt_text},
             ]
