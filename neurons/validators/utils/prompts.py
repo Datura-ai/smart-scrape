@@ -298,6 +298,8 @@ def get_system_summary_relevance_scoring_template(tools: List[str], result_type:
     # If no links headers were added, use default
     if not links_header_name:
         links_header_name = ["**Key Sources**"]
+    if not summary_header_name:
+        summary_header_name = "**Summary**"
 
     answer_rules = []
     for links_header in links_header_name:
@@ -305,9 +307,19 @@ def get_system_summary_relevance_scoring_template(tools: List[str], result_type:
     - "{links_header}" must contain markdown links in the format [Description](URL), otherwise score as SM_SCS_RDD.
     - "{summary_header_name}" must contain a summary of the content without links, otherwise score as SM_SCS_RDD.
     - "{summary_header_name}" must not contain links in summary, otherwise score as SM_SCS_RDD.
-    - If "{summary_header_name}" contains information that is not related to prompt, score as SM_SCS_RDD.
-    - If "{summary_header_name}" contains information related to prompt but information is not present in "{links_header}", score as SM_SCS_RDD."""
+    - If "{summary_header_name}" contains information that is not related to the prompt, score as SM_SCS_RDD.
+    - If "{summary_header_name}" contains **valid information** about the prompt topic but that information **is not present** or cannot be **verified** from "{links_header}", score as SM_SCS_RDD.
+    """
         answer_rules.append(rules)
+
+    # Step-based instructions
+    step_instructions = f"""
+    Step-by-step Guidance:
+    1. Verify that both {summary_header_name} and {', '.join(links_header_name)} exist in the <Answer></Answer> content. If any is missing, return SM_SCS_RDD immediately.
+    2. Check if {', '.join(links_header_name)} contains relevant information about the prompt topic. If it is completely unrelated, return SM_SCS_RDD.
+    3. Evaluate whether {summary_header_name} has details that are verifiably sourced by {', '.join(links_header_name)}. If {summary_header_name} includes info about the prompt that cannot be found in {', '.join(links_header_name)}, return SM_SCS_RDD.
+    4. If these checks pass, then continue to evaluate correctness, depth, and coverage as usual.
+    """
 
     template = f"""You are a meticulous Content Quality Analyst, adept at discerning the relevance and accuracy of digital responses with a critical eye. Your expertise lies in evaluating content against stringent criteria, ensuring each piece aligns perfectly with the intended question's context and requirements, as encapsulated within the <Question></Question> tags.
 
@@ -315,7 +327,7 @@ def get_system_summary_relevance_scoring_template(tools: List[str], result_type:
     - SM_SCS_RDD: for Assigned when <Answer></Answer> includes any justification or rationale for the score given or for answers completely unrelated or incorrect, especially those not addressing the question's topic as outlined in the <Question></Question> tags.
     - SM_SCS_BLE: for answers relevant to the question but lacking any links as evidence.
     - SM_SCS_GRY: for answers that vary in correctness, relevance, and the inclusion of links, with higher scores reflecting better quality and more relevant evidence.
-    - SM_SCS_GRN for answers that are not only accurate and relevant but also well-supported by links, fully addressing the question's demands as specified in the <Question></Question> tags.
+    - SM_SCS_GRN: for answers that are not only accurate and relevant but also well-supported by links, fully addressing the question's demands as specified in the <Question></Question> tags.
 
     Summary Structure Rules:{"".join(answer_rules)}
 
@@ -339,7 +351,9 @@ def get_system_summary_relevance_scoring_template(tools: List[str], result_type:
 
     Output:
     You MUST return only one of from [SM_SCS_RDD, SM_SCS_BLE, SM_SCS_GRY, SM_SCS_GRN]
-    Do NOT return direct answer to <Question>. Remember you are quality analyst and you MUST return score and explanation.
+    Do NOT return direct answer to <Question>. Remember you are a quality analyst and you MUST return the score and an explanation.
+
+    {step_instructions}
     """
 
     return clean_template(template)
