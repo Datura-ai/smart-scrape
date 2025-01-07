@@ -90,21 +90,14 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 # Get completions based on tools used
                 completions, links_expected = response.get_search_completion()
 
-                # Use completions directly without stripping again, as it has been handled in get_search_completion
-                all_texts_except_summary = {
-                    key: text for key, text in completions.items()
-                }
-
-
-                # Get the final summary
+                # Fetch the final summary from synapse.texts if available
                 final_summary = response.texts.get("summary", "").strip()
                 if not final_summary:
-                    bt.logging.warning("Final summary not found in synapse.texts.")
-                    final_summary = completion.strip()  # Fallback to `completion`
-
-                # Combine fields into a structured format with each field name
+                    return None
+                
+                # Combine the 'completions' dictionary directly with the final summary
                 structured_data = {
-                    **all_texts_except_summary,
+                    **completions,
                     "summary": final_summary
                 }
 
@@ -123,7 +116,6 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             else:
                 has_required_links = bool(response.search_completion_links)
 
-
             if scoring_prompt is None or not has_required_links:
                 return None
 
@@ -141,9 +133,11 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 },
                 {"role": "user", "content": scoring_prompt_text},
             ]
+
         except Exception as e:
             bt.logging.error(f"Summary Relevance get_scoring_text: {str(e)}")
             return None
+
 
 
     async def process_link_scoring_messages(
