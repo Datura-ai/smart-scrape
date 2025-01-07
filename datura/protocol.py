@@ -350,23 +350,23 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                 "ArXiv Search",
             ]
         ):
-            search_summary = self.texts.get(ScraperTextRole.SEARCH_SUMMARY.value, "")
+            search_summary = self.texts.get(ScraperTextRole.SEARCH_SUMMARY.value, "").strip()
             completions[ScraperTextRole.SEARCH_SUMMARY.value] = search_summary
 
         if "Reddit Search" in self.tools:
-            reddit_summary = self.texts.get(ScraperTextRole.REDDIT_SUMMARY.value, "")
+            reddit_summary = self.texts.get(ScraperTextRole.REDDIT_SUMMARY.value, "").strip()
             completions[ScraperTextRole.REDDIT_SUMMARY.value] = reddit_summary
 
         if "Hacker News Search" in self.tools:
             hacker_news_summary = self.texts.get(
                 ScraperTextRole.HACKER_NEWS_SUMMARY.value, ""
-            )
+            ).strip()
             completions[ScraperTextRole.HACKER_NEWS_SUMMARY.value] = hacker_news_summary
+
+        completions = {key: value for key, value in completions.items() if value}
 
         links_per_completion = 10
         links_expected = len(completions) * links_per_completion
-
-        completions = {key: value for key, value in completions.items() if value}
 
         return completions, links_expected
 

@@ -282,7 +282,7 @@ def get_system_summary_relevance_scoring_template(tools: List[str], result_type:
         if any(tool in tools for tool in ["Google Search", "Google News Search", "Wikipedia Search", "Youtube Search", "ArXiv Search"]):
             links_header_name.append("**Key Sources**")
         summary_header_name = "**Summary**"
-    
+
     elif result_type == ResultType.LINKS_WITH_SUMMARIES:
         # For specific summaries, use header based on summary_key
         if summary_key == ScraperTextRole.TWITTER_SUMMARY.value:
@@ -293,24 +293,7 @@ def get_system_summary_relevance_scoring_template(tools: List[str], result_type:
             summary_header_name = "**Hacker News Summary**"
         elif summary_key == ScraperTextRole.REDDIT_SUMMARY.value:
             links_header_name = ["**Key Posts**"]
-            summary_header_name = "**Reddit Summary**"
-        else:
-            links_header_name = ["**Key Sources**"]
-            summary_header_name = "**Search Summary**"
-    
-    else:
-        # Default behavior (backwards compatibility)
-        if "Twitter Search" in tools:
-            links_header_name.append("**Key Tweets**")
-            summary_header_name = "**Twitter Summary**"
-        elif "Hacker News Search" in tools:
-            links_header_name.append("**Key News**")
-            summary_header_name = "**Hacker News Summary**"
-        elif "Reddit Search" in tools:
-            links_header_name.append("**Key Posts**")
-            summary_header_name = "**Reddit Summary**"
-        else:
-            summary_header_name = "**Search Summary**"
+            summary_header_name = "**Reddit Summary**"      
 
     # If no links headers were added, use default
     if not links_header_name:

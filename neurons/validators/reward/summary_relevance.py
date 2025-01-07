@@ -88,13 +88,13 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 scoring_prompt = LinkContentAndDescriptionPrompt()
 
                 # Get completions based on tools used
-                completions = response.get_search_completion()
-                
-                # Strip any whitespace from completions
+                completions, links_expected = response.get_search_completion()
+
+                # Use completions directly without stripping again, as it has been handled in get_search_completion
                 all_texts_except_summary = {
-                    key: text.strip() 
-                    for key, text in completions.items()
+                    key: text for key, text in completions.items()
                 }
+
 
                 # Get the final summary
                 final_summary = response.texts.get("summary", "").strip()
@@ -120,12 +120,9 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             has_required_links = True
             if summary_key == ScraperTextRole.TWITTER_SUMMARY.value:
                 has_required_links = bool(response.completion_links)
-            elif summary_key == ScraperTextRole.REDDIT_SUMMARY.value:
-                has_required_links = bool(response.completion_links)
-            elif summary_key == ScraperTextRole.HACKER_NEWS_SUMMARY.value:
-                has_required_links = bool(response.completion_links)
             else:
                 has_required_links = bool(response.search_completion_links)
+
 
             if scoring_prompt is None or not has_required_links:
                 return None
