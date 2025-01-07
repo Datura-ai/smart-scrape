@@ -38,6 +38,7 @@ from datura.services.web_search_utils import WebSearchUtils
 import json
 from neurons.validators.reward.config import DefaultSummaryRelevanceWeightConfig
 from datura.utils import clean_text
+from datura.protocol import ResultType
 
 
 class SummaryRelevanceRewardModel(BaseRewardModel):
@@ -64,7 +65,10 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
             if not completion:
                 return None
 
-            is_twitter = summary_key == ScraperTextRole.TWITTER_SUMMARY.value
+            is_final_summary = (
+                response.result_type == ResultType.LINKS_WITH_FINAL_SUMMARY
+                and summary_key == ScraperTextRole.FINAL_SUMMARY.value
+            )
 
             completion = self.validate_successful_completion(
                 response=response, completion=completion
@@ -75,48 +79,66 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
 
             if not self.scoring_type:
                 return None
-            # Choose correct scoring prompt for request type.
-            # Determine the scoring prompt based on the provided name or the default scoring type.
+
             scoring_prompt = None
-
             scoring_prompt_text = None
-            if (
-                self.scoring_type.value
-                == RewardScoringType.summary_relevance_score_template.value
-            ):
-                scoring_prompt = SummaryRelevancePrompt()
-            elif (
-                self.scoring_type.value
-                == RewardScoringType.link_content_relevance_template.value
-            ):
-                scoring_prompt = LinkContentPrompt()
-                # Convert list of links content to string before passing to the prompt
-                completion_links_str = str(response.completion_links)
-                scoring_prompt_text = scoring_prompt.text(
-                    completion, completion_links_str
-                )
 
-            if (
-                scoring_prompt is None
-                or (is_twitter and not response.completion_links)
-                or (not is_twitter and not response.search_completion_links)
-            ):
+            if is_final_summary:
+                # Combine all fields dynamically
+                scoring_prompt = LinkContentAndDescriptionPrompt()
+
+                # Get completions based on tools used
+                completions, links_expected = response.get_search_completion()
+
+                # Fetch the final summary from synapse.texts if available
+                final_summary = response.texts.get("summary", "").strip()
+                if not final_summary:
+                    return None
+                
+                # Combine the 'completions' dictionary directly with the final summary
+                structured_data = {
+                    **completions,
+                    "summary": final_summary
+                }
+
+                scoring_prompt_text = scoring_prompt.text(response.prompt, structured_data)
+            elif self.scoring_type.value == RewardScoringType.summary_relevance_score_template.value:
+                scoring_prompt = SummaryRelevancePrompt()
+            elif self.scoring_type.value == RewardScoringType.link_content_relevance_template.value:
+                scoring_prompt = LinkContentPrompt()
+                completion_links_str = str(response.completion_links)
+                scoring_prompt_text = scoring_prompt.text(completion, completion_links_str)
+
+            # Check completion links based on summary type
+            has_required_links = True
+            if summary_key == ScraperTextRole.TWITTER_SUMMARY.value:
+                has_required_links = bool(response.completion_links)
+            else:
+                has_required_links = bool(response.search_completion_links)
+
+            if scoring_prompt is None or not has_required_links:
                 return None
 
             if not scoring_prompt_text:
-                # Format scoring prompt for this completion.
                 scoring_prompt_text = scoring_prompt.text(response.prompt, completion)
 
             return scoring_prompt, [
                 {
                     "role": "system",
-                    "content": scoring_prompt.get_system_message(tools=response.tools),
+                    "content": scoring_prompt.get_system_message(
+                        tools=response.tools,
+                        result_type=response.result_type,
+                        summary_key=summary_key
+                    ),
                 },
                 {"role": "user", "content": scoring_prompt_text},
             ]
+
         except Exception as e:
             bt.logging.error(f"Summary Relevance get_scoring_text: {str(e)}")
             return None
+
+
 
     async def process_link_scoring_messages(
         self,
@@ -374,6 +396,12 @@ class SummaryRelevanceRewardModel(BaseRewardModel):
                 enumerate(responses), average_link_scores, uids
             ):
                 uid = uid_tensor.item()
+
+                if response.result_type == ResultType.ONLY_LINKS:
+                    reward_event = BaseRewardEvent()
+                    reward_event.reward = 1.0
+                    reward_events.append(reward_event)
+                    continue
 
                 summary_score = scores.get(str(index), 0)
 

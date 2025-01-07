@@ -100,14 +100,21 @@ class ScraperTextRole(str, Enum):
     SUBNETS_SOURCE_CODE_SUMMARY = "subnets_source_code_summary"
     FINAL_SUMMARY = "summary"
 
+ 
+class ResultType(str, Enum):
+    ONLY_LINKS = "ONLY_LINKS"
+    LINKS_WITH_SUMMARIES = "LINKS_WITH_SUMMARIES"
+    LINKS_WITH_FINAL_SUMMARY = "LINKS_WITH_FINAL_SUMMARY"   
 
-class Model(str, Enum):
+
+class Model(str, Enum):                              
     NOVA = "NOVA"
     ORBIT = "ORBIT"
     HORIZON = "HORIZON"
 
 
 class ScraperStreamingSynapse(bt.StreamingSynapse):
+
     prompt: str = pydantic.Field(
         ...,
         title="Prompt",
@@ -315,6 +322,13 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Query indicator, organic or synthetic",
     )
 
+
+    result_type: ResultType = pydantic.Field(
+        ResultType.ONLY_LINKS,
+        title="result_type",
+        description="The result type for miners",
+    )
+
     def set_tweets(self, data: any):
         self.tweets = data
 
@@ -336,23 +350,23 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                 "ArXiv Search",
             ]
         ):
-            search_summary = self.texts.get(ScraperTextRole.SEARCH_SUMMARY.value, "")
+            search_summary = self.texts.get(ScraperTextRole.SEARCH_SUMMARY.value, "").strip()
             completions[ScraperTextRole.SEARCH_SUMMARY.value] = search_summary
 
         if "Reddit Search" in self.tools:
-            reddit_summary = self.texts.get(ScraperTextRole.REDDIT_SUMMARY.value, "")
+            reddit_summary = self.texts.get(ScraperTextRole.REDDIT_SUMMARY.value, "").strip()
             completions[ScraperTextRole.REDDIT_SUMMARY.value] = reddit_summary
 
         if "Hacker News Search" in self.tools:
             hacker_news_summary = self.texts.get(
                 ScraperTextRole.HACKER_NEWS_SUMMARY.value, ""
-            )
+            ).strip()
             completions[ScraperTextRole.HACKER_NEWS_SUMMARY.value] = hacker_news_summary
+
+        completions = {key: value for key, value in completions.items() if value}
 
         links_per_completion = 10
         links_expected = len(completions) * links_per_completion
-
-        completions = {key: value for key, value in completions.items() if value}
 
         return completions, links_expected
 
