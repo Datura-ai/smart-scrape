@@ -294,6 +294,9 @@ def get_system_summary_relevance_scoring_template(tools: List[str], result_type:
         elif summary_key == ScraperTextRole.REDDIT_SUMMARY.value:
             links_header_name = ["**Key Posts**"]
             summary_header_name = "**Reddit Summary**"      
+        elif summary_key == ScraperTextRole.SEARCH_SUMMARY.value:
+            links_header_name = ["**Key Sources**"]
+            summary_header_name = "**Search Summary**"    
 
     # If no links headers were added, use default
     if not links_header_name:
