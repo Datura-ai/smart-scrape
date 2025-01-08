@@ -308,7 +308,9 @@ def get_system_summary_relevance_scoring_template(tools: List[str], result_type:
     - "{summary_header_name}" must contain a summary of the content without links, otherwise score as SM_SCS_RDD.
     - "{summary_header_name}" must not contain links in summary, otherwise score as SM_SCS_RDD.
     - If "{summary_header_name}" contains information that is not related to the prompt, score as SM_SCS_RDD.
-    - If "{summary_header_name}" contains **valid information** about the prompt topic but that information **is not present** or cannot be **verified** from "{links_header}", score as SM_SCS_RDD.
+    - Evaluate for SM_SCS_RDD if:
+      - The {summary_header_name} contains valid information about the prompt topic
+      - BUT this information could not have been sourced from the provided {links_header}.
     """
         answer_rules.append(rules)
 
