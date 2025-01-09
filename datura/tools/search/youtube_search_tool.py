@@ -1,5 +1,4 @@
 from typing import Optional, Type
-from langchain.callbacks.manager import CallbackManagerForToolRun
 from pydantic import BaseModel, Field
 from youtube_search import YoutubeSearch
 import json
@@ -30,8 +29,8 @@ class YoutubeSearchTool(BaseTool):
 
     tool_id = "8b7b6dad-e550-4a01-be51-aed785eda805"
 
-    def _run(
-        self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
+    def _arun(
+        self, query: str
     ) -> str:
         """Search Youtube and return the results."""
         result = YoutubeSearch(search_terms=query, max_results=10)

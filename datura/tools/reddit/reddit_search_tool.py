@@ -1,6 +1,5 @@
 from typing import Optional, Type
 
-from langchain.callbacks.manager import CallbackManagerForToolRun
 from pydantic import BaseModel, Field
 import json
 import bittensor as bt
@@ -34,7 +33,7 @@ class RedditSearchTool(BaseTool):
         pass
 
     async def _arun(
-        self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
+        self, query: str
     ) -> str:
         """Search Reddit and return the results."""
         search = SerpAdvancedGoogleSearch(
