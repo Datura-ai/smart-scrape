@@ -29,7 +29,7 @@ class YoutubeSearchTool(BaseTool):
 
     tool_id = "8b7b6dad-e550-4a01-be51-aed785eda805"
 
-    def _arun(
+    async def _arun(
         self, query: str
     ) -> str:
         """Search Youtube and return the results."""

@@ -34,7 +34,7 @@ class ArxivSearchTool(BaseTool):
 
     tool_id = "58e41492-40e2-40f4-b548-c72a3b36ac72"
 
-    def _arun(
+    async def _arun(
         self, query: str
     ) -> str:
         """Search Arxiv and return the results."""

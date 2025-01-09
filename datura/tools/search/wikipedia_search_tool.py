@@ -33,7 +33,7 @@ class WikipediaSearchTool(BaseTool):
 
     tool_id = "eb161647-b858-4863-801f-ba7d2e380601"
 
-    def _arun(
+    async def _arun(
         self, query: str
     ) -> str:
         """Search Wikipedia and return the results."""

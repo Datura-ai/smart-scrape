@@ -221,7 +221,10 @@ class ToolManager:
         result = None
 
         try:
-            result = await tool_instance._arun(tool_args)
+            if isinstance(tool_args, dict):
+                result = await tool_instance._arun(**tool_args)
+            elif isinstance(tool_args, str):
+                result = await tool_instance._arun(tool_args)
         except Exception as e:
             bt.logging.error(f"Error running tool {tool_name}: {e}")
 
