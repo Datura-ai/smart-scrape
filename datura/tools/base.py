@@ -1,7 +1,6 @@
 from abc import abstractmethod, ABC
 from typing import List, Optional, Tuple, Any
 from pydantic import BaseModel, Field
-from langchain.tools import BaseTool as LangChainBaseTool
 from datura.protocol import ScraperTextRole
 
 
