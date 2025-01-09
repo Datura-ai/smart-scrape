@@ -221,7 +221,7 @@ class ToolManager:
         result = None
 
         try:
-            result = await tool_instance.ainvoke(tool_args)
+            result = await tool_instance._arun(tool_args)
         except Exception as e:
             bt.logging.error(f"Error running tool {tool_name}: {e}")
 
