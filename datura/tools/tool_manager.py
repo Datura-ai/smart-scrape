@@ -181,33 +181,13 @@ class ToolManager:
 
     async def detect_tools_to_use(self):
         # If user provided tools manually, use them
-        if self.manual_tool_names:
-            return [
-                {"action": tool_name, "args": self.prompt}
-                for tool_name in self.manual_tool_names
-            ]
+        if not self.manual_tool_names:
+            raise ValueError("No manual tool names provided. Please specify tools to use.")
 
-        # Otherwise identify tools to use based on prompt
-        llm = ChatOpenAI(model_name="gpt-4o", temperature=0.2)
-        chain = prompt_template | llm
-
-        tools_description = render_text_description(self.all_tools)
-
-        message = chain.invoke(
-            {
-                "input": self.prompt,
-                "tools": tools_description,
-            }
-        )
-
-        actions = []
-
-        try:
-            actions = json.loads(message.content)
-        except json.JSONDecodeError as e:
-            print(e)
-
-        return actions
+        return [
+            {"action": tool_name, "args": self.prompt}
+            for tool_name in self.manual_tool_names
+        ]
 
     async def run_toolkit(self, toolkit_name, actions):
         tasks = [asyncio.create_task(self.run_tool(action)) for action in actions]
