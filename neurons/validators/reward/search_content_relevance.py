@@ -156,10 +156,12 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
     async def process_links(self, responses: List[ScraperStreamingSynapse]):
         default_val_score_responses = [{} for _ in responses]
 
-        all_links = []
         start_time = time.time()
 
-        for response in responses:
+        all_links = []
+        responses_random_links = [[] for _ in responses]
+
+        for response, random_links in zip(responses, responses_random_links):
             # Extract random links from each summary (Search, Reddit, Hacker News)
             completion = self.get_successful_search_summary_completion(response)
 
@@ -181,6 +183,7 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                     )
                 )
 
+            random_links.extend(links)
             all_links.extend(links)
 
         unique_links = list(set(all_links))
@@ -195,11 +198,11 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
             unique_links
         )
 
-        for response in responses:
+        for response, random_links in zip(responses, responses_random_links):
             for link_with_metadata in links_with_metadata:
                 url = link_with_metadata.get("url")
 
-                if url in response.search_completion_links:
+                if url in random_links:
                     response.validator_links.append(link_with_metadata)
 
         end_time = time.time()
