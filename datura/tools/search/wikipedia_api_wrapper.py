@@ -1,9 +1,7 @@
-from langchain_community.utilities import (
-    WikipediaAPIWrapper as LangchainWikipediaAPIWrapper,
-)
-from wikipedia import set_rate_limiting
+from wikipedia import set_rate_limiting, page, search, exceptions
 import bittensor as bt
 from datetime import timedelta
+from typing import Optional, List
 
 WIKIPEDIA_MAX_QUERY_LENGTH = 300
 MAX_DOC_CONTENT_CHARS = 1000
@@ -11,12 +9,16 @@ MAX_DOC_CONTENT_CHARS = 1000
 set_rate_limiting(True, min_wait=timedelta(milliseconds=50))
 
 
-class WikipediaAPIWrapper(LangchainWikipediaAPIWrapper):
-    def run(self, query: str) -> str:
+class WikipediaAPIWrapper:
+    """Custom Wikipedia API Wrapper without LangChain dependency."""
+
+    def __init__(self, top_k_results: int = 3):
+        self.top_k_results = top_k_results
+
+    def run(self, query: str) -> List[dict]:
+
         try:
-            page_titles = self.wiki_client.search(
-                query[:WIKIPEDIA_MAX_QUERY_LENGTH], results=self.top_k_results
-            )
+            page_titles = search(query[:WIKIPEDIA_MAX_QUERY_LENGTH], results=self.top_k_results)
             summaries = []
             for page_title in page_titles[: self.top_k_results]:
                 if wiki_page := self._fetch_page(page_title):
@@ -34,3 +36,10 @@ class WikipediaAPIWrapper(LangchainWikipediaAPIWrapper):
         except Exception as e:
             bt.logging.error(f"Error occurred while fetching Wikipedia results: {e}")
             return []
+
+    @staticmethod
+    def _fetch_page(page_title: str) -> Optional[page]:
+        try:
+            return page(title=page_title, auto_suggest=False)
+        except (exceptions.PageError, exceptions.DisambiguationError):
+            return None

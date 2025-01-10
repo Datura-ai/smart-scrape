@@ -2,8 +2,6 @@ from typing import Optional, Type
 
 import json
 import bittensor as bt
-from langchain.callbacks.manager import CallbackManagerForToolRun
-from langchain_community.utilities import ArxivAPIWrapper
 from pydantic import BaseModel, Field
 import arxiv
 from datura.tools.base import BaseTool
@@ -36,8 +34,8 @@ class ArxivSearchTool(BaseTool):
 
     tool_id = "58e41492-40e2-40f4-b548-c72a3b36ac72"
 
-    def _run(
-        self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
+    async def _arun(
+        self, query: str
     ) -> str:
         """Search Arxiv and return the results."""
         client = arxiv.Client()

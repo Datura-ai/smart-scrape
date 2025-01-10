@@ -4,7 +4,6 @@ import asyncio
 import os
 import json
 import bittensor as bt
-from langchain_openai import ChatOpenAI
 from datura.dataset.tool_return import ResponseOrder
 from datura.tools.base import BaseTool
 from datura.tools.get_tools import (
@@ -14,8 +13,6 @@ from datura.tools.get_tools import (
     find_toolkit_by_name,
 )
 from datura.tools.twitter.twitter_toolkit import TwitterToolkit
-from langchain_core.prompts import PromptTemplate
-from langchain.tools.render import render_text_description
 from datura.protocol import ScraperTextRole
 from openai import AsyncOpenAI
 from datura.tools.response_streamer import ResponseStreamer
@@ -52,7 +49,7 @@ Here is example of JSON array format to return. Keep in mind that this is exampl
 ]
 """
 
-prompt_template = PromptTemplate.from_template(TEMPLATE)
+#prompt_template = PromptTemplate.from_template(TEMPLATE)
 
 client = AsyncOpenAI(timeout=60.0)
 
@@ -181,33 +178,13 @@ class ToolManager:
 
     async def detect_tools_to_use(self):
         # If user provided tools manually, use them
-        if self.manual_tool_names:
-            return [
-                {"action": tool_name, "args": self.prompt}
-                for tool_name in self.manual_tool_names
-            ]
+        if not self.manual_tool_names:
+            raise ValueError("No manual tool names provided. Please specify tools to use.")
 
-        # Otherwise identify tools to use based on prompt
-        llm = ChatOpenAI(model_name="gpt-4o", temperature=0.2)
-        chain = prompt_template | llm
-
-        tools_description = render_text_description(self.all_tools)
-
-        message = chain.invoke(
-            {
-                "input": self.prompt,
-                "tools": tools_description,
-            }
-        )
-
-        actions = []
-
-        try:
-            actions = json.loads(message.content)
-        except json.JSONDecodeError as e:
-            print(e)
-
-        return actions
+        return [
+            {"action": tool_name, "args": self.prompt}
+            for tool_name in self.manual_tool_names
+        ]
 
     async def run_toolkit(self, toolkit_name, actions):
         tasks = [asyncio.create_task(self.run_tool(action)) for action in actions]
@@ -241,7 +218,10 @@ class ToolManager:
         result = None
 
         try:
-            result = await tool_instance.ainvoke(tool_args)
+            if isinstance(tool_args, dict):
+                result = await tool_instance._arun(**tool_args)
+            elif isinstance(tool_args, str):
+                result = await tool_instance._arun(tool_args)
         except Exception as e:
             bt.logging.error(f"Error running tool {tool_name}: {e}")
 
