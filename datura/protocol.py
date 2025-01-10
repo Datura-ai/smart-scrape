@@ -50,22 +50,21 @@ class TwitterScraperMedia(BaseModel):
 
 
 class TwitterScraperUser(BaseModel):
-    # Available in both, scraped and api based tweets.
-    id: Optional[str]
-    url: Optional[str]
-    name: Optional[str]
-    username: Optional[str]
-    created_at: Optional[str]
-
+    id: Optional[str] = None
+    url: Optional[str] = None
+    name: Optional[str] = None
+    username: Optional[str] = None
+    created_at: Optional[str] = None
     # Only available in scraped tweets
-    description: Optional[str]
-    favourites_count: Optional[int]
-    followers_count: Optional[int]
-    listed_count: Optional[int]
-    media_count: Optional[int]
-    profile_image_url: Optional[str]
-    statuses_count: Optional[int]
-    verified: Optional[bool]
+    description: Optional[str] = None
+    favourites_count: Optional[int] = 0
+    followers_count: Optional[int] = 0
+    listed_count: Optional[int] = 0
+    media_count: Optional[int] = 0
+    profile_image_url: Optional[str] = None
+    statuses_count: Optional[int] = 0
+    verified: Optional[bool] = False
+
 
 
 class TwitterScraperTweet(BaseModel):
