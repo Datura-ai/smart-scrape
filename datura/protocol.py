@@ -363,8 +363,6 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             ).strip()
             completions[ScraperTextRole.HACKER_NEWS_SUMMARY.value] = hacker_news_summary
 
-        completions = {key: value for key, value in completions.items() if value}
-
         links_per_completion = 10
         links_expected = len(completions) * links_per_completion
 
