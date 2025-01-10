@@ -4,7 +4,6 @@ import asyncio
 import os
 import json
 import bittensor as bt
-#from langchain_openai import ChatOpenAI
 from datura.dataset.tool_return import ResponseOrder
 from datura.tools.base import BaseTool
 from datura.tools.get_tools import (
@@ -14,8 +13,6 @@ from datura.tools.get_tools import (
     find_toolkit_by_name,
 )
 from datura.tools.twitter.twitter_toolkit import TwitterToolkit
-#from langchain_core.prompts import PromptTemplate
-#from langchain.tools.render import render_text_description
 from datura.protocol import ScraperTextRole
 from openai import AsyncOpenAI
 from datura.tools.response_streamer import ResponseStreamer
