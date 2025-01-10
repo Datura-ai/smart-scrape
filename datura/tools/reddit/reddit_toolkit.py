@@ -9,7 +9,7 @@ class RedditToolkit(BaseToolkit, ABC):
     name: str = "Reddit Toolkit"
     description: str = "Toolkit containing tools for retrieving tweets."
     slug: str = "reddit"
-    toolkit_id = "c6efe1a4-6cdf-404f-b6e4-92ed6c524f0a"
+    toolkit_id: str = "c6efe1a4-6cdf-404f-b6e4-92ed6c524f0a"
 
     def get_tools(self) -> List[BaseTool]:
         return [RedditSearchTool()]

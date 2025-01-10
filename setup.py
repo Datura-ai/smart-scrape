@@ -74,7 +74,7 @@ setup(
     include_package_data=True,
     author_discord="p383_54249",
     license="MIT",
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     install_requires=requirements,
     classifiers=[
         "Development Status :: 3 - Alpha",
