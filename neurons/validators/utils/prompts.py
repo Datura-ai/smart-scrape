@@ -298,13 +298,11 @@ def get_system_summary_relevance_scoring_template(tools: List[str], result_type:
     # If no links headers were added, use default
     if not links_header_name:
         links_header_name = ["**Key Sources**"]
-    if not summary_header_name:
-        summary_header_name = "**Summary**"
 
     answer_rules = []
     for links_header in links_header_name:
         rules = f"""
-        
+
         Evaluate for SM_SCS_RDD if:
         - "{links_header}" must contain markdown links in the format [Description](URL). If not, score as SM_SCS_RDD.
         - "{summary_header_name}" must:
