@@ -304,13 +304,14 @@ def get_system_summary_relevance_scoring_template(tools: List[str], result_type:
     answer_rules = []
     for links_header in links_header_name:
         rules = f"""
-    - "{links_header}" must contain markdown links in the format [Description](URL), otherwise score as SM_SCS_RDD.
-    - "{summary_header_name}" must contain a summary of the content without links, otherwise score as SM_SCS_RDD.
-    - "{summary_header_name}" must not contain links in summary, otherwise score as SM_SCS_RDD.
-    - If "{summary_header_name}" contains information that is not related to the prompt, score as SM_SCS_RDD.
-    - Evaluate for SM_SCS_RDD if:
-      - The {summary_header_name} contains valid information about the prompt topic
-      - BUT this information could not have been sourced from the provided {links_header}.
+        
+        Evaluate for SM_SCS_RDD if:
+        - "{links_header}" must contain markdown links in the format [Description](URL). If not, score as SM_SCS_RDD.
+        - "{summary_header_name}" must:
+        - Contain a summary of the content without links. Otherwise, score as SM_SCS_RDD.
+        - Not contain links. Otherwise, score as SM_SCS_RDD.
+        - Contain information relevant to the prompt. If not, score as SM_SCS_RDD.
+        - If "{summary_header_name}" contains valid information about the prompt topic, BUT this information could not have been sourced from the provided "{links_header}", score as SM_SCS_RDD.
     """
         answer_rules.append(rules)
 
