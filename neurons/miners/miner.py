@@ -142,7 +142,17 @@ class StreamMiner(ABC):
             forward_fn=self._get_twitter_user,
         ).attach(
             forward_fn=self._get_tweets,
+        ).attach(
+            forward_fn=self._twitter_search,
+        ).attach(
+            forward_fn=self._twitter_id_search,
+        ).attach(
+            forward_fn=self.twitter_urls_search,
+        ).attach(
+            forward_fn=self.web_search,
         )
+
+
         bt.logging.info(f"Axon created: {self.axon}")
 
         # Instantiate runners
@@ -172,6 +182,18 @@ class StreamMiner(ABC):
 
     async def _get_tweets(self, synapse: TwitterTweetSynapse) -> TwitterTweetSynapse:
         return await self.get_tweets(synapse)
+    
+    async def _twitter_search(self, synapse: TwitterSearchSynapse) -> TwitterTweetSynapse:
+        return await self.twitter_search(synapse)
+    
+    async def _twitter_id_search(self, synapse: TwitterIDSearchSynapse) -> TwitterIDSearchSynapse:
+        return await self.twitter_id_search(synapse)
+    
+    async def _twitter_urls_search(self, synapse: TwitterURLsSearchSynapse) -> TwitterURLsSearchSynapse:
+        return await self.twitter_urls_search(synapse)
+    
+    async def _web_search(self, synapse: WebSearchSynapse) -> WebSearchSynapse:
+        return await self.web_search(synapse)
 
     def base_blacklist(self, synapse, blacklist_amt=20000) -> Tuple[bool, str]:
         try:
@@ -284,6 +306,18 @@ class StreamMiner(ABC):
 
     @abstractmethod
     async def get_tweets(self, synapse: TwitterTweetSynapse) -> TwitterTweetSynapse: ...
+
+    @abstractmethod
+    async def twitter_search(self, synapse: TwitterSearchSynapse) -> TwitterSearchSynapse: ...
+
+    @abstractmethod
+    async def twitter_id_search(self, synapse: TwitterIDSearchSynapse) -> TwitterIDSearchSynapse: ...
+
+    @abstractmethod
+    async def twitter_urls_search(self, synapse: TwitterURLsSearchSynapse) -> TwitterURLsSearchSynapse: ...
+
+    @abstractmethod
+    async def web_search(self, synapse: WebSearchSynapse) -> WebSearchSynapse: ...
 
     def sync_metagraph_with_interval(self):
         first_run = True

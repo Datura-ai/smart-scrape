@@ -970,7 +970,7 @@ class ScraperValidator:
                 min_retweets=min_retweets,
                 min_replies=min_replies,
                 min_likes=min_likes,
-                results={},
+                results=[],
             )
 
             synapse: TwitterSearchSynapse = await self.neuron.dendrite.call(
@@ -1042,7 +1042,7 @@ class ScraperValidator:
                 query=prompt,
                 num=num,          
                 start=start,      
-                results={},       
+                results=[],       
             )
 
             synapse: WebSearchSynapse = await self.neuron.dendrite.call(
@@ -1107,7 +1107,7 @@ class ScraperValidator:
             # Instantiate TwitterIDSearchSynapse
             synapse = TwitterIDSearchSynapse(
                 id=tweet_id,
-                results={},
+                results=[],
             )
 
             # Make the call
@@ -1173,7 +1173,7 @@ class ScraperValidator:
             # Instantiate TwitterURLsSearchSynapse
             synapse = TwitterURLsSearchSynapse(
                 urls=urls,
-                results={},
+                results=[],
             )
 
             # Make the call

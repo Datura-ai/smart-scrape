@@ -27,6 +27,6 @@ class WebSearchMiner:
         }
 
         # Assign the mock result to the results field of the synapse
-        synapse.results = {"data": [mock_result]}
+        synapse.results = [mock_result]
 
         return synapse

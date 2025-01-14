@@ -321,13 +321,12 @@ async def advanced_twitter_search(
     lang: Optional[str] = Query(None, description="Language filter (e.g., 'en')"),
     verified: Optional[bool] = Query(None, description="Filter for verified accounts"),
     blue_verified: Optional[bool] = Query(None, description="Filter for Twitter Blue verified accounts"),
-    quote: Optional[bool] = Query(None, description="Include only quote tweets"),
-    video: Optional[bool] = Query(None, description="Include only tweets with videos"),
-    image: Optional[bool] = Query(None, description="Include only tweets with images"),
+    is_quote: Optional[bool] = Query(None, description="Include only quote tweets"),
+    is_video: Optional[bool] = Query(None, description="Include only tweets with videos"),
+    is_image: Optional[bool] = Query(None, description="Include only tweets with images"),
     min_retweets: int = Query(0, description="Minimum number of retweets"),
     min_replies: int = Query(0, description="Minimum number of replies"),
     min_likes: int = Query(0, description="Minimum number of likes"),
-    uid: Optional[int] = Query(None, description="Optional miner UID to run. If not provided, a random miner will be selected."),
 ):
     """
     Perform an advanced Twitter search using multiple filtering parameters.
@@ -342,16 +341,15 @@ async def advanced_twitter_search(
         # Call your existing search logic with all parameters passed
         result = await neu.scraper_validator.twitter_search(
             query=query,
-            uid=uid,
             sort=sort,
             start_date=start_date,
             end_date=end_date,
             lang=lang,
             verified=verified,
             blue_verified=blue_verified,
-            quote=quote,
-            video=video,
-            image=image,
+            is_quote=is_quote,
+            is_video=is_video,
+            is_image=is_image,
             min_retweets=min_retweets,
             min_replies=min_replies,
             min_likes=min_likes,
@@ -364,6 +362,7 @@ async def advanced_twitter_search(
         bt.logging.error(f"Error in advanced_twitter_search: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
+
 @app.get(
     "/twitter/{id}",
     summary="Fetch Tweet by ID",
@@ -372,7 +371,6 @@ async def advanced_twitter_search(
 )
 async def get_tweet_by_id(
     id: str = Path(..., description="The unique ID of the tweet to fetch"),
-    uid: Optional[int] = None,
 ):
     """
     Fetch the details of a tweet by its ID.
@@ -391,7 +389,6 @@ async def get_tweet_by_id(
         # Call the `twitter_id_search` method
         result = await neu.scraper_validator.twitter_id_search(
             tweet_id=id,
-            uid=uid
         )
 
         # Return the result
@@ -401,6 +398,7 @@ async def get_tweet_by_id(
         bt.logging.error(f"Error fetching tweet by ID: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
+
 @app.get(
     "/twitter/urls",
     summary="Fetch Tweets by URLs",
@@ -409,7 +407,6 @@ async def get_tweet_by_id(
 )
 async def get_tweets_by_urls(
     urls: List[str] = Query(..., description="A list of tweet URLs to fetch details for"),
-    uid: Optional[int] = None,
 ):
     """
     Fetch the details of multiple tweets using their URLs.
@@ -431,7 +428,6 @@ async def get_tweets_by_urls(
         # Call the `twitter_urls_search` method
         result = await neu.scraper_validator.twitter_urls_search(
             urls=urls_dict,
-            uid=uid,
         )
 
         # Return the result
@@ -452,7 +448,6 @@ async def web_search_endpoint(
     query: str = Query(..., description="The search query string, e.g., 'latest news on AI'."),
     num: int = Query(10, description="The maximum number of results to fetch."),
     start: int = Query(0, description="The number of results to skip (used for pagination)."),
-    uid: Optional[int] = Query(None, description="Optional miner UID to run. If not provided, a random miner will be selected."),
 ):
     """
     Perform a web search using the given query, number of results, and start index.
@@ -473,7 +468,6 @@ async def web_search_endpoint(
         # Call the `web_search` method
         result = await neu.scraper_validator.web_search(
             query=query,
-            uid=uid,
             num=num,
             start=start,
         )
