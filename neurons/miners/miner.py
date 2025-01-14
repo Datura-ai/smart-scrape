@@ -30,9 +30,15 @@ from datura.protocol import (
     SearchSynapse,
     TwitterTweetSynapse,
     TwitterUserSynapse,
+    TwitterSearchSynapse,
+    WebSearchSynapse,
+    TwitterURLsSearchSynapse,
+    TwitterIDSearchSynapse
 )
 from neurons.miners.scraper_miner import ScraperMiner
 from neurons.miners.search_miner import SearchMiner
+from neurons.miners.twitter_search_miner import TwitterSearchMiner
+from neurons.miners.web_search_miner import WebSearchMiner
 from neurons.miners.twitter_user_miner import TwitterUserMiner
 from neurons.miners.twitter_tweet_miner import TwitterTweetMiner
 
@@ -417,6 +423,27 @@ class StreamingTemplateMiner(StreamMiner):
         bt.logging.info(f"started processing for search synapse {synapse}")
         search_miner = SearchMiner(self)
         return await search_miner.search(synapse)
+    
+    async def twitter_search(self, synapse: TwitterSearchSynapse) -> TwitterSearchSynapse:
+        bt.logging.info(f"started processing for search synapse {synapse}")
+        twitter_search_miner = TwitterSearchMiner(self)
+        return await twitter_search_miner.search(synapse)
+    
+    async def twitter_id_search(self, synapse: TwitterIDSearchSynapse) -> TwitterIDSearchSynapse:
+        bt.logging.info(f"started processing for search synapse {synapse}")
+        twitter_search_miner = TwitterSearchMiner(self)
+        return await twitter_search_miner.search_by_id(synapse)
+    
+    async def twitter_urls_search(self, synapse: TwitterURLsSearchSynapse) -> TwitterURLsSearchSynapse:
+        bt.logging.info(f"started processing for search synapse {synapse}")
+        twitter_search_miner = TwitterSearchMiner(self)
+        return await twitter_search_miner.search_by_urls(synapse)
+    
+    async def web_search(self, synapse: WebSearchSynapse) -> WebSearchSynapse:
+        bt.logging.info(f"started processing for search synapse {synapse}")
+        web_search_miner = WebSearchMiner(self)
+        return await web_search_miner.search(synapse)
+    
 
     async def get_twitter_user(self, synapse: TwitterUserSynapse) -> TwitterUserSynapse:
         bt.logging.info(f"started processing for twitter user synapse {synapse}")
