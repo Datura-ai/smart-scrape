@@ -29,9 +29,7 @@ class UIDManager:
 
         self.available_uids = available_uids
 
-        self.top_uids = self.metagraph.I.argsort(descending=True)[
-            : self.max_miners_to_use
-        ]
+        self.top_uids = self.metagraph.I.argsort()[::-1][: self.max_miners_to_use]
 
         # Reuse uids from previous cycle if they are still in top 200 and available
         if len(self.uids):
