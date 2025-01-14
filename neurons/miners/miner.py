@@ -322,7 +322,7 @@ class StreamMiner(ABC):
         bt.logging.info(
             f"Serving axon {ScraperStreamingSynapse} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
-        self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
+        self.subtensor.serve_axon(axon=self.axon, netuid=self.config.netuid)
         bt.logging.info(f"Starting axon server on port: {self.config.axon.port}")
         self.axon.start()
         self.last_epoch_block = self.subtensor.get_current_block()
