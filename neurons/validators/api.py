@@ -1,4 +1,7 @@
 import os
+
+os.environ["USE_TORCH"] = "1"
+
 from typing import Optional, Annotated, List, Optional
 from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
