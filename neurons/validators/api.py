@@ -131,7 +131,7 @@ async def response_stream_event(data: SearchRequest):
 
         merged_chunks = ""
 
-        async for response in neu.scraper_validator.organic(query, max_execution_time):
+        async for response in neu.scraper_validator.organic(query, data.model, max_execution_time):
             # Decode the chunk if necessary and merge
             chunk = str(response)  # Assuming response is already a string
             merged_chunks += chunk
