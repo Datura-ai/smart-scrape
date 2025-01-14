@@ -890,26 +890,24 @@ class ScraperValidator:
     async def twitter_search(
         self,
         query: str,
-        uid: int = None,
         sort: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         lang: Optional[str] = None,
         verified: Optional[bool] = None,
         blue_verified: Optional[bool] = None,
-        quote: Optional[bool] = None,
-        video: Optional[bool] = None,
-        image: Optional[bool] = None,
-        min_retweets: int = 0,
-        min_replies: int = 0,
-        min_likes: int = 0,
+        is_quote: Optional[bool] = None,
+        is_video: Optional[bool] = None,
+        is_image: Optional[bool] = None,
+        min_retweets: Optional[int] = None,
+        min_replies: Optional[int] = None,
+        min_likes: Optional[int] = None,
     ):
         """
         Perform a Twitter search using advanced parameters.
 
         Parameters:
             query (str): The search query string, e.g., "from:user bitcoin".
-            uid (int, optional): The unique identifier of the target axon. Defaults to None.
             sort (str, optional): Sort by "Top" or "Latest".
             start_date (str, optional): Start date in UTC (e.g., '2025-01-01').
             end_date (str, optional): End date in UTC (e.g., '2025-01-10').
@@ -944,18 +942,16 @@ class ScraperValidator:
 
             bt.logging.debug("run_task", task_name)
 
-            # If uid is not provided, get random uids
-            if uid is None:
-                uids = await self.neuron.get_uids(
-                    strategy=QUERY_MINERS.RANDOM,
-                    is_only_allowed_miner=False,
-                    specified_uids=None,
-                )
+            uids = await self.neuron.get_uids(
+                strategy=QUERY_MINERS.RANDOM,
+                is_only_allowed_miner=False,
+                specified_uids=None,
+            )
 
-                if uids:
-                    uid = uids[0]
-                else:
-                    raise StopAsyncIteration("No available UIDs.")
+            if uids:
+                uid = uids[0]
+            else:
+                raise StopAsyncIteration("No available UIDs.")
 
             axon = self.neuron.metagraph.axons[uid]
 
@@ -968,9 +964,9 @@ class ScraperValidator:
                 lang=lang,
                 verified=verified,
                 blue_verified=blue_verified,
-                quote=quote,
-                video=video,
-                image=image,
+                is_quote=is_quote,
+                is_video=is_video,
+                is_image=is_image,
                 min_retweets=min_retweets,
                 min_replies=min_replies,
                 min_likes=min_likes,
@@ -994,7 +990,6 @@ class ScraperValidator:
     async def web_search(
         self,
         query: str,
-        uid: int = None,
         num: int = 10,
         start: int = 0,
     ):
@@ -1028,18 +1023,17 @@ class ScraperValidator:
 
             bt.logging.debug("run_task", task_name)
 
-            # If uid is not provided, get random uids
-            if uid is None:
-                uids = await self.neuron.get_uids(
-                    strategy=QUERY_MINERS.RANDOM,
-                    is_only_allowed_miner=False,
-                    specified_uids=None,
-                )
+            # get random uids
+            uids = await self.neuron.get_uids(
+                strategy=QUERY_MINERS.RANDOM,
+                is_only_allowed_miner=False,
+                specified_uids=None,
+            )
 
-                if uids:
-                    uid = uids[0]
-                else:
-                    raise StopAsyncIteration("No available UIDs.")
+            if uids:
+                uid = uids[0]
+            else:
+                raise StopAsyncIteration("No available UIDs.")
 
             axon = self.neuron.metagraph.axons[uid]
 
@@ -1066,7 +1060,6 @@ class ScraperValidator:
     async def twitter_id_search(
         self,
         tweet_id: str,
-        uid: int = None,
     ):
         """
         Perform a Twitter search using a specific tweet ID.
@@ -1097,18 +1090,17 @@ class ScraperValidator:
 
             bt.logging.debug("run_task", task_name)
 
-            # If uid is not provided, get random uids
-            if uid is None:
-                uids = await self.neuron.get_uids(
-                    strategy=QUERY_MINERS.RANDOM,
-                    is_only_allowed_miner=False,
-                    specified_uids=None,
-                )
+            # get random uids
+            uids = await self.neuron.get_uids(
+                strategy=QUERY_MINERS.RANDOM,
+                is_only_allowed_miner=False,
+                specified_uids=None,
+            )
 
-                if uids:
-                    uid = uids[0]
-                else:
-                    raise StopAsyncIteration("No available UIDs.")
+            if uids:
+                uid = uids[0]
+            else:
+                raise StopAsyncIteration("No available UIDs.")
 
             axon = self.neuron.metagraph.axons[uid]
 
@@ -1134,7 +1126,6 @@ class ScraperValidator:
     async def twitter_urls_search(
         self,
         urls: Dict[str, str],
-        uid: int = None,
     ):
         """
         Perform a Twitter search using multiple tweet URLs.
@@ -1165,18 +1156,17 @@ class ScraperValidator:
 
             bt.logging.debug("run_task", task_name)
 
-            # If uid is not provided, get random uids
-            if uid is None:
-                uids = await self.neuron.get_uids(
-                    strategy=QUERY_MINERS.RANDOM,
-                    is_only_allowed_miner=False,
-                    specified_uids=None,
-                )
+            # get random uids
+            uids = await self.neuron.get_uids(
+                strategy=QUERY_MINERS.RANDOM,
+                is_only_allowed_miner=False,
+                specified_uids=None,
+            )
 
-                if uids:
-                    uid = uids[0]
-                else:
-                    raise StopAsyncIteration("No available UIDs.")
+            if uids:
+                uid = uids[0]
+            else:
+                raise StopAsyncIteration("No available UIDs.")
 
             axon = self.neuron.metagraph.axons[uid]
 

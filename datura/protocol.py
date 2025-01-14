@@ -787,21 +787,21 @@ class TwitterSearchSynapse(bt.Synapse):
         allow_mutation=False,
     )
 
-    quote: Optional[bool] = pydantic.Field(
+    is_quote: Optional[bool] = pydantic.Field(
         None,
         title="Quote",
         description="Filter for quote tweets.",
         allow_mutation=False,
     )
 
-    video: Optional[bool] = pydantic.Field(
+    is_video: Optional[bool] = pydantic.Field(
         None,
         title="Video",
         description="Filter for tweets with videos.",
         allow_mutation=False,
     )
 
-    image: Optional[bool] = pydantic.Field(
+    is_image: Optional[bool] = pydantic.Field(
         None,
         title="Image",
         description="Filter for tweets with images.",
@@ -809,21 +809,21 @@ class TwitterSearchSynapse(bt.Synapse):
     )
 
     min_retweets: Optional[int] = pydantic.Field(
-        0,
+        None,
         title="Minimum Retweets",
         description="Minimum number of retweets.",
         allow_mutation=False,
     )
 
     min_replies: Optional[int] = pydantic.Field(
-        0,
+        None,
         title="Minimum Replies",
         description="Minimum number of replies.",
         allow_mutation=False,
     )
 
     min_likes: Optional[int] = pydantic.Field(
-        0,
+        None,
         title="Minimum Likes",
         description="Minimum number of likes.",
         allow_mutation=False,
