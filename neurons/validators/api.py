@@ -117,21 +117,6 @@ Request Body Fields:
 {fields}
 """
 
-class TwitterSearchParams(BaseModel):
-    query: str = Field(..., description="Search query string, e.g., 'from:user bitcoin'")
-    sort: Optional[str] = Field(None, description="Sort by 'Top' or 'Latest'")
-    start_date: Optional[str] = Field(None, description="Start date in UTC (e.g., '2021-12-31')")
-    end_date: Optional[str] = Field(None, description="End date in UTC (e.g., '2021-12-31')")
-    lang: Optional[str] = Field(None, description="Language filter (e.g., 'en')")
-    verified: Optional[bool] = Field(None, description="Filter for verified accounts")
-    blue_verified: Optional[bool] = Field(None, description="Filter for blue verified accounts")
-    quote: Optional[bool] = Field(None, description="Filter for quote tweets")
-    video: Optional[bool] = Field(None, description="Filter for tweets with videos")
-    image: Optional[bool] = Field(None, description="Filter for tweets with images")
-    min_retweets: Optional[int] = Field(0, description="Minimum number of retweets")
-    min_replies: Optional[int] = Field(0, description="Minimum number of replies")
-    min_likes: Optional[int] = Field(0, description="Minimum number of likes")
-
 async def response_stream_event(data: SearchRequest):
     try:
         query = {
