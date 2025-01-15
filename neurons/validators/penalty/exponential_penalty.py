@@ -7,10 +7,13 @@ import math
 
 MAX_PENALTY = 1.0
 
+
 class ExponentialTimePenaltyModel(BasePenaltyModel):
     def __init__(self, max_penalty: float = MAX_PENALTY):
         super().__init__(max_penalty)
-        bt.logging.debug("Initialized ExponentialTimePenaltyModel using max_execution_time from responses.")
+        bt.logging.debug(
+            "Initialized ExponentialTimePenaltyModel using max_execution_time from responses."
+        )
 
     @property
     def name(self) -> str:
@@ -27,12 +30,17 @@ class ExponentialTimePenaltyModel(BasePenaltyModel):
             max_execution_time = getattr(response, "max_execution_time", None)
 
             # Log the retrieved values for debugging
-            #bt.logging.info(f"Full Response: {response}")
+            # bt.logging.info(f"Full Response: {response}")
 
             # If you want to inspect the full dendrite object
-            #bt.logging.info(f"Dendrite: {response.dendrite}")
+            # bt.logging.info(f"Dendrite: {response.dendrite}")
 
-            if process_time <= max_execution_time:
+            if not process_time:
+                penalties[index] = self.max_penalty
+                bt.logging.debug(
+                    f"Response index {index} has no process time. Penalty: {self.max_penalty}"
+                )
+            elif process_time <= max_execution_time:
                 # No penalty if processed within the allowed time
                 penalties[index] = 0.0
                 bt.logging.debug(
@@ -41,9 +49,11 @@ class ExponentialTimePenaltyModel(BasePenaltyModel):
             else:
                 # Calculate penalty for exceeding allowed time
                 delay = process_time - max_execution_time
-                penalty = 1 - math.exp(-delay) 
+                penalty = 1 - math.exp(-delay)
                 penalty = min(penalty, self.max_penalty)
                 penalties[index] = penalty
-                bt.logging.debug(f"Response index {index} exceeded allowed time by {delay}s. Penalty: {penalty}")
+                bt.logging.debug(
+                    f"Response index {index} exceeded allowed time by {delay}s. Penalty: {penalty}"
+                )
 
         return penalties
