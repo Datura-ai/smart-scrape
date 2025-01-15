@@ -22,11 +22,8 @@ import wandb
 import torch
 import bittensor as bt
 import datura
-import multiprocessing
 import time
-
 import torch
-from multiprocessing import Queue
 
 
 def init_wandb(self):
@@ -60,17 +57,9 @@ def init_wandb(self):
         raise
 
 
-class RetryException(Exception):
-    pass
-
-
-def on_retry(exception, tries_remaining, delay):
-    attempt = 6 - tries_remaining  # Assuming 5 total tries
-    bt.logging.info(f"Retry attempt {attempt}, will retry in {delay} seconds...")
-
-
-def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_key):
+def set_weights_subtensor(netuid, uids, weights, config, version_key):
     try:
+        wallet = bt.wallet(config=config)
         subtensor = bt.subtensor(config=config)
         success, message = subtensor.set_weights(
             wallet=wallet,
@@ -83,7 +72,6 @@ def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_
         )
 
         # Send the success status back to the main process
-        queue.put(success)
         return success, message
     except Exception as e:
         bt.logging.error(f"Failed to set weights on chain with exception: { e }")
@@ -93,72 +81,32 @@ def set_weights_subtensor(queue, wallet, netuid, uids, weights, config, version_
 def set_weights_with_retry(self, processed_weight_uids, processed_weights):
     max_retries = 9  # Maximum number of retries
     retry_delay = 45  # Delay between retries in seconds
-    ttl = 200  # Time-to-live for each process attempt in seconds
+
+    success = False
 
     bt.logging.info("Initiating weight setting process on Bittensor network.")
     for attempt in range(max_retries):
-        success = False
-        queue = Queue()  # Create a new queue for each attempt
-        process = multiprocessing.Process(
-            target=set_weights_subtensor,
-            args=(
-                queue,  # Pass the queue as the first argument
-                self.wallet,
-                self.config.netuid,
-                processed_weight_uids,
-                processed_weights,
-                self.config,
-                datura.__weights_version__,
-            ),
+        success, message = set_weights_subtensor(
+            self.config.netuid,
+            processed_weight_uids,
+            processed_weights,
+            self.config,
+            datura.__weights_version__,
         )
-        process.start()
-        process.join(timeout=ttl)
 
-        if not process.is_alive():
-            process.terminate()  # Ensure the process is terminated
-            process.join()  # Clean up the terminated process
-
-            # Check the queue for the success status
-            if not queue.empty():
-                queue_success = queue.get()
-                # Directly handle the return value without unpacking
-                if isinstance(queue_success, tuple):
-                    # If it's a tuple, unpack it
-                    success_status, message = queue_success
-                    success = success_status
-                    if success_status:
-                        bt.logging.success(
-                            f"Set Weights Completed set weights action successfully. Message: '{message}'"
-                        )
-                    else:
-                        bt.logging.info(
-                            f"Set Weights Attempt failed with message: '{message}', retrying in {retry_delay} seconds..."
-                        )
-                else:
-                    # Handle the case where the return value is not a tuple (e.g., a boolean)
-                    success = queue_success
-                    if success:
-                        bt.logging.success(
-                            f"Set Weights Completed set weights action successfully, Response: {success}"
-                        )
-                    else:
-                        bt.logging.info(
-                            f"Set Weights Attempt failed. retrying in {retry_delay} seconds..., Response: {success}"
-                        )
-            else:
-                bt.logging.info(
-                    f"Set Weights Attempt {attempt + 1} failed, no response received, retrying in {retry_delay} seconds..."
-                )
-        else:
-            process.terminate()  # Ensure the process is terminated before retrying
-            process.join()  # Clean up the terminated process
-            bt.logging.info(
-                f"Set Weights Attempt {attempt + 1} failed, process did not complete in time, retrying in {retry_delay} seconds.."
+        if success:
+            bt.logging.success(
+                f"Set Weights Completed set weights action successfully. Message: '{message}'"
             )
-        if not success:
-            time.sleep(retry_delay)  # Wait for the specified delay before retrying
+
+            break
         else:
-            break  # Exit the retry loop on success
+            bt.logging.info(
+                f"Set Weights Attempt failed with message: '{message}', retrying in {retry_delay} seconds..."
+            )
+
+            time.sleep(retry_delay)
+
     if success:
         bt.logging.success(
             f"Final Result: Successfully set weights after {attempt + 1} attempts."
