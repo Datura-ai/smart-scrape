@@ -611,6 +611,11 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "tools": self.tools,
             "max_execution_time": self.max_execution_time,
             "text_chunks": self.text_chunks,
+            "result_type": self.result_type,
+            "model": self.model,
+            "max_items": self.max_items,
+            "language": self.language,
+            "region": self.region,
         }
 
     class Config:
