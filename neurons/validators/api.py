@@ -5,10 +5,10 @@ os.environ["USE_TORCH"] = "1"
 from typing import Optional, Annotated, List, Optional
 from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Query, Path
 from datura.dataset.tool_return import ResponseOrder
 from datura.dataset.date_filters import DateFilterType
-from datura.protocol import Model
+from datura.protocol import Model, TwitterScraperTweet, WebSearchResultList
 from datura.utils import get_max_execution_time
 import uvicorn
 import bittensor as bt
@@ -18,6 +18,7 @@ import asyncio
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 import json
+
 
 app = FastAPI()
 
@@ -118,8 +119,6 @@ SEARCH_DESCRIPTION = f"""Performs a search across multiple platforms. Available 
 Request Body Fields:
 {fields}
 """
-
-
 
 async def response_stream_event(data: SearchRequest):
     try:
@@ -295,6 +294,178 @@ async def search_links(
 ):
     return  await handle_search_links(body, access_key, EXPECTED_ACCESS_KEY, available_tools)
 
+
+@app.get(
+    "/twitter/search",
+    summary="Twitter Advanced Search",
+    description="Using filters to search for precise results from Twitter.",
+    response_model=List[TwitterScraperTweet],
+)
+async def advanced_twitter_search(
+    query: str = Query(..., description="Search query string, e.g., 'from:user bitcoin'"),
+    sort: Optional[str] = Query(None, description="Sort by 'Top' or 'Latest'"),
+    start_date: Optional[str] = Query(None, description="Start date in UTC (e.g., '2025-01-01')"),
+    end_date: Optional[str] = Query(None, description="End date in UTC (e.g., '2025-01-10')"),
+    lang: Optional[str] = Query(None, description="Language filter (e.g., 'en')"),
+    verified: Optional[bool] = Query(None, description="Filter for verified accounts"),
+    blue_verified: Optional[bool] = Query(None, description="Filter for Twitter Blue verified accounts"),
+    is_quote: Optional[bool] = Query(None, description="Include only quote tweets"),
+    is_video: Optional[bool] = Query(None, description="Include only tweets with videos"),
+    is_image: Optional[bool] = Query(None, description="Include only tweets with images"),
+    min_retweets: int = Query(0, description="Minimum number of retweets"),
+    min_replies: int = Query(0, description="Minimum number of replies"),
+    min_likes: int = Query(0, description="Minimum number of likes"),
+):
+    """
+    Perform an advanced Twitter search using multiple filtering parameters.
+
+    Returns:
+        List[TwitterScraperTweet]: A list of fetched tweets.
+    """
+    try:
+        # Log the start of the operation
+        bt.logging.info("Advanced Twitter search initiated.")
+
+        # Call your existing search logic with all parameters passed
+        result = await neu.scraper_validator.twitter_search(
+            query=query,
+            sort=sort,
+            start_date=start_date,
+            end_date=end_date,
+            lang=lang,
+            verified=verified,
+            blue_verified=blue_verified,
+            is_quote=is_quote,
+            is_video=is_video,
+            is_image=is_image,
+            min_retweets=min_retweets,
+            min_replies=min_replies,
+            min_likes=min_likes,
+        )
+
+        # Return the result directly (assumed to already conform to TwitterScraperTweet)
+        return result
+
+    except Exception as e:
+        bt.logging.error(f"Error in advanced_twitter_search: {e}")
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
+@app.get(
+    "/twitter/{id}",
+    summary="Fetch Tweet by ID",
+    description="Fetch details of a tweet using its unique tweet ID.",
+    response_model=List[TwitterScraperTweet],
+)
+async def get_tweet_by_id(
+    id: str = Path(..., description="The unique ID of the tweet to fetch"),
+):
+    """
+    Fetch the details of a tweet by its ID.
+
+    Parameters:
+        id (str): The unique tweet ID to fetch.
+        uid (Optional[int]): The unique identifier of the target axon. Defaults to None.
+
+    Returns:
+        List[TwitterScraperTweet]: A list containing the tweet details.
+    """
+    try:
+        # Log the operation
+        bt.logging.info(f"Fetching tweet with ID: {id}")
+
+        # Call the `twitter_id_search` method
+        result = await neu.scraper_validator.twitter_id_search(
+            tweet_id=id,
+        )
+
+        # Return the result
+        return result
+
+    except Exception as e:
+        bt.logging.error(f"Error fetching tweet by ID: {e}")
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
+@app.get(
+    "/twitter/urls",
+    summary="Fetch Tweets by URLs",
+    description="Fetch details of multiple tweets using their URLs.",
+    response_model=List[TwitterScraperTweet],
+)
+async def get_tweets_by_urls(
+    urls: List[str] = Query(..., description="A list of tweet URLs to fetch details for"),
+):
+    """
+    Fetch the details of multiple tweets using their URLs.
+
+    Parameters:
+        urls (List[str]): A list of tweet URLs.
+        uid (Optional[int]): The unique identifier of the target axon. Defaults to None.
+
+    Returns:
+        List[TwitterScraperTweet]: A list of fetched tweets.
+    """
+    try:
+        # Log the operation
+        bt.logging.info(f"Fetching tweets for URLs: {urls}")
+
+        # Transform URLs into the required dictionary format if needed
+        urls_dict = {url: "" for url in urls}
+
+        # Call the `twitter_urls_search` method
+        result = await neu.scraper_validator.twitter_urls_search(
+            urls=urls_dict,
+        )
+
+        # Return the result
+        return result
+
+    except Exception as e:
+        bt.logging.error(f"Error fetching tweets by URLs: {e}")
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+    
+
+@app.get(
+    "/web/search",
+    summary="Web Search",
+    description="Search the web using a query with options for result count and pagination.",
+    response_model=WebSearchResultList,
+)
+async def web_search_endpoint(
+    query: str = Query(..., description="The search query string, e.g., 'latest news on AI'."),
+    num: int = Query(10, description="The maximum number of results to fetch."),
+    start: int = Query(0, description="The number of results to skip (used for pagination)."),
+):
+    """
+    Perform a web search using the given query, number of results, and start index.
+
+    Parameters:
+        query (str): The search query string.
+        num (int): The maximum number of results to fetch.
+        start (int): The number of results to skip (for pagination).
+        uid (Optional[int]): The unique identifier of the target axon. Defaults to None.
+
+    Returns:
+        List[WebSearchResult]: A list of web search results.
+    """
+    try:
+        # Log the operation
+        bt.logging.info(f"Performing web search with query: '{query}', num: {num}, start: {start}")
+
+        # Call the `web_search` method
+        result = await neu.scraper_validator.web_search(
+            query=query,
+            num=num,
+            start=start,
+        )
+
+        # Return the results
+        return {"data": result}
+
+    except Exception as e:
+        bt.logging.error(f"Error in web search: {e}")
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 @app.get("/")
