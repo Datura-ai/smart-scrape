@@ -653,6 +653,20 @@ def extract_json_chunk(chunk, response, hotkey, buffer=""):
     return json_objects, buffer
 
 
+class WebSearchResult(BaseModel):
+    title: str
+    snippet: str
+    link: str
+    date: str
+    source: str
+    author: Optional[str] = None
+    image: Optional[str] = None
+    favicon: Optional[str] = None
+    highlights: List[str]
+
+class WebSearchResultList(BaseModel):
+    data: List[WebSearchResult]    
+
 class SearchSynapse(bt.Synapse):
     """A class to represent search api synapse"""
 
@@ -682,6 +696,181 @@ class SearchSynapse(bt.Synapse):
         default_factory=dict,
         title="Tool result dictionary",
         description="A dictionary of tool results where key is tool name and value is the result. Example: {'Google Search': {}, 'Google Image Search': {} }",
+    )
+
+    def deserialize(self) -> str:
+        return self
+    
+class WebSearchSynapse(bt.Synapse):
+    """A class to represent web search synapse"""
+
+    query: str = pydantic.Field(
+        "",
+        title="Query",
+        description="The query string to fetch results for. Example: 'latest news on AI'. Immutable.",
+        allow_mutation=False,
+    )
+
+    num: int = pydantic.Field(
+        10,
+        title="Number of Results",
+        description="The maximum number of results to fetch. Immutable.",
+        allow_mutation=False,
+    )
+
+    start: int = pydantic.Field(
+        0,
+        title="Start Index",
+        description="The number of results to skip (used for pagination). Immutable.",
+        allow_mutation=False,
+    )
+
+    results: Optional[List[WebSearchResult]] = pydantic.Field(
+        default_factory=list,
+        title="Web",
+        description="Fetched Web Data.",
+    )
+
+    def deserialize(self) -> str:
+        return self
+
+    
+class TwitterSearchSynapse(bt.Synapse):
+    """A class to represent Twitter Advanced Search Synapse"""
+
+    query: str = pydantic.Field(
+        ...,
+        title="Query",
+        description="Search query string, e.g., 'from:user bitcoin'.",
+        allow_mutation=False,
+    )
+
+    sort: Optional[str] = pydantic.Field(
+        None,
+        title="Sort",
+        description="Sort by 'Top' or 'Latest'.",
+        allow_mutation=False,
+    )
+
+    start_date: Optional[str] = pydantic.Field(
+        None,
+        title="Start Date",
+        description="Start date in UTC (e.g., '2021-12-31').",
+        allow_mutation=False,
+    )
+
+    end_date: Optional[str] = pydantic.Field(
+        None,
+        title="End Date",
+        description="End date in UTC (e.g., '2021-12-31').",
+        allow_mutation=False,
+    )
+
+    lang: Optional[str] = pydantic.Field(
+        None,
+        title="Language",
+        description="Language filter (e.g., 'en').",
+        allow_mutation=False,
+    )
+
+    verified: Optional[bool] = pydantic.Field(
+        None,
+        title="Verified",
+        description="Filter for verified accounts.",
+        allow_mutation=False,
+    )
+
+    blue_verified: Optional[bool] = pydantic.Field(
+        None,
+        title="Blue Verified",
+        description="Filter for blue verified accounts.",
+        allow_mutation=False,
+    )
+
+    is_quote: Optional[bool] = pydantic.Field(
+        None,
+        title="Quote",
+        description="Filter for quote tweets.",
+        allow_mutation=False,
+    )
+
+    is_video: Optional[bool] = pydantic.Field(
+        None,
+        title="Video",
+        description="Filter for tweets with videos.",
+        allow_mutation=False,
+    )
+
+    is_image: Optional[bool] = pydantic.Field(
+        None,
+        title="Image",
+        description="Filter for tweets with images.",
+        allow_mutation=False,
+    )
+
+    min_retweets: Optional[int] = pydantic.Field(
+        None,
+        title="Minimum Retweets",
+        description="Minimum number of retweets.",
+        allow_mutation=False,
+    )
+
+    min_replies: Optional[int] = pydantic.Field(
+        None,
+        title="Minimum Replies",
+        description="Minimum number of replies.",
+        allow_mutation=False,
+    )
+
+    min_likes: Optional[int] = pydantic.Field(
+        None,
+        title="Minimum Likes",
+        description="Minimum number of likes.",
+        allow_mutation=False,
+    )
+
+    results: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+        default_factory=list,
+        title="tweets",
+        description="Fetched Tweets Data.",
+    )
+
+    def deserialize(self) -> str:
+        return self
+    
+class TwitterIDSearchSynapse(bt.Synapse):
+    """A class to represent Twitter ID Advanced Search Synapse"""
+
+    id: str = pydantic.Field(
+        ...,
+        title="id",
+        description="Search id string, tweet ID to fetch",
+        allow_mutation=False,
+    )
+
+    results: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+        default_factory=list,
+        title="tweets",
+        description="Fetched Tweets Data.",
+    )
+
+    def deserialize(self) -> str:
+        return self
+    
+class TwitterURLsSearchSynapse(bt.Synapse):
+    """A class to represent Twitter URLs Advanced Search Synapse"""
+
+    urls: Dict[str, str] = pydantic.Field(
+        ...,
+        title="URLs",
+        description="A list of tweet URLs to fetch.",
+        allow_mutation=False,
+    )
+
+    results: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+        default_factory=list,
+        title="tweets",
+        description="Fetched Tweets Data.",
     )
 
     def deserialize(self) -> str:

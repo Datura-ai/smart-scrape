@@ -9,10 +9,14 @@ from datura.protocol import (
     TwitterTweetSynapse,
     TwitterUserSynapse,
     SearchSynapse,
+    WebSearchSynapse,
+    TwitterSearchSynapse,
+    TwitterIDSearchSynapse,
+    TwitterURLsSearchSynapse
 )
 from datura.stream import collect_final_synapses
 from reward import RewardModelType, RewardScoringType
-from typing import List, Optional
+from typing import List, Optional, Dict
 from utils.mock import MockRewardModel
 import time
 from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
@@ -882,6 +886,310 @@ class ScraperValidator:
         except Exception as e:
             bt.logging.error(f"Error in search: {e}")
             raise e
+        
+    async def twitter_search(
+        self,
+        query: str,
+        sort: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        lang: Optional[str] = None,
+        verified: Optional[bool] = None,
+        blue_verified: Optional[bool] = None,
+        is_quote: Optional[bool] = None,
+        is_video: Optional[bool] = None,
+        is_image: Optional[bool] = None,
+        min_retweets: Optional[int] = None,
+        min_replies: Optional[int] = None,
+        min_likes: Optional[int] = None,
+    ):
+        """
+        Perform a Twitter search using advanced parameters.
+
+        Parameters:
+            query (str): The search query string, e.g., "from:user bitcoin".
+            sort (str, optional): Sort by "Top" or "Latest".
+            start_date (str, optional): Start date in UTC (e.g., '2025-01-01').
+            end_date (str, optional): End date in UTC (e.g., '2025-01-10').
+            lang (str, optional): Language filter (e.g., 'en').
+            verified (bool, optional): Filter for verified accounts.
+            blue_verified (bool, optional): Filter for blue verified accounts.
+            quote (bool, optional): Filter for quote tweets.
+            video (bool, optional): Filter for tweets with videos.
+            image (bool, optional): Filter for tweets with images.
+            min_retweets (int, optional): Minimum number of retweets. Defaults to 0.
+            min_replies (int, optional): Minimum number of replies. Defaults to 0.
+            min_likes (int, optional): Minimum number of likes. Defaults to 0.
+
+        Returns:
+            List[TwitterScraperTweet]: The list of fetched tweets.
+        """
+        try:
+            task_name = "twitter search"
+
+            task = SearchTask(
+                base_text=query,
+                task_name=task_name,
+                task_type="twitter_search",
+                criteria=[],
+            )
+
+            if not len(self.neuron.available_uids):
+                bt.logging.info("No available UIDs.")
+                raise StopAsyncIteration("No available UIDs.")
+
+            prompt = task.compose_prompt()
+
+            bt.logging.debug("run_task", task_name)
+
+            uids = await self.neuron.get_uids(
+                strategy=QUERY_MINERS.RANDOM,
+                is_only_allowed_miner=False,
+                specified_uids=None,
+            )
+
+            if uids:
+                uid = uids[0]
+            else:
+                raise StopAsyncIteration("No available UIDs.")
+
+            axon = self.neuron.metagraph.axons[uid]
+
+            # Instantiate TwitterSearchSynapse with input parameters
+            synapse = TwitterSearchSynapse(
+                query=prompt,
+                sort=sort,
+                start_date=start_date,
+                end_date=end_date,
+                lang=lang,
+                verified=verified,
+                blue_verified=blue_verified,
+                is_quote=is_quote,
+                is_video=is_video,
+                is_image=is_image,
+                min_retweets=min_retweets,
+                min_replies=min_replies,
+                min_likes=min_likes,
+                results=[],
+            )
+
+            synapse: TwitterSearchSynapse = await self.neuron.dendrite.call(
+                target_axon=axon,
+                synapse=synapse,
+                timeout=self.timeout,
+                deserialize=False,
+            )
+
+            return synapse.results
+        except Exception as e:
+            bt.logging.error(f"Error in search: {e}")
+            raise e
+   
+        
+
+    async def web_search(
+        self,
+        query: str,
+        num: int = 10,
+        start: int = 0,
+    ):
+        """
+        Perform a web search using advanced parameters.
+
+        Parameters:
+            query (str): The search query string, e.g., "latest news on AI".
+            uid (int, optional): The unique identifier of the target axon. Defaults to None.
+            num (int, optional): The maximum number of results to fetch. Defaults to 10.
+            start (int, optional): The number of results to skip (used for pagination). Defaults to 0.
+
+        Returns:
+            List[WebSearchResult]: The list of fetched web results.
+        """
+        try:
+            task_name = "web search"
+
+            task = SearchTask(
+                base_text=query,
+                task_name=task_name,
+                task_type="web_search",
+                criteria=[],
+            )
+
+            if not len(self.neuron.available_uids):
+                bt.logging.info("No available UIDs.")
+                raise StopAsyncIteration("No available UIDs.")
+
+            prompt = task.compose_prompt()
+
+            bt.logging.debug("run_task", task_name)
+
+            # get random uids
+            uids = await self.neuron.get_uids(
+                strategy=QUERY_MINERS.RANDOM,
+                is_only_allowed_miner=False,
+                specified_uids=None,
+            )
+
+            if uids:
+                uid = uids[0]
+            else:
+                raise StopAsyncIteration("No available UIDs.")
+
+            axon = self.neuron.metagraph.axons[uid]
+
+            # Instantiate WebSearchSynapse with additional parameters
+            synapse = WebSearchSynapse(
+                query=prompt,
+                num=num,          
+                start=start,      
+                results=[],       
+            )
+
+            synapse: WebSearchSynapse = await self.neuron.dendrite.call(
+                target_axon=axon,
+                synapse=synapse,
+                timeout=self.timeout,
+                deserialize=False,
+            )
+
+            return synapse.results
+        except Exception as e:
+            bt.logging.error(f"Error in search: {e}")
+            raise e
+ 
+    async def twitter_id_search(
+        self,
+        tweet_id: str,
+    ):
+        """
+        Perform a Twitter search using a specific tweet ID.
+
+        Parameters:
+            tweet_id (str): The ID of the tweet to fetch.
+            uid (int, optional): The unique identifier of the target axon. Defaults to None.
+
+        Returns:
+            List[TwitterScraperTweet]: The list of fetched tweets for the given ID.
+        """
+        try:
+            task_name = "twitter id search"
+
+            # Create a search task
+            task = SearchTask(
+                base_text=f"Fetch tweet with ID: {tweet_id}",
+                task_name=task_name,
+                task_type="twitter_id_search",
+                criteria=[],
+            )
+
+            if not len(self.neuron.available_uids):
+                bt.logging.info("No available UIDs.")
+                raise StopAsyncIteration("No available UIDs.")
+
+            prompt = task.compose_prompt()
+
+            bt.logging.debug("run_task", task_name)
+
+            # get random uids
+            uids = await self.neuron.get_uids(
+                strategy=QUERY_MINERS.RANDOM,
+                is_only_allowed_miner=False,
+                specified_uids=None,
+            )
+
+            if uids:
+                uid = uids[0]
+            else:
+                raise StopAsyncIteration("No available UIDs.")
+
+            axon = self.neuron.metagraph.axons[uid]
+
+            # Instantiate TwitterIDSearchSynapse
+            synapse = TwitterIDSearchSynapse(
+                id=tweet_id,
+                results=[],
+            )
+
+            # Make the call
+            synapse: TwitterIDSearchSynapse = await self.neuron.dendrite.call(
+                target_axon=axon,
+                synapse=synapse,
+                timeout=self.timeout,
+                deserialize=False,
+            )
+
+            return synapse.results
+        except Exception as e:
+            bt.logging.error(f"Error in ID search: {e}")
+            raise e
+        
+    async def twitter_urls_search(
+        self,
+        urls: Dict[str, str],
+    ):
+        """
+        Perform a Twitter search using multiple tweet URLs.
+
+        Parameters:
+            urls A dictionary of tweet IDs with associated metadata.
+            uid The unique identifier of the target axon. Defaults to None.
+
+        Returns:
+            List[TwitterScraperTweet]: The list of fetched tweets for the given URLs.
+        """
+        try:
+            task_name = "twitter urls search"
+
+            # Create a search task
+            task = SearchTask(
+                base_text=f"Fetch tweets for URLs: {list(urls.keys())}",
+                task_name=task_name,
+                task_type="twitter_urls_search",
+                criteria=[],
+            )
+
+            if not len(self.neuron.available_uids):
+                bt.logging.info("No available UIDs.")
+                raise StopAsyncIteration("No available UIDs.")
+
+            prompt = task.compose_prompt()
+
+            bt.logging.debug("run_task", task_name)
+
+            # get random uids
+            uids = await self.neuron.get_uids(
+                strategy=QUERY_MINERS.RANDOM,
+                is_only_allowed_miner=False,
+                specified_uids=None,
+            )
+
+            if uids:
+                uid = uids[0]
+            else:
+                raise StopAsyncIteration("No available UIDs.")
+
+            axon = self.neuron.metagraph.axons[uid]
+
+            # Instantiate TwitterURLsSearchSynapse
+            synapse = TwitterURLsSearchSynapse(
+                urls=urls,
+                results=[],
+            )
+
+            # Make the call
+            synapse: TwitterURLsSearchSynapse = await self.neuron.dendrite.call(
+                target_axon=axon,
+                synapse=synapse,
+                timeout=self.timeout,
+                deserialize=False,
+            )
+
+            return synapse.results
+        except Exception as e:
+            bt.logging.error(f"Error in URLs search: {e}")
+            raise e
+    
+
 
     async def get_twitter_user(self, body: dict, uid: int | None = None):
         try:
