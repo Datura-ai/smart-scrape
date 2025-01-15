@@ -72,13 +72,13 @@ class TwitterScraperTweet(BaseModel):
     user: Optional[TwitterScraperUser] = TwitterScraperUser()
     id: Optional[str]
     text: Optional[str]
-    reply_count: Optional[int]
-    retweet_count: Optional[int]
-    like_count: Optional[int]
-    view_count: Optional[int]
-    quote_count: Optional[int]
-    impression_count: Optional[int]
-    bookmark_count: Optional[int]
+    reply_count: Optional[int] = None
+    retweet_count: Optional[int] = None
+    like_count: Optional[int] = None
+    view_count: Optional[int] = None
+    quote_count: Optional[int] = None
+    impression_count: Optional[int] = None
+    bookmark_count: Optional[int] = None
     url: Optional[str]
     created_at: Optional[str]
     media: Optional[List[TwitterScraperMedia]] = []
