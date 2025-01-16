@@ -72,13 +72,13 @@ class TwitterScraperTweet(BaseModel):
     user: Optional[TwitterScraperUser] = TwitterScraperUser()
     id: Optional[str]
     text: Optional[str]
-    reply_count: Optional[int]
-    retweet_count: Optional[int]
-    like_count: Optional[int]
-    view_count: Optional[int]
-    quote_count: Optional[int]
-    impression_count: Optional[int]
-    bookmark_count: Optional[int]
+    reply_count: Optional[int] = None
+    retweet_count: Optional[int] = None
+    like_count: Optional[int] = None
+    view_count: Optional[int] = None
+    quote_count: Optional[int] = None
+    impression_count: Optional[int] = None
+    bookmark_count: Optional[int] = None
     url: Optional[str]
     created_at: Optional[str]
     media: Optional[List[TwitterScraperMedia]] = []
@@ -611,6 +611,11 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
             "tools": self.tools,
             "max_execution_time": self.max_execution_time,
             "text_chunks": self.text_chunks,
+            "result_type": self.result_type,
+            "model": self.model,
+            "max_items": self.max_items,
+            "language": self.language,
+            "region": self.region,
         }
 
     class Config:
