@@ -345,6 +345,7 @@ async def advanced_twitter_search(
     try:
         # Log the start of the operation
         bt.logging.info("Advanced Twitter search initiated.")
+        max_execution_time = get_max_execution_time(model)
 
         # Call your existing search logic with all parameters passed
         result = await neu.basic_scraper_validator.twitter_search(
@@ -361,6 +362,8 @@ async def advanced_twitter_search(
             min_retweets=min_retweets,
             min_replies=min_replies,
             min_likes=min_likes,
+            model=model,
+            max_execution_time=max_execution_time,
         )
 
         # Return the result directly (assumed to already conform to TwitterScraperTweet)
@@ -398,10 +401,11 @@ async def get_tweet_by_id(
     try:
         # Log the operation
         bt.logging.info(f"Fetching tweet with ID: {id}")
+        max_execution_time = get_max_execution_time(model)
 
         # Call the `twitter_id_search` method
         result = await neu.basic_scraper_validator.twitter_id_search(
-            tweet_id=id,
+            tweet_id=id, model=model, max_execution_time=max_execution_time
         )
 
         # Return the result
@@ -422,6 +426,11 @@ async def get_tweets_by_urls(
     urls: List[str] = Query(
         ..., description="A list of tweet URLs to fetch details for"
     ),
+    model: Optional[Model] = Query(
+        default=Model.NOVA,
+        description=f"Model to use for scraping. {format_enum_values(Model)}",
+        example=Model.NOVA.value,
+    ),
 ):
     """
     Fetch the details of multiple tweets using their URLs.
@@ -436,13 +445,14 @@ async def get_tweets_by_urls(
     try:
         # Log the operation
         bt.logging.info(f"Fetching tweets for URLs: {urls}")
+        max_execution_time = get_max_execution_time(model)
 
         # Transform URLs into the required dictionary format if needed
         urls_dict = {url: "" for url in urls}
 
         # Call the `twitter_urls_search` method
         result = await neu.basic_scraper_validator.twitter_urls_search(
-            urls=urls_dict,
+            urls=urls_dict, model=model, max_execution_time=max_execution_time
         )
 
         # Return the result
