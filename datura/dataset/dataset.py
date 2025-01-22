@@ -1438,3 +1438,26 @@ class QuestionsDataset:
                 return fallback_dataset.next()
         else:
             return random_dataset.next()
+
+    async def generate_basic_question_with_openai(self):
+
+        # Prompt to OpenAI
+        prompt = (
+            "Generate a *single English word* that might be searched on Twitter. "
+            "It must be exactly one word, no extra punctuation."
+        )
+
+        openai_response = await call_openai(
+            messages=[{"role": "system", "content": prompt}],
+            temperature=0.3,
+            model="gpt-4o-mini",
+            seed=None,
+        )
+
+        # Single word from OpenAI
+        single_word = openai_response.strip().split()[0]
+
+        # (Optional) random user
+        random_user = random.choice(["bitcoin", "etherum", "dogecoin", "solana"])
+
+        return f"from:{random_user} {single_word}"

@@ -12,7 +12,7 @@ from datura.protocol import (
     WebSearchSynapse,
     TwitterSearchSynapse,
     TwitterIDSearchSynapse,
-    TwitterURLsSearchSynapse
+    TwitterURLsSearchSynapse,
 )
 from datura.stream import collect_final_synapses
 from reward import RewardModelType, RewardScoringType
@@ -20,6 +20,9 @@ from typing import List, Optional, Dict
 from utils.mock import MockRewardModel
 import time
 from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
+from neurons.validators.reward.twitter_basic_search_content_relevance import (
+    TwitterBasicSearchContentRelevanceModel,
+)
 from neurons.validators.reward.twitter_content_relevance import (
     TwitterContentRelevanceModel,
 )
@@ -40,13 +43,14 @@ from datura.dataset.date_filters import (
     get_specified_date_filter,
     DateFilterType,
 )
-from neurons.validators.organic_query_state import OrganicQueryState
+from neurons.validators.basic_organic_query_state import BasicOrganicQueryState
 from neurons.validators.penalty.streaming_penalty import StreamingPenaltyModel
 from neurons.validators.penalty.exponential_penalty import ExponentialTimePenaltyModel
 from datura.protocol import Model, ResultType
 from datura.utils import get_max_execution_time
 
-class ScraperValidator:
+
+class BasicScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
         self.seed = 1234
         self.neuron = neuron
@@ -54,64 +58,21 @@ class ScraperValidator:
         self.execution_time_options = [Model.NOVA, Model.ORBIT, Model.HORIZON]
         self.execution_time_probabilities = [0.8, 0.1, 0.1]
 
-        self.tools = [
-            ["Twitter Search", "Reddit Search"],
-            ["Twitter Search", "Google Search"],
-            ["Twitter Search", "Google Search"],
-            ["Twitter Search", "Google Search"],
-            ["Twitter Search", "Google Search"],
-            ["Twitter Search", "Hacker News Search"],
-            ["Twitter Search", "Hacker News Search"],
-            ["Twitter Search", "Youtube Search"],
-            ["Twitter Search", "Youtube Search"],
-            ["Twitter Search", "Youtube Search"],
-            ["Twitter Search", "Google News Search"],
-            ["Twitter Search", "Reddit Search"],
-            ["Twitter Search", "Reddit Search"],
-            ["Twitter Search", "Hacker News Search"],
-            ["Twitter Search", "ArXiv Search"],
-            ["Twitter Search", "ArXiv Search"],
-            ["Twitter Search", "Wikipedia Search"],
-            ["Twitter Search", "Wikipedia Search"],
-            ["Twitter Search", "Google Search"],
-            ["Twitter Search", "Google News Search"],
-            ["Twitter Search", "Google News Search"],
-            ["Google Search"],
-            ["Reddit Search"],
-            ["Hacker News Search"],
-            ["Youtube Search"],
-            ["ArXiv Search"],
-            ["Wikipedia Search"],
-            ["Twitter Search", "Youtube Search", "ArXiv Search", "Wikipedia Search"],
-            ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
-            [
-                "Twitter Search",
-                "Google Search",
-                "Reddit Search",
-                "Hacker News Search",
-                "Youtube Search",
-                "ArXiv Search",
-                "Wikipedia Search",
-            ],
-        ]
-        self.language = "en"
-        self.region = "us"
-        self.date_filter = "qdr:w"  # Past week
-        self.max_tools_result_amount = 10
-
         self.synthetic_history = []
-        self.organic_query_state = OrganicQueryState()
+        self.basic_organic_query_state = BasicOrganicQueryState()
         # Init device.
         bt.logging.debug("loading", "device")
         bt.logging.debug(
             "self.neuron.config.neuron.device = ", str(self.neuron.config.neuron.device)
         )
 
+        # Hardcoded weights here because the advanced scraper validator implementation is based on args.
+        self.neuron.config.reward.twitter_content_weight = 0.70
+        self.neuron.config.reward.performance_weight = 0.30
+
         self.reward_weights = torch.tensor(
             [
                 self.neuron.config.reward.twitter_content_weight,
-                self.neuron.config.reward.web_search_relavance_weight,
-                self.neuron.config.reward.summary_relevance_weight,
                 self.neuron.config.reward.performance_weight,
             ],
             dtype=torch.float32,
@@ -125,40 +86,14 @@ class ScraperValidator:
             bt.logging.error(message)
             raise Exception(message)
 
-        self.reward_llm = RewardLLM()
-        # if (
-        #     self.neuron.config.reward.twitter_content_weight > 0
-        #     or self.neuron.config.reward.summary_relevance_weight > 0
-        # ) and not self.neuron.config.neuron.is_disable_tokenizer_reward:
-        #     self.reward_llm.init_pipe_zephyr()
-
         self.reward_functions = [
             (
-                TwitterContentRelevanceModel(
+                TwitterBasicSearchContentRelevanceModel(
                     device=self.neuron.config.neuron.device,
-                    scoring_type=RewardScoringType.summary_relevance_score_template,
-                    llm_reward=self.reward_llm,
+                    scoring_type=RewardScoringType.search_relevance_score_template,
                 )
                 if self.neuron.config.reward.twitter_content_weight > 0
                 else MockRewardModel(RewardModelType.twitter_content_relevance.value)
-            ),
-            (
-                WebSearchContentRelevanceModel(
-                    device=self.neuron.config.neuron.device,
-                    scoring_type=RewardScoringType.search_relevance_score_template,
-                    llm_reward=self.reward_llm,
-                )
-                if self.neuron.config.reward.web_search_relavance_weight > 0
-                else MockRewardModel(RewardModelType.search_content_relevance.value)
-            ),
-            (
-                SummaryRelevanceRewardModel(
-                    device=self.neuron.config.neuron.device,
-                    scoring_type=RewardScoringType.summary_relevance_score_template,
-                    llm_reward=self.reward_llm,
-                )
-                if self.neuron.config.reward.summary_relevance_weight > 0
-                else MockRewardModel(RewardModelType.summary_relavance_match.value)
             ),
             (
                 PerformanceRewardModel(
@@ -170,7 +105,6 @@ class ScraperValidator:
         ]
 
         self.penalty_functions = [
-            StreamingPenaltyModel(max_penalty=1),
             ExponentialTimePenaltyModel(max_penalty=1),
         ]
 
@@ -179,100 +113,87 @@ class ScraperValidator:
             self.execution_time_options, self.execution_time_probabilities
         )[0]
 
-
-    async def run_task_and_score(
+    async def run_twitter_basic_search_and_score(
         self,
-        tasks: List[TwitterTask],
+        tasks: List[SearchTask],
         strategy=QUERY_MINERS.RANDOM,
         is_only_allowed_miner=True,
-        # is_intro_text=False,
         specified_uids=None,
-        date_filter=None,
-        tools=[],
-        language="en",
-        region="us",
-        google_date_filter="qdr:w",
-        response_order=ResponseOrder.SUMMARY_FIRST,
+        start_date=None,
+        end_date=None,
         model: Optional[Model] = None,
-        result_type: Optional[ResultType] = None,
-        is_synthetic=False,
     ):
-        
+        # Setup defaults and retrieve maximum execution time
         if model is None:
             model = Model.NOVA
 
-        if result_type is None:
-            result_type = ResultType.LINKS_WITH_SUMMARIES
-
         max_execution_time = get_max_execution_time(model)
+        start_date = start_date or "2021-12-30"
+        end_date = end_date or "2021-12-31"
 
-        # Record event start time.
         event = {
             "names": [task.task_name for task in tasks],
             "task_types": [task.task_type for task in tasks],
         }
         start_time = time.time()
 
-        query_type = "synthetic" if is_synthetic else "organic"
-
-        # Get random id on that step
         uids = await self.neuron.get_uids(
             strategy=strategy,
             is_only_allowed_miner=is_only_allowed_miner,
             specified_uids=specified_uids,
         )
-
-        start_date = date_filter.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-        end_date = date_filter.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
 
-        synapses = [
-            ScraperStreamingSynapse(
-                prompt=task.compose_prompt(),
-                model=model,
-                seed=self.seed,
+        synapses: List[TwitterSearchSynapse] = [
+            TwitterSearchSynapse(
+                query=task.compose_prompt(),
+                sort=None,
                 start_date=start_date,
                 end_date=end_date,
-                date_filter_type=date_filter.date_filter_type.value,
-                tools=tools,
-                language=language,
-                region=region,
-                google_date_filter=google_date_filter,
-                response_order=response_order.value,
+                lang="en",
+                verified=False,
+                blue_verified=False,
+                is_quote=False,
+                is_video=False,
+                is_image=False,
+                min_retweets=None,
+                min_replies=None,
+                min_likes=None,
+                model=model,
                 max_execution_time=max_execution_time,
-                query_type = query_type,
-                result_type = result_type
             )
             for task in tasks
         ]
 
-        axon_groups = [axons[:80], axons[80:160], axons[160:]]
-        synapse_groups = [synapses[:80], synapses[80:160], synapses[160:]]
         dendrites = [
             self.neuron.dendrite1,
             self.neuron.dendrite2,
             self.neuron.dendrite3,
         ]
 
-        async_responses = []
+        axon_groups = [axons[:80], axons[80:160], axons[160:]]
+        synapse_groups = [synapses[:80], synapses[80:160], synapses[160:]]
+
+        all_tasks = []  # List to collect all asyncio tasks
         timeout = max_execution_time + 5
 
         for dendrite, axon_group, synapse_group in zip(
             dendrites, axon_groups, synapse_groups
         ):
-            async_responses.extend(
-                [
-                    dendrite.call_stream(
-                        target_axon=axon,
-                        synapse=synapse.copy(),
-                        timeout=timeout,
-                        deserialize=False,
-                    )
-                    for axon, synapse in zip(axon_group, synapse_group)
-                ]
-            )
-        
-        return async_responses, uids, event, start_time
+            for axon, syn in zip(axon_group, synapse_group):
+                # Create a task for each dendrite call
+                task = dendrite.call(
+                    target_axon=axon,
+                    synapse=syn.copy(),
+                    timeout=timeout,
+                    deserialize=False,
+                )
+                all_tasks.append(task)
+
+        # Await all tasks concurrently
+        all_responses = await asyncio.gather(*all_tasks, return_exceptions=True)
+
+        return all_responses, uids, event, start_time
 
     async def compute_rewards_and_penalties(
         self,
@@ -282,7 +203,6 @@ class ScraperValidator:
         uids,
         start_time,
         is_synthetic=False,
-        result_type: Optional[ResultType] = None,
     ):
         try:
             if not len(uids):
@@ -301,14 +221,13 @@ class ScraperValidator:
 
             organic_penalties = []
 
-            if result_type is None:
-                result_type = ResultType.LINKS_WITH_SUMMARIES
+            bt.logging.debug(f"Received responses: {responses}")
 
             if is_synthetic:
                 penalized_uids = []
 
                 for uid, response in zip(uids.tolist(), responses):
-                    has_penalty = self.organic_query_state.has_penalty(
+                    has_penalty = self.basic_organic_query_state.has_penalty(
                         response.axon.hotkey
                     )
 
@@ -322,8 +241,6 @@ class ScraperValidator:
                 )
             else:
                 organic_penalties = [False] * len(uids)
-
-            query_type = "synthetic" if is_synthetic else "organic"
 
             for weight_i, reward_fn_i in zip(
                 self.reward_weights, self.reward_functions
@@ -368,7 +285,9 @@ class ScraperValidator:
                 )
 
             if is_synthetic:
-                scattered_rewards = self.neuron.update_moving_averaged_scores(uids, rewards)
+                scattered_rewards = self.neuron.update_moving_averaged_scores(
+                    uids, rewards
+                )
                 self.log_event(tasks, event, start_time, uids, rewards)
 
             scores = torch.zeros(len(self.neuron.metagraph.hotkeys))
@@ -379,9 +298,7 @@ class ScraperValidator:
                 "responses": {},
                 "scores": {},
                 "timestamps": {},
-                "summary_reward": {},
                 "twitter_reward": {},
-                "search_reward": {},
                 "latency_reward": {},
             }
             bt.logging.info(
@@ -391,19 +308,9 @@ class ScraperValidator:
             log_messages = []
             for uid_tensor, reward, response in zip(uids, rewards.tolist(), responses):
                 uid = uid_tensor.item()
-                completion_length = (
-                    len(response.completion) if response.completion is not None else 0
-                )
-                completion_links_length = (
-                    len(response.completion_links)
-                    if response.completion_links is not None
-                    else 0
-                )
+
                 # Accumulate log messages instead of logging them immediately
-                log_messages.append(
-                    f"UID: {uid}, R: {round(reward, 3)}, C: {completion_length}, L: {completion_links_length}"
-                )
-                bt.logging.trace(f"{response.completion}")
+                log_messages.append(f"UID: {uid}, R: {round(reward, 3)}")
 
             # Log the accumulated messages in groups of three
             for i in range(0, len(log_messages), 3):
@@ -412,18 +319,15 @@ class ScraperValidator:
             bt.logging.info(
                 f"======================== Reward ==========================="
             )
+            bt.logging.info(f"this is a all reward {all_rewards} ")
 
             twitter_rewards = all_rewards[0]
-            search_rewards = all_rewards[1]
-            summary_rewards = all_rewards[2]
-            latency_rewards = all_rewards[3]
+            latency_rewards = all_rewards[1]
             zipped_rewards = zip(
                 uids,
                 rewards.tolist(),
                 responses,
-                summary_rewards,
                 twitter_rewards,
-                search_rewards,
                 latency_rewards,
             )
 
@@ -431,23 +335,18 @@ class ScraperValidator:
                 uid_tensor,
                 reward,
                 response,
-                summary_reward,
                 twitter_reward,
-                search_reward,
                 latency_reward,
             ) in zipped_rewards:
                 uid = uid_tensor.item()  # Convert tensor to int
                 uid_scores_dict[uid] = reward
                 scores[uid] = reward  # Now 'uid' is an int, which is a valid key type
                 wandb_data["scores"][uid] = reward
-                wandb_data["responses"][uid] = response.completion
-                wandb_data["prompts"][uid] = response.prompt
-                wandb_data["summary_reward"][uid] = summary_reward
+                wandb_data["prompts"][uid] = response.query
                 wandb_data["twitter_reward"][uid] = twitter_reward
-                wandb_data["search_reward"][uid] = search_reward
                 wandb_data["latency_reward"][uid] = latency_reward
 
-            await self.neuron.update_scores(
+            await self.neuron.update_scores_for_basic(
                 wandb_data=wandb_data,
                 responses=responses,
                 uids=uids,
@@ -457,7 +356,6 @@ class ScraperValidator:
                 val_score_responses_list=val_score_responses_list,
                 organic_penalties=organic_penalties,
                 neuron=self.neuron,
-                query_type=query_type,
             )
 
             return rewards, uids, val_score_responses_list, event, all_original_rewards
@@ -477,73 +375,71 @@ class ScraperValidator:
 
         bt.logging.debug("Run Task event:", event)
 
-    async def query_and_score(self, strategy=QUERY_MINERS.RANDOM):
-        try:
+    async def query_and_score_twitter_basic(self, strategy=QUERY_MINERS.RANDOM):
 
+        try:
             if not len(self.neuron.available_uids):
-                bt.logging.info("No available UIDs, skipping task execution.")
+                bt.logging.info(
+                    "No available UIDs, skipping basic Twitter search task."
+                )
                 return
 
-            dataset = QuestionsDataset()
-            tools = random.choice(self.tools)
-
+            # question generation
             prompts = await asyncio.gather(
                 *[
-                    dataset.generate_new_question_with_openai(tools)
+                    QuestionsDataset.generate_basic_question_with_openai(self)
                     for _ in range(len(self.neuron.available_uids))
                 ]
             )
 
+            # 2) Build tasks from the generated prompts
             tasks = [
-                TwitterTask(
+                SearchTask(
                     base_text=prompt,
-                    task_name="augment",
-                    task_type="twitter_scraper",
+                    task_name="twitter search",
+                    task_type="twitter_search",
                     criteria=[],
                 )
                 for prompt in prompts
             ]
 
             bt.logging.debug(
-                f"Query and score running with prompts: {prompts} and tools: {tools}"
+                f"[query_and_score_twitter_basic] Running with prompts: {prompts}"
             )
 
+            # 3) Choose random model, date filter, etc.
             random_model = self.get_random_execution_time()
-            max_execution_time = get_max_execution_time(random_model)   
+            max_execution_time = get_max_execution_time(random_model)
 
-            async_responses, uids, event, start_time = await self.run_task_and_score(
-                tasks=tasks,
-                strategy=strategy,
-                is_only_allowed_miner=False,
-                date_filter=get_random_date_filter(),
-                tools=tools,
-                language=self.language,
-                region=self.region,
-                google_date_filter=self.date_filter,
-                model = random_model
-
+            # 4) Run the basic Twitter search
+            async_responses, uids, event, start_time = (
+                await self.run_twitter_basic_search_and_score(
+                    tasks=tasks,
+                    strategy=strategy,
+                    is_only_allowed_miner=False,
+                    specified_uids=None,
+                    start_date=None,
+                    end_date=None,
+                    model=random_model,
+                )
             )
 
-            final_synapses = await collect_final_synapses(
-                async_responses, uids, start_time, max_execution_time
-            )
+            successful_responses = [response for response in async_responses]
+            bt.logging.info(f"successful_responses is a : {successful_responses}")
 
-            bt.logging.debug(f"Async responses: {async_responses}")
-
-            # Store final synapses for scoring later
+            # Optionally, score or store responses for later use
             self.synthetic_history.append(
-                (event, tasks, final_synapses, uids, start_time)
+                (event, tasks, successful_responses, uids, start_time)
             )
-
             await self.score_random_synthetic_query()
-            
+
         except Exception as e:
-            bt.logging.error(f"Error in query_and_score: {e}")
-            raise e
+            bt.logging.error(f"Error in query_and_score_twitter_basic: {e}")
+            raise
 
     async def score_random_synthetic_query(self):
         # Collect synthetic queries and score randomly
-        synthetic_queries_collection_size = 3
+        synthetic_queries_collection_size = 0
 
         if len(self.synthetic_history) < synthetic_queries_collection_size:
             bt.logging.info(
@@ -573,93 +469,89 @@ class ScraperValidator:
         self,
         query,
         model: Optional[Model] = None,
-        random_synapse: ScraperStreamingSynapse = None,
+        random_synapse: TwitterSearchSynapse = None,
         random_uid=None,
         specified_uids=None,
-        result_type: Optional[ResultType] = None,
-        is_collect_final_synapses: bool = True,  # Flag to collect final synapses
     ):
         """Receives question from user and returns the response from the miners."""
 
         if model is None:
             model = Model.NOVA
-            
-        if result_type is None:
-            result_type = ResultType.LINKS_WITH_SUMMARIES
-
-        max_execution_time = get_max_execution_time(model)
 
         if not len(self.neuron.available_uids):
-            bt.logging.info("Not available uids")
-            raise StopAsyncIteration("Not available uids")
+            bt.logging.info("No available UIDs")
+            raise StopAsyncIteration("No available UIDs")
 
+        max_execution_time = get_max_execution_time(model)
         is_interval_query = random_synapse is not None
 
         try:
-            prompt = query["content"]
-            tools = query.get("tools", [])
-            date_filter = query.get("date_filter", DateFilterType.PAST_WEEK.value)
-            response_order = query.get("response_order", ResponseOrder.LINKS_FIRST)
+            prompt = query["query"]
+            start_date = query["start_date"]
+            end_date = query["end_date"]
 
-            if isinstance(date_filter, str):
-                date_filter_type = DateFilterType(date_filter)
-                date_filter = get_specified_date_filter(date_filter_type)
+            tasks = [
+                SearchTask(
+                    base_text=prompt,
+                    task_name="twitter search",
+                    task_type="twitter_search",
+                    criteria=[],
+                )
+            ]
 
-            tasks = [TwitterTask(base_text=prompt, task_name="augment", task_type="twitter_scraper", criteria=[])]
-
-            async_responses, uids, event, start_time = await self.run_task_and_score(
-                tasks=tasks,
-                strategy=QUERY_MINERS.ALL if specified_uids else QUERY_MINERS.RANDOM,
-                is_only_allowed_miner=self.neuron.config.subtensor.network != "finney",
-                tools=tools,
-                language=self.language,
-                region=self.region,
-                date_filter=date_filter,
-                google_date_filter=self.date_filter,
-                specified_uids=specified_uids,
-                response_order=response_order,
-                model=model,
-                result_type=result_type,
-                is_synthetic=False,
+            # Run Twitter search and score
+            async_responses, uids, event, start_time = (
+                await self.run_twitter_basic_search_and_score(
+                    tasks=tasks,
+                    strategy=(
+                        QUERY_MINERS.ALL if specified_uids else QUERY_MINERS.RANDOM
+                    ),
+                    is_only_allowed_miner=self.neuron.config.subtensor.network
+                    != "finney",
+                    specified_uids=specified_uids,
+                    model=model,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
             )
 
-            if is_collect_final_synapses:
-                # Directly collect and yield final synapses
-                final_synapses = await collect_final_synapses(async_responses, uids, start_time, max_execution_time)
-                for synapse in final_synapses:
-                    yield synapse
-            else:
-                # Stream results
-                if not specified_uids:
-                    for response in async_responses:
-                        async for value in response:
-                            yield value
+            final_responses = []
+
+            # Process responses and collect successful ones
+            for response in async_responses:
+                if response and response.dendrite.status_code == 200:
+                    final_responses.append(response)
+                    yield response
                 else:
-                    final_synapses = await collect_final_synapses(async_responses, uids, start_time, max_execution_time)
-                    for synapse in final_synapses:
-                        yield synapse
+                    bt.logging.warning(
+                        f"Invalid response for UID: {response.axon.hotkey if response else 'Unknown'}"
+                    )
 
             async def process_and_score_responses(uids):
                 if is_interval_query:
-                    # Add the random_synapse to final_synapses and its UID to uids
-                    final_synapses.append(random_synapse)
+                    # Add the random_synapse to final_responses and its UID to uids
+                    final_responses.append(random_synapse)
                     uids = torch.cat([uids, torch.tensor([random_uid])])
 
+                # Compute rewards and penalties
                 _, _, _, _, original_rewards = await self.compute_rewards_and_penalties(
                     event=event,
                     tasks=tasks,
-                    responses=final_synapses,
+                    responses=final_responses,
                     uids=uids,
                     start_time=start_time,
-                    is_synthetic=False
+                    is_synthetic=False,
                 )
 
+                # Save organic queries if not an interval query
                 if not is_interval_query:
-                    self.organic_query_state.save_organic_queries(
-                        final_synapses, uids, original_rewards
+                    self.basic_organic_query_state.save_organic_queries(
+                        final_responses, uids, original_rewards
                     )
 
+            # Schedule scoring task
             asyncio.create_task(process_and_score_responses(uids))
+
         except Exception as e:
             bt.logging.error(f"Error in organic: {e}")
             raise e
@@ -673,7 +565,12 @@ class ScraperValidator:
                 formatted_scores.append("{}")  # Empty dictionary
         return "\n".join(formatted_scores)
 
-    async def organic_specified(self, query, specified_uids=None, model: Optional[Model] = None, result_type: Optional[ResultType] = None):
+    async def organic_specified(
+        self,
+        query,
+        specified_uids=None,
+        model: Optional[Model] = None,
+    ):
         if not len(self.neuron.available_uids):
             bt.logging.info("Not available uids")
             raise StopAsyncIteration("Not available uids")
@@ -688,46 +585,28 @@ class ScraperValidator:
             if model is None:
                 model = Model.NOVA
 
-            if result_type is None:
-                result_type = ResultType.LINKS_WITH_SUMMARIES
-            
             prompt = query["content"]
-            tools = query.get("tools", [])
-            date_filter_type = query.get(
-                "date_filter", DateFilterType.PAST_2_DAYS.value
-            )
-            date_filter_type = DateFilterType(date_filter_type)
-            response_order = query.get(
-                "response_order", ResponseOrder.SUMMARY_FIRST.value
-            )
-            response_order = ResponseOrder(response_order)
 
             tasks = [
-                TwitterTask(
+                SearchTask(
                     base_text=prompt,
-                    task_name="augment",
-                    task_type="twitter_scraper",
+                    task_name="twitter search",
+                    task_type="twitter_search",
                     criteria=[],
                 )
                 for _ in range(len(specified_uids))
             ]
 
-            date_filter = get_specified_date_filter(date_filter_type)
-
-            async_responses, uids, event, start_time = await self.run_task_and_score(
-                tasks=tasks,
-                strategy=QUERY_MINERS.ALL,
-                is_only_allowed_miner=False,
-                specified_uids=specified_uids,
-                tools=tools,
-                language=self.language,
-                region=self.region,
-                date_filter=date_filter,
-                google_date_filter=self.date_filter,
-                model=model,
-                response_order=response_order,
-                is_synthetic=False, 
-                result_type = result_type
+            async_responses, uids, event, start_time = (
+                await self.run_twitter_basic_search_and_score(
+                    tasks=tasks,
+                    strategy=QUERY_MINERS.ALL,
+                    is_only_allowed_miner=False,
+                    specified_uids=specified_uids,
+                    start_date=None,
+                    end_date=None,
+                    model=model,
+                )
             )
 
             async def stream_response(uid, async_response):
@@ -777,6 +656,7 @@ class ScraperValidator:
                         responses=final_synapses,
                         uids=uids,
                         start_time=start_time,
+                        is_synthetic=False,
                     )
                 )
 
@@ -835,58 +715,6 @@ class ScraperValidator:
             bt.logging.error(f"Error in query_and_score: {e}")
             raise e
 
-    async def search(self, query: str, tools: List[str], uid: int = None):
-        try:
-            task_name = "search"
-
-            task = SearchTask(
-                base_text=query,
-                task_name=task_name,
-                task_type="search",
-                criteria=[],
-            )
-
-            if not len(self.neuron.available_uids):
-                bt.logging.info("Not available uids")
-                raise StopAsyncIteration("Not available uids")
-
-            prompt = task.compose_prompt()
-
-            bt.logging.debug("run_task", task_name)
-
-            # If uid is not provided, get random uids
-            if uid is None:
-                uids = await self.neuron.get_uids(
-                    strategy=QUERY_MINERS.RANDOM,
-                    is_only_allowed_miner=False,
-                    specified_uids=None,
-                )
-
-                if uids:
-                    uid = uids[0]
-                else:
-                    raise StopAsyncIteration("No available uids")
-
-            axon = self.neuron.metagraph.axons[uid]
-
-            synapse = SearchSynapse(
-                query=prompt,
-                tools=tools,
-                results={},
-            )
-
-            synapse: SearchSynapse = await self.neuron.dendrite.call(
-                target_axon=axon,
-                synapse=synapse,
-                timeout=self.timeout,
-                deserialize=False,
-            )
-
-            return synapse.results
-        except Exception as e:
-            bt.logging.error(f"Error in search: {e}")
-            raise e
-        
     async def twitter_search(
         self,
         query: str,
@@ -902,9 +730,10 @@ class ScraperValidator:
         min_retweets: Optional[int] = None,
         min_replies: Optional[int] = None,
         min_likes: Optional[int] = None,
+        model: Optional[Model] = None,
     ):
         """
-        Perform a Twitter search using advanced parameters.
+        Perform a Twitter search using basic parameters.
 
         Parameters:
             query (str): The search query string, e.g., "from:user bitcoin".
@@ -954,6 +783,7 @@ class ScraperValidator:
                 raise StopAsyncIteration("No available UIDs.")
 
             axon = self.neuron.metagraph.axons[uid]
+            max_execution_time = get_max_execution_time(model)
 
             # Instantiate TwitterSearchSynapse with input parameters
             synapse = TwitterSearchSynapse(
@@ -970,13 +800,18 @@ class ScraperValidator:
                 min_retweets=min_retweets,
                 min_replies=min_replies,
                 min_likes=min_likes,
+                model=model,
+                max_execution_time=max_execution_time,
+                validator_tweets=[],
                 results=[],
             )
+
+            timeout = max_execution_time + 5
 
             synapse: TwitterSearchSynapse = await self.neuron.dendrite.call(
                 target_axon=axon,
                 synapse=synapse,
-                timeout=self.timeout,
+                timeout=timeout,
                 deserialize=False,
             )
 
@@ -984,8 +819,6 @@ class ScraperValidator:
         except Exception as e:
             bt.logging.error(f"Error in search: {e}")
             raise e
-   
-        
 
     async def web_search(
         self,
@@ -994,7 +827,7 @@ class ScraperValidator:
         start: int = 0,
     ):
         """
-        Perform a web search using advanced parameters.
+        Perform a web search using basic parameters.
 
         Parameters:
             query (str): The search query string, e.g., "latest news on AI".
@@ -1040,9 +873,9 @@ class ScraperValidator:
             # Instantiate WebSearchSynapse with additional parameters
             synapse = WebSearchSynapse(
                 query=prompt,
-                num=num,          
-                start=start,      
-                results=[],       
+                num=num,
+                start=start,
+                results=[],
             )
 
             synapse: WebSearchSynapse = await self.neuron.dendrite.call(
@@ -1056,10 +889,11 @@ class ScraperValidator:
         except Exception as e:
             bt.logging.error(f"Error in search: {e}")
             raise e
- 
+
     async def twitter_id_search(
         self,
         tweet_id: str,
+        model: Optional[Model] = None,
     ):
         """
         Perform a Twitter search using a specific tweet ID.
@@ -1086,8 +920,6 @@ class ScraperValidator:
                 bt.logging.info("No available UIDs.")
                 raise StopAsyncIteration("No available UIDs.")
 
-            prompt = task.compose_prompt()
-
             bt.logging.debug("run_task", task_name)
 
             # get random uids
@@ -1103,18 +935,22 @@ class ScraperValidator:
                 raise StopAsyncIteration("No available UIDs.")
 
             axon = self.neuron.metagraph.axons[uid]
-
+            max_execution_time = get_max_execution_time(model)
             # Instantiate TwitterIDSearchSynapse
             synapse = TwitterIDSearchSynapse(
                 id=tweet_id,
+                model=model,
+                max_execution_time=max_execution_time,
+                validator_tweets=[],
                 results=[],
             )
 
             # Make the call
+            timeout = max_execution_time + 5
             synapse: TwitterIDSearchSynapse = await self.neuron.dendrite.call(
                 target_axon=axon,
                 synapse=synapse,
-                timeout=self.timeout,
+                timeout=timeout,
                 deserialize=False,
             )
 
@@ -1122,10 +958,11 @@ class ScraperValidator:
         except Exception as e:
             bt.logging.error(f"Error in ID search: {e}")
             raise e
-        
+
     async def twitter_urls_search(
         self,
         urls: Dict[str, str],
+        model: Optional[Model] = None,
     ):
         """
         Perform a Twitter search using multiple tweet URLs.
@@ -1169,120 +1006,26 @@ class ScraperValidator:
                 raise StopAsyncIteration("No available UIDs.")
 
             axon = self.neuron.metagraph.axons[uid]
-
+            max_execution_time = get_max_execution_time(model)
             # Instantiate TwitterURLsSearchSynapse
             synapse = TwitterURLsSearchSynapse(
                 urls=urls,
+                model=model,
+                max_execution_time=max_execution_time,
+                validator_tweets=[],
                 results=[],
             )
 
             # Make the call
+            timeout = max_execution_time + 5
             synapse: TwitterURLsSearchSynapse = await self.neuron.dendrite.call(
                 target_axon=axon,
                 synapse=synapse,
-                timeout=self.timeout,
+                timeout=timeout,
                 deserialize=False,
             )
 
             return synapse.results
         except Exception as e:
             bt.logging.error(f"Error in URLs search: {e}")
-            raise e
-    
-
-
-    async def get_twitter_user(self, body: dict, uid: int | None = None):
-        try:
-            task_name = "get_twitter_user"
-
-            if not len(self.neuron.available_uids):
-                bt.logging.info("Not available uids")
-                raise StopAsyncIteration("Not available uids")
-
-            bt.logging.debug("run_task", task_name)
-
-            # If uid is not provided, get random uids
-            if uid is None:
-                uids = await self.neuron.get_uids(
-                    strategy=QUERY_MINERS.RANDOM,
-                    is_only_allowed_miner=False,
-                    specified_uids=None,
-                )
-
-                if uids:
-                    uid = uids[0]
-                else:
-                    raise StopAsyncIteration("No available uids")
-
-            axon = self.neuron.metagraph.axons[uid]
-
-            synapse = TwitterUserSynapse(
-                # excpected as TwitterAPISynapseCall
-                request_type=body.get("request_type").value,
-                user_id=body.get("user_id"),
-                username=body.get("username"),
-                max_items=body.get("max_items"),
-            )
-
-            synapse: TwitterUserSynapse = await self.neuron.dendrite.call(
-                target_axon=axon,
-                synapse=synapse,
-                timeout=self.timeout,
-                deserialize=False,
-            )
-
-            return synapse.results
-        except Exception as e:
-            bt.logging.error(f"Error in getting twitter user: {e}")
-            raise e
-
-    async def get_tweets(self, body: dict, uid: int | None = None):
-        try:
-            task_name = "get_tweets"
-
-            if not len(self.neuron.available_uids):
-                bt.logging.info("Not available uids")
-                raise StopAsyncIteration("Not available uids")
-
-            bt.logging.debug("run_task", task_name)
-
-            # If uid is not provided, get random uids
-            if uid is None:
-                uids = await self.neuron.get_uids(
-                    strategy=QUERY_MINERS.RANDOM,
-                    is_only_allowed_miner=False,
-                    specified_uids=None,
-                )
-
-                if uids:
-                    uid = uids[0]
-                else:
-                    raise StopAsyncIteration("No available uids")
-
-            axon = self.neuron.metagraph.axons[uid]
-
-            synapse = TwitterTweetSynapse(
-                prompt=body.get("prompt"),
-                max_items=body.get("max_items"),
-                min_retweets=body.get("min_retweets"),
-                min_likes=body.get("min_likes"),
-                only_verified=body.get("only_verified"),
-                only_twitter_blue=body.get("only_twitter_blue"),
-                only_video=body.get("only_video"),
-                only_image=body.get("only_image"),
-                only_quote=body.get("only_quote"),
-                start_date=body.get("start_date"),
-                end_date=body.get("end_date"),
-            )
-
-            synapse: TwitterTweetSynapse = await self.neuron.dendrite.call(
-                target_axon=axon,
-                synapse=synapse,
-                timeout=self.timeout,
-                deserialize=False,
-            )
-
-            return synapse.results
-        except Exception as e:
-            bt.logging.error(f"Error in get_tweets: {e}")
             raise e

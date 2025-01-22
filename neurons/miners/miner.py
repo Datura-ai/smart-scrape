@@ -33,7 +33,7 @@ from datura.protocol import (
     TwitterSearchSynapse,
     WebSearchSynapse,
     TwitterURLsSearchSynapse,
-    TwitterIDSearchSynapse
+    TwitterIDSearchSynapse,
 )
 from neurons.miners.scraper_miner import ScraperMiner
 from neurons.miners.search_miner import SearchMiner
@@ -152,7 +152,6 @@ class StreamMiner(ABC):
             forward_fn=self.web_search,
         )
 
-
         bt.logging.info(f"Axon created: {self.axon}")
 
         # Instantiate runners
@@ -182,16 +181,22 @@ class StreamMiner(ABC):
 
     async def _get_tweets(self, synapse: TwitterTweetSynapse) -> TwitterTweetSynapse:
         return await self.get_tweets(synapse)
-    
-    async def _twitter_search(self, synapse: TwitterSearchSynapse) -> TwitterTweetSynapse:
+
+    async def _twitter_search(
+        self, synapse: TwitterSearchSynapse
+    ) -> TwitterTweetSynapse:
         return await self.twitter_search(synapse)
-    
-    async def _twitter_id_search(self, synapse: TwitterIDSearchSynapse) -> TwitterIDSearchSynapse:
+
+    async def _twitter_id_search(
+        self, synapse: TwitterIDSearchSynapse
+    ) -> TwitterIDSearchSynapse:
         return await self.twitter_id_search(synapse)
-    
-    async def _twitter_urls_search(self, synapse: TwitterURLsSearchSynapse) -> TwitterURLsSearchSynapse:
+
+    async def _twitter_urls_search(
+        self, synapse: TwitterURLsSearchSynapse
+    ) -> TwitterURLsSearchSynapse:
         return await self.twitter_urls_search(synapse)
-    
+
     async def _web_search(self, synapse: WebSearchSynapse) -> WebSearchSynapse:
         return await self.web_search(synapse)
 
@@ -308,13 +313,19 @@ class StreamMiner(ABC):
     async def get_tweets(self, synapse: TwitterTweetSynapse) -> TwitterTweetSynapse: ...
 
     @abstractmethod
-    async def twitter_search(self, synapse: TwitterSearchSynapse) -> TwitterSearchSynapse: ...
+    async def twitter_search(
+        self, synapse: TwitterSearchSynapse
+    ) -> TwitterSearchSynapse: ...
 
     @abstractmethod
-    async def twitter_id_search(self, synapse: TwitterIDSearchSynapse) -> TwitterIDSearchSynapse: ...
+    async def twitter_id_search(
+        self, synapse: TwitterIDSearchSynapse
+    ) -> TwitterIDSearchSynapse: ...
 
     @abstractmethod
-    async def twitter_urls_search(self, synapse: TwitterURLsSearchSynapse) -> TwitterURLsSearchSynapse: ...
+    async def twitter_urls_search(
+        self, synapse: TwitterURLsSearchSynapse
+    ) -> TwitterURLsSearchSynapse: ...
 
     @abstractmethod
     async def web_search(self, synapse: WebSearchSynapse) -> WebSearchSynapse: ...
@@ -457,27 +468,32 @@ class StreamingTemplateMiner(StreamMiner):
         bt.logging.info(f"started processing for search synapse {synapse}")
         search_miner = SearchMiner(self)
         return await search_miner.search(synapse)
-    
-    async def twitter_search(self, synapse: TwitterSearchSynapse) -> TwitterSearchSynapse:
-        bt.logging.info(f"started processing for search synapse {synapse}")
+
+    async def twitter_search(
+        self, synapse: TwitterSearchSynapse
+    ) -> TwitterSearchSynapse:
+        bt.logging.info(f"started processing for twitter search synapse {synapse}")
         twitter_search_miner = TwitterSearchMiner(self)
         return await twitter_search_miner.search(synapse)
-    
-    async def twitter_id_search(self, synapse: TwitterIDSearchSynapse) -> TwitterIDSearchSynapse:
-        bt.logging.info(f"started processing for search synapse {synapse}")
+
+    async def twitter_id_search(
+        self, synapse: TwitterIDSearchSynapse
+    ) -> TwitterIDSearchSynapse:
+        bt.logging.info(f"started processing for search ID synapse {synapse}")
         twitter_search_miner = TwitterSearchMiner(self)
         return await twitter_search_miner.search_by_id(synapse)
-    
-    async def twitter_urls_search(self, synapse: TwitterURLsSearchSynapse) -> TwitterURLsSearchSynapse:
-        bt.logging.info(f"started processing for search synapse {synapse}")
+
+    async def twitter_urls_search(
+        self, synapse: TwitterURLsSearchSynapse
+    ) -> TwitterURLsSearchSynapse:
+        bt.logging.info(f"started processing for search URL synapse {synapse}")
         twitter_search_miner = TwitterSearchMiner(self)
         return await twitter_search_miner.search_by_urls(synapse)
-    
+
     async def web_search(self, synapse: WebSearchSynapse) -> WebSearchSynapse:
-        bt.logging.info(f"started processing for search synapse {synapse}")
+        bt.logging.info(f"started processing for Web search  synapse {synapse}")
         web_search_miner = WebSearchMiner(self)
         return await web_search_miner.search(synapse)
-    
 
     async def get_twitter_user(self, synapse: TwitterUserSynapse) -> TwitterUserSynapse:
         bt.logging.info(f"started processing for twitter user synapse {synapse}")

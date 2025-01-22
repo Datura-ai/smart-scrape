@@ -24,7 +24,7 @@ import math
 import json
 from .config import RewardModelType
 from .reward import BaseRewardModel, BaseRewardEvent
-from datura.protocol import ScraperStreamingSynapse
+from datura.protocol import ScraperStreamingSynapse, TwitterSearchSynapse
 from neurons.validators.constants import STEEPNESS, FACTOR
 
 
@@ -56,6 +56,28 @@ class PerformanceRewardModel(BaseRewardModel):
         }
         return axon_times
 
+    def get_global_response_times(
+        self, uids: List[int], responses: List[TwitterSearchSynapse]
+    ) -> Dict[int, float]:
+        """
+        Returns a dictionary of axons based on their response times for global results.
+        If get_successful_result returns an invalid result (e.g., an empty list), the score is 0.
+        """
+        axon_times = {}
+        for idx, response in enumerate(responses):
+            uid = uids[idx]
+            successful_result = self.get_successful_result(response)
+
+            if successful_result:  # If successful_result is valid and non-empty
+                axon_times[uid] = response.dendrite.process_time or 0.0
+            else:  # Invalid result or empty list
+                bt.logging.warning(
+                    f"Invalid or empty result for UID: {uid}, setting score to 0."
+                )
+                axon_times[uid] = 0.0
+
+        return axon_times
+
     def sigmoid_scale(self, axon_time: float, query_timeout: int) -> float:
         """
         Scales the axon time using a sigmoid function.
@@ -73,9 +95,7 @@ class PerformanceRewardModel(BaseRewardModel):
         """
         return 0.2 * self.sigmoid_scale(axon_time, query_timeout)
 
-    async def get_rewards(
-        self, responses: List[ScraperStreamingSynapse], uids
-    ) -> Tuple[List[BaseRewardEvent]]:
+    async def get_rewards(self, responses: List, uids) -> Tuple[List[BaseRewardEvent]]:
         """
         Returns a list of reward events for the given responses.
         """
@@ -86,13 +106,13 @@ class PerformanceRewardModel(BaseRewardModel):
                 uid.item() if isinstance(uid, torch.Tensor) else uid for uid in uids
             ]
 
-            axon_times = self.get_response_times(uids, responses)
-
-            # # Example static APY for each miner, defined before using it to calculate max_apy
-            # miner_apy = {uid: 1 for uid in uids}
-
-            # # Now we can safely calculate max_apy
-            # max_apy = max(miner_apy.values()) if miner_apy else 1.0
+            # Determine response type and select the appropriate response time function
+            if isinstance(responses[0], ScraperStreamingSynapse):
+                axon_times = self.get_response_times(uids, responses)
+            elif isinstance(responses[0], TwitterSearchSynapse):
+                axon_times = self.get_global_response_times(uids, responses)
+            else:
+                raise ValueError("Unsupported response type provided to get_rewards.")
 
             for uid, response in zip(uids, responses):
                 reward_event = BaseRewardEvent()

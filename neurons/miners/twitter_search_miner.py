@@ -1,5 +1,10 @@
 import bittensor as bt
-from datura.protocol import TwitterSearchSynapse, TwitterIDSearchSynapse, TwitterURLsSearchSynapse
+from datura.protocol import (
+    TwitterSearchSynapse,
+    TwitterIDSearchSynapse,
+    TwitterURLsSearchSynapse,
+    Model,
+)
 
 
 class TwitterSearchMiner:
@@ -25,7 +30,9 @@ class TwitterSearchMiner:
         }
 
         # Log query and search parameters
-        bt.logging.info(f"Executing mock search with query: {query} and params: {search_params}")
+        bt.logging.info(
+            f"Executing mock search with query: {query} and params: {search_params}"
+        )
 
         # Mock tweet result
         mock_tweet = {
@@ -49,41 +56,41 @@ class TwitterSearchMiner:
         # Assign the mock tweet to the results field of the synapse
         synapse.results = [mock_tweet]
 
+        bt.logging.info(f"here is the final synapse {synapse}")
         return synapse
-    
 
     async def search_by_id(self, synapse: TwitterIDSearchSynapse):
-            """
-            Perform a Twitter search based on a specific tweet ID.
-            """
-            tweet_id = synapse.id
+        """
+        Perform a Twitter search based on a specific tweet ID.
+        """
+        tweet_id = synapse.id
 
-            # Log the search operation
-            bt.logging.info(f"Searching for tweet by ID: {tweet_id}")
+        # Log the search operation
+        bt.logging.info(f"Searching for tweet by ID: {tweet_id}")
 
-            # Mock result for the given tweet ID
-            mock_tweet = {
-                "user": {"username": "mock_user", "verified": True},
-                "id": tweet_id,
-                "text": f"This is a mock tweet for ID: {tweet_id}",
-                "reply_count": 5,
-                "retweet_count": 15,
-                "like_count": 30,
-                "view_count": 200,
-                "quote_count": 0,
-                "impression_count": 300,
-                "bookmark_count": 1,
-                "url": f"https://twitter.com/mock_user/status/{tweet_id}",
-                "created_at": "2025-01-13T12:00:00Z",
-                "media": [],
-                "is_quote_tweet": False,
-                "is_retweet": False,
-            }
+        # Mock result for the given tweet ID
+        mock_tweet = {
+            "user": {"username": "mock_user", "verified": True},
+            "id": tweet_id,
+            "text": f"This is a mock tweet for ID: {tweet_id}",
+            "reply_count": 5,
+            "retweet_count": 15,
+            "like_count": 30,
+            "view_count": 200,
+            "quote_count": 0,
+            "impression_count": 300,
+            "bookmark_count": 1,
+            "url": f"https://twitter.com/mock_user/status/{tweet_id}",
+            "created_at": "2025-01-13T12:00:00Z",
+            "media": [],
+            "is_quote_tweet": False,
+            "is_retweet": False,
+        }
 
-            # Assign the mock tweet to the results field of the synapse
-            synapse.results = [mock_tweet]
+        # Assign the mock tweet to the results field of the synapse
+        synapse.results = [mock_tweet]
 
-            return synapse
+        return synapse
 
     async def search_by_urls(self, synapse: TwitterURLsSearchSynapse):
         """
@@ -103,7 +110,6 @@ class TwitterSearchMiner:
         # Mock results for the given URLs
         mock_results = []
         for url in urls:
-           
 
             mock_tweet = {
                 "user": {"username": "mock_user", "verified": True},
@@ -128,4 +134,3 @@ class TwitterSearchMiner:
         synapse.results = mock_results
 
         return synapse
-
