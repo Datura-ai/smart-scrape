@@ -3,19 +3,18 @@ import bittensor as bt
 import typing
 import json
 import asyncio
-from datetime import datetime
-from abc import ABC, abstractmethod
-from typing import List, Union, Callable, Awaitable, Dict, Optional, Any
+from typing import List, Dict, Optional, Any
 from starlette.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from enum import Enum
 from aiohttp import ClientResponse
+import traceback
 from datura.services.twitter_utils import TwitterUtils
 from datura.services.web_search_utils import WebSearchUtils
-import traceback
+from datura.synapse import Synapse, StreamingSynapse
 
 
-class IsAlive(bt.Synapse):
+class IsAlive(Synapse):
     answer: typing.Optional[str] = None
     completion: str = pydantic.Field(
         "",
@@ -66,7 +65,6 @@ class TwitterScraperUser(BaseModel):
     verified: Optional[bool] = False
 
 
-
 class TwitterScraperTweet(BaseModel):
     # Available in both, scraped and api based tweets.
     user: Optional[TwitterScraperUser] = TwitterScraperUser()
@@ -99,20 +97,20 @@ class ScraperTextRole(str, Enum):
     SUBNETS_SOURCE_CODE_SUMMARY = "subnets_source_code_summary"
     FINAL_SUMMARY = "summary"
 
- 
+
 class ResultType(str, Enum):
     ONLY_LINKS = "ONLY_LINKS"
     LINKS_WITH_SUMMARIES = "LINKS_WITH_SUMMARIES"
-    LINKS_WITH_FINAL_SUMMARY = "LINKS_WITH_FINAL_SUMMARY"   
+    LINKS_WITH_FINAL_SUMMARY = "LINKS_WITH_FINAL_SUMMARY"
 
 
-class Model(str, Enum):                              
+class Model(str, Enum):
     NOVA = "NOVA"
     ORBIT = "ORBIT"
     HORIZON = "HORIZON"
 
 
-class ScraperStreamingSynapse(bt.StreamingSynapse):
+class ScraperStreamingSynapse(StreamingSynapse):
 
     prompt: str = pydantic.Field(
         ...,
@@ -321,7 +319,6 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
         description="Query indicator, organic or synthetic",
     )
 
-
     result_type: ResultType = pydantic.Field(
         ResultType.ONLY_LINKS,
         title="result_type",
@@ -349,11 +346,15 @@ class ScraperStreamingSynapse(bt.StreamingSynapse):
                 "ArXiv Search",
             ]
         ):
-            search_summary = self.texts.get(ScraperTextRole.SEARCH_SUMMARY.value, "").strip()
+            search_summary = self.texts.get(
+                ScraperTextRole.SEARCH_SUMMARY.value, ""
+            ).strip()
             completions[ScraperTextRole.SEARCH_SUMMARY.value] = search_summary
 
         if "Reddit Search" in self.tools:
-            reddit_summary = self.texts.get(ScraperTextRole.REDDIT_SUMMARY.value, "").strip()
+            reddit_summary = self.texts.get(
+                ScraperTextRole.REDDIT_SUMMARY.value, ""
+            ).strip()
             completions[ScraperTextRole.REDDIT_SUMMARY.value] = reddit_summary
 
         if "Hacker News Search" in self.tools:
@@ -669,10 +670,12 @@ class WebSearchResult(BaseModel):
     favicon: Optional[str] = None
     highlights: List[str]
 
-class WebSearchResultList(BaseModel):
-    data: List[WebSearchResult]    
 
-class SearchSynapse(bt.Synapse):
+class WebSearchResultList(BaseModel):
+    data: List[WebSearchResult]
+
+
+class SearchSynapse(Synapse):
     """A class to represent search api synapse"""
 
     query: str = pydantic.Field(
@@ -705,8 +708,9 @@ class SearchSynapse(bt.Synapse):
 
     def deserialize(self) -> str:
         return self
-    
-class WebSearchSynapse(bt.Synapse):
+
+
+class WebSearchSynapse(Synapse):
     """A class to represent web search synapse"""
 
     query: str = pydantic.Field(
@@ -739,8 +743,8 @@ class WebSearchSynapse(bt.Synapse):
     def deserialize(self) -> str:
         return self
 
-    
-class TwitterSearchSynapse(bt.Synapse):
+
+class TwitterSearchSynapse(Synapse):
     """A class to represent Twitter Advanced Search Synapse"""
 
     query: str = pydantic.Field(
@@ -842,8 +846,9 @@ class TwitterSearchSynapse(bt.Synapse):
 
     def deserialize(self) -> str:
         return self
-    
-class TwitterIDSearchSynapse(bt.Synapse):
+
+
+class TwitterIDSearchSynapse(Synapse):
     """A class to represent Twitter ID Advanced Search Synapse"""
 
     id: str = pydantic.Field(
@@ -861,8 +866,9 @@ class TwitterIDSearchSynapse(bt.Synapse):
 
     def deserialize(self) -> str:
         return self
-    
-class TwitterURLsSearchSynapse(bt.Synapse):
+
+
+class TwitterURLsSearchSynapse(Synapse):
     """A class to represent Twitter URLs Advanced Search Synapse"""
 
     urls: Dict[str, str] = pydantic.Field(
@@ -890,7 +896,7 @@ class TwitterAPISynapseCall(Enum):
     SEARCH_TWEETS = "SEARCH_TWEETS"
 
 
-class TwitterUserSynapse(bt.Synapse):
+class TwitterUserSynapse(Synapse):
     """
     A class to represetn twitter api's user synapse
     """
@@ -930,7 +936,7 @@ class TwitterUserSynapse(bt.Synapse):
     )
 
 
-class TwitterTweetSynapse(bt.Synapse):
+class TwitterTweetSynapse(Synapse):
     """A class to represent twitter api's tweet synapse"""
 
     prompt: Optional[str] = pydantic.Field(
