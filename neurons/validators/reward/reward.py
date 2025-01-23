@@ -21,7 +21,7 @@ import bittensor as bt
 from typing import List, Union
 from abc import abstractmethod
 from dataclasses import dataclass, asdict, fields
-from datura.protocol import ScraperStreamingSynapse
+from datura.protocol import ScraperStreamingSynapse, TwitterSearchSynapse
 import re
 import numpy as np  # Ensure numpy is imported
 import asyncio
@@ -135,6 +135,25 @@ class BaseRewardModel:
                 return None
 
             return successful_completion.strip()
+        return None
+
+    def get_successful_result(self, response: TwitterSearchSynapse):
+        """
+        Check if the response is successful and contains non-empty results.
+        """
+        if response.dendrite.status_code == 200:
+            # Ensure results is not empty
+            if response.results:
+                return response.results
+            else:
+                bt.logging.warning(
+                    f"Response results are empty for Hotkey ID: {response.axon.hotkey}."
+                )
+        else:
+            bt.logging.warning(
+                f"Response failed with status code {response.dendrite.status_code} for Hotkey ID: {response.axon.hotkey}."
+            )
+
         return None
 
     def get_successful_completions(self, responses: List[ScraperStreamingSynapse]):

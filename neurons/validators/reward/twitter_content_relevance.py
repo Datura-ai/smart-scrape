@@ -37,7 +37,7 @@ from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.prompts import LinkContentPrompt
-from datura.utils import clean_text
+from datura.utils import clean_text, format_text_for_match, scrape_tweets_with_retries
 import json
 from datetime import datetime
 import pytz
@@ -90,58 +90,6 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         )
         return score_responses
 
-    async def scrape_tweets_with_retries(
-        self, urls: List[str], group_size: int, max_attempts: int
-    ):
-        fetched_tweets = []
-        non_fetched_links = urls.copy()
-        attempt = 1
-
-        while attempt <= max_attempts and non_fetched_links:
-            bt.logging.info(
-                f"Attempt {attempt}/{max_attempts}, processing {len(non_fetched_links)} links."
-            )
-
-            url_groups = [
-                non_fetched_links[i : i + group_size]
-                for i in range(0, len(non_fetched_links), group_size)
-            ]
-
-            tasks = [
-                asyncio.create_task(TwitterScraperActor().get_tweets(urls=group))
-                for group in url_groups
-            ]
-
-            # Wait for tasks to complete
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
-            # Combine results and handle exceptions
-            for result in results:
-                if isinstance(result, Exception):
-                    bt.logging.error(
-                        f"Error in TwitterScraperActor attempt {attempt}: {str(result)}"
-                    )
-                    continue
-                fetched_tweets.extend(result)
-
-            # Update non_fetched_links
-            fetched_tweet_ids = {tweet.id for tweet in fetched_tweets}
-            non_fetched_links = [
-                link
-                for link in non_fetched_links
-                if self.tw_client.utils.extract_tweet_id(link) not in fetched_tweet_ids
-            ]
-
-            if non_fetched_links:
-                bt.logging.info(
-                    f"Retrying fetching non-fetched {len(non_fetched_links)} tweets. Retries left: {max_attempts - attempt}"
-                )
-                await asyncio.sleep(3)
-
-            attempt += 1
-
-        return fetched_tweets, non_fetched_links
-
     async def process_tweets(self, responses: List[ScraperStreamingSynapse]):
         default_val_score_responses = [{} for _ in responses]
 
@@ -168,7 +116,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
             bt.logging.info(f"Fetching {len(unique_links)} unique Twitter links.")
 
-            tweets_list, non_fetched_links = await self.scrape_tweets_with_retries(
+            tweets_list, non_fetched_links = await scrape_tweets_with_retries(
                 unique_links, group_size=200, max_attempts=4
             )
 
@@ -206,20 +154,6 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         except Exception as e:
             bt.logging.error(f"Error in process_tweets: {str(e)}")
             return default_val_score_responses
-
-    def format_text_for_match(self, text):
-        # Unescape HTML entities first
-        text = html.unescape(text)
-        # url shorteners can cause problems with tweet verification, so remove urls from the text comparison.
-        text = re.sub(r"(https?://)?\S+\.\S+\/?(\S+)?", "", text)
-        # Some scrapers put the mentions at the front of the text, remove them.
-        text = re.sub(r"^(@\w+\s*)+", "", text)
-        # And some trim trailing whitespace at the end of newlines, so ignore whitespace.
-        text = re.sub(r"\s+", "", text)
-        # The validator apify actor uses the tweet.text field and not the note_tweet field (> 280) charts, so only
-        # use the first 280 chars for comparison.
-        text = text[:280]
-        return text
 
     def check_tweet_content(self, response: ScraperStreamingSynapse):
         try:
@@ -277,10 +211,8 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                         continue
 
                     # Prepare texts for comparison by normalizing them
-                    miner_text_compared = self.format_text_for_match(tweet_text)
-                    validator_text_compared = self.format_text_for_match(
-                        val_tweet_content
-                    )
+                    miner_text_compared = format_text_for_match(tweet_text)
+                    validator_text_compared = format_text_for_match(val_tweet_content)
 
                     if miner_text_compared == validator_text_compared:
                         tweet_score = 1
@@ -422,7 +354,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
 
                 unique_tweet_texts = {}
                 for val_tweet in response.validator_tweets:
-                    text = self.format_text_for_match(val_tweet.text)
+                    text = format_text_for_match(val_tweet.text)
                     if text not in unique_tweet_texts:
                         unique_tweet_texts[text] = val_tweet
 

@@ -11,6 +11,9 @@ from aiohttp import ClientResponse
 import traceback
 from datura.services.twitter_utils import TwitterUtils
 from datura.services.web_search_utils import WebSearchUtils
+import traceback
+from sentence_transformers import SentenceTransformer
+import torch
 from datura.synapse import Synapse, StreamingSynapse
 
 
@@ -710,7 +713,8 @@ class SearchSynapse(Synapse):
         return self
 
 
-class WebSearchSynapse(Synapse):
+class WebSearchSynapse(bt.Synapse):
+
     """A class to represent web search synapse"""
 
     query: str = pydantic.Field(
@@ -734,6 +738,12 @@ class WebSearchSynapse(Synapse):
         allow_mutation=False,
     )
 
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
+    )
+
     results: Optional[List[WebSearchResult]] = pydantic.Field(
         default_factory=list,
         title="Web",
@@ -744,7 +754,8 @@ class WebSearchSynapse(Synapse):
         return self
 
 
-class TwitterSearchSynapse(Synapse):
+class TwitterSearchSynapse(bt.Synapse):
+
     """A class to represent Twitter Advanced Search Synapse"""
 
     query: str = pydantic.Field(
@@ -838,6 +849,24 @@ class TwitterSearchSynapse(Synapse):
         allow_mutation=False,
     )
 
+    model: Model = pydantic.Field(
+        Model.NOVA,
+        title="model",
+        description="The model to define the max execution time.",
+    )
+
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
+    )
+
+    validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+        default_factory=list,
+        title="validator tweets",
+        description="Fetched validator Tweets Data.",
+    )
+
     results: Optional[List[TwitterScraperTweet]] = pydantic.Field(
         default_factory=list,
         title="tweets",
@@ -848,7 +877,8 @@ class TwitterSearchSynapse(Synapse):
         return self
 
 
-class TwitterIDSearchSynapse(Synapse):
+class TwitterIDSearchSynapse(bt.Synapse):
+
     """A class to represent Twitter ID Advanced Search Synapse"""
 
     id: str = pydantic.Field(
@@ -858,6 +888,23 @@ class TwitterIDSearchSynapse(Synapse):
         allow_mutation=False,
     )
 
+    model: Model = pydantic.Field(
+        Model.NOVA,
+        title="model",
+        description="The model to define the max execution time.",
+    )
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
+    )
+
+    validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+        default_factory=list,
+        title="validator tweets",
+        description="Fetched validator Tweets Data.",
+    )
+
     results: Optional[List[TwitterScraperTweet]] = pydantic.Field(
         default_factory=list,
         title="tweets",
@@ -868,7 +915,8 @@ class TwitterIDSearchSynapse(Synapse):
         return self
 
 
-class TwitterURLsSearchSynapse(Synapse):
+class TwitterURLsSearchSynapse(bt.Synapse):
+
     """A class to represent Twitter URLs Advanced Search Synapse"""
 
     urls: Dict[str, str] = pydantic.Field(
@@ -876,6 +924,24 @@ class TwitterURLsSearchSynapse(Synapse):
         title="URLs",
         description="A list of tweet URLs to fetch.",
         allow_mutation=False,
+    )
+    
+    model: Model = pydantic.Field(
+        Model.NOVA,
+        title="model",
+        description="The model to define the max execution time.",
+    )
+
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
+    )
+
+    validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+        default_factory=list,
+        title="validator tweets",
+        description="Fetched validator Tweets Data.",
     )
 
     results: Optional[List[TwitterScraperTweet]] = pydantic.Field(
@@ -1064,3 +1130,12 @@ class TwitterTweetSynapse(Synapse):
 
     def deserialize(self) -> str:
         return self
+
+
+class Embedder:
+    def __init__(self, model_name="all-MiniLM-L6-v2"):
+        self.model = SentenceTransformer(model_name)
+
+    def embed_text(self, text: str) -> torch.Tensor:
+        """Convert text into a vector representation using SentenceTransformers."""
+        return self.model.encode(text, convert_to_tensor=True)
