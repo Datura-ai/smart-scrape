@@ -714,7 +714,7 @@ def calculate_similarity_percentage(tensor1, tensor2):
     return similarity_percentage
 
 
-def is_valid_tweet(self, tweet):
+def is_valid_tweet(tweet):
     try:
         _ = TwitterScraperTweet(**tweet)
     except ValidationError as e:

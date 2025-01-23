@@ -55,7 +55,7 @@ class TwitterScraperUser(BaseModel):
     id: Optional[str] = None
     url: Optional[str] = None
     name: Optional[str] = None
-    username: Optional[str] = None
+    username: str
     created_at: Optional[str] = None
     # Only available in scraped tweets
     description: Optional[str] = None
@@ -70,23 +70,23 @@ class TwitterScraperUser(BaseModel):
 
 class TwitterScraperTweet(BaseModel):
     # Available in both, scraped and api based tweets.
-    user: Optional[TwitterScraperUser] = TwitterScraperUser()
-    id: Optional[str]
-    text: Optional[str]
-    reply_count: Optional[int] = None
-    retweet_count: Optional[int] = None
-    like_count: Optional[int] = None
-    view_count: Optional[int] = None
-    quote_count: Optional[int] = None
-    impression_count: Optional[int] = None
-    bookmark_count: Optional[int] = None
-    url: Optional[str]
-    created_at: Optional[str]
+    user: TwitterScraperUser
+    id: str
+    text: str
+    reply_count: int
+    retweet_count: int
+    like_count: int
+    view_count: int
+    quote_count: int
+    # impression_count: int
+    bookmark_count: int
+    url: str
+    created_at: str
     media: Optional[List[TwitterScraperMedia]] = []
 
     # Only available in scraped tweets
-    is_quote_tweet: Optional[bool]
-    is_retweet: Optional[bool]
+    is_quote_tweet: bool
+    is_retweet: bool
 
 
 class ScraperTextRole(str, Enum):
@@ -714,7 +714,6 @@ class SearchSynapse(Synapse):
 
 
 class WebSearchSynapse(bt.Synapse):
-
     """A class to represent web search synapse"""
 
     query: str = pydantic.Field(
@@ -755,7 +754,6 @@ class WebSearchSynapse(bt.Synapse):
 
 
 class TwitterSearchSynapse(bt.Synapse):
-
     """A class to represent Twitter Advanced Search Synapse"""
 
     query: str = pydantic.Field(
@@ -867,7 +865,7 @@ class TwitterSearchSynapse(bt.Synapse):
         description="Fetched validator Tweets Data.",
     )
 
-    results: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+    results: Optional[List[Dict[str, Any]]] = pydantic.Field(
         default_factory=list,
         title="tweets",
         description="Fetched Tweets Data.",
@@ -878,7 +876,6 @@ class TwitterSearchSynapse(bt.Synapse):
 
 
 class TwitterIDSearchSynapse(bt.Synapse):
-
     """A class to represent Twitter ID Advanced Search Synapse"""
 
     id: str = pydantic.Field(
@@ -916,7 +913,6 @@ class TwitterIDSearchSynapse(bt.Synapse):
 
 
 class TwitterURLsSearchSynapse(bt.Synapse):
-
     """A class to represent Twitter URLs Advanced Search Synapse"""
 
     urls: Dict[str, str] = pydantic.Field(
@@ -925,7 +921,7 @@ class TwitterURLsSearchSynapse(bt.Synapse):
         description="A list of tweet URLs to fetch.",
         allow_mutation=False,
     )
-    
+
     model: Model = pydantic.Field(
         Model.NOVA,
         title="model",

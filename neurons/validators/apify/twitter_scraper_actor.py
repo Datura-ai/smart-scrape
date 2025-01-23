@@ -66,6 +66,11 @@ class TwitterScraperActor:
                     retweet_count=item.get("retweetCount"),
                     like_count=item.get("likeCount"),
                     quote_count=item.get("quoteCount"),
+                    view_count=item.get(
+                        "viewCount", 0
+                    ),  # TODO Fix for the missing viewCount
+                    bookmark_count=item.get("bookmarkCount"),
+                    # impression_count=item.get("impressionCount"),
                     url=item.get("url"),
                     created_at=item.get("createdAt"),
                     is_quote_tweet=item.get("isQuote"),
@@ -185,7 +190,7 @@ class TwitterScraperActor:
                     retweet_count=item.get("retweetCount"),
                     like_count=item.get("likeCount"),
                     quote_count=item.get("quoteCount"),
-                    impression_count=item.get("viewCount"),
+                    # impression_count=item.get("viewCount"),
                     bookmark_count=item.get("bookmarkCount"),
                     url=item.get("url"),
                     created_at=item.get("createdAt"),
@@ -374,7 +379,9 @@ class TwitterScraperActor:
 
             return {"data": users}
         except Exception as e:
-            error_message = f"TwitterScraperActor: Failed to scrape user's followers {id}: {str(e)}"
+            error_message = (
+                f"TwitterScraperActor: Failed to scrape user's followers {id}: {str(e)}"
+            )
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.warning("\n".join(tb_str) + error_message)
             return {
