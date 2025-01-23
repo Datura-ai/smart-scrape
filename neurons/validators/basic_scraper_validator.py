@@ -783,7 +783,8 @@ class BasicScraperValidator:
                 raise StopAsyncIteration("No available UIDs.")
 
             axon = self.neuron.metagraph.axons[uid]
-            max_execution_time = get_max_execution_time(model)
+            # max_execution_time = get_max_execution_time(model)
+            max_execution_time = 10
 
             # Instantiate TwitterSearchSynapse with input parameters
             synapse = TwitterSearchSynapse(

@@ -3,6 +3,7 @@ import os
 import ast
 import math
 import json
+from pydantic import ValidationError
 import wandb
 import base64
 import random
@@ -23,7 +24,7 @@ from datura.misc import ttl_get_block
 import re
 import html
 import unicodedata
-from datura.protocol import Model
+from datura.protocol import Model, TwitterScraperTweet
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from typing import List
 from datura.services.twitter_utils import TwitterUtils
@@ -711,3 +712,12 @@ def calculate_similarity_percentage(tensor1, tensor2):
     cos_sim = util.pytorch_cos_sim(tensor1, tensor2).item()  # in [-1,1]
     similarity_percentage = (cos_sim + 1) / 2 * 100
     return similarity_percentage
+
+
+def is_valid_tweet(self, tweet):
+    try:
+        _ = TwitterScraperTweet(**tweet)
+    except ValidationError as e:
+        bt.logging.error(f"Invalid miner tweet data: {e}")
+        return False
+    return True

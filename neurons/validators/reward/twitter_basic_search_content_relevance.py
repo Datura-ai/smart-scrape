@@ -33,6 +33,7 @@ from datura.services.twitter_api_wrapper import TwitterAPIClient
 from datura.utils import (
     clean_text,
     format_text_for_match,
+    is_valid_tweet,
     scrape_tweets_with_retries,
     calculate_similarity_percentage,
 )
@@ -60,6 +61,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
 
         self.scoring_type = scoring_type
         self.tw_client = TwitterAPIClient()
+        self.embedder = Embedder()
 
     def clean_text(self, text):
         return clean_text(text)
@@ -125,8 +127,8 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
         clean1 = format_text_for_match(text1)
         clean2 = format_text_for_match(text2)
 
-        emb1 = Embedder.embed_text(clean1)
-        emb2 = Embedder.embed_text(clean2)
+        emb1 = self.embedder.embed_text(clean1)
+        emb2 = self.embedder.embed_text(clean2)
 
         sim_percent = calculate_similarity_percentage(emb1, emb2)
         return sim_percent >= SIMILARITY_THRESHOLD
@@ -167,7 +169,12 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                 if not val_tweet.id or val_tweet.id not in miner_map:
                     tweet_scores.append(0)
                     continue
+
                 miner_tweet = miner_map[val_tweet.id]
+
+                if not is_valid_tweet(miner_tweet):
+                    tweet_scores.append(0)
+                    continue
 
                 # 3) Compare tweet text with embeddings and TwitterSearchSynapse and actual tweet data
                 miner_text = (miner_tweet.text or "").strip()
