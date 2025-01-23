@@ -37,11 +37,15 @@ from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.prompts import LinkContentPrompt
-from datura.utils import clean_text, format_text_for_match, scrape_tweets_with_retries
+from datura.utils import (
+    clean_text,
+    format_text_for_match,
+    is_valid_tweet,
+    scrape_tweets_with_retries,
+)
 import json
 from datetime import datetime
 import pytz
-from pydantic import ValidationError
 from datetime import datetime
 import pytz
 
@@ -198,7 +202,7 @@ class TwitterContentRelevanceModel(BaseRewardModel):
                 tweet_score = 0
 
                 if tweet:
-                    if not self.is_valid_tweet(tweet):
+                    if not is_valid_tweet(tweet):
                         tweet_scores.append(0)
                         continue
 
@@ -264,14 +268,6 @@ class TwitterContentRelevanceModel(BaseRewardModel):
         except Exception as e:
             bt.logging.error(f"check_tweet_content: {str(e)}")
             return 0
-
-    def is_valid_tweet(self, tweet):
-        try:
-            _ = TwitterScraperTweet(**tweet)
-        except ValidationError as e:
-            bt.logging.error(f"Invalid miner tweet data: {e}")
-            return False
-        return True
 
     def get_scoring_text(
         self, prompt: str, content: str, response: bt.Synapse

@@ -43,7 +43,7 @@ def generalize_tweet_structure(tweets) -> List[dict]:
                 reply_count=tweet.get("public_metrics").get("reply_count"),
                 like_count=tweet.get("public_metrics").get("like_count"),
                 quote_count=tweet.get("public_metrics").get("quote_count"),
-                impression_count=tweet.get("public_metrics").get("impression_count"),
+                # impression_count=tweet.get("public_metrics").get("impression_count"),
                 bookmark_count=tweet.get("public_metrics").get("bookmark_count"),
                 created_at=tweet.get("created_at"),
                 text=tweet.get("text"),

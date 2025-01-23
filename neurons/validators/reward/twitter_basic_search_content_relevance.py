@@ -27,12 +27,13 @@ import random
 from typing import List, Optional
 from .config import RewardModelType
 from .reward import BaseRewardModel, BaseRewardEvent
-from datura.protocol import TwitterSearchSynapse, Embedder
+from datura.protocol import TwitterScraperTweet, TwitterSearchSynapse, Embedder
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from datura.utils import (
     clean_text,
     format_text_for_match,
+    is_valid_tweet,
     scrape_tweets_with_retries,
     calculate_similarity_percentage,
 )
@@ -60,6 +61,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
 
         self.scoring_type = scoring_type
         self.tw_client = TwitterAPIClient()
+        self.embedder = Embedder()
 
     def clean_text(self, text):
         return clean_text(text)
@@ -75,7 +77,9 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
 
             # 1) Collect & sample URLs from each synapse.results
             for response, random_links in zip(responses, responses_random_links):
-                tweet_urls = [tweet.url for tweet in response.results if tweet.url]
+                tweet_urls = [
+                    tweet["url"] for tweet in response.results if "url" in tweet
+                ]
                 if tweet_urls:
                     sample_links = random.sample(
                         tweet_urls,
@@ -125,8 +129,8 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
         clean1 = format_text_for_match(text1)
         clean2 = format_text_for_match(text2)
 
-        emb1 = Embedder.embed_text(clean1)
-        emb2 = Embedder.embed_text(clean2)
+        emb1 = self.embedder.embed_text(clean1)
+        emb2 = self.embedder.embed_text(clean2)
 
         sim_percent = calculate_similarity_percentage(emb1, emb2)
         return sim_percent >= SIMILARITY_THRESHOLD
@@ -158,7 +162,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
         try:
             tweet_scores = []
             # Build a map of miner tweets by ID
-            miner_map = {m.id: m for m in response.results if m.id}
+            miner_map = {m["id"]: m for m in response.results if "id" in m}
 
             for val_tweet in response.validator_tweets:
                 current_score = 0
@@ -167,7 +171,14 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                 if not val_tweet.id or val_tweet.id not in miner_map:
                     tweet_scores.append(0)
                     continue
+
                 miner_tweet = miner_map[val_tweet.id]
+
+                if not is_valid_tweet(miner_tweet):
+                    tweet_scores.append(0)
+                    continue
+
+                miner_tweet = TwitterScraperTweet(**miner_tweet)
 
                 # 3) Compare tweet text with embeddings and TwitterSearchSynapse and actual tweet data
                 miner_text = (miner_tweet.text or "").strip()
@@ -176,23 +187,39 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                     tweet_scores.append(0)
                     continue
 
-                if val_tweet.like_count + INT_DIFF_ALLOWED <= response.min_likes:
+                if (
+                    response.min_likes
+                    and val_tweet.like_count + INT_DIFF_ALLOWED <= response.min_likes
+                ):
                     tweet_scores.append(0)
                     continue
 
                 #    Similarly for retweets
-                if val_tweet.retweet_count + INT_DIFF_ALLOWED <= response.min_retweets:
+                if (
+                    response.min_retweets
+                    and val_tweet.retweet_count + INT_DIFF_ALLOWED
+                    <= response.min_retweets
+                ):
                     tweet_scores.append(0)
                     continue
 
                 #    Similarly for replies
-                if val_tweet.reply_count + INT_DIFF_ALLOWED <= response.min_replies:
+                if (
+                    response.min_replies
+                    and val_tweet.reply_count + INT_DIFF_ALLOWED <= response.min_replies
+                ):
                     tweet_scores.append(0)
                     continue
 
                 # 4) Compare min_retweets, min_replies, min_likes
                 if not self._int_filter_difference_checker(
                     miner_tweet.retweet_count, val_tweet.retweet_count, INT_DIFF_ALLOWED
+                ):
+                    tweet_scores.append(0)
+                    continue
+
+                if not self._int_filter_difference_checker(
+                    miner_tweet.reply_count, val_tweet.reply_count, INT_DIFF_ALLOWED
                 ):
                     tweet_scores.append(0)
                     continue
@@ -215,13 +242,13 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                     tweet_scores.append(0)
                     continue
 
-                if not self._int_filter_difference_checker(
-                    miner_tweet.impression_count,
-                    val_tweet.impression_count,
-                    INT_DIFF_ALLOWED,
-                ):
-                    tweet_scores.append(0)
-                    continue
+                # if not self._int_filter_difference_checker(
+                #     miner_tweet.impression_count,
+                #     val_tweet.impression_count,
+                #     INT_DIFF_ALLOWED,
+                # ):
+                #     tweet_scores.append(0)
+                #     continue
 
                 if not self._int_filter_difference_checker(
                     miner_tweet.bookmark_count,
@@ -232,8 +259,8 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                     continue
 
                 # 5) Compare username with embeddings if both exist
-                miner_username = (miner_tweet.user.username or "").strip()
-                validator_username = (val_tweet.user.username or "").strip()
+                miner_username = miner_tweet.user.username.strip()
+                validator_username = val_tweet.user.username.strip()
                 if miner_username or validator_username:
                     if not self._text_similarity(miner_username, validator_username):
                         tweet_scores.append(0)
