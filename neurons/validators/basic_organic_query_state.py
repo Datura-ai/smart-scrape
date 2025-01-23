@@ -150,7 +150,7 @@ class BasicOrganicQueryState:
         synapse_uid = neuron.uid
 
         # Build the final query
-        query = {"content": content}
+        query = {"query": content}
         if isinstance(synapse, TwitterSearchSynapse):
             query["start_date"] = start_date
             query["end_date"] = end_date

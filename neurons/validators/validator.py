@@ -475,7 +475,7 @@ class Neuron(AbstractNeuron):
 
         bt.logging.info(f"Running organic queries for prompt: {synapse.query}")
 
-        async for _ in self.advanced_scraper_validator.organic(
+        async for _ in self.basic_scraper_validator.organic(
             query=query,
             random_synapse=synapse,
             random_uid=synapse_uid,

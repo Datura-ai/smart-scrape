@@ -817,7 +817,7 @@ class BasicScraperValidator:
 
             return synapse.results
         except Exception as e:
-            bt.logging.error(f"Error in search: {e}")
+            bt.logging.error(f"Error in twitter_search: {e}")
             raise e
 
     async def web_search(
