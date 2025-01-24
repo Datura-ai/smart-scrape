@@ -34,6 +34,7 @@ class TwitterSearchMiner:
             f"Executing mock search with query: {query} and params: {search_params}"
         )
 
+        # TODO use twitterscrapertweet class for mock tweet
         # Mock tweet result
         mock_tweet = {
             "user": {"username": "mock_user", "verified": True},

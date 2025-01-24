@@ -149,6 +149,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                 .astimezone(pytz.UTC)
                 .replace(second=0, microsecond=0)
             )
+            # TODO use same format as validator
             dt_miner = datetime.fromisoformat(
                 miner_dt_str.replace("Z", "+00:00")
             ).replace(second=0, microsecond=0)
@@ -259,12 +260,15 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                     continue
 
                 # 5) Compare username with embeddings if both exist
+                # TODO compare using string
                 miner_username = miner_tweet.user.username.strip()
                 validator_username = val_tweet.user.username.strip()
                 if miner_username or validator_username:
                     if not self._text_similarity(miner_username, validator_username):
                         tweet_scores.append(0)
                         continue
+
+                # TODO compare id and url also
 
                 # 6) Compare created_at if both exist
                 if miner_tweet.created_at and val_tweet.created_at:

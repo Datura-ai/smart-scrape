@@ -144,6 +144,7 @@ class BasicScraperValidator:
         )
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
 
+        # TODO - Pass all params to the synapse
         synapses: List[TwitterSearchSynapse] = [
             TwitterSearchSynapse(
                 query=task.compose_prompt(),
