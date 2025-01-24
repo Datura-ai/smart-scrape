@@ -586,7 +586,7 @@ class AdvancedScraperValidator:
             model = Model.NOVA
 
         if result_type is None:
-            result_type = ResultType.ONLY_LINKS
+            result_type = ResultType.LINKS_WITH_SUMMARIES
 
         max_execution_time = get_max_execution_time(model)
 

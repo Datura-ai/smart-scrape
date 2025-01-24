@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, HTTPException, Header, Query, Path
 from datura.dataset.tool_return import ResponseOrder
 from datura.dataset.date_filters import DateFilterType
-from datura.protocol import Model, TwitterScraperTweet, WebSearchResultList
+from datura.protocol import Model, TwitterScraperTweet, WebSearchResultList, ResultType
 from datura.utils import get_max_execution_time
 import uvicorn
 import bittensor as bt
@@ -223,6 +223,7 @@ async def handle_search_links(
         async for item in neu.advanced_scraper_validator.organic(
             query,
             body.model,
+            result_type=ResultType.LINKS_WITH_SUMMARIES,
             is_collect_final_synapses=is_collect_final_synapses,  # Enable flag
         ):
             synapses.append(item)
