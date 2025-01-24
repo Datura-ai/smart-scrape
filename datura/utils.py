@@ -516,7 +516,6 @@ async def save_logs_in_chunks_for_basic(
                         "retweet_count": tweet.retweet_count,
                         "like_count": tweet.like_count,
                         "reply_count": tweet.reply_count,
-                        "view_count": tweet.view_count,
                         "url": tweet.url,
                     }
                     for tweet in response.results

@@ -15,6 +15,7 @@
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
 import traceback
 import time
 import bittensor as bt
@@ -43,10 +44,11 @@ import pytz
 from datetime import datetime
 import pytz
 
-
 APIFY_LINK_SCRAPE_AMOUNT = 3
 SIMILARITY_THRESHOLD = 80.0
-INT_DIFF_ALLOWED = 3
+
+# Only a percentage-based threshold:
+INT_DIFF_PERCENT = 0.01  # 1% difference allowed
 
 
 class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
@@ -58,7 +60,6 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
     def __init__(self, device: str, scoring_type: None):
         super().__init__()
         self.device = device
-
         self.scoring_type = scoring_type
         self.tw_client = TwitterAPIClient()
         self.embedder = Embedder()
@@ -136,30 +137,42 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
         return sim_percent >= SIMILARITY_THRESHOLD
 
     def _int_filter_difference_checker(
-        self, a: Optional[int], b: Optional[int], diff_allowed: int
+        self,
+        miner_value: Optional[int],
+        validator_value: Optional[int],
+        ratio: float = INT_DIFF_PERCENT,
     ) -> bool:
-        # Both not None => check difference
-        return a - b <= diff_allowed
+        """
+        Returns True if the absolute difference between miner_value and validator_value
+        is within the specified percentage threshold of the validator_value.
+        Example: If ratio=0.01 (1%) and validator_value=100, allowed_diff=1 (±1).
+        """
+        if miner_value is None or validator_value is None:
+            return False
+
+        # Calculate the allowed difference from the validator_value (ground truth)
+        allowed_diff = int(validator_value * ratio)
+        return abs(miner_value - validator_value) <= allowed_diff
 
     def _compare_dates(self, miner_dt_str: str, validator_dt_str: str) -> bool:
-
         try:
             dt_validator = (
                 datetime.strptime(validator_dt_str, "%a %b %d %H:%M:%S %z %Y")
                 .astimezone(pytz.UTC)
                 .replace(second=0, microsecond=0)
             )
-            # TODO use same format as validator
-            dt_miner = datetime.fromisoformat(
-                miner_dt_str.replace("Z", "+00:00")
-            ).replace(second=0, microsecond=0)
+            dt_miner = (
+                datetime.strptime(miner_dt_str, "%a %b %d %H:%M:%S %z %Y")
+                .astimezone(pytz.UTC)
+                .replace(second=0, microsecond=0)
+            )
+            # Compare exact minute-level match in UTC
             return dt_validator == dt_miner
         except Exception as e:
             bt.logging.warning(f"Date parsing error: {str(e)}")
             return False
 
     def check_tweet_content(self, response: TwitterSearchSynapse) -> float:
-
         try:
             tweet_scores = []
             # Build a map of miner tweets by ID
@@ -168,107 +181,79 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
             for val_tweet in response.validator_tweets:
                 current_score = 0
 
-                # 2) Find corresponding miner tweet
+                # 1) Find corresponding miner tweet by ID
                 if not val_tweet.id or val_tweet.id not in miner_map:
                     tweet_scores.append(0)
                     continue
 
-                miner_tweet = miner_map[val_tweet.id]
-
-                if not is_valid_tweet(miner_tweet):
+                miner_tweet_data = miner_map[val_tweet.id]
+                if not is_valid_tweet(miner_tweet_data):
                     tweet_scores.append(0)
                     continue
 
-                miner_tweet = TwitterScraperTweet(**miner_tweet)
+                miner_tweet = TwitterScraperTweet(**miner_tweet_data)
 
-                # 3) Compare tweet text with embeddings and TwitterSearchSynapse and actual tweet data
+                # 2) Compare tweet text with embeddings
                 miner_text = (miner_tweet.text or "").strip()
                 validator_text = (val_tweet.text or "").strip()
                 if not self._text_similarity(miner_text, validator_text):
                     tweet_scores.append(0)
                     continue
 
-                if (
-                    response.min_likes
-                    and val_tweet.like_count + INT_DIFF_ALLOWED <= response.min_likes
-                ):
+                # 3) Check requested min_likes, min_retweets, min_replies from the search
+                if response.min_likes and val_tweet.like_count < response.min_likes:
                     tweet_scores.append(0)
                     continue
-
-                #    Similarly for retweets
                 if (
                     response.min_retweets
-                    and val_tweet.retweet_count + INT_DIFF_ALLOWED
-                    <= response.min_retweets
+                    and val_tweet.retweet_count < response.min_retweets
                 ):
                     tweet_scores.append(0)
                     continue
-
-                #    Similarly for replies
                 if (
                     response.min_replies
-                    and val_tweet.reply_count + INT_DIFF_ALLOWED <= response.min_replies
+                    and val_tweet.reply_count < response.min_replies
                 ):
                     tweet_scores.append(0)
                     continue
 
-                # 4) Compare min_retweets, min_replies, min_likes
+                # 4) Compare all integer metrics with ratio-based difference
                 if not self._int_filter_difference_checker(
-                    miner_tweet.retweet_count, val_tweet.retweet_count, INT_DIFF_ALLOWED
+                    miner_tweet.retweet_count, val_tweet.retweet_count
                 ):
                     tweet_scores.append(0)
                     continue
-
                 if not self._int_filter_difference_checker(
-                    miner_tweet.reply_count, val_tweet.reply_count, INT_DIFF_ALLOWED
+                    miner_tweet.reply_count, val_tweet.reply_count
                 ):
                     tweet_scores.append(0)
                     continue
-
                 if not self._int_filter_difference_checker(
-                    miner_tweet.like_count, val_tweet.like_count, INT_DIFF_ALLOWED
+                    miner_tweet.like_count, val_tweet.like_count
                 ):
                     tweet_scores.append(0)
                     continue
-
                 if not self._int_filter_difference_checker(
-                    miner_tweet.view_count, val_tweet.view_count, INT_DIFF_ALLOWED
+                    miner_tweet.quote_count, val_tweet.quote_count
                 ):
                     tweet_scores.append(0)
                     continue
-
                 if not self._int_filter_difference_checker(
-                    miner_tweet.quote_count, val_tweet.quote_count, INT_DIFF_ALLOWED
+                    miner_tweet.bookmark_count, val_tweet.bookmark_count
                 ):
                     tweet_scores.append(0)
                     continue
 
-                # if not self._int_filter_difference_checker(
-                #     miner_tweet.impression_count,
-                #     val_tweet.impression_count,
-                #     INT_DIFF_ALLOWED,
-                # ):
-                #     tweet_scores.append(0)
-                #     continue
-
-                if not self._int_filter_difference_checker(
-                    miner_tweet.bookmark_count,
-                    val_tweet.bookmark_count,
-                    INT_DIFF_ALLOWED,
-                ):
+                # 5) Compare string fields directly
+                if miner_tweet.user.username.strip() != val_tweet.user.username.strip():
                     tweet_scores.append(0)
                     continue
-
-                # 5) Compare username with embeddings if both exist
-                # TODO compare using string
-                miner_username = miner_tweet.user.username.strip()
-                validator_username = val_tweet.user.username.strip()
-                if miner_username or validator_username:
-                    if not self._text_similarity(miner_username, validator_username):
-                        tweet_scores.append(0)
-                        continue
-
-                # TODO compare id and url also
+                if miner_tweet.id != val_tweet.id:
+                    tweet_scores.append(0)
+                    continue
+                if miner_tweet.url.strip() != val_tweet.url.strip():
+                    tweet_scores.append(0)
+                    continue
 
                 # 6) Compare created_at if both exist
                 if miner_tweet.created_at and val_tweet.created_at:
@@ -280,15 +265,15 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                 elif (miner_tweet.created_at and not val_tweet.created_at) or (
                     val_tweet.created_at and not miner_tweet.created_at
                 ):
-                    # mismatch if only one has created_at
+                    # Mismatch if only one has a created_at
                     tweet_scores.append(0)
                     continue
 
-                # If we reach here => all checks passed
+                # All checks passed => score = 1
                 current_score = 1
                 tweet_scores.append(current_score)
 
-            # 8) Return average
+            # Return average of all validated tweets
             return sum(tweet_scores) / len(tweet_scores) if tweet_scores else 0.0
 
         except Exception as e:
@@ -330,7 +315,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                 # Populate grouped_val_score_responses with final_score
                 grouped_val_score_responses[uid] = final_score
 
-            # Step 4: Log zero vs non-zero
+            # Step 4: Log zero vs. non-zero
             bt.logging.info(
                 f"========== Twitter Link Content Zero Scores ({len(zero_scores)} cases) =========="
             )

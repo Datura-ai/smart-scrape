@@ -57,6 +57,7 @@ class BasicScraperValidator:
         self.timeout = 180
         self.execution_time_options = [Model.NOVA, Model.ORBIT, Model.HORIZON]
         self.execution_time_probabilities = [0.8, 0.1, 0.1]
+        self.max_execution_time = 10
 
         self.synthetic_history = []
         self.basic_organic_query_state = BasicOrganicQueryState()
@@ -121,13 +122,9 @@ class BasicScraperValidator:
         specified_uids=None,
         start_date=None,
         end_date=None,
-        model: Optional[Model] = None,
     ):
-        # Setup defaults and retrieve maximum execution time
-        if model is None:
-            model = Model.NOVA
 
-        max_execution_time = get_max_execution_time(model)
+        max_execution_time = self.max_execution_time
         start_date = start_date or "2021-12-30"
         end_date = end_date or "2021-12-31"
 
@@ -157,10 +154,9 @@ class BasicScraperValidator:
                 is_quote=False,
                 is_video=False,
                 is_image=False,
-                min_retweets=None,
-                min_replies=None,
-                min_likes=None,
-                model=model,
+                min_retweets=10,
+                min_replies=50,
+                min_likes=100,
                 max_execution_time=max_execution_time,
             )
             for task in tasks
@@ -408,10 +404,6 @@ class BasicScraperValidator:
                 f"[query_and_score_twitter_basic] Running with prompts: {prompts}"
             )
 
-            # 3) Choose random model, date filter, etc.
-            random_model = self.get_random_execution_time()
-            max_execution_time = get_max_execution_time(random_model)
-
             # 4) Run the basic Twitter search
             async_responses, uids, event, start_time = (
                 await self.run_twitter_basic_search_and_score(
@@ -421,7 +413,6 @@ class BasicScraperValidator:
                     specified_uids=None,
                     start_date=None,
                     end_date=None,
-                    model=random_model,
                 )
             )
 
@@ -469,21 +460,16 @@ class BasicScraperValidator:
     async def organic(
         self,
         query,
-        model: Optional[Model] = None,
         random_synapse: TwitterSearchSynapse = None,
         random_uid=None,
         specified_uids=None,
     ):
         """Receives question from user and returns the response from the miners."""
 
-        if model is None:
-            model = Model.NOVA
-
         if not len(self.neuron.available_uids):
             bt.logging.info("No available UIDs")
             raise StopAsyncIteration("No available UIDs")
 
-        max_execution_time = get_max_execution_time(model)
         is_interval_query = random_synapse is not None
 
         try:
@@ -510,7 +496,6 @@ class BasicScraperValidator:
                     is_only_allowed_miner=self.neuron.config.subtensor.network
                     != "finney",
                     specified_uids=specified_uids,
-                    model=model,
                     start_date=start_date,
                     end_date=end_date,
                 )
@@ -570,7 +555,6 @@ class BasicScraperValidator:
         self,
         query,
         specified_uids=None,
-        model: Optional[Model] = None,
     ):
         if not len(self.neuron.available_uids):
             bt.logging.info("Not available uids")
@@ -582,9 +566,6 @@ class BasicScraperValidator:
             )
 
         try:
-            # Default model if none provided
-            if model is None:
-                model = Model.NOVA
 
             prompt = query["content"]
 
@@ -606,7 +587,6 @@ class BasicScraperValidator:
                     specified_uids=specified_uids,
                     start_date=None,
                     end_date=None,
-                    model=model,
                 )
             )
 
@@ -731,7 +711,6 @@ class BasicScraperValidator:
         min_retweets: Optional[int] = None,
         min_replies: Optional[int] = None,
         min_likes: Optional[int] = None,
-        model: Optional[Model] = None,
     ):
         """
         Perform a Twitter search using basic parameters.
@@ -785,7 +764,7 @@ class BasicScraperValidator:
 
             axon = self.neuron.metagraph.axons[uid]
             # max_execution_time = get_max_execution_time(model)
-            max_execution_time = 10
+            max_execution_time = self.max_execution_time
 
             # Instantiate TwitterSearchSynapse with input parameters
             synapse = TwitterSearchSynapse(
@@ -802,7 +781,6 @@ class BasicScraperValidator:
                 min_retweets=min_retweets,
                 min_replies=min_replies,
                 min_likes=min_likes,
-                model=model,
                 max_execution_time=max_execution_time,
                 validator_tweets=[],
                 results=[],
@@ -895,7 +873,6 @@ class BasicScraperValidator:
     async def twitter_id_search(
         self,
         tweet_id: str,
-        model: Optional[Model] = None,
     ):
         """
         Perform a Twitter search using a specific tweet ID.
@@ -937,11 +914,10 @@ class BasicScraperValidator:
                 raise StopAsyncIteration("No available UIDs.")
 
             axon = self.neuron.metagraph.axons[uid]
-            max_execution_time = get_max_execution_time(model)
+            max_execution_time = self.max_execution_time
             # Instantiate TwitterIDSearchSynapse
             synapse = TwitterIDSearchSynapse(
                 id=tweet_id,
-                model=model,
                 max_execution_time=max_execution_time,
                 validator_tweets=[],
                 results=[],
@@ -964,7 +940,6 @@ class BasicScraperValidator:
     async def twitter_urls_search(
         self,
         urls: Dict[str, str],
-        model: Optional[Model] = None,
     ):
         """
         Perform a Twitter search using multiple tweet URLs.
@@ -1008,11 +983,10 @@ class BasicScraperValidator:
                 raise StopAsyncIteration("No available UIDs.")
 
             axon = self.neuron.metagraph.axons[uid]
-            max_execution_time = get_max_execution_time(model)
+            max_execution_time = self.max_execution_time
             # Instantiate TwitterURLsSearchSynapse
             synapse = TwitterURLsSearchSynapse(
                 urls=urls,
-                model=model,
                 max_execution_time=max_execution_time,
                 validator_tweets=[],
                 results=[],

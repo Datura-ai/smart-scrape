@@ -66,9 +66,6 @@ class TwitterScraperActor:
                     retweet_count=item.get("retweetCount"),
                     like_count=item.get("likeCount"),
                     quote_count=item.get("quoteCount"),
-                    view_count=item.get(
-                        "viewCount", 0
-                    ),  # TODO Fix for the missing viewCount
                     bookmark_count=item.get("bookmarkCount"),
                     # impression_count=item.get("impressionCount"),
                     url=item.get("url"),
