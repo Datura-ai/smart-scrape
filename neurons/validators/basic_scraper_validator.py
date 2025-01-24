@@ -122,6 +122,9 @@ class BasicScraperValidator:
         specified_uids=None,
         start_date=None,
         end_date=None,
+        min_retweets: Optional[int] = None,
+        min_replies: Optional[int] = None,
+        min_likes: Optional[int] = None,
     ):
 
         max_execution_time = self.max_execution_time
@@ -154,9 +157,9 @@ class BasicScraperValidator:
                 is_quote=False,
                 is_video=False,
                 is_image=False,
-                min_retweets=10,
-                min_replies=50,
-                min_likes=100,
+                min_retweets=min_retweets,
+                min_replies=min_replies,
+                min_likes=min_likes,
                 max_execution_time=max_execution_time,
             )
             for task in tasks
@@ -413,6 +416,9 @@ class BasicScraperValidator:
                     specified_uids=None,
                     start_date=None,
                     end_date=None,
+                    min_retweets=None,
+                    min_replies=None,
+                    min_likes=None,
                 )
             )
 
@@ -476,6 +482,9 @@ class BasicScraperValidator:
             prompt = query["query"]
             start_date = query["start_date"]
             end_date = query["end_date"]
+            min_retweets = query["min_retweets"]
+            min_replies = query["min_replies"]
+            min_likes = query["min_likes"]
 
             tasks = [
                 SearchTask(
@@ -498,6 +507,9 @@ class BasicScraperValidator:
                     specified_uids=specified_uids,
                     start_date=start_date,
                     end_date=end_date,
+                    min_retweets=min_retweets,
+                    min_replies=min_replies,
+                    min_likes=min_likes,
                 )
             )
 
@@ -587,6 +599,9 @@ class BasicScraperValidator:
                     specified_uids=specified_uids,
                     start_date=None,
                     end_date=None,
+                    min_retweets=None,
+                    min_replies=None,
+                    min_likes=None,
                 )
             )
 

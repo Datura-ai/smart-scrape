@@ -201,6 +201,15 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                     continue
 
                 # 3) Check requested min_likes, min_retweets, min_replies from the search
+
+                if (
+                    response.min_likes is None
+                    or response.min_retweets is None
+                    or response.min_replies is None
+                ):
+                    tweet_scores.append(0)
+                    continue
+
                 if response.min_likes and val_tweet.like_count < response.min_likes:
                     tweet_scores.append(0)
                     continue
