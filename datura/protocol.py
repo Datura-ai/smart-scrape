@@ -76,7 +76,6 @@ class TwitterScraperTweet(BaseModel):
     reply_count: int
     retweet_count: int
     like_count: int
-    view_count: int
     quote_count: int
     # impression_count: int
     bookmark_count: int
@@ -847,12 +846,6 @@ class TwitterSearchSynapse(bt.Synapse):
         allow_mutation=False,
     )
 
-    model: Model = pydantic.Field(
-        Model.NOVA,
-        title="model",
-        description="The model to define the max execution time.",
-    )
-
     max_execution_time: Optional[int] = pydantic.Field(
         None,
         title="Max Execution Time (timeout)",
@@ -885,11 +878,6 @@ class TwitterIDSearchSynapse(bt.Synapse):
         allow_mutation=False,
     )
 
-    model: Model = pydantic.Field(
-        Model.NOVA,
-        title="model",
-        description="The model to define the max execution time.",
-    )
     max_execution_time: Optional[int] = pydantic.Field(
         None,
         title="Max Execution Time (timeout)",
@@ -920,12 +908,6 @@ class TwitterURLsSearchSynapse(bt.Synapse):
         title="URLs",
         description="A list of tweet URLs to fetch.",
         allow_mutation=False,
-    )
-
-    model: Model = pydantic.Field(
-        Model.NOVA,
-        title="model",
-        description="The model to define the max execution time.",
     )
 
     max_execution_time: Optional[int] = pydantic.Field(

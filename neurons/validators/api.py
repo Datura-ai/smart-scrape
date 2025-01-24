@@ -350,9 +350,7 @@ async def advanced_twitter_search(request: TwitterSearchRequest):
 
         # Collect all yielded synapses from organic
         final_synapses = []
-        async for synapse in neu.basic_scraper_validator.organic(
-            query=query_dict, model=None
-        ):
+        async for synapse in neu.basic_scraper_validator.organic(query=query_dict):
             final_synapses.append(synapse)
 
         # Transform final synapses into a flattened list of tweets
@@ -378,18 +376,9 @@ async def advanced_twitter_search(request: TwitterSearchRequest):
 )
 async def get_tweet_by_id(
     id: str = Path(..., description="The unique ID of the tweet to fetch"),
-    model: Optional[Model] = Query(
-        default=Model.NOVA,
-        description=f"Model to use for scraping. {format_enum_values(Model)}",
-        example=Model.NOVA.value,
-    ),
 ):
     """
     Fetch the details of a tweet by its ID.
-
-    Parameters:
-        id (str): The unique tweet ID to fetch.
-        model (Optional[Model]): The scraping model to use.
 
     Returns:
         List[TwitterScraperTweet]: A list containing the tweet details.
@@ -403,7 +392,6 @@ async def get_tweet_by_id(
         final_synapses = []
         async for synapse in neu.basic_scraper_validator.organic(
             query=query_dict,
-            model=model,
         ):
             final_synapses.append(synapse)
 
@@ -431,11 +419,6 @@ async def get_tweets_by_urls(
     urls: List[str] = Query(
         ..., description="A list of tweet URLs to fetch details for"
     ),
-    model: Optional[Model] = Query(
-        default=Model.NOVA,
-        description=f"Model to use for scraping. {format_enum_values(Model)}",
-        example=Model.NOVA.value,
-    ),
 ):
     """
     Fetch the details of multiple tweets using their URLs.
@@ -455,7 +438,6 @@ async def get_tweets_by_urls(
         final_synapses = []
         async for synapse in neu.basic_scraper_validator.organic(
             query=query_dict,
-            model=model,
         ):
             final_synapses.append(synapse)
 
