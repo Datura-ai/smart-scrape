@@ -120,18 +120,26 @@ class BasicScraperValidator:
         strategy=QUERY_MINERS.RANDOM,
         is_only_allowed_miner=True,
         specified_uids=None,
+        sort=None,
         start_date=None,
         end_date=None,
+        lang=None,
+        verified=None,
+        blue_verified=None,
+        is_quote=None,
+        is_video=None,
+        is_image=None,
+        min_retweets=None,
+        min_replies=None,
+        min_likes=None,
     ):
-
         max_execution_time = self.max_execution_time
-        start_date = start_date or "2021-12-30"
-        end_date = end_date or "2021-12-31"
 
         event = {
             "names": [task.task_name for task in tasks],
             "task_types": [task.task_type for task in tasks],
         }
+
         start_time = time.time()
 
         uids = await self.neuron.get_uids(
@@ -141,22 +149,21 @@ class BasicScraperValidator:
         )
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
 
-        # TODO - Pass all params to the synapse
         synapses: List[TwitterSearchSynapse] = [
             TwitterSearchSynapse(
                 query=task.compose_prompt(),
-                sort=None,
+                sort=sort,
                 start_date=start_date,
                 end_date=end_date,
-                lang="en",
-                verified=False,
-                blue_verified=False,
-                is_quote=False,
-                is_video=False,
-                is_image=False,
-                min_retweets=10,
-                min_replies=50,
-                min_likes=100,
+                lang=lang,
+                verified=verified,
+                blue_verified=blue_verified,
+                is_quote=is_quote,
+                is_video=is_video,
+                is_image=is_image,
+                min_retweets=min_retweets,
+                min_replies=min_replies,
+                min_likes=min_likes,
                 max_execution_time=max_execution_time,
             )
             for task in tasks
@@ -474,8 +481,18 @@ class BasicScraperValidator:
 
         try:
             prompt = query["query"]
+            sort = query["sort"]
             start_date = query["start_date"]
             end_date = query["end_date"]
+            lang = query["lang"]
+            verified = query["verified"]
+            blue_verified = query["blue_verified"]
+            is_quote = query["is_quote"]
+            is_video = query["is_video"]
+            is_image = query["is_image"]
+            min_retweets = query["min_retweets"]
+            min_replies = query["min_replies"]
+            min_likes = query["min_likes"]
 
             tasks = [
                 SearchTask(
@@ -496,8 +513,18 @@ class BasicScraperValidator:
                     is_only_allowed_miner=self.neuron.config.subtensor.network
                     != "finney",
                     specified_uids=specified_uids,
+                    sort=sort,
                     start_date=start_date,
                     end_date=end_date,
+                    lang=lang,
+                    verified=verified,
+                    blue_verified=blue_verified,
+                    is_quote=is_quote,
+                    is_video=is_video,
+                    is_image=is_image,
+                    min_retweets=min_retweets,
+                    min_replies=min_replies,
+                    min_likes=min_likes,
                 )
             )
 
@@ -551,150 +578,150 @@ class BasicScraperValidator:
                 formatted_scores.append("{}")  # Empty dictionary
         return "\n".join(formatted_scores)
 
-    async def organic_specified(
-        self,
-        query,
-        specified_uids=None,
-    ):
-        if not len(self.neuron.available_uids):
-            bt.logging.info("Not available uids")
-            raise StopAsyncIteration("Not available uids")
+    # async def organic_specified(
+    #     self,
+    #     query,
+    #     specified_uids=None,
+    # ):
+    #     if not len(self.neuron.available_uids):
+    #         bt.logging.info("Not available uids")
+    #         raise StopAsyncIteration("Not available uids")
 
-        def format_response(uid, text):
-            return json.dumps(
-                {"uid": uid, "type": "text", "content": text, "role": text}
-            )
+    #     def format_response(uid, text):
+    #         return json.dumps(
+    #             {"uid": uid, "type": "text", "content": text, "role": text}
+    #         )
 
-        try:
+    #     try:
 
-            prompt = query["content"]
+    #         prompt = query["content"]
 
-            tasks = [
-                SearchTask(
-                    base_text=prompt,
-                    task_name="twitter search",
-                    task_type="twitter_search",
-                    criteria=[],
-                )
-                for _ in range(len(specified_uids))
-            ]
+    #         tasks = [
+    #             SearchTask(
+    #                 base_text=prompt,
+    #                 task_name="twitter search",
+    #                 task_type="twitter_search",
+    #                 criteria=[],
+    #             )
+    #             for _ in range(len(specified_uids))
+    #         ]
 
-            async_responses, uids, event, start_time = (
-                await self.run_twitter_basic_search_and_score(
-                    tasks=tasks,
-                    strategy=QUERY_MINERS.ALL,
-                    is_only_allowed_miner=False,
-                    specified_uids=specified_uids,
-                    start_date=None,
-                    end_date=None,
-                )
-            )
+    #         async_responses, uids, event, start_time = (
+    #             await self.run_twitter_basic_search_and_score(
+    #                 tasks=tasks,
+    #                 strategy=QUERY_MINERS.ALL,
+    #                 is_only_allowed_miner=False,
+    #                 specified_uids=specified_uids,
+    #                 start_date=None,
+    #                 end_date=None,
+    #             )
+    #         )
 
-            async def stream_response(uid, async_response):
-                yield format_response(uid, f"\n\nMiner UID {uid}\n")
-                yield format_response(
-                    uid, "----------------------------------------\n\n"
-                )
+    #         async def stream_response(uid, async_response):
+    #             yield format_response(uid, f"\n\nMiner UID {uid}\n")
+    #             yield format_response(
+    #                 uid, "----------------------------------------\n\n"
+    #             )
 
-                async for value in async_response:
-                    if isinstance(value, bt.Synapse):
-                        yield value
-                    else:
-                        yield json.dumps({"uid": uid, **json.loads(value)})
+    #             async for value in async_response:
+    #                 if isinstance(value, bt.Synapse):
+    #                     yield value
+    #                 else:
+    #                     yield json.dumps({"uid": uid, **json.loads(value)})
 
-            async_responses_with_uid = [
-                stream_response(uid.item(), response)
-                for uid, response in zip(uids, async_responses)
-            ]
+    #         async_responses_with_uid = [
+    #             stream_response(uid.item(), response)
+    #             for uid, response in zip(uids, async_responses)
+    #         ]
 
-            if len(async_responses_with_uid) > 0:
-                merged_stream_with_uid = stream.merge(*async_responses_with_uid)
+    #         if len(async_responses_with_uid) > 0:
+    #             merged_stream_with_uid = stream.merge(*async_responses_with_uid)
 
-                final_synapses = []
+    #             final_synapses = []
 
-                async with merged_stream_with_uid.stream() as streamer:
-                    async for value in streamer:
-                        if isinstance(value, bt.Synapse):
-                            final_synapses.append(value)
-                        else:
-                            yield value
+    #             async with merged_stream_with_uid.stream() as streamer:
+    #                 async for value in streamer:
+    #                     if isinstance(value, bt.Synapse):
+    #                         final_synapses.append(value)
+    #                     else:
+    #                         yield value
 
-                for uid_tensor, response in zip(uids, final_synapses):
-                    uid = uid_tensor.item()
-                    yield format_response(
-                        uid, "\n\n----------------------------------------\n"
-                    )
-                    yield format_response(
-                        uid, f"Scoring Miner UID {uid}. Please wait for the score...\n"
-                    )
+    #             for uid_tensor, response in zip(uids, final_synapses):
+    #                 uid = uid_tensor.item()
+    #                 yield format_response(
+    #                     uid, "\n\n----------------------------------------\n"
+    #                 )
+    #                 yield format_response(
+    #                     uid, f"Scoring Miner UID {uid}. Please wait for the score...\n"
+    #                 )
 
-                start_compute_time = time.time()
+    #             start_compute_time = time.time()
 
-                rewards_task = asyncio.create_task(
-                    self.compute_rewards_and_penalties(
-                        event=event,
-                        tasks=tasks,
-                        responses=final_synapses,
-                        uids=uids,
-                        start_time=start_time,
-                        is_synthetic=False,
-                    )
-                )
+    #             rewards_task = asyncio.create_task(
+    #                 self.compute_rewards_and_penalties(
+    #                     event=event,
+    #                     tasks=tasks,
+    #                     responses=final_synapses,
+    #                     uids=uids,
+    #                     start_time=start_time,
+    #                     is_synthetic=False,
+    #                 )
+    #             )
 
-                while not rewards_task.done():
-                    await asyncio.sleep(
-                        30
-                    )  # Check every 30 seconds if the task is done
-                    elapsed_time = time.time() - start_compute_time
-                    if elapsed_time > 60:  # If more than one minute has passed
-                        yield f"Waiting for reward scoring... {elapsed_time // 60} minutes elapsed.\n\n"
-                        start_compute_time = time.time()  # Reset the timer
+    #             while not rewards_task.done():
+    #                 await asyncio.sleep(
+    #                     30
+    #                 )  # Check every 30 seconds if the task is done
+    #                 elapsed_time = time.time() - start_compute_time
+    #                 if elapsed_time > 60:  # If more than one minute has passed
+    #                     yield f"Waiting for reward scoring... {elapsed_time // 60} minutes elapsed.\n\n"
+    #                     start_compute_time = time.time()  # Reset the timer
 
-                rewards, uids, val_score_responses_list, event, _ = await rewards_task
-                for i, uid_tensor in enumerate(uids):
-                    uid = uid_tensor.item()
-                    reward = rewards[i].item()
-                    response = final_synapses[i]
+    #             rewards, uids, val_score_responses_list, event, _ = await rewards_task
+    #             for i, uid_tensor in enumerate(uids):
+    #                 uid = uid_tensor.item()
+    #                 reward = rewards[i].item()
+    #                 response = final_synapses[i]
 
-                    # val_score_response = self.format_val_score_responses([val_score_responses_list[i]])
+    #                 # val_score_response = self.format_val_score_responses([val_score_responses_list[i]])
 
-                    tweet_details = val_score_responses_list[1][i]
-                    web_details = val_score_responses_list[2][i]
+    #                 tweet_details = val_score_responses_list[1][i]
+    #                 web_details = val_score_responses_list[2][i]
 
-                    search_content_relevance = event.get(
-                        "search_content_relevance", [None]
-                    )[i]
-                    twitter_content_relevance = event.get(
-                        "twitter_content_relevance", [None]
-                    )[i]
-                    summary_relevance = event.get("summary_relavance_match", [None])[i]
+    #                 search_content_relevance = event.get(
+    #                     "search_content_relevance", [None]
+    #                 )[i]
+    #                 twitter_content_relevance = event.get(
+    #                     "twitter_content_relevance", [None]
+    #                 )[i]
+    #                 summary_relevance = event.get("summary_relavance_match", [None])[i]
 
-                    yield format_response(
-                        uid, "----------------------------------------\n\n\n"
-                    )
-                    yield format_response(
-                        uid, f"Miner UID {uid} Reward: {reward:.2f}\n\n\n"
-                    )
-                    yield format_response(
-                        uid, f"Summary score: {summary_relevance:.4f}\n\n\n"
-                    )
-                    yield format_response(
-                        uid, f"Twitter Score: {twitter_content_relevance:.4f}\n\n\n"
-                    )
-                    yield format_response(
-                        uid, f"Web Score: {search_content_relevance}\n\n\n"
-                    )
-                    yield format_response(uid, f"Tweet details: {tweet_details}\n\n\n")
-                    yield format_response(uid, f"Web details: {web_details}\n\n\n")
+    #                 yield format_response(
+    #                     uid, "----------------------------------------\n\n\n"
+    #                 )
+    #                 yield format_response(
+    #                     uid, f"Miner UID {uid} Reward: {reward:.2f}\n\n\n"
+    #                 )
+    #                 yield format_response(
+    #                     uid, f"Summary score: {summary_relevance:.4f}\n\n\n"
+    #                 )
+    #                 yield format_response(
+    #                     uid, f"Twitter Score: {twitter_content_relevance:.4f}\n\n\n"
+    #                 )
+    #                 yield format_response(
+    #                     uid, f"Web Score: {search_content_relevance}\n\n\n"
+    #                 )
+    #                 yield format_response(uid, f"Tweet details: {tweet_details}\n\n\n")
+    #                 yield format_response(uid, f"Web details: {web_details}\n\n\n")
 
-                missing_uids = set(specified_uids) - set(uid.item() for uid in uids)
-                for missing_uid in missing_uids:
-                    yield format_response(
-                        missing_uid, f"No response from Miner ID: {missing_uid}\n"
-                    )
-        except Exception as e:
-            bt.logging.error(f"Error in query_and_score: {e}")
-            raise e
+    #             missing_uids = set(specified_uids) - set(uid.item() for uid in uids)
+    #             for missing_uid in missing_uids:
+    #                 yield format_response(
+    #                     missing_uid, f"No response from Miner ID: {missing_uid}\n"
+    #                 )
+    #     except Exception as e:
+    #         bt.logging.error(f"Error in query_and_score: {e}")
+    #         raise e
 
     async def twitter_search(
         self,

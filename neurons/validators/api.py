@@ -8,8 +8,7 @@ from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, HTTPException, Header, Query, Path
 from datura.dataset.tool_return import ResponseOrder
 from datura.dataset.date_filters import DateFilterType
-from datura.protocol import Model, TwitterScraperTweet, WebSearchResultList
-from datura.utils import get_max_execution_time
+from datura.protocol import Model, TwitterScraperTweet, WebSearchResultList, ResultType
 import uvicorn
 import bittensor as bt
 import traceback
@@ -219,11 +218,11 @@ async def handle_search_links(
     synapses = []
 
     try:
-        # Use async for to iterate over the async generator returned by `organic`
         async for item in neu.advanced_scraper_validator.organic(
             query,
             body.model,
-            is_collect_final_synapses=is_collect_final_synapses,  # Enable flag
+            is_collect_final_synapses=is_collect_final_synapses,
+            result_type=ResultType.ONLY_LINKS,
         ):
             synapses.append(item)
 
@@ -300,7 +299,7 @@ async def search_links(
 
 class TwitterSearchRequest(BaseModel):
     query: str
-    sort: Optional[str] = None
+    sort: Optional[str] = "Top"
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     lang: Optional[str] = None
@@ -309,9 +308,9 @@ class TwitterSearchRequest(BaseModel):
     is_quote: Optional[bool] = None
     is_video: Optional[bool] = None
     is_image: Optional[bool] = None
-    min_retweets: int = 0
-    min_replies: int = 0
-    min_likes: int = 0
+    min_retweets: Optional[int] = None
+    min_replies: Optional[int] = None
+    min_likes: Optional[int] = None
 
 
 @app.post(
@@ -330,39 +329,23 @@ async def advanced_twitter_search(request: TwitterSearchRequest):
     try:
         bt.logging.info("Advanced Twitter search initiated with organic approach.")
 
-        # Build the query dictionary to pass into 'organic'
-        # (keeping all parameters intact)
-        query_dict = {
-            "query": request.query,
-            "sort": request.sort,
-            "start_date": request.start_date,
-            "end_date": request.end_date,
-            "lang": request.lang,
-            "verified": request.verified,
-            "blue_verified": request.blue_verified,
-            "is_quote": request.is_quote,
-            "is_video": request.is_video,
-            "is_image": request.is_image,
-            "min_retweets": request.min_retweets,
-            "min_replies": request.min_replies,
-            "min_likes": request.min_likes,
-        }
+        query_dict = request.model_dump()
 
         # Collect all yielded synapses from organic
         final_synapses = []
+
         async for synapse in neu.basic_scraper_validator.organic(query=query_dict):
             final_synapses.append(synapse)
 
         # Transform final synapses into a flattened list of tweets
         all_tweets = []
+
         for syn in final_synapses:
             # Each synapse (if successful) should have a 'results' field of TwitterScraperTweet
             if hasattr(syn, "results") and isinstance(syn.results, list):
                 all_tweets.extend(syn.results)
 
-        # Return the collected tweets
         return all_tweets
-
     except Exception as e:
         bt.logging.error(f"Error in advanced_twitter_search: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
@@ -386,10 +369,10 @@ async def get_tweet_by_id(
     try:
         bt.logging.info(f"Fetching tweet with ID: {id}")
 
-        # --- New approach using 'organic' ---
         query_dict = {"id": id}  # Build a query suitable for your organic function
 
         final_synapses = []
+
         async for synapse in neu.basic_scraper_validator.organic(
             query=query_dict,
         ):
@@ -397,13 +380,14 @@ async def get_tweet_by_id(
 
         # Aggregate TwitterScraperTweet objects from synapses
         all_tweets = []
+
         for syn in final_synapses:
             if hasattr(syn, "results") and isinstance(syn.results, list):
                 all_tweets.extend(syn.results)
 
         bt.logging.info(f"Returning {len(all_tweets)} tweets for ID {id}")
-        return all_tweets
 
+        return all_tweets
     except Exception as e:
         bt.logging.error(f"Error fetching tweet by ID: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
@@ -436,6 +420,7 @@ async def get_tweets_by_urls(
         query_dict = {"urls": urls}
 
         final_synapses = []
+
         async for synapse in neu.basic_scraper_validator.organic(
             query=query_dict,
         ):
@@ -443,6 +428,7 @@ async def get_tweets_by_urls(
 
         # Aggregate TwitterScraperTweet objects
         all_tweets = []
+
         for syn in final_synapses:
             if hasattr(syn, "results") and isinstance(syn.results, list):
                 all_tweets.extend(syn.results)
@@ -483,21 +469,17 @@ async def web_search_endpoint(
         List[WebSearchResult]: A list of web search results.
     """
     try:
-        # Log the operation
         bt.logging.info(
             f"Performing web search with query: '{query}', num: {num}, start: {start}"
         )
 
-        # Call the `web_search` method
         result = await neu.advanced_scraper_validator.web_search(
             query=query,
             num=num,
             start=start,
         )
 
-        # Return the results
         return {"data": result}
-
     except Exception as e:
         bt.logging.error(f"Error in web search: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")

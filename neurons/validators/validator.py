@@ -281,25 +281,25 @@ class Neuron(AbstractNeuron):
             if self.config.wandb_on:
                 wandb.log(wandb_data)
 
-            weights = await self.run_sync_in_async(lambda: get_weights(self))
+            # weights = await self.run_sync_in_async(lambda: get_weights(self))
 
-            asyncio.create_task(
-                save_logs_in_chunks_for_basic(
-                    self,
-                    responses=responses,
-                    uids=uids,
-                    rewards=rewards,
-                    twitter_rewards=all_rewards[0],
-                    performance_rewards=all_rewards[1],
-                    original_twitter_rewards=all_original_rewards[0],
-                    original_performance_rewards=all_original_rewards[1],
-                    tweet_scores=val_score_responses_list[0],
-                    weights=weights,
-                    neuron=neuron,
-                    netuid=self.config.netuid,
-                    organic_penalties=organic_penalties,
-                )
-            )
+            # asyncio.create_task(
+            #     save_logs_in_chunks_for_basic(
+            #         self,
+            #         responses=responses,
+            #         uids=uids,
+            #         rewards=rewards,
+            #         twitter_rewards=all_rewards[0],
+            #         performance_rewards=all_rewards[1],
+            #         original_twitter_rewards=all_original_rewards[0],
+            #         original_performance_rewards=all_original_rewards[1],
+            #         tweet_scores=val_score_responses_list[0],
+            #         weights=weights,
+            #         neuron=neuron,
+            #         netuid=self.config.netuid,
+            #         organic_penalties=organic_penalties,
+            #     )
+            # )
         except Exception as e:
             bt.logging.error(f"Error in update_scores: {e}")
             raise e
@@ -582,6 +582,7 @@ class Neuron(AbstractNeuron):
                             )
                             await asyncio.sleep(10)
                             continue
+                        # TODO fix recv error
                         self.loop.create_task(self.run_synthetic_queries(strategy))
                         self.loop.create_task(
                             self.run_basic_synthetic_queries(strategy)
