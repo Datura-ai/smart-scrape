@@ -264,6 +264,9 @@ async def search(
 async def search_links_web(
     body: LinksSearchRequest, access_key: Annotated[str | None, Header()] = None
 ):
+    if access_key != EXPECTED_ACCESS_KEY:
+        raise HTTPException(status_code=401, detail="Invalid access key")
+
     web_tools = [tool for tool in body.tools if tool != "Twitter Search"]
     return await handle_search_links(body, access_key, EXPECTED_ACCESS_KEY, web_tools)
 
@@ -277,6 +280,9 @@ async def search_links_web(
 async def search_links_twitter(
     body: LinksSearchRequest, access_key: Annotated[str | None, Header()] = None
 ):
+    if access_key != EXPECTED_ACCESS_KEY:
+        raise HTTPException(status_code=401, detail="Invalid access key")
+
     twitter_tools = twitter_tool
     return await handle_search_links(
         body, access_key, EXPECTED_ACCESS_KEY, twitter_tools
@@ -292,6 +298,9 @@ async def search_links_twitter(
 async def search_links(
     body: LinksSearchRequest, access_key: Annotated[str | None, Header()] = None
 ):
+    if access_key != EXPECTED_ACCESS_KEY:
+        raise HTTPException(status_code=401, detail="Invalid access key")
+
     return await handle_search_links(
         body, access_key, EXPECTED_ACCESS_KEY, available_tools
     )
@@ -319,13 +328,18 @@ class TwitterSearchRequest(BaseModel):
     description="Using filters to search for precise results from Twitter.",
     response_model=List[TwitterScraperTweet],
 )
-async def advanced_twitter_search(request: TwitterSearchRequest):
+async def advanced_twitter_search(
+    request: TwitterSearchRequest, access_key: Annotated[str | None, Header()] = None
+):
     """
     Perform an advanced Twitter search using multiple filtering parameters.
 
     Returns:
         List[TwitterScraperTweet]: A list of fetched tweets.
     """
+    if access_key != EXPECTED_ACCESS_KEY:
+        raise HTTPException(status_code=401, detail="Invalid access key")
+
     try:
         bt.logging.info("Advanced Twitter search initiated with organic approach.")
 
@@ -361,7 +375,9 @@ class TwitterURLSearchRequest(BaseModel):
     description="Fetch details of multiple tweets using their URLs.",
     response_model=List[TwitterScraperTweet],
 )
-async def get_tweets_by_urls(request: TwitterURLSearchRequest):
+async def get_tweets_by_urls(
+    request: TwitterURLSearchRequest, access_key: Annotated[str | None, Header()] = None
+):
     """
     Fetch the details of multiple tweets using their URLs.
 
@@ -371,6 +387,9 @@ async def get_tweets_by_urls(request: TwitterURLSearchRequest):
     Returns:
         List[TwitterScraperTweet]: A list of fetched tweets.
     """
+
+    if access_key != EXPECTED_ACCESS_KEY:
+        raise HTTPException(status_code=401, detail="Invalid access key")
 
     try:
         urls = list(set(request.urls))
@@ -415,6 +434,7 @@ async def get_tweets_by_urls(request: TwitterURLSearchRequest):
 )
 async def get_tweet_by_id(
     id: str = Path(..., description="The unique ID of the tweet to fetch"),
+    access_key: Annotated[str | None, Header()] = None,
 ):
     """
     Fetch the details of a tweet by its ID.
@@ -422,6 +442,9 @@ async def get_tweet_by_id(
     Returns:
         List[TwitterScraperTweet]: A list containing the tweet details.
     """
+    if access_key != EXPECTED_ACCESS_KEY:
+        raise HTTPException(status_code=401, detail="Invalid access key")
+
     try:
         bt.logging.info(f"Fetching tweet with ID: {id}")
 
@@ -470,6 +493,7 @@ async def web_search_endpoint(
     start: int = Query(
         0, description="The number of results to skip (used for pagination)."
     ),
+    access_key: Annotated[str | None, Header()] = None,
 ):
     """
     Perform a web search using the given query, number of results, and start index.
@@ -483,6 +507,10 @@ async def web_search_endpoint(
     Returns:
         List[WebSearchResult]: A list of web search results.
     """
+
+    if access_key != EXPECTED_ACCESS_KEY:
+        raise HTTPException(status_code=401, detail="Invalid access key")
+
     try:
         bt.logging.info(
             f"Performing web search with query: '{query}', num: {num}, start: {start}"
