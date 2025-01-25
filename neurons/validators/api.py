@@ -351,50 +351,8 @@ async def advanced_twitter_search(request: TwitterSearchRequest):
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
-@app.post(
-    "/twitter/{id}",
-    summary="Fetch Tweet by ID",
-    description="Fetch details of a tweet using its unique tweet ID.",
-    response_model=List[TwitterScraperTweet],
-)
-async def get_tweet_by_id(
-    id: str = Path(..., description="The unique ID of the tweet to fetch"),
-):
-    """
-    Fetch the details of a tweet by its ID.
-
-    Returns:
-        List[TwitterScraperTweet]: A list containing the tweet details.
-    """
-    try:
-        bt.logging.info(f"Fetching tweet with ID: {id}")
-
-        query_dict = {"id": id}  # Build a query suitable for your organic function
-
-        final_synapses = []
-
-        async for synapse in neu.basic_scraper_validator.organic(
-            query=query_dict,
-        ):
-            final_synapses.append(synapse)
-
-        # Aggregate TwitterScraperTweet objects from synapses
-        all_tweets = []
-
-        for syn in final_synapses:
-            if hasattr(syn, "results") and isinstance(syn.results, list):
-                all_tweets.extend(syn.results)
-
-        bt.logging.info(f"Returning {len(all_tweets)} tweets for ID {id}")
-
-        return all_tweets
-    except Exception as e:
-        bt.logging.error(f"Error fetching tweet by ID: {e}")
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-
-
-@app.post(
-    "/twitter/urls",
+@app.get(
+    "/twitter",
     summary="Fetch Tweets by URLs",
     description="Fetch details of multiple tweets using their URLs.",
     response_model=List[TwitterScraperTweet],
@@ -414,30 +372,88 @@ async def get_tweets_by_urls(
     Returns:
         List[TwitterScraperTweet]: A list of fetched tweets.
     """
+
     try:
+        urls = list(set(urls))
+
         bt.logging.info(f"Fetching tweets for URLs: {urls}")
 
-        query_dict = {"urls": urls}
+        results = await neu.basic_scraper_validator.twitter_urls_search(urls)
 
-        final_synapses = []
+        if results:
+            return results
+        else:
+            raise HTTPException(status_code=404, detail="Tweets not found")
 
-        async for synapse in neu.basic_scraper_validator.organic(
-            query=query_dict,
-        ):
-            final_synapses.append(synapse)
+        # query_dict = {"urls": urls}
 
-        # Aggregate TwitterScraperTweet objects
-        all_tweets = []
+        # final_synapses = []
 
-        for syn in final_synapses:
-            if hasattr(syn, "results") and isinstance(syn.results, list):
-                all_tweets.extend(syn.results)
+        # async for synapse in neu.basic_scraper_validator.organic(
+        #     query=query_dict,
+        # ):
+        #     final_synapses.append(synapse)
 
-        bt.logging.info(f"Returning {len(all_tweets)} tweets for provided URLs.")
-        return all_tweets
+        # # Aggregate TwitterScraperTweet objects
+        # all_tweets = []
 
+        # for syn in final_synapses:
+        #     if hasattr(syn, "results") and isinstance(syn.results, list):
+        #         all_tweets.extend(syn.results)
+
+        # bt.logging.info(f"Returning {len(all_tweets)} tweets for provided URLs.")
+        # return all_tweets
     except Exception as e:
         bt.logging.error(f"Error fetching tweets by URLs: {e}")
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
+@app.get(
+    "/twitter/{id}",
+    summary="Fetch Tweet by ID",
+    description="Fetch details of a tweet using its unique tweet ID.",
+    response_model=TwitterScraperTweet,
+)
+async def get_tweet_by_id(
+    id: str = Path(..., description="The unique ID of the tweet to fetch"),
+):
+    """
+    Fetch the details of a tweet by its ID.
+
+    Returns:
+        List[TwitterScraperTweet]: A list containing the tweet details.
+    """
+    try:
+        bt.logging.info(f"Fetching tweet with ID: {id}")
+
+        # query_dict = {"id": id}  # Build a query suitable for your organic function
+
+        # final_synapses = []
+
+        results = await neu.basic_scraper_validator.twitter_id_search(id)
+
+        if results:
+            return results[0]
+        else:
+            raise HTTPException(status_code=404, detail="Tweet not found")
+
+        # async for synapse in neu.basic_scraper_validator.organic(
+        #     query=query_dict,
+        # ):
+        #     final_synapses.append(synapse)
+
+        # # Aggregate TwitterScraperTweet objects from synapses
+        # all_tweets = []
+
+        # for syn in final_synapses:
+        #     if hasattr(syn, "results") and isinstance(syn.results, list):
+        #         all_tweets.extend(syn.results)
+
+        # bt.logging.info(f"Returning {len(all_tweets)} tweets for ID {id}")
+
+        # return all_tweets
+    except Exception as e:
+        bt.logging.error(f"Error fetching tweet by ID: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 

@@ -966,14 +966,13 @@ class BasicScraperValidator:
 
     async def twitter_urls_search(
         self,
-        urls: Dict[str, str],
+        urls: List[str],
     ):
         """
         Perform a Twitter search using multiple tweet URLs.
 
         Parameters:
             urls A dictionary of tweet IDs with associated metadata.
-            uid The unique identifier of the target axon. Defaults to None.
 
         Returns:
             List[TwitterScraperTweet]: The list of fetched tweets for the given URLs.
@@ -981,23 +980,12 @@ class BasicScraperValidator:
         try:
             task_name = "twitter urls search"
 
-            # Create a search task
-            task = SearchTask(
-                base_text=f"Fetch tweets for URLs: {list(urls.keys())}",
-                task_name=task_name,
-                task_type="twitter_urls_search",
-                criteria=[],
-            )
-
             if not len(self.neuron.available_uids):
                 bt.logging.info("No available UIDs.")
                 raise StopAsyncIteration("No available UIDs.")
 
-            prompt = task.compose_prompt()
-
             bt.logging.debug("run_task", task_name)
 
-            # get random uids
             uids = await self.neuron.get_uids(
                 strategy=QUERY_MINERS.RANDOM,
                 is_only_allowed_miner=False,
@@ -1011,7 +999,7 @@ class BasicScraperValidator:
 
             axon = self.neuron.metagraph.axons[uid]
             max_execution_time = self.max_execution_time
-            # Instantiate TwitterURLsSearchSynapse
+
             synapse = TwitterURLsSearchSynapse(
                 urls=urls,
                 max_execution_time=max_execution_time,
@@ -1019,8 +1007,8 @@ class BasicScraperValidator:
                 results=[],
             )
 
-            # Make the call
             timeout = max_execution_time + 5
+
             synapse: TwitterURLsSearchSynapse = await self.neuron.dendrite.call(
                 target_axon=axon,
                 synapse=synapse,

@@ -77,7 +77,6 @@ class TwitterScraperTweet(BaseModel):
     retweet_count: int
     like_count: int
     quote_count: int
-    # impression_count: int
     bookmark_count: int
     url: str
     created_at: str
@@ -890,7 +889,7 @@ class TwitterIDSearchSynapse(bt.Synapse):
         description="Fetched validator Tweets Data.",
     )
 
-    results: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+    results: Optional[List[Dict]] = pydantic.Field(
         default_factory=list,
         title="tweets",
         description="Fetched Tweets Data.",
@@ -903,7 +902,7 @@ class TwitterIDSearchSynapse(bt.Synapse):
 class TwitterURLsSearchSynapse(bt.Synapse):
     """A class to represent Twitter URLs Advanced Search Synapse"""
 
-    urls: Dict[str, str] = pydantic.Field(
+    urls: List[str] = pydantic.Field(
         ...,
         title="URLs",
         description="A list of tweet URLs to fetch.",
@@ -922,7 +921,7 @@ class TwitterURLsSearchSynapse(bt.Synapse):
         description="Fetched validator Tweets Data.",
     )
 
-    results: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+    results: Optional[List[Dict]] = pydantic.Field(
         default_factory=list,
         title="tweets",
         description="Fetched Tweets Data.",
