@@ -351,30 +351,29 @@ async def advanced_twitter_search(request: TwitterSearchRequest):
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
-@app.get(
-    "/twitter",
+class TwitterURLSearchRequest(BaseModel):
+    urls: List[str]
+
+
+@app.post(
+    "/twitter/urls",
     summary="Fetch Tweets by URLs",
     description="Fetch details of multiple tweets using their URLs.",
     response_model=List[TwitterScraperTweet],
 )
-async def get_tweets_by_urls(
-    urls: List[str] = Query(
-        ..., description="A list of tweet URLs to fetch details for"
-    ),
-):
+async def get_tweets_by_urls(request: TwitterURLSearchRequest):
     """
     Fetch the details of multiple tweets using their URLs.
 
     Parameters:
         urls (List[str]): A list of tweet URLs.
-        uid (Optional[int]): The unique identifier of the target axon. Defaults to None.
 
     Returns:
         List[TwitterScraperTweet]: A list of fetched tweets.
     """
 
     try:
-        urls = list(set(urls))
+        urls = list(set(request.urls))
 
         bt.logging.info(f"Fetching tweets for URLs: {urls}")
 
