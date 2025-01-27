@@ -52,8 +52,7 @@ class OrganicQueryState:
             is_web_search = any(
                 tool in synapse.tools
                 for tool in [
-                    "Google Search",
-                    "Google News Search",
+                    "Web Search",
                     "Wikipedia Search",
                     "Youtube Search",
                     "ArXiv Search",

@@ -390,8 +390,6 @@ async def save_logs_in_chunks(
                 "summary_link_scores": summary_link_score,
                 "search_results": {
                     "google": response.search_results,
-                    "google_news": response.google_news_search_results,
-                    "google_image": response.google_image_search_results,
                     "wikipedia": response.wikipedia_search_results,
                     "youtube": response.youtube_search_results,
                     "arxiv": response.arxiv_search_results,

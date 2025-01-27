@@ -5,10 +5,6 @@ import json
 import bittensor as bt
 from base_validator import AbstractNeuron
 from datura.protocol import (
-    ScraperStreamingSynapse,
-    TwitterTweetSynapse,
-    TwitterUserSynapse,
-    SearchSynapse,
     WebSearchSynapse,
     TwitterSearchSynapse,
     TwitterIDSearchSynapse,
@@ -23,31 +19,15 @@ from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardMo
 from neurons.validators.reward.twitter_basic_search_content_relevance import (
     TwitterBasicSearchContentRelevanceModel,
 )
-from neurons.validators.reward.twitter_content_relevance import (
-    TwitterContentRelevanceModel,
-)
-from neurons.validators.reward.search_content_relevance import (
-    WebSearchContentRelevanceModel,
-)
 from neurons.validators.reward.performance_reward import PerformanceRewardModel
-from neurons.validators.reward.reward_llm import RewardLLM
-from neurons.validators.utils.tasks import TwitterTask, SearchTask
+from neurons.validators.utils.tasks import SearchTask
 
 from datura.dataset import QuestionsDataset
-from datura.services.twitter_api_wrapper import TwitterAPIClient
 from datura import QUERY_MINERS
 import asyncio
-from aiostream import stream
-from datura.dataset.date_filters import (
-    get_random_date_filter,
-    get_specified_date_filter,
-    DateFilterType,
-)
 from neurons.validators.basic_organic_query_state import BasicOrganicQueryState
-from neurons.validators.penalty.streaming_penalty import StreamingPenaltyModel
 from neurons.validators.penalty.exponential_penalty import ExponentialTimePenaltyModel
-from datura.protocol import Model, ResultType
-from datura.utils import get_max_execution_time
+from datura.protocol import Model
 
 
 class BasicScraperValidator:
@@ -443,7 +423,7 @@ class BasicScraperValidator:
 
     async def score_random_synthetic_query(self):
         # Collect synthetic queries and score randomly
-        synthetic_queries_collection_size = 0
+        synthetic_queries_collection_size = 3
 
         if len(self.synthetic_history) < synthetic_queries_collection_size:
             bt.logging.info(

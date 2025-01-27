@@ -8,11 +8,6 @@ from datura.protocol import (
     ScraperStreamingSynapse,
     TwitterTweetSynapse,
     TwitterUserSynapse,
-    SearchSynapse,
-    WebSearchSynapse,
-    TwitterSearchSynapse,
-    TwitterIDSearchSynapse,
-    TwitterURLsSearchSynapse,
 )
 from datura.stream import collect_final_synapses
 from reward import RewardModelType, RewardScoringType
@@ -57,16 +52,16 @@ class AdvancedScraperValidator:
 
         self.tools = [
             ["Twitter Search", "Reddit Search"],
-            ["Twitter Search", "Google Search"],
-            ["Twitter Search", "Google Search"],
-            ["Twitter Search", "Google Search"],
-            ["Twitter Search", "Google Search"],
+            ["Twitter Search", "Web Search"],
+            ["Twitter Search", "Web Search"],
+            ["Twitter Search", "Web Search"],
+            ["Twitter Search", "Web Search"],
             ["Twitter Search", "Hacker News Search"],
             ["Twitter Search", "Hacker News Search"],
             ["Twitter Search", "Youtube Search"],
             ["Twitter Search", "Youtube Search"],
             ["Twitter Search", "Youtube Search"],
-            ["Twitter Search", "Google News Search"],
+            ["Twitter Search", "Web Search"],
             ["Twitter Search", "Reddit Search"],
             ["Twitter Search", "Reddit Search"],
             ["Twitter Search", "Hacker News Search"],
@@ -74,20 +69,20 @@ class AdvancedScraperValidator:
             ["Twitter Search", "ArXiv Search"],
             ["Twitter Search", "Wikipedia Search"],
             ["Twitter Search", "Wikipedia Search"],
-            ["Twitter Search", "Google Search"],
-            ["Twitter Search", "Google News Search"],
-            ["Twitter Search", "Google News Search"],
-            ["Google Search"],
+            ["Twitter Search", "Web Search"],
+            ["Twitter Search", "Web Search"],
+            ["Twitter Search", "Web Search"],
+            ["Web Search"],
             ["Reddit Search"],
             ["Hacker News Search"],
             ["Youtube Search"],
             ["ArXiv Search"],
             ["Wikipedia Search"],
             ["Twitter Search", "Youtube Search", "ArXiv Search", "Wikipedia Search"],
-            ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
+            ["Twitter Search", "Web Search", "Reddit Search", "Hacker News Search"],
             [
                 "Twitter Search",
-                "Google Search",
+                "Web Search",
                 "Reddit Search",
                 "Hacker News Search",
                 "Youtube Search",
@@ -851,58 +846,6 @@ class AdvancedScraperValidator:
                     )
         except Exception as e:
             bt.logging.error(f"Error in query_and_score: {e}")
-            raise e
-
-    async def search(self, query: str, tools: List[str], uid: int = None):
-        try:
-            task_name = "search"
-
-            task = SearchTask(
-                base_text=query,
-                task_name=task_name,
-                task_type="search",
-                criteria=[],
-            )
-
-            if not len(self.neuron.available_uids):
-                bt.logging.info("Not available uids")
-                raise StopAsyncIteration("Not available uids")
-
-            prompt = task.compose_prompt()
-
-            bt.logging.debug("run_task", task_name)
-
-            # If uid is not provided, get random uids
-            if uid is None:
-                uids = await self.neuron.get_uids(
-                    strategy=QUERY_MINERS.RANDOM,
-                    is_only_allowed_miner=False,
-                    specified_uids=None,
-                )
-
-                if uids:
-                    uid = uids[0]
-                else:
-                    raise StopAsyncIteration("No available uids")
-
-            axon = self.neuron.metagraph.axons[uid]
-
-            synapse = SearchSynapse(
-                query=prompt,
-                tools=tools,
-                results={},
-            )
-
-            synapse: SearchSynapse = await self.neuron.dendrite.call(
-                target_axon=axon,
-                synapse=synapse,
-                timeout=self.timeout,
-                deserialize=False,
-            )
-
-            return synapse.results
-        except Exception as e:
-            bt.logging.error(f"Error in search: {e}")
             raise e
 
     async def get_twitter_user(self, body: dict, uid: int | None = None):

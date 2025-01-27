@@ -133,12 +133,13 @@ class SummaryRelevancePrompt(ScoringPrompt):
         super().__init__()
         self.template = user_summary_relevance_scoring_template
 
-    def get_system_message(self, tools: List[str], result_type: str = None, summary_key: str = None):
-        return get_system_summary_relevance_scoring_template(tools, result_type, summary_key)
+    def get_system_message(
+        self, tools: List[str], result_type: str = None, summary_key: str = None
+    ):
+        return get_system_summary_relevance_scoring_template(
+            tools, result_type, summary_key
+        )
 
-
-
-    
 
 class LinkContentPrompt(ScoringPrompt):
     r"""Scores a summary on a scale from 0 to 10, given a context."""
@@ -265,7 +266,9 @@ def clean_template(template):
     return "\n".join(cleaned_lines)
 
 
-def get_system_summary_relevance_scoring_template(tools: List[str], result_type: str = None, summary_key: str = None):
+def get_system_summary_relevance_scoring_template(
+    tools: List[str], result_type: str = None, summary_key: str = None
+):
     """Generate the system message for the Summary Relevance Scoring prompt based on tools"""
 
     links_header_name = []
@@ -279,7 +282,15 @@ def get_system_summary_relevance_scoring_template(tools: List[str], result_type:
             links_header_name.append("**Key News**")
         if "Reddit Search" in tools:
             links_header_name.append("**Key Posts**")
-        if any(tool in tools for tool in ["Google Search", "Google News Search", "Wikipedia Search", "Youtube Search", "ArXiv Search"]):
+        if any(
+            tool in tools
+            for tool in [
+                "Web Search",
+                "Wikipedia Search",
+                "Youtube Search",
+                "ArXiv Search",
+            ]
+        ):
             links_header_name.append("**Key Sources**")
         summary_header_name = "**Summary**"
 
@@ -293,10 +304,10 @@ def get_system_summary_relevance_scoring_template(tools: List[str], result_type:
             summary_header_name = "**Hacker News Summary**"
         elif summary_key == ScraperTextRole.REDDIT_SUMMARY.value:
             links_header_name = ["**Key Posts**"]
-            summary_header_name = "**Reddit Summary**"      
+            summary_header_name = "**Reddit Summary**"
         elif summary_key == ScraperTextRole.SEARCH_SUMMARY.value:
             links_header_name = ["**Key Sources**"]
-            summary_header_name = "**Search Summary**"    
+            summary_header_name = "**Search Summary**"
 
     # If no links headers were added, use default
     if not links_header_name:

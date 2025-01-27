@@ -219,18 +219,6 @@ class ScraperStreamingSynapse(StreamingSynapse):
         description="Optional JSON object containing search results from SERP",
     )
 
-    google_news_search_results: Optional[Any] = pydantic.Field(
-        default_factory=dict,
-        title="Google News Search Results",
-        description="Optional JSON object containing search results from SERP Google News",
-    )
-
-    google_image_search_results: Optional[Any] = pydantic.Field(
-        default_factory=dict,
-        title="Google Image Search Results",
-        description="Optional JSON object containing image search results from SERP Google",
-    )
-
     wikipedia_search_results: Optional[Any] = pydantic.Field(
         default_factory=dict,
         title="Wikipedia Search Results",
@@ -338,8 +326,7 @@ class ScraperStreamingSynapse(StreamingSynapse):
         if any(
             tool in self.tools
             for tool in [
-                "Google Search",
-                "Google News Search",
+                "Web Search",
                 "Wikipedia Search",
                 "Youtube Search",
                 "ArXiv Search",
@@ -380,7 +367,7 @@ class ScraperStreamingSynapse(StreamingSynapse):
     def get_search_links(self) -> List[str]:
         """Extracts web links from each summary making sure to filter by domain for each tool used.
         In Reddit and Hacker News Search, the links are filtered by domains.
-        In search summary part, if Google Search or Google News Search is used, the links are allowed from any domain,
+        In search summary part, if Web Search is used, the links are allowed from any domain,
         Otherwise search summary will only look for Wikipedia, ArXiv, Youtube links.
         Returns list of all links and links per each summary role.
         """
@@ -399,10 +386,7 @@ class ScraperStreamingSynapse(StreamingSynapse):
                     WebSearchUtils.find_links_by_domain(value, "news.ycombinator.com")
                 )
             elif key == ScraperTextRole.SEARCH_SUMMARY.value:
-                if any(
-                    tool in self.tools
-                    for tool in ["Google Search", "Google News Search"]
-                ):
+                if any(tool in self.tools for tool in ["Web Search"]):
                     links.extend(WebSearchUtils.find_links(value))
                 else:
                     if "Wikipedia Search" in self.tools:
@@ -469,13 +453,6 @@ class ScraperStreamingSynapse(StreamingSynapse):
                         self.search_results = search_json
                         yield json.dumps({"type": "search", "content": search_json})
 
-                    elif content_type == "google_search_news":
-                        search_json = json_data.get("content", "{}")
-                        self.google_news_search_results = search_json
-                        yield json.dumps(
-                            {"type": "google_search_news", "content": search_json}
-                        )
-
                     elif content_type == "wikipedia_search":
                         search_json = json_data.get("content", "{}")
                         self.wikipedia_search_results = search_json
@@ -535,12 +512,6 @@ class ScraperStreamingSynapse(StreamingSynapse):
                             }
                         )
 
-                    elif content_type == "google_image_search":
-                        search_json = json_data.get("content", "{}")
-                        self.google_image_search_results = search_json
-                        yield json.dumps(
-                            {"type": "google_image_search", "content": search_json}
-                        )
         except json.JSONDecodeError as e:
             port = response.real_url.port
             host = response.real_url.host
@@ -595,7 +566,6 @@ class ScraperStreamingSynapse(StreamingSynapse):
             "completion": self.completion,
             "miner_tweets": self.miner_tweets,
             "search_results": self.search_results,
-            "google_news_search_results": self.google_news_search_results,
             "wikipedia_search_results": self.wikipedia_search_results,
             "youtube_search_results": self.youtube_search_results,
             "arxiv_search_results": self.arxiv_search_results,
@@ -672,41 +642,6 @@ class WebSearchResult(BaseModel):
 
 class WebSearchResultList(BaseModel):
     data: List[WebSearchResult]
-
-
-class SearchSynapse(Synapse):
-    """A class to represent search api synapse"""
-
-    query: str = pydantic.Field(
-        "",
-        title="query",
-        description="The query to run tools with. Example: 'What are the recent sport events?'. Immutable.",
-        allow_mutation=False,
-    )
-
-    tools: List[str] = pydantic.Field(
-        default_factory=list,
-        title="Tools",
-        description="A list of tools specified by user to fetch data from. Immutable."
-        "Available tools are: Google Search, Google Image Search, Hacker News Search, Reddit Search",
-        allow_mutation=False,
-    )
-
-    uid: Optional[int] = pydantic.Field(
-        None,
-        title="UID",
-        description="Optional miner uid to run. If not provided, a random miner will be selected. Immutable.",
-        allow_mutation=False,
-    )
-
-    results: Optional[Dict[str, Any]] = pydantic.Field(
-        default_factory=dict,
-        title="Tool result dictionary",
-        description="A dictionary of tool results where key is tool name and value is the result. Example: {'Google Search': {}, 'Google Image Search': {} }",
-    )
-
-    def deserialize(self) -> str:
-        return self
 
 
 class WebSearchSynapse(Synapse):

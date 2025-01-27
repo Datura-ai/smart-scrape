@@ -6,12 +6,12 @@ if __name__ == "__main__":
     # Create an instance of QuestionsDataset
     questions_dataset = QuestionsDataset()
     tools = [
-        ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
+        ["Twitter Search", "Web Search", "Reddit Search", "Hacker News Search"],
         ["Twitter Search", "Reddit Search"],
-        ["Twitter Search", "Google Search", "Reddit Search", "Hacker News Search"],
-        ["Twitter Search", "Google Search"],
+        ["Twitter Search", "Web Search", "Reddit Search", "Hacker News Search"],
+        ["Twitter Search", "Web Search"],
         ["Twitter Search", "Hacker News Search"],
-        ["Twitter Search", "Google Search", "Wikipedia Search", "ArXiv Search"],
+        ["Twitter Search", "Web Search", "Wikipedia Search", "ArXiv Search"],
         ["Twitter Search", "Youtube Search", "Wikipedia Search"],
         ["Twitter Search", "Youtube Search"],
         ["Twitter Search", "ArXiv Search"],

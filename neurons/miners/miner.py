@@ -27,7 +27,6 @@ from datura.utils import get_version
 from datura.protocol import (
     IsAlive,
     ScraperStreamingSynapse,
-    SearchSynapse,
     TwitterTweetSynapse,
     TwitterUserSynapse,
     TwitterSearchSynapse,
@@ -36,7 +35,6 @@ from datura.protocol import (
     TwitterIDSearchSynapse,
 )
 from neurons.miners.scraper_miner import ScraperMiner
-from neurons.miners.search_miner import SearchMiner
 from neurons.miners.twitter_search_miner import TwitterSearchMiner
 from neurons.miners.web_search_miner import WebSearchMiner
 from neurons.miners.twitter_user_miner import TwitterUserMiner
@@ -179,9 +177,6 @@ class StreamMiner(ABC):
     ) -> ScraperStreamingSynapse:
         return self.smart_scraper(synapse)
 
-    async def _search(self, synapse: SearchSynapse) -> SearchSynapse:
-        return await self.search(synapse)
-
     async def _get_twitter_user(
         self, synapse: TwitterUserSynapse
     ) -> TwitterUserSynapse:
@@ -308,9 +303,6 @@ class StreamMiner(ABC):
     def smart_scraper(
         self, synapse: ScraperStreamingSynapse
     ) -> ScraperStreamingSynapse: ...
-
-    @abstractmethod
-    async def search(self, synapse: SearchSynapse) -> SearchSynapse: ...
 
     @abstractmethod
     async def get_twitter_user(
@@ -471,11 +463,6 @@ class StreamingTemplateMiner(StreamMiner):
         tw_miner = ScraperMiner(self)
         token_streamer = partial(tw_miner.smart_scraper, synapse)
         return synapse.create_streaming_response(token_streamer)
-
-    async def search(self, synapse: SearchSynapse) -> SearchSynapse:
-        bt.logging.info(f"started processing for search synapse {synapse}")
-        search_miner = SearchMiner(self)
-        return await search_miner.search(synapse)
 
     async def twitter_search(
         self, synapse: TwitterSearchSynapse

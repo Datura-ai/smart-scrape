@@ -36,9 +36,7 @@ neu = Neuron()
 
 available_tools = [
     "Twitter Search",
-    "Google Search",
-    "Google News Search",
-    "Google Image Search",
+    "Web Search",
     "ArXiv Search",
     "Wikipedia Search",
     "Youtube Search",
@@ -105,15 +103,12 @@ fields = "\n".join(
 
 SEARCH_DESCRIPTION = f"""Performs a search across multiple platforms. Available tools are:
 - Twitter Search: Uses Twitter API to search for tweets in past week date range.
-- Google Search: Searches the web using Google.
-- Google News Search: Searches news articles using Google News.
-- Google Image Search: Searches images using Google.
-- Bing Search: Searches the web using Bing.
+- Web Search: Searches the web.
 - ArXiv Search: Searches academic papers on ArXiv.
 - Wikipedia Search: Searches articles on Wikipedia.
 - Youtube Search: Searches videos on Youtube.
-- Hacker News Search: Searches posts on Hacker News, under the hood it uses Google search.
-- Reddit Search: Searches posts on Reddit, under the hood it uses Google search.
+- Hacker News Search: Searches posts on Hacker News, under the hood it uses web search.
+- Reddit Search: Searches posts on Reddit, under the hood it uses web search.
 
 Request Body Fields:
 {fields}
@@ -154,9 +149,7 @@ async def aggregate_search_results(responses: List[bt.Synapse], tools: List[str]
     # Define the mapping of tool names to response fields in Synapse
     field_mapping = {
         "Twitter Search": "miner_tweets",
-        "Google Search": "search_results",
-        "Google News Search": "google_news_search_results",
-        "Google Image Search": "google_image_search_results",
+        "Web Search": "search_results",
         "ArXiv Search": "arxiv_search_results",
         "Wikipedia Search": "wikipedia_search_results",
         "Youtube Search": "youtube_search_results",

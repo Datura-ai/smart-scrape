@@ -1390,7 +1390,7 @@ class QuestionsDataset:
 
         tools = [
             "Twitter Search",
-            "Google Search",
+            "Web Search",
             "Reddit Search",
             "Hacker News Search",
             "Youtube Search",
