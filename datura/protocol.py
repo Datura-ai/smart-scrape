@@ -12,8 +12,6 @@ import traceback
 from datura.services.twitter_utils import TwitterUtils
 from datura.services.web_search_utils import WebSearchUtils
 import traceback
-from sentence_transformers import SentenceTransformer
-import torch
 from datura.synapse import Synapse, StreamingSynapse
 
 
@@ -711,7 +709,7 @@ class SearchSynapse(Synapse):
         return self
 
 
-class WebSearchSynapse(bt.Synapse):
+class WebSearchSynapse(Synapse):
     """A class to represent web search synapse"""
 
     query: str = pydantic.Field(
@@ -751,7 +749,7 @@ class WebSearchSynapse(bt.Synapse):
         return self
 
 
-class TwitterSearchSynapse(bt.Synapse):
+class TwitterSearchSynapse(Synapse):
     """A class to represent Twitter Advanced Search Synapse"""
 
     query: str = pydantic.Field(
@@ -867,7 +865,7 @@ class TwitterSearchSynapse(bt.Synapse):
         return self
 
 
-class TwitterIDSearchSynapse(bt.Synapse):
+class TwitterIDSearchSynapse(Synapse):
     """A class to represent Twitter ID Advanced Search Synapse"""
 
     id: str = pydantic.Field(
@@ -899,7 +897,7 @@ class TwitterIDSearchSynapse(bt.Synapse):
         return self
 
 
-class TwitterURLsSearchSynapse(bt.Synapse):
+class TwitterURLsSearchSynapse(Synapse):
     """A class to represent Twitter URLs Advanced Search Synapse"""
 
     urls: List[str] = pydantic.Field(
@@ -1107,12 +1105,3 @@ class TwitterTweetSynapse(Synapse):
 
     def deserialize(self) -> str:
         return self
-
-
-class Embedder:
-    def __init__(self, model_name="all-MiniLM-L6-v2"):
-        self.model = SentenceTransformer(model_name)
-
-    def embed_text(self, text: str) -> torch.Tensor:
-        """Convert text into a vector representation using SentenceTransformers."""
-        return self.model.encode(text, convert_to_tensor=True)
