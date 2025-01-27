@@ -346,7 +346,12 @@ class BasicScraperValidator:
                 uid_scores_dict[uid] = reward
                 scores[uid] = reward  # Now 'uid' is an int, which is a valid key type
                 wandb_data["scores"][uid] = reward
-                wandb_data["prompts"][uid] = response.query
+                if hasattr(response, "query"):
+                    wandb_data["prompts"][uid] = response.query
+                elif hasattr(response, "id"):
+                    wandb_data["prompts"][uid] = response.id
+                elif hasattr(response, "urls"):
+                    wandb_data["prompts"][uid] = response.urls
                 wandb_data["twitter_reward"][uid] = twitter_reward
                 wandb_data["latency_reward"][uid] = latency_reward
 
@@ -902,19 +907,12 @@ class BasicScraperValidator:
         tweet_id: str,
     ):
         """
-        Perform a Twitter search using a specific tweet ID.
-
-        Parameters:
-            tweet_id (str): The ID of the tweet to fetch.
-            uid (int, optional): The unique identifier of the target axon. Defaults to None.
-
-        Returns:
-            List[TwitterScraperTweet]: The list of fetched tweets for the given ID.
+        Perform a Twitter search using a specific tweet ID, then compute rewards and save the query.
         """
         try:
             task_name = "twitter id search"
 
-            # Create a search task
+            # 1) Create a search task
             task = SearchTask(
                 base_text=f"Fetch tweet with ID: {tweet_id}",
                 task_name=task_name,
@@ -928,21 +926,20 @@ class BasicScraperValidator:
 
             bt.logging.debug("run_task", task_name)
 
-            # get random uids
+            # 2) Retrieve a random UID and axon
             uids = await self.neuron.get_uids(
                 strategy=QUERY_MINERS.RANDOM,
                 is_only_allowed_miner=False,
                 specified_uids=None,
             )
-
-            if uids:
-                uid = uids[0]
-            else:
+            if not uids:
                 raise StopAsyncIteration("No available UIDs.")
+            uid = uids[0]
 
             axon = self.neuron.metagraph.axons[uid]
             max_execution_time = self.max_execution_time
-            # Instantiate TwitterIDSearchSynapse
+
+            # 3) Instantiate TwitterIDSearchSynapse
             synapse = TwitterIDSearchSynapse(
                 id=tweet_id,
                 max_execution_time=max_execution_time,
@@ -950,7 +947,7 @@ class BasicScraperValidator:
                 results=[],
             )
 
-            # Make the call
+            # 4) Make the call
             timeout = max_execution_time + 5
             synapse: TwitterIDSearchSynapse = await self.neuron.dendrite.call(
                 target_axon=axon,
@@ -959,7 +956,46 @@ class BasicScraperValidator:
                 deserialize=False,
             )
 
+            # 5) Build event, tasks, final_responses
+            event = {
+                "names": [task.task_name],
+                "task_types": [task.task_type],
+            }
+            final_responses = []
+            if synapse and synapse.dendrite.status_code == 200:
+                final_responses.append(synapse)
+            else:
+                bt.logging.warning(
+                    f"Invalid response for UID: {synapse.axon.hotkey if synapse else 'Unknown'}"
+                )
+
+            # 6) Compute rewards and save queries
+            async def process_and_score_responses(uids_tensor):
+                # If you have a time measurement, set it here
+                start_time = time.time()
+
+                # (a) Compute rewards/penalties
+                _, _, _, _, original_rewards = await self.compute_rewards_and_penalties(
+                    event=event,
+                    tasks=[task],
+                    responses=final_responses,
+                    uids=uids_tensor,
+                    start_time=start_time,
+                    is_synthetic=False,
+                )
+
+                # (b) Save organic queries
+                self.basic_organic_query_state.save_organic_queries(
+                    final_responses, uids_tensor, original_rewards
+                )
+
+            # Launch the scoring in the background
+            uids_tensor = torch.tensor([uid], dtype=torch.int)
+            asyncio.create_task(process_and_score_responses(uids_tensor))
+
+            # 7) Return the fetched tweets
             return synapse.results
+
         except Exception as e:
             bt.logging.error(f"Error in ID search: {e}")
             raise e
@@ -969,13 +1005,7 @@ class BasicScraperValidator:
         urls: List[str],
     ):
         """
-        Perform a Twitter search using multiple tweet URLs.
-
-        Parameters:
-            urls A dictionary of tweet IDs with associated metadata.
-
-        Returns:
-            List[TwitterScraperTweet]: The list of fetched tweets for the given URLs.
+        Perform a Twitter search using multiple tweet URLs, then compute rewards and save the query.
         """
         try:
             task_name = "twitter urls search"
@@ -986,20 +1016,28 @@ class BasicScraperValidator:
 
             bt.logging.debug("run_task", task_name)
 
+            # 1) Retrieve a random UID and axon
             uids = await self.neuron.get_uids(
                 strategy=QUERY_MINERS.RANDOM,
                 is_only_allowed_miner=False,
                 specified_uids=None,
             )
-
-            if uids:
-                uid = uids[0]
-            else:
+            if not uids:
                 raise StopAsyncIteration("No available UIDs.")
+            uid = uids[0]
 
             axon = self.neuron.metagraph.axons[uid]
             max_execution_time = self.max_execution_time
 
+            # 2) Create a search task (optional, for logging and scoring)
+            task = SearchTask(
+                base_text=f"Fetch tweets for URLs: {urls}",
+                task_name=task_name,
+                task_type="twitter_urls_search",
+                criteria=[],
+            )
+
+            # 3) Instantiate TwitterURLsSearchSynapse
             synapse = TwitterURLsSearchSynapse(
                 urls=urls,
                 max_execution_time=max_execution_time,
@@ -1007,8 +1045,8 @@ class BasicScraperValidator:
                 results=[],
             )
 
+            # 4) Make the call
             timeout = max_execution_time + 5
-
             synapse: TwitterURLsSearchSynapse = await self.neuron.dendrite.call(
                 target_axon=axon,
                 synapse=synapse,
@@ -1016,7 +1054,45 @@ class BasicScraperValidator:
                 deserialize=False,
             )
 
+            # 5) Build event, tasks, final_responses
+            event = {
+                "names": [task.task_name],
+                "task_types": [task.task_type],
+            }
+            final_responses = []
+            if synapse and synapse.dendrite.status_code == 200:
+                final_responses.append(synapse)
+            else:
+                bt.logging.warning(
+                    f"Invalid response for UID: {synapse.axon.hotkey if synapse else 'Unknown'}"
+                )
+
+            # 6) Compute rewards and save queries
+            async def process_and_score_responses(uids_tensor):
+                # If you have a time measurement, set it here
+                start_time = time.time()
+
+                # (a) Compute rewards/penalties
+                _, _, _, _, original_rewards = await self.compute_rewards_and_penalties(
+                    event=event,
+                    tasks=[task],
+                    responses=final_responses,
+                    uids=uids_tensor,
+                    start_time=start_time,
+                    is_synthetic=False,
+                )
+
+                # (b) Save organic queries
+                self.basic_organic_query_state.save_organic_queries(
+                    final_responses, uids_tensor, original_rewards
+                )
+
+            uids_tensor = torch.tensor([uid], dtype=torch.int)
+            asyncio.create_task(process_and_score_responses(uids_tensor))
+
+            # 7) Return the fetched tweets
             return synapse.results
+
         except Exception as e:
             bt.logging.error(f"Error in URLs search: {e}")
             raise e
