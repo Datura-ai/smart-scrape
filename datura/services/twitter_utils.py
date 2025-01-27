@@ -2,7 +2,7 @@ import re
 from typing import List, Tuple
 from urllib.parse import urlparse
 
-VALID_DOMAINS = ["twitter.com", "x.com"]
+VALID_DOMAINS = ["x.com"]
 
 
 class TwitterUtils:

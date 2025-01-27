@@ -143,8 +143,6 @@ class StreamMiner(ABC):
             forward_fn=self._smart_scraper,
             blacklist_fn=self.blacklist_smart_scraper,
         ).attach(
-            forward_fn=self._search,
-        ).attach(
             forward_fn=self._get_twitter_user,
         ).attach(
             forward_fn=self._get_tweets,

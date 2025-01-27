@@ -395,7 +395,6 @@ async def save_logs_in_chunks(
                     "arxiv": response.arxiv_search_results,
                     "reddit": response.reddit_search_results,
                     "hacker_news": response.hacker_news_search_results,
-                    "discord": response.discord_search_results,
                 },
                 "texts": response.texts,
                 "validator_tweets": [

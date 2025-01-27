@@ -143,8 +143,6 @@ async def aggregate_search_results(responses: List[bt.Synapse], tools: List[str]
     Aggregates search results from multiple Synapse responses into a dictionary
     with tool names as keys and their corresponding results.
     """
-    # Initialize the aggregated dictionary with tool names and empty values
-    aggregated = {tool: None for tool in tools}
 
     # Define the mapping of tool names to response fields in Synapse
     field_mapping = {
@@ -157,42 +155,49 @@ async def aggregate_search_results(responses: List[bt.Synapse], tools: List[str]
         "Reddit Search": "reddit_search_results",
     }
 
+    aggregated = {}
+
     # Loop through each Synapse response
     for synapse_index, synapse in enumerate(responses):
         for tool in tools:
             # Get the corresponding field name for the tool
             field_name = field_mapping.get(tool)
 
-            # Retrieve the search results
-            result = getattr(synapse, field_name)
-            if result:
+            try:
+                result = getattr(synapse, field_name)
 
-                # If result is a list, extend the existing aggregated list
-                if isinstance(result, list):
-                    if aggregated[tool] is None:
-                        aggregated[tool] = []
-                    aggregated[tool].extend(result)
+                if result:
 
-                # If result is a dict, just assign it
-                elif isinstance(result, dict):
-                    aggregated[tool] = result
+                    # If result is a list, extend the existing aggregated list
+                    if isinstance(result, list):
+                        if field_name not in aggregated:
+                            aggregated[field_name] = []
+                        aggregated[field_name].extend(result)
 
+                    # If result is a dict, just assign it
+                    elif isinstance(result, dict):
+                        aggregated[field_name] = result
+
+                    else:
+                        # Handle unexpected result types if necessary
+                        bt.logging.warning(
+                            f"Unexpected result type for tool '{tool}': {type(result)}"
+                        )
+                        aggregated[field_name] = result
                 else:
-                    # Handle unexpected result types if necessary
-                    bt.logging.warning(
-                        f"Unexpected result type for tool '{tool}': {type(result)}"
+                    # If result is None or empty, just log it
+                    bt.logging.debug(
+                        f"No data found for '{tool}' on Synapse {synapse_index}."
                     )
-                    aggregated[tool] = result
-            else:
-                # If result is None or empty, just log it
-                bt.logging.debug(
-                    f"No data found for '{tool}' on Synapse {synapse_index}."
-                )
+            except AttributeError:
+                pass
 
     # Replace None values with empty dictionaries for tools with no results
     for tool in tools:
-        if aggregated[tool] is None:
-            aggregated[tool] = {}
+        field_name = field_mapping.get(tool)
+
+        if field_name not in aggregated:
+            aggregated[field_name] = []
 
     return aggregated
 

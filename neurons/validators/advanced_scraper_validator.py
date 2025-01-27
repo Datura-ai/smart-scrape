@@ -44,7 +44,6 @@ from datura.utils import get_max_execution_time
 
 class AdvancedScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
-        self.seed = 1234
         self.neuron = neuron
         self.timeout = 180
         self.execution_time_options = [Model.NOVA, Model.ORBIT, Model.HORIZON]
@@ -188,17 +187,10 @@ class AdvancedScraperValidator:
         region="us",
         google_date_filter="qdr:w",
         response_order=ResponseOrder.SUMMARY_FIRST,
-        model: Optional[Model] = None,
-        result_type: Optional[ResultType] = None,
+        model: Optional[Model] = Model.NOVA,
+        result_type: Optional[ResultType] = ResultType.LINKS_WITH_SUMMARIES,
         is_synthetic=False,
     ):
-
-        if model is None:
-            model = Model.NOVA
-
-        if result_type is None:
-            result_type = ResultType.LINKS_WITH_SUMMARIES
-
         max_execution_time = get_max_execution_time(model)
 
         # Record event start time.
@@ -225,7 +217,6 @@ class AdvancedScraperValidator:
             ScraperStreamingSynapse(
                 prompt=task.compose_prompt(),
                 model=model,
-                seed=self.seed,
                 start_date=start_date,
                 end_date=end_date,
                 date_filter_type=date_filter.date_filter_type.value,
@@ -568,21 +559,14 @@ class AdvancedScraperValidator:
     async def organic(
         self,
         query,
-        model: Optional[Model] = None,
+        model: Optional[Model] = Model.NOVA,
         random_synapse: ScraperStreamingSynapse = None,
         random_uid=None,
         specified_uids=None,
-        result_type: Optional[ResultType] = None,
+        result_type: Optional[ResultType] = ResultType.LINKS_WITH_SUMMARIES,
         is_collect_final_synapses: bool = True,  # Flag to collect final synapses
     ):
         """Receives question from user and returns the response from the miners."""
-
-        if model is None:
-            model = Model.NOVA
-
-        if result_type is None:
-            result_type = ResultType.LINKS_WITH_SUMMARIES
-
         max_execution_time = get_max_execution_time(model)
 
         if not len(self.neuron.available_uids):

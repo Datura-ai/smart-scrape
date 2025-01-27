@@ -5,7 +5,7 @@ from datura.services.twitter_utils import TwitterUtils
 
 BEARER_TOKEN = os.environ.get("TWITTER_BEARER_TOKEN")
 
-VALID_DOMAINS = ["twitter.com", "x.com"]
+VALID_DOMAINS = ["x.com"]
 
 
 class TwitterAPIClient:

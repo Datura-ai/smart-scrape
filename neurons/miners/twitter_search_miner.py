@@ -33,7 +33,7 @@ class TwitterSearchMiner:
                 like_count=50,
                 quote_count=1,
                 bookmark_count=2,
-                url="https://twitter.com/mock_user/status/123456789",
+                url="https://x.com/mock_user/status/123456789",
                 created_at="2025-01-13T12:00:00Z",
                 media=[],
                 is_quote_tweet=False,

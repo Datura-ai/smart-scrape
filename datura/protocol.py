@@ -89,11 +89,8 @@ class ScraperTextRole(str, Enum):
     INTRO = "intro"
     TWITTER_SUMMARY = "twitter_summary"
     SEARCH_SUMMARY = "search_summary"
-    DISCORD_SUMMARY = "discord_summary"
     REDDIT_SUMMARY = "reddit_summary"
     HACKER_NEWS_SUMMARY = "hacker_news_summary"
-    BITTENSOR_SUMMARY = "bittensor_summary"
-    SUBNETS_SOURCE_CODE_SUMMARY = "subnets_source_code_summary"
     FINAL_SUMMARY = "summary"
 
 
@@ -110,7 +107,6 @@ class Model(str, Enum):
 
 
 class ScraperStreamingSynapse(StreamingSynapse):
-
     prompt: str = pydantic.Field(
         ...,
         title="Prompt",
@@ -123,19 +119,6 @@ class ScraperStreamingSynapse(StreamingSynapse):
         title="Completion",
         description="Completion status of the current StreamPrompting object. This attribute is mutable and can be updated.",
     )
-
-    # required_hash_fields: List[str] = pydantic.Field(
-    #     ["messages"],
-    #     title="Required Hash Fields",
-    #     description="A list of required fields for the hash.",
-    #     allow_mutation=False,
-    # )
-
-    # seed: int = pydantic.Field(
-    #     "",
-    #     title="Seed",
-    #     description="Seed for text generation. This attribute is immutable and cannot be updated.",
-    # )
 
     model: Model = pydantic.Field(
         Model.NOVA,
@@ -249,24 +232,6 @@ class ScraperStreamingSynapse(StreamingSynapse):
         description="Optional JSON object containing search results from Hacker News",
     )
 
-    discord_search_results: Optional[Any] = pydantic.Field(
-        default_factory=dict,
-        title="Discord Search Results",
-        description="Optional JSON object containing search results from Discord",
-    )
-
-    bittensor_docs_results: Optional[Any] = pydantic.Field(
-        default_factory=dict,
-        title="Bittensor Docs Search Results",
-        description="Optional JSON object containing search results from Bittensor Docs",
-    )
-
-    subnets_source_code_result: Optional[Any] = pydantic.Field(
-        default_factory=dict,
-        title="Subnets Source Code Search Results",
-        description="Optional JSON object containing search results from Subnets Source Code",
-    )
-
     text_chunks: Optional[Dict[str, List[str]]] = pydantic.Field(
         default_factory=dict,
         title="Text Chunks",
@@ -307,8 +272,8 @@ class ScraperStreamingSynapse(StreamingSynapse):
     )
 
     result_type: ResultType = pydantic.Field(
-        ResultType.ONLY_LINKS,
-        title="result_type",
+        None,
+        title="Result Type",
         description="The result type for miners",
     )
 
@@ -486,30 +451,6 @@ class ScraperStreamingSynapse(StreamingSynapse):
                         self.hacker_news_search_results = search_json
                         yield json.dumps(
                             {"type": "hacker_news_search", "content": search_json}
-                        )
-
-                    elif content_type == "discord_search":
-                        search_json = json_data.get("content", "{}")
-                        self.discord_search_results = search_json
-                        yield json.dumps(
-                            {"type": "discord_search", "content": search_json}
-                        )
-
-                    elif content_type == "bittensor_docs_search":
-                        search_json = json_data.get("content", "{}")
-                        self.bittensor_docs_results = search_json
-                        yield json.dumps(
-                            {"type": "bittensor_docs_search", "content": search_json}
-                        )
-
-                    elif content_type == "subnets_source_code_search":
-                        search_json = json_data.get("content", "{}")
-                        self.subnets_source_code_result = search_json
-                        yield json.dumps(
-                            {
-                                "type": "subnets_source_code_search",
-                                "content": search_json,
-                            }
                         )
 
         except json.JSONDecodeError as e:
