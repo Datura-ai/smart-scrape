@@ -38,7 +38,7 @@ class SerpAdvancedGoogleSearch:
                 bt.logging.error(f"SERP API Key is invalid: {err}")
                 return "SERP API Key is invalid"
 
-            bt.logging.warning(f"Could not perform SERP Google Search: {err}")
+            bt.logging.warning(f"Could not perform SERP Search: {err}")
             return "Could not search Google. Please try again later."
 
     def process_response(self, response):

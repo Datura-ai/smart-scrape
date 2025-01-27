@@ -49,6 +49,16 @@ class DefaultRewardFrameworkConfig:
 
 
 @dataclass(frozen=True)
+class DefaultBasicTwitterSearchRelevanceRewardFrameworkConfig:
+    """Reward framework default configuration.
+    Note: All the weights should add up to 1.0.
+    """
+
+    twitter_content_weight: float = 0.7
+    performance_weight: float = 0.3
+
+
+@dataclass(frozen=True)
 class DefaultSummaryRelevanceWeightConfig:
     """Summary relevance weights configuration.
     Note: All the weights should add up to 1.0.

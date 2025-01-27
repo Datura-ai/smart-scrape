@@ -41,7 +41,7 @@ Here is example of JSON array format to return. Keep in mind that this is exampl
     }}
   }},
   {{
-    "action": "Google Search",
+    "action": "Web Search",
     "args": {{
       "query": "What are AI trends?"
     }}
@@ -49,7 +49,7 @@ Here is example of JSON array format to return. Keep in mind that this is exampl
 ]
 """
 
-#prompt_template = PromptTemplate.from_template(TEMPLATE)
+# prompt_template = PromptTemplate.from_template(TEMPLATE)
 
 client = AsyncOpenAI(timeout=60.0)
 
@@ -114,10 +114,6 @@ class ToolManager:
         for action in actions:
             tool_name = action["action"]
 
-            if tool_name == "Google Image Search":
-                independent_tools.append(action)
-                continue
-
             toolkit = find_toolkit_by_tool_name(tool_name)
             if toolkit:
                 toolkit_name = toolkit.name
@@ -179,7 +175,9 @@ class ToolManager:
     async def detect_tools_to_use(self):
         # If user provided tools manually, use them
         if not self.manual_tool_names:
-            raise ValueError("No manual tool names provided. Please specify tools to use.")
+            raise ValueError(
+                "No manual tool names provided. Please specify tools to use."
+            )
 
         return [
             {"action": tool_name, "args": self.prompt}
@@ -253,12 +251,12 @@ class ToolManager:
         Generate introduction for that prompt: "{self.prompt}".
         You are going to use {tool_names} to fetch information.
 
-        Something like it: "To effectively address your query, my approach involves a comprehensive analysis and integration of relevant Twitter and Google web search data. Here's how it works:
+        Something like it: "To effectively address your query, my approach involves a comprehensive analysis and integration of relevant Twitter and web search data. Here's how it works:
 
         Question or Topic Analysis: I start by thoroughly examining your question or topic to understand the core of your inquiry or the specific area you're interested in.
 
         Twitter Data Search: Next, I delve into Twitter, seeking out information, discussions, and insights that directly relate to your prompt.
-        Google search: Next, I search Google, seeking out information, discussions, and insights that directly relate to your prompt.
+        Web search: Next, I search web, seeking out information, discussions, and insights that directly relate to your prompt.
 
         Synthesis and Response: After gathering and analyzing this data, I compile my findings and craft a detailed response, which will be presented below"
 
@@ -282,7 +280,7 @@ class ToolManager:
     async def finalize_summary_and_stream(self, information):
         content = f"""
             In <UserPrompt> provided User's prompt (Question).
-            In <Information>, provided highlighted key information and relevant links from Twitter and Google Search.
+            In <Information>, provided highlighted key information and relevant links from Twitter and Web Search.
 
             <UserPrompt>
             {self.prompt}

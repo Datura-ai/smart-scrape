@@ -79,69 +79,18 @@ async def summarize_search_data(prompt: str, model: str, data, response_order):
     return res, ScraperTextRole.SEARCH_SUMMARY
 
 
-def prepare_search_data_for_summary_old(data):
-    result = ""
-
-    for tool_name in data.keys():
-        if tool_name == "Google Search":
-            res = data[tool_name]
-
-            snippets = []
-
-            for organic_result in res.get("organic_results", []):
-                snippet_dict = {}
-                if "snippet" in organic_result:
-                    snippet_dict["snippet"] = organic_result["snippet"]
-                if "snippet_highlighted_words" in organic_result:
-                    snippet_dict["snippet_highlighted_words"] = organic_result[
-                        "snippet_highlighted_words"
-                    ]
-                if "rich_snippet" in organic_result:
-                    snippet_dict["rich_snippet"] = organic_result["rich_snippet"]
-                if "rich_snippet_table" in organic_result:
-                    snippet_dict["rich_snippet_table"] = organic_result[
-                        "rich_snippet_table"
-                    ]
-                if "link" in organic_result:
-                    snippet_dict["link"] = organic_result["link"]
-
-                snippets.append(snippet_dict)
-
-            data[tool_name] = {"type": "organic", "content": snippets}
-        elif tool_name == "Google Image Search":
-            continue
-
-        result += f"{tool_name} results: {data[tool_name]}\n\n"
-
-    return result
-
-
 def prepare_search_data_for_summary(data):
     standardized_results = []
 
-    # Google Search
-    if "Google Search" in data:
-        for result in data["Google Search"].get("organic_results", []):
+    # Web Search
+    if "Web Search" in data:
+        for result in data["Web Search"].get("organic_results", []):
             standardized_results.append(
                 {
                     "title": result.get("title"),
                     "link": result.get("link"),
                     "snippet": result.get("snippet"),
-                    # 'source': 'Google Search'
-                }
-            )
-
-    # Google News Search
-    if "Google News Search" in data:
-        for result in data["Google News Search"].get("news_results", []):
-            standardized_results.append(
-                {
-                    "title": result.get("title"),
-                    "link": result.get("link"),
-                    "snippet": result.get(
-                        "snippet"
-                    ),  # Using title as snippet due to lack of snippet in news results
-                    # 'source': result.get('source', {}).get('title', 'Unknown')  # Extracting source title, default to 'Unknown'
+                    # 'source': 'Web Search'
                 }
             )
 

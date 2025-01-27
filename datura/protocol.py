@@ -11,6 +11,7 @@ from aiohttp import ClientResponse
 import traceback
 from datura.services.twitter_utils import TwitterUtils
 from datura.services.web_search_utils import WebSearchUtils
+import traceback
 from datura.synapse import Synapse, StreamingSynapse
 
 
@@ -52,7 +53,7 @@ class TwitterScraperUser(BaseModel):
     id: Optional[str] = None
     url: Optional[str] = None
     name: Optional[str] = None
-    username: Optional[str] = None
+    username: str
     created_at: Optional[str] = None
     # Only available in scraped tweets
     description: Optional[str] = None
@@ -67,34 +68,29 @@ class TwitterScraperUser(BaseModel):
 
 class TwitterScraperTweet(BaseModel):
     # Available in both, scraped and api based tweets.
-    user: Optional[TwitterScraperUser] = TwitterScraperUser()
-    id: Optional[str]
-    text: Optional[str]
-    reply_count: Optional[int] = None
-    retweet_count: Optional[int] = None
-    like_count: Optional[int] = None
-    view_count: Optional[int] = None
-    quote_count: Optional[int] = None
-    impression_count: Optional[int] = None
-    bookmark_count: Optional[int] = None
-    url: Optional[str]
-    created_at: Optional[str]
+    user: TwitterScraperUser
+    id: str
+    text: str
+    reply_count: int
+    retweet_count: int
+    like_count: int
+    quote_count: int
+    bookmark_count: int
+    url: str
+    created_at: str
     media: Optional[List[TwitterScraperMedia]] = []
 
     # Only available in scraped tweets
-    is_quote_tweet: Optional[bool]
-    is_retweet: Optional[bool]
+    is_quote_tweet: bool
+    is_retweet: bool
 
 
 class ScraperTextRole(str, Enum):
     INTRO = "intro"
     TWITTER_SUMMARY = "twitter_summary"
     SEARCH_SUMMARY = "search_summary"
-    DISCORD_SUMMARY = "discord_summary"
     REDDIT_SUMMARY = "reddit_summary"
     HACKER_NEWS_SUMMARY = "hacker_news_summary"
-    BITTENSOR_SUMMARY = "bittensor_summary"
-    SUBNETS_SOURCE_CODE_SUMMARY = "subnets_source_code_summary"
     FINAL_SUMMARY = "summary"
 
 
@@ -111,7 +107,6 @@ class Model(str, Enum):
 
 
 class ScraperStreamingSynapse(StreamingSynapse):
-
     prompt: str = pydantic.Field(
         ...,
         title="Prompt",
@@ -124,19 +119,6 @@ class ScraperStreamingSynapse(StreamingSynapse):
         title="Completion",
         description="Completion status of the current StreamPrompting object. This attribute is mutable and can be updated.",
     )
-
-    # required_hash_fields: List[str] = pydantic.Field(
-    #     ["messages"],
-    #     title="Required Hash Fields",
-    #     description="A list of required fields for the hash.",
-    #     allow_mutation=False,
-    # )
-
-    # seed: int = pydantic.Field(
-    #     "",
-    #     title="Seed",
-    #     description="Seed for text generation. This attribute is immutable and cannot be updated.",
-    # )
 
     model: Model = pydantic.Field(
         Model.NOVA,
@@ -220,18 +202,6 @@ class ScraperStreamingSynapse(StreamingSynapse):
         description="Optional JSON object containing search results from SERP",
     )
 
-    google_news_search_results: Optional[Any] = pydantic.Field(
-        default_factory=dict,
-        title="Google News Search Results",
-        description="Optional JSON object containing search results from SERP Google News",
-    )
-
-    google_image_search_results: Optional[Any] = pydantic.Field(
-        default_factory=dict,
-        title="Google Image Search Results",
-        description="Optional JSON object containing image search results from SERP Google",
-    )
-
     wikipedia_search_results: Optional[Any] = pydantic.Field(
         default_factory=dict,
         title="Wikipedia Search Results",
@@ -260,24 +230,6 @@ class ScraperStreamingSynapse(StreamingSynapse):
         default_factory=dict,
         title="Hacker News Search Results",
         description="Optional JSON object containing search results from Hacker News",
-    )
-
-    discord_search_results: Optional[Any] = pydantic.Field(
-        default_factory=dict,
-        title="Discord Search Results",
-        description="Optional JSON object containing search results from Discord",
-    )
-
-    bittensor_docs_results: Optional[Any] = pydantic.Field(
-        default_factory=dict,
-        title="Bittensor Docs Search Results",
-        description="Optional JSON object containing search results from Bittensor Docs",
-    )
-
-    subnets_source_code_result: Optional[Any] = pydantic.Field(
-        default_factory=dict,
-        title="Subnets Source Code Search Results",
-        description="Optional JSON object containing search results from Subnets Source Code",
     )
 
     text_chunks: Optional[Dict[str, List[str]]] = pydantic.Field(
@@ -320,8 +272,8 @@ class ScraperStreamingSynapse(StreamingSynapse):
     )
 
     result_type: ResultType = pydantic.Field(
-        ResultType.ONLY_LINKS,
-        title="result_type",
+        None,
+        title="Result Type",
         description="The result type for miners",
     )
 
@@ -339,8 +291,7 @@ class ScraperStreamingSynapse(StreamingSynapse):
         if any(
             tool in self.tools
             for tool in [
-                "Google Search",
-                "Google News Search",
+                "Web Search",
                 "Wikipedia Search",
                 "Youtube Search",
                 "ArXiv Search",
@@ -381,7 +332,7 @@ class ScraperStreamingSynapse(StreamingSynapse):
     def get_search_links(self) -> List[str]:
         """Extracts web links from each summary making sure to filter by domain for each tool used.
         In Reddit and Hacker News Search, the links are filtered by domains.
-        In search summary part, if Google Search or Google News Search is used, the links are allowed from any domain,
+        In search summary part, if Web Search is used, the links are allowed from any domain,
         Otherwise search summary will only look for Wikipedia, ArXiv, Youtube links.
         Returns list of all links and links per each summary role.
         """
@@ -400,10 +351,7 @@ class ScraperStreamingSynapse(StreamingSynapse):
                     WebSearchUtils.find_links_by_domain(value, "news.ycombinator.com")
                 )
             elif key == ScraperTextRole.SEARCH_SUMMARY.value:
-                if any(
-                    tool in self.tools
-                    for tool in ["Google Search", "Google News Search"]
-                ):
+                if any(tool in self.tools for tool in ["Web Search"]):
                     links.extend(WebSearchUtils.find_links(value))
                 else:
                     if "Wikipedia Search" in self.tools:
@@ -470,13 +418,6 @@ class ScraperStreamingSynapse(StreamingSynapse):
                         self.search_results = search_json
                         yield json.dumps({"type": "search", "content": search_json})
 
-                    elif content_type == "google_search_news":
-                        search_json = json_data.get("content", "{}")
-                        self.google_news_search_results = search_json
-                        yield json.dumps(
-                            {"type": "google_search_news", "content": search_json}
-                        )
-
                     elif content_type == "wikipedia_search":
                         search_json = json_data.get("content", "{}")
                         self.wikipedia_search_results = search_json
@@ -512,36 +453,6 @@ class ScraperStreamingSynapse(StreamingSynapse):
                             {"type": "hacker_news_search", "content": search_json}
                         )
 
-                    elif content_type == "discord_search":
-                        search_json = json_data.get("content", "{}")
-                        self.discord_search_results = search_json
-                        yield json.dumps(
-                            {"type": "discord_search", "content": search_json}
-                        )
-
-                    elif content_type == "bittensor_docs_search":
-                        search_json = json_data.get("content", "{}")
-                        self.bittensor_docs_results = search_json
-                        yield json.dumps(
-                            {"type": "bittensor_docs_search", "content": search_json}
-                        )
-
-                    elif content_type == "subnets_source_code_search":
-                        search_json = json_data.get("content", "{}")
-                        self.subnets_source_code_result = search_json
-                        yield json.dumps(
-                            {
-                                "type": "subnets_source_code_search",
-                                "content": search_json,
-                            }
-                        )
-
-                    elif content_type == "google_image_search":
-                        search_json = json_data.get("content", "{}")
-                        self.google_image_search_results = search_json
-                        yield json.dumps(
-                            {"type": "google_image_search", "content": search_json}
-                        )
         except json.JSONDecodeError as e:
             port = response.real_url.port
             host = response.real_url.host
@@ -596,7 +507,6 @@ class ScraperStreamingSynapse(StreamingSynapse):
             "completion": self.completion,
             "miner_tweets": self.miner_tweets,
             "search_results": self.search_results,
-            "google_news_search_results": self.google_news_search_results,
             "wikipedia_search_results": self.wikipedia_search_results,
             "youtube_search_results": self.youtube_search_results,
             "arxiv_search_results": self.arxiv_search_results,
@@ -675,41 +585,6 @@ class WebSearchResultList(BaseModel):
     data: List[WebSearchResult]
 
 
-class SearchSynapse(Synapse):
-    """A class to represent search api synapse"""
-
-    query: str = pydantic.Field(
-        "",
-        title="query",
-        description="The query to run tools with. Example: 'What are the recent sport events?'. Immutable.",
-        allow_mutation=False,
-    )
-
-    tools: List[str] = pydantic.Field(
-        default_factory=list,
-        title="Tools",
-        description="A list of tools specified by user to fetch data from. Immutable."
-        "Available tools are: Google Search, Google Image Search, Hacker News Search, Reddit Search",
-        allow_mutation=False,
-    )
-
-    uid: Optional[int] = pydantic.Field(
-        None,
-        title="UID",
-        description="Optional miner uid to run. If not provided, a random miner will be selected. Immutable.",
-        allow_mutation=False,
-    )
-
-    results: Optional[Dict[str, Any]] = pydantic.Field(
-        default_factory=dict,
-        title="Tool result dictionary",
-        description="A dictionary of tool results where key is tool name and value is the result. Example: {'Google Search': {}, 'Google Image Search': {} }",
-    )
-
-    def deserialize(self) -> str:
-        return self
-
-
 class WebSearchSynapse(Synapse):
     """A class to represent web search synapse"""
 
@@ -732,6 +607,12 @@ class WebSearchSynapse(Synapse):
         title="Start Index",
         description="The number of results to skip (used for pagination). Immutable.",
         allow_mutation=False,
+    )
+
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
     )
 
     results: Optional[List[WebSearchResult]] = pydantic.Field(
@@ -838,7 +719,19 @@ class TwitterSearchSynapse(Synapse):
         allow_mutation=False,
     )
 
-    results: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
+    )
+
+    validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+        default_factory=list,
+        title="validator tweets",
+        description="Fetched validator Tweets Data.",
+    )
+
+    results: Optional[List[Dict[str, Any]]] = pydantic.Field(
         default_factory=list,
         title="tweets",
         description="Fetched Tweets Data.",
@@ -858,7 +751,19 @@ class TwitterIDSearchSynapse(Synapse):
         allow_mutation=False,
     )
 
-    results: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
+    )
+
+    validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+        default_factory=list,
+        title="validator tweets",
+        description="Fetched validator Tweets Data.",
+    )
+
+    results: Optional[List[Dict]] = pydantic.Field(
         default_factory=list,
         title="tweets",
         description="Fetched Tweets Data.",
@@ -871,14 +776,26 @@ class TwitterIDSearchSynapse(Synapse):
 class TwitterURLsSearchSynapse(Synapse):
     """A class to represent Twitter URLs Advanced Search Synapse"""
 
-    urls: Dict[str, str] = pydantic.Field(
+    urls: List[str] = pydantic.Field(
         ...,
         title="URLs",
         description="A list of tweet URLs to fetch.",
         allow_mutation=False,
     )
 
-    results: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+    max_execution_time: Optional[int] = pydantic.Field(
+        None,
+        title="Max Execution Time (timeout)",
+        description="Maximum time to execute concrete request",
+    )
+
+    validator_tweets: Optional[List[TwitterScraperTweet]] = pydantic.Field(
+        default_factory=list,
+        title="validator tweets",
+        description="Fetched validator Tweets Data.",
+    )
+
+    results: Optional[List[Dict]] = pydantic.Field(
         default_factory=list,
         title="tweets",
         description="Fetched Tweets Data.",

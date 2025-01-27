@@ -1,13 +1,18 @@
 from typing import List
 import random
-from datura.protocol import ScraperStreamingSynapse
+from datura.protocol import (
+    TwitterSearchSynapse,
+    TwitterIDSearchSynapse,
+    TwitterURLsSearchSynapse,
+    WebSearchSynapse,
+)
 from datura.dataset.date_filters import DateFilter, DateFilterType
 from datetime import datetime
 import pytz
 import bittensor as bt
 
 
-class OrganicQueryState:
+class BasicOrganicQueryState:
     def __init__(self) -> None:
         # Tracks failed organic queries and in the next synthetic query, we will penalize the miner
         self.organic_penalties = {}
@@ -17,58 +22,49 @@ class OrganicQueryState:
 
     def save_organic_queries(
         self,
-        final_synapses: List[ScraperStreamingSynapse],
+        final_synapses: List[bt.Synapse],
         uids,
         original_rewards,
     ):
         """Save the organic queries and their rewards for future reference"""
 
         twitter_rewards = original_rewards[0]
-        search_rewards = original_rewards[1]
-        summary_rewards = original_rewards[2]
-        performance_rewards = original_rewards[3]
+        performance_rewards = original_rewards[1]
 
         for (
             uid_tensor,
             synapse,
             twitter_reward,
-            search_reward,
-            summary_reward,
             performance_reward,
         ) in zip(
             uids,
             final_synapses,
             twitter_rewards,
-            search_rewards,
-            summary_rewards,
             performance_rewards,
         ):
             uid = uid_tensor.item()
             hotkey = synapse.axon.hotkey
 
-            # axon = next(axon for axon in axons if axon.hotkey == synapse.axon.hotkey)
-
-            is_twitter_search = "Twitter Search" in synapse.tools
-            is_web_search = any(
-                tool in synapse.tools
-                for tool in [
-                    "Web Search",
-                    "Wikipedia Search",
-                    "Youtube Search",
-                    "ArXiv Search",
-                    "Reddit Search",
-                    "Hacker News Search",
-                ]
+            # Instead of checking synapse.tools, we now check the class
+            is_twitter_search = isinstance(
+                synapse,
+                (
+                    TwitterSearchSynapse,
+                    TwitterIDSearchSynapse,
+                    TwitterURLsSearchSynapse,
+                ),
             )
+            is_web_search = isinstance(synapse, WebSearchSynapse)
 
             is_failed_organic = False
 
             # Check if organic query failed by rewards
             if (
-                (performance_reward == 0 or summary_reward == 0)
+                performance_reward == 0
                 or (is_twitter_search and twitter_reward == 0)
-                or (is_web_search and search_reward == 0)
+                or (is_web_search)
             ):
+
                 is_failed_organic = True
 
             # Save penalty for the miner for the next synthetic query
@@ -76,14 +72,14 @@ class OrganicQueryState:
                 bt.logging.info(
                     f"Failed organic query by miner UID: {uid}, Hotkey: {hotkey}"
                 )
-
                 self.organic_penalties[hotkey] = (
                     self.organic_penalties.get(hotkey, 0) + 1
                 )
 
-            if not hotkey in self.organic_history:
+            if hotkey not in self.organic_history:
                 self.organic_history[hotkey] = []
 
+            # Append the synapse and the result of this check
             self.organic_history[hotkey].append((synapse, is_failed_organic))
 
     def has_penalty(self, hotkey: str) -> bool:
@@ -98,9 +94,10 @@ class OrganicQueryState:
 
     def get_random_organic_query(self, uids, neurons):
         """Gets a random organic query from the history to score with other miners"""
-        # Collect all failed synapses
+
         failed_synapses = []
 
+        # Collect all failed synapses first
         for hotkey, synapses in self.organic_history.items():
             failed_synapses.extend(
                 [(hotkey, synapse) for synapse, is_failed in synapses if is_failed]
@@ -115,35 +112,53 @@ class OrganicQueryState:
         if not failed_synapses:
             return None
 
-        # Choose a random synapse
+        # Randomly pick one
         hotkey, synapse = random.choice(failed_synapses)
 
-        start_date = datetime.strptime(
-            synapse.start_date, "%Y-%m-%dT%H:%M:%SZ"
-        ).replace(tzinfo=pytz.utc)
+        # Check synapse class type and gather content
+        content = None
+        start_date = None
+        end_date = None
 
-        end_date = datetime.strptime(synapse.end_date, "%Y-%m-%dT%H:%M:%SZ").replace(
-            tzinfo=pytz.utc
-        )
+        if isinstance(synapse, TwitterSearchSynapse):
+            # The 'query' field can be used as content
+            content = synapse.query
 
-        date_filter = DateFilter(
-            start_date=start_date,
-            end_date=end_date,
-            date_filter_type=DateFilterType(synapse.date_filter_type),
-        )
+            # Convert string (YYYY-MM-DD) to datetime objects, if present
+            if synapse.start_date:
+                start_date = datetime.strptime(synapse.start_date, "%Y-%m-%d").replace(
+                    tzinfo=pytz.utc
+                )
 
-        neuron = next(neuron for neuron in neurons if neuron.hotkey == hotkey)
+            if synapse.end_date:
+                end_date = datetime.strptime(synapse.end_date, "%Y-%m-%d").replace(
+                    tzinfo=pytz.utc
+                )
+
+        elif isinstance(synapse, TwitterIDSearchSynapse):
+            content = synapse.id
+
+        elif isinstance(synapse, TwitterURLsSearchSynapse):
+            # 'urls' is a dict
+            content = synapse.urls
+
+        elif isinstance(synapse, WebSearchSynapse):
+            content = synapse.query
+
+        # Find the neuron's UID
+        neuron = next(n for n in neurons if n.hotkey == hotkey)
         synapse_uid = neuron.uid
 
-        query = {
-            "content": synapse.prompt,
-            "tools": synapse.tools,
-            "date_filter": date_filter,
-        }
+        # Build the final query
+        query = {"query": content}
+        if isinstance(synapse, TwitterSearchSynapse):
+            query["start_date"] = start_date
+            query["end_date"] = end_date
 
-        # All miners to call except the one that made the query
+        # Identify other miners except the one that made the query
         specified_uids = [uid for uid in uids if uid != synapse_uid]
 
+        # Optionally clear all history here (if desired)
         self.organic_history = {}
 
         return synapse, query, synapse_uid, specified_uids

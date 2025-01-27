@@ -4,6 +4,7 @@ from starlette.types import Send
 from datura.dataset.tool_return import ResponseOrder
 from datura.protocol import (
     ScraperStreamingSynapse,
+    ResultType,
 )
 from datura.tools.tool_manager import ToolManager
 from datura.dataset.date_filters import (
@@ -27,6 +28,7 @@ class ScraperMiner:
             tools = synapse.tools
             # is_intro_text = synapse.is_intro_text
             response_order = ResponseOrder(synapse.response_order)
+            result_type = ResultType(synapse.result_type)
 
             bt.logging.trace(synapse)
 

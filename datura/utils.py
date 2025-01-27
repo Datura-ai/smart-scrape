@@ -3,6 +3,7 @@ import os
 import ast
 import math
 import json
+from pydantic import ValidationError
 import wandb
 import base64
 import random
@@ -23,7 +24,12 @@ from datura.misc import ttl_get_block
 import re
 import html
 import unicodedata
-from datura.protocol import Model
+from datura.protocol import Model, TwitterScraperTweet
+from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
+from typing import List
+from datura.services.twitter_utils import TwitterUtils
+from sentence_transformers import util
+
 
 list_update_lock = asyncio.Lock()
 _text_questions_buffer = deque()
@@ -67,6 +73,7 @@ def save_state_to_file(state, filename="state.json"):
         bt.logging.success(f"saved global state to {filename}")
         json.dump(state, file)
 
+
 def get_max_execution_time(model: Model):
     if model == Model.NOVA:
         return 10
@@ -74,6 +81,7 @@ def get_max_execution_time(model: Model):
         return 30
     elif model == Model.HORIZON:
         return 120
+
 
 def preprocess_string(text):
     processed_text = text.replace("\t", "")
@@ -359,7 +367,7 @@ async def save_logs_in_chunks(
     neuron,
     netuid,
     organic_penalties,
-    query_type
+    query_type,
 ):
     try:
         logs = [
@@ -382,14 +390,11 @@ async def save_logs_in_chunks(
                 "summary_link_scores": summary_link_score,
                 "search_results": {
                     "google": response.search_results,
-                    "google_news": response.google_news_search_results,
-                    "google_image": response.google_image_search_results,
                     "wikipedia": response.wikipedia_search_results,
                     "youtube": response.youtube_search_results,
                     "arxiv": response.arxiv_search_results,
                     "reddit": response.reddit_search_results,
                     "hacker_news": response.hacker_news_search_results,
-                    "discord": response.discord_search_results,
                 },
                 "texts": response.texts,
                 "validator_tweets": [
@@ -437,8 +442,7 @@ async def save_logs_in_chunks(
                 "language": response.language,
                 "region": response.region,
                 "max_items": response.max_items,
-                "result_type": response.result_type
-
+                "result_type": response.result_type,
             }
             for response, uid, reward, summary_reward, twitter_reward, search_reward, performance_reward, original_summary_reward, original_twitter_reward, original_search_reward, original_performance_reward, tweet_score, search_score, summary_link_score, organic_penalty in zip(
                 responses,
@@ -459,14 +463,14 @@ async def save_logs_in_chunks(
             )
         ]
 
-
-
         for idx, log in enumerate(logs, start=1):
-            bt.logging.debug(f"Log Entry {idx} - max_execution_time: {log.get('max_execution_time')}, "
-                             f"query_type: {log.get('query_type')}, model: {log.get('model')}, "
-                             f"language: {log.get('language')}, region: {log.get('region')}, "
-                             f"max_items: {log.get('max_items')}"
-                             f"result_type: {log.get('result_type')}" )
+            bt.logging.debug(
+                f"Log Entry {idx} - max_execution_time: {log.get('max_execution_time')}, "
+                f"query_type: {log.get('query_type')}, model: {log.get('model')}, "
+                f"language: {log.get('language')}, region: {log.get('region')}, "
+                f"max_items: {log.get('max_items')}"
+                f"result_type: {log.get('result_type')}"
+            )
         chunk_size = 20
 
         log_chunks = [logs[i : i + chunk_size] for i in range(0, len(logs), chunk_size)]
@@ -478,6 +482,110 @@ async def save_logs_in_chunks(
             )
     except Exception as e:
         bt.logging.error(f"Error in save_logs_in_chunks: {e}")
+        raise e
+
+
+async def save_logs_in_chunks_for_basic(
+    self,
+    responses,
+    uids,
+    rewards,
+    twitter_rewards,
+    performance_rewards,
+    original_twitter_rewards,
+    original_performance_rewards,
+    tweet_scores,
+    weights,
+    neuron,
+    netuid,
+    organic_penalties,
+):
+    try:
+        logs = [
+            {
+                "prompt": response.query,
+                "result": [
+                    {
+                        "id": tweet.id,
+                        "text": tweet.text,
+                        "user": tweet.user.dict() if tweet.user else None,
+                        "created_at": tweet.created_at,
+                        "retweet_count": tweet.retweet_count,
+                        "like_count": tweet.like_count,
+                        "reply_count": tweet.reply_count,
+                        "url": tweet.url,
+                    }
+                    for tweet in response.results
+                ],
+                "score": reward,
+                "twitter_score": twitter_reward,
+                "performance_score": performance_reward,
+                "original_twitter_score": original_twitter_reward,
+                "original_performance_score": original_performance_reward,
+                "tweet_scores": tweet_score,
+                "texts": [tweet.text for tweet in response.results if tweet.text],
+                "validator_tweets": [
+                    val_tweet.dict() for val_tweet in response.validator_tweets
+                ],
+                "weight": weights.get(str(uid)),
+                "miner": {
+                    "uid": uid,
+                    "hotkey": response.axon.hotkey,
+                    "coldkey": next(
+                        (
+                            axon.coldkey
+                            for axon in self.metagraph.axons
+                            if axon.hotkey == response.axon.hotkey
+                        ),
+                        None,  # Provide a default value here, such as None or an appropriate placeholder
+                    ),
+                },
+                "validator": {
+                    "uid": neuron.uid,
+                    "hotkey": neuron.dendrite.keypair.ss58_address,
+                    "coldkey": next(
+                        (
+                            nr.coldkey
+                            for nr in self.metagraph.neurons
+                            if nr.hotkey == neuron.dendrite.keypair.ss58_address
+                        ),
+                        None,
+                    ),
+                },
+                "date_filter": {
+                    "start_date": response.start_date,
+                    "end_date": response.end_date,
+                },
+                "time": response.dendrite.process_time,
+                "organic_penalty": organic_penalty,
+                "max_execution_time": response.max_execution_time,
+                "model": response.model,
+                "language": response.lang,
+            }
+            for response, uid, reward, twitter_reward, performance_reward, original_twitter_reward, original_performance_reward, tweet_score, organic_penalty in zip(
+                responses,
+                uids.tolist(),
+                rewards.tolist(),
+                twitter_rewards.tolist(),
+                performance_rewards.tolist(),
+                original_twitter_rewards,
+                original_performance_rewards,
+                tweet_scores,
+                organic_penalties,
+            )
+        ]
+
+        # Divide logs into chunks for saving
+        chunk_size = 20
+        log_chunks = [logs[i : i + chunk_size] for i in range(0, len(logs), chunk_size)]
+
+        for chunk in log_chunks:
+            await save_logs(
+                logs=chunk,
+                netuid=netuid,
+            )
+    except Exception as e:
+        bt.logging.error(f"Error in save_logs_in_chunks_for_basic: {e}")
         raise e
 
 
@@ -526,3 +634,86 @@ def clean_text(text):
     )
 
     return text
+
+
+def format_text_for_match(text):
+    # Unescape HTML entities first
+    text = html.unescape(text)
+    # url shorteners can cause problems with tweet verification, so remove urls from the text comparison.
+    text = re.sub(r"(https?://)?\S+\.\S+\/?(\S+)?", "", text)
+    # Some scrapers put the mentions at the front of the text, remove them.
+    text = re.sub(r"^(@\w+\s*)+", "", text)
+    # And some trim trailing whitespace at the end of newlines, so ignore whitespace.
+    text = re.sub(r"\s+", "", text)
+    # The validator apify actor uses the tweet.text field and not the note_tweet field (> 280) charts, so only
+    # use the first 280 chars for comparison.
+    text = text[:280]
+    return text
+
+
+async def scrape_tweets_with_retries(
+    urls: List[str], group_size: int, max_attempts: int
+):
+    fetched_tweets = []
+    non_fetched_links = urls.copy()
+    attempt = 1
+
+    while attempt <= max_attempts and non_fetched_links:
+        bt.logging.info(
+            f"Attempt {attempt}/{max_attempts}, processing {len(non_fetched_links)} links."
+        )
+
+        url_groups = [
+            non_fetched_links[i : i + group_size]
+            for i in range(0, len(non_fetched_links), group_size)
+        ]
+
+        tasks = [
+            asyncio.create_task(TwitterScraperActor().get_tweets(urls=group))
+            for group in url_groups
+        ]
+
+        # Wait for tasks to complete
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Combine results and handle exceptions
+        for result in results:
+            if isinstance(result, Exception):
+                bt.logging.error(
+                    f"Error in TwitterScraperActor attempt {attempt}: {str(result)}"
+                )
+                continue
+            fetched_tweets.extend(result)
+
+        # Update non_fetched_links
+        fetched_tweet_ids = {tweet.id for tweet in fetched_tweets}
+        non_fetched_links = [
+            link
+            for link in non_fetched_links
+            if TwitterUtils.extract_tweet_id(link) not in fetched_tweet_ids
+        ]
+
+        if non_fetched_links:
+            bt.logging.info(
+                f"Retrying fetching non-fetched {len(non_fetched_links)} tweets. Retries left: {max_attempts - attempt}"
+            )
+            await asyncio.sleep(3)
+
+        attempt += 1
+
+    return fetched_tweets, non_fetched_links
+
+
+def calculate_similarity_percentage(tensor1, tensor2):
+    cos_sim = util.pytorch_cos_sim(tensor1, tensor2).item()  # in [-1,1]
+    similarity_percentage = (cos_sim + 1) / 2 * 100
+    return similarity_percentage
+
+
+def is_valid_tweet(tweet):
+    try:
+        _ = TwitterScraperTweet(**tweet)
+    except ValidationError as e:
+        bt.logging.error(f"Invalid miner tweet data: {e}")
+        return False
+    return True
