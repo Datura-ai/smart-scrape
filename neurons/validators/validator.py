@@ -588,9 +588,7 @@ class Neuron(AbstractNeuron):
                             self.run_basic_synthetic_queries(strategy)
                         )
 
-                        await asyncio.sleep(
-                            interval
-                        )  # Wait for 1800 seconds (30 minutes)
+                        await asyncio.sleep(interval)  # Wait for synthetic interval
                     except Exception as e:
                         bt.logging.error(f"Error during task execution: {e}")
                         await asyncio.sleep(interval)  # Wait before retrying
