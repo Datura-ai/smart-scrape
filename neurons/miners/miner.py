@@ -1,4 +1,3 @@
-import re
 import os
 import time
 import copy
@@ -16,19 +15,15 @@ from openai import OpenAI
 from functools import partial
 from collections import deque
 from openai import AsyncOpenAI
-from starlette.types import Send
 from abc import ABC, abstractmethod
-from transformers import GPT2Tokenizer
 from neurons.miners.config import get_config, check_config
-from typing import List, Dict, Tuple
+from typing import Dict, Tuple
 
 from datura.utils import get_version
 
 from datura.protocol import (
     IsAlive,
     ScraperStreamingSynapse,
-    TwitterTweetSynapse,
-    TwitterUserSynapse,
     TwitterSearchSynapse,
     WebSearchSynapse,
     TwitterURLsSearchSynapse,
@@ -37,8 +32,6 @@ from datura.protocol import (
 from neurons.miners.scraper_miner import ScraperMiner
 from neurons.miners.twitter_search_miner import TwitterSearchMiner
 from neurons.miners.web_search_miner import WebSearchMiner
-from neurons.miners.twitter_user_miner import TwitterUserMiner
-from neurons.miners.twitter_tweet_miner import TwitterTweetMiner
 
 OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
 if not OpenAI.api_key:
@@ -136,6 +129,7 @@ class StreamMiner(ABC):
         # Attach determiners which functions are called when servicing a request.
         bt.logging.info(f"Attaching forward function to axon.")
         print(f"Attaching forward function to axon. {self._is_alive}")
+
         self.axon.attach(
             forward_fn=self._is_alive,
             blacklist_fn=self.blacklist_is_alive,
@@ -143,17 +137,17 @@ class StreamMiner(ABC):
             forward_fn=self._smart_scraper,
             blacklist_fn=self.blacklist_smart_scraper,
         ).attach(
-            forward_fn=self._get_twitter_user,
-        ).attach(
-            forward_fn=self._get_tweets,
-        ).attach(
             forward_fn=self._twitter_search,
+            blacklist_fn=self.blacklist_smart_scraper,
         ).attach(
             forward_fn=self._twitter_id_search,
+            blacklist_fn=self.blacklist_smart_scraper,
         ).attach(
             forward_fn=self.twitter_urls_search,
+            blacklist_fn=self.blacklist_smart_scraper,
         ).attach(
             forward_fn=self.web_search,
+            blacklist_fn=self.blacklist_smart_scraper,
         )
 
         bt.logging.info(f"Axon created: {self.axon}")
@@ -175,17 +169,9 @@ class StreamMiner(ABC):
     ) -> ScraperStreamingSynapse:
         return self.smart_scraper(synapse)
 
-    async def _get_twitter_user(
-        self, synapse: TwitterUserSynapse
-    ) -> TwitterUserSynapse:
-        return await self.get_twitter_user(synapse)
-
-    async def _get_tweets(self, synapse: TwitterTweetSynapse) -> TwitterTweetSynapse:
-        return await self.get_tweets(synapse)
-
     async def _twitter_search(
         self, synapse: TwitterSearchSynapse
-    ) -> TwitterTweetSynapse:
+    ) -> TwitterSearchSynapse:
         return await self.twitter_search(synapse)
 
     async def _twitter_id_search(
@@ -301,14 +287,6 @@ class StreamMiner(ABC):
     def smart_scraper(
         self, synapse: ScraperStreamingSynapse
     ) -> ScraperStreamingSynapse: ...
-
-    @abstractmethod
-    async def get_twitter_user(
-        self, synapse: TwitterUserSynapse
-    ) -> TwitterUserSynapse: ...
-
-    @abstractmethod
-    async def get_tweets(self, synapse: TwitterTweetSynapse) -> TwitterTweetSynapse: ...
 
     @abstractmethod
     async def twitter_search(
@@ -487,16 +465,6 @@ class StreamingTemplateMiner(StreamMiner):
         bt.logging.info(f"started processing for Web search  synapse {synapse}")
         web_search_miner = WebSearchMiner(self)
         return await web_search_miner.search(synapse)
-
-    async def get_twitter_user(self, synapse: TwitterUserSynapse) -> TwitterUserSynapse:
-        bt.logging.info(f"started processing for twitter user synapse {synapse}")
-        twitter_user_miner = TwitterUserMiner(self)
-        return await twitter_user_miner.get_user(synapse)
-
-    async def get_tweets(self, synapse: TwitterTweetSynapse) -> TwitterTweetSynapse:
-        bt.logging.info(f"started processing for twitter tweet synapse {synapse}")
-        twitter_tweet_miner = TwitterTweetMiner(self)
-        return await twitter_tweet_miner.get_tweets(synapse)
 
 
 def get_valid_hotkeys(config):
