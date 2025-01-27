@@ -20,11 +20,6 @@ import traceback
 import time
 import bittensor as bt
 import random
-import asyncio
-import re
-import html
-import torch
-import random
 from typing import List, Optional
 from .config import RewardModelType
 from .reward import BaseRewardModel, BaseRewardEvent
@@ -37,6 +32,8 @@ from datura.protocol import (
 )
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from datura.services.twitter_api_wrapper import TwitterAPIClient
+from neurons.validators.reward.embedding import Embedder
+from datura.services.twitter_utils import TwitterUtils
 from datura.utils import (
     clean_text,
     format_text_for_match,
@@ -56,9 +53,10 @@ SIMILARITY_THRESHOLD = 80.0
 # Only a percentage-based threshold:
 INT_DIFF_PERCENT = 0.01  # 1% difference allowed
 
+embedder = Embedder()
+
 
 class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
-
     @property
     def name(self) -> str:
         return RewardModelType.twitter_content_relevance.value
@@ -67,8 +65,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
         super().__init__()
         self.device = device
         self.scoring_type = scoring_type
-        self.tw_client = TwitterAPIClient()
-        self.embedder = Embedder()
+        self.twitter_utils = TwitterUtils()
 
     def clean_text(self, text):
         return clean_text(text)
@@ -108,7 +105,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
             # 2) For each response, match tweets by ID and append to validator_tweets
             for response, random_links in zip(responses, responses_random_links):
                 ids = [
-                    self.tw_client.utils.extract_tweet_id(link) for link in random_links
+                    self.twitter_utils.extract_tweet_id(link) for link in random_links
                 ]
                 for fetched_tweet in tweets_list:
                     if fetched_tweet.id in ids:
@@ -136,8 +133,8 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
         clean1 = format_text_for_match(text1)
         clean2 = format_text_for_match(text2)
 
-        emb1 = self.embedder.embed_text(clean1)
-        emb2 = self.embedder.embed_text(clean2)
+        emb1 = embedder.embed_text(clean1)
+        emb2 = embedder.embed_text(clean2)
 
         sim_percent = calculate_similarity_percentage(emb1, emb2)
         return sim_percent >= SIMILARITY_THRESHOLD
