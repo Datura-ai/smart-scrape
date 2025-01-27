@@ -24,7 +24,12 @@ import math
 import json
 from .config import RewardModelType
 from .reward import BaseRewardModel, BaseRewardEvent
-from datura.protocol import ScraperStreamingSynapse, TwitterSearchSynapse
+from datura.protocol import (
+    ScraperStreamingSynapse,
+    TwitterSearchSynapse,
+    TwitterIDSearchSynapse,
+    TwitterURLsSearchSynapse,
+)
 from neurons.validators.constants import STEEPNESS, FACTOR
 
 
@@ -109,7 +114,14 @@ class PerformanceRewardModel(BaseRewardModel):
             # Determine response type and select the appropriate response time function
             if isinstance(responses[0], ScraperStreamingSynapse):
                 axon_times = self.get_response_times(uids, responses)
-            elif isinstance(responses[0], TwitterSearchSynapse):
+            elif isinstance(
+                responses[0],
+                (
+                    TwitterSearchSynapse,
+                    TwitterIDSearchSynapse,
+                    TwitterURLsSearchSynapse,
+                ),
+            ):
                 axon_times = self.get_global_response_times(uids, responses)
             else:
                 raise ValueError("Unsupported response type provided to get_rewards.")

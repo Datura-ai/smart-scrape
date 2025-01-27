@@ -28,7 +28,13 @@ import random
 from typing import List, Optional
 from .config import RewardModelType
 from .reward import BaseRewardModel, BaseRewardEvent
-from datura.protocol import TwitterScraperTweet, TwitterSearchSynapse, Embedder
+from datura.protocol import (
+    TwitterScraperTweet,
+    TwitterSearchSynapse,
+    Embedder,
+    TwitterIDSearchSynapse,
+    TwitterURLsSearchSynapse,
+)
 from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from datura.services.twitter_api_wrapper import TwitterAPIClient
 from datura.utils import (
@@ -172,16 +178,49 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
             bt.logging.warning(f"Date parsing error: {str(e)}")
             return False
 
-    def check_tweet_content(self, response: TwitterSearchSynapse) -> float:
-        try:
-            tweet_scores = []
-            # Build a map of miner tweets by ID
-            miner_map = {m["id"]: m for m in response.results if "id" in m}
+    def check_tweet_content(self, response: bt.Synapse) -> float:
 
-            for val_tweet in response.validator_tweets:
+        try:
+            # 1) Gather miner & validator tweets
+            miner_data_list = getattr(response, "results", [])
+            validator_tweets = getattr(response, "validator_tweets", [])
+
+            # 2) Build map of miner tweets by ID
+            miner_map = {}
+            for tweet_dict in miner_data_list:
+                if "id" in tweet_dict:
+                    miner_map[tweet_dict["id"]] = tweet_dict
+
+            tweet_scores = []
+
+            # 3) Identify specialized fields if it's TwitterSearchSynapse
+            if isinstance(response, TwitterSearchSynapse):
+                min_likes = getattr(response, "min_likes")
+                min_retweets = getattr(response, "min_retweets")
+                min_replies = getattr(response, "min_replies")
+            else:
+                min_likes = None
+                min_retweets = None
+                min_replies = None
+
+            # If TwitterIDSearchSynapse, get 'id'
+            if isinstance(response, TwitterIDSearchSynapse):
+                synapse_id = getattr(response, "id")
+            else:
+                synapse_id = None
+
+            # If TwitterURLsSearchSynapse, get 'urls'
+            if isinstance(response, TwitterURLsSearchSynapse):
+                synapse_urls = getattr(response, "urls")
+
+            else:
+                synapse_urls = None
+
+            # 4) Iterate over each validator tweet
+            for val_tweet in validator_tweets:
                 current_score = 0
 
-                # 1) Find corresponding miner tweet by ID
+                # Match miner tweet by ID
                 if not val_tweet.id or val_tweet.id not in miner_map:
                     tweet_scores.append(0)
                     continue
@@ -191,36 +230,45 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                     tweet_scores.append(0)
                     continue
 
+                # Convert to TwitterScraperTweet
                 miner_tweet = TwitterScraperTweet(**miner_tweet_data)
 
-                # 2) Compare tweet text with embeddings
-                miner_text = (miner_tweet.text or "").strip()
-                validator_text = (val_tweet.text or "").strip()
+                if synapse_id is not None:
+                    if val_tweet.id != miner_tweet.id:
+                        tweet_scores.append(0)
+                        continue
+
+                if synapse_urls is not None:
+                    if not val_tweet.url or (val_tweet.url not in miner_tweet.url):
+                        tweet_scores.append(0)
+                        continue
+
+                if min_likes is not None:
+                    if val_tweet.like_count is None or val_tweet.like_count < min_likes:
+                        tweet_scores.append(0)
+                        continue
+                if min_retweets is not None:
+                    if (
+                        val_tweet.retweet_count is None
+                        or val_tweet.retweet_count < min_retweets
+                    ):
+                        tweet_scores.append(0)
+                        continue
+                if min_replies is not None:
+                    if (
+                        val_tweet.reply_count is None
+                        or val_tweet.reply_count < min_replies
+                    ):
+                        tweet_scores.append(0)
+                        continue
+
+                miner_text = (miner_tweet.text).strip()
+                validator_text = (val_tweet.text).strip()
                 if not self._text_similarity(miner_text, validator_text):
                     tweet_scores.append(0)
                     continue
 
-                # 3) Check requested min_likes, min_retweets, min_replies from the search
-                if (
-                    response.min_likes is not None
-                    and val_tweet.like_count < response.min_likes
-                ):
-                    tweet_scores.append(0)
-                    continue
-                if (
-                    response.min_retweets is not None
-                    and val_tweet.retweet_count < response.min_retweets
-                ):
-                    tweet_scores.append(0)
-                    continue
-                if (
-                    response.min_replies is not None
-                    and val_tweet.reply_count < response.min_replies
-                ):
-                    tweet_scores.append(0)
-                    continue
-
-                # 4) Compare all integer metrics with ratio-based difference
+                # Compare numeric fields with difference allowance
                 if not self._int_filter_difference_checker(
                     miner_tweet.retweet_count, val_tweet.retweet_count
                 ):
@@ -247,18 +295,10 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                     tweet_scores.append(0)
                     continue
 
-                # 5) Compare string fields directly
                 if miner_tweet.user.username.strip() != val_tweet.user.username.strip():
                     tweet_scores.append(0)
-                    continue
-                if miner_tweet.id != val_tweet.id:
-                    tweet_scores.append(0)
-                    continue
-                if miner_tweet.url.strip() != val_tweet.url.strip():
-                    tweet_scores.append(0)
-                    continue
 
-                # 6) Compare created_at if both exist
+                # Compare created_at if both exist
                 if miner_tweet.created_at and val_tweet.created_at:
                     if not self._compare_dates(
                         miner_tweet.created_at, val_tweet.created_at
