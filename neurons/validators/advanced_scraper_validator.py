@@ -1,16 +1,24 @@
-from datura.dataset.tool_return import ResponseOrder
 import torch
 import random
+import asyncio
+import time
+from typing import List, Optional
 import bittensor as bt
-from base_validator import AbstractNeuron
-from datura.protocol import (
-    ScraperStreamingSynapse,
-)
 from datura.stream import collect_final_synapses
 from reward import RewardModelType, RewardScoringType
-from typing import List, Optional
 from utils.mock import MockRewardModel
-import time
+
+from datura.dataset import QuestionsDataset
+from datura.dataset.tool_return import ResponseOrder
+from datura.dataset.date_filters import (
+    get_random_date_filter,
+    get_specified_date_filter,
+    DateFilterType,
+)
+from datura import QUERY_MINERS
+from datura.protocol import Model, ResultType, ScraperStreamingSynapse
+from datura.utils import get_max_execution_time
+from neurons.validators.base_validator import AbstractNeuron
 from neurons.validators.reward.summary_relevance import SummaryRelevanceRewardModel
 from neurons.validators.reward.twitter_content_relevance import (
     TwitterContentRelevanceModel,
@@ -21,20 +29,9 @@ from neurons.validators.reward.search_content_relevance import (
 from neurons.validators.reward.performance_reward import PerformanceRewardModel
 from neurons.validators.reward.reward_llm import RewardLLM
 from neurons.validators.utils.tasks import TwitterTask
-
-from datura.dataset import QuestionsDataset
-from datura import QUERY_MINERS
-import asyncio
-from datura.dataset.date_filters import (
-    get_random_date_filter,
-    get_specified_date_filter,
-    DateFilterType,
-)
 from neurons.validators.organic_query_state import OrganicQueryState
 from neurons.validators.penalty.streaming_penalty import StreamingPenaltyModel
 from neurons.validators.penalty.exponential_penalty import ExponentialTimePenaltyModel
-from datura.protocol import Model, ResultType
-from datura.utils import get_max_execution_time
 
 
 class AdvancedScraperValidator:
@@ -87,7 +84,6 @@ class AdvancedScraperValidator:
         self.language = "en"
         self.region = "us"
         self.date_filter = "qdr:w"  # Past week
-        self.max_tools_result_amount = 10
 
         self.synthetic_history = []
         self.organic_query_state = OrganicQueryState()
