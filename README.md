@@ -1,31 +1,31 @@
 <div align="center">
 
-# **Bittensor Smart-Scrape**
+# **Bittensor Desearch (Subnet 22)**
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
 
 </div>
 
 ## Introduction
 
-**Bittensor Smart-Scrape:** Streamlining Twitter Data Analysis on Subnet 22
+**Bittensor Desearch (Subnet 22):** Streamlining Twitter Data Analysis on Subnet 22
 
-Welcome to Smart-Scrape, a cutting-edge tool hosted on the Bittensor network, designed for effective and simplified analysis of Twitter data. This tool is ideal for researchers, marketers, and data analysts who seek to extract insightful information from Twitter with ease.
+Welcome to Desearch, the AI-powered search engine built on Bittensor. Designed for the Bittensor community and general internet users, Desearch delivers an unbiased and verifiable search experience. Through our API, developers and AI builders are empowered to integrate AI search capabilities into their products, with access to metadata from platforms like X, Reddit, Arxiv and general web search.
+
 
 ### Key Features
 
-- **AI-Powered Analysis:** Harnesses artificial intelligence to delve into Twitter data, providing deeper insights into user interactions.
-- **Real-Time Data Access:** Connects directly with Twitter's database for the latest information.
-- **Sentiment Analysis:** Determines the emotional tone of tweets, aiding in understanding public sentiment.
-- **Metadata Analysis:** Dives into tweet details like timestamps and retweet counts for a comprehensive view.
-- **Time-Efficient:** Minimizes manual data sorting, saving valuable research time.
-- **User-Friendly Design:** Suitable for both beginners and experts.
+- **AI-powered Analysis:** Utilizes decentralized AI models to deliver relevant, contextual, and unfiltered search results.
+- **Real-time Access to Diverse Data Sources:** Access metadata from platforms like X, Reddit, Arxiv, and broader web data.
+- **Sentiment and Metadata Analysis:** Determines the emotional tone of social posts while analyzing key metadata to provide a comprehensive understanding of public sentiment.
+- **Time-efficient:** Minimizes manual data sorting, saving valuable research time.
+- **User-friendly Design:** Suitable for both beginners and experts.
 
 ### Advantages
 
-- **Decentralized Platform:** Ensures reliability through its placement on the Bittensor network.
+- **Decentralized Platform:** Built on the Bittensor network, ensures unbiased and highly relevant search results through decentralization.
 - **Customizability:** Tailors data analysis to meet specific user requirements.
-- **Informed Decision-Making:** Facilitates data-driven strategies.
 - **Versatility:** Applicable for diverse research fields, from market analysis to academic studies.
+- **Community-driven Innovation:** Built and optimized by a decentralized network of Bittensor miners, validators, and users for continuous search result enhancement.
 
 ---
 
