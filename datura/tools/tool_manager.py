@@ -4,7 +4,6 @@ import asyncio
 import os
 import json
 import bittensor as bt
-from langchain_openai import ChatOpenAI
 from datura.dataset.tool_return import ResponseOrder
 from datura.tools.base import BaseTool
 from datura.tools.get_tools import (
@@ -14,8 +13,6 @@ from datura.tools.get_tools import (
     find_toolkit_by_name,
 )
 from datura.tools.twitter.twitter_toolkit import TwitterToolkit
-from langchain_core.prompts import PromptTemplate
-from langchain.tools.render import render_text_description
 from datura.protocol import ScraperTextRole
 from openai import AsyncOpenAI
 from datura.tools.response_streamer import ResponseStreamer
@@ -44,7 +41,7 @@ Here is example of JSON array format to return. Keep in mind that this is exampl
     }}
   }},
   {{
-    "action": "Google Search",
+    "action": "Web Search",
     "args": {{
       "query": "What are AI trends?"
     }}
@@ -52,7 +49,7 @@ Here is example of JSON array format to return. Keep in mind that this is exampl
 ]
 """
 
-prompt_template = PromptTemplate.from_template(TEMPLATE)
+# prompt_template = PromptTemplate.from_template(TEMPLATE)
 
 client = AsyncOpenAI(timeout=60.0)
 
@@ -117,10 +114,6 @@ class ToolManager:
         for action in actions:
             tool_name = action["action"]
 
-            if tool_name == "Google Image Search":
-                independent_tools.append(action)
-                continue
-
             toolkit = find_toolkit_by_tool_name(tool_name)
             if toolkit:
                 toolkit_name = toolkit.name
@@ -181,33 +174,15 @@ class ToolManager:
 
     async def detect_tools_to_use(self):
         # If user provided tools manually, use them
-        if self.manual_tool_names:
-            return [
-                {"action": tool_name, "args": self.prompt}
-                for tool_name in self.manual_tool_names
-            ]
+        if not self.manual_tool_names:
+            raise ValueError(
+                "No manual tool names provided. Please specify tools to use."
+            )
 
-        # Otherwise identify tools to use based on prompt
-        llm = ChatOpenAI(model_name="gpt-4o", temperature=0.2)
-        chain = prompt_template | llm
-
-        tools_description = render_text_description(self.all_tools)
-
-        message = chain.invoke(
-            {
-                "input": self.prompt,
-                "tools": tools_description,
-            }
-        )
-
-        actions = []
-
-        try:
-            actions = json.loads(message.content)
-        except json.JSONDecodeError as e:
-            print(e)
-
-        return actions
+        return [
+            {"action": tool_name, "args": self.prompt}
+            for tool_name in self.manual_tool_names
+        ]
 
     async def run_toolkit(self, toolkit_name, actions):
         tasks = [asyncio.create_task(self.run_tool(action)) for action in actions]
@@ -241,7 +216,10 @@ class ToolManager:
         result = None
 
         try:
-            result = await tool_instance.ainvoke(tool_args)
+            if isinstance(tool_args, dict):
+                result = await tool_instance._arun(**tool_args)
+            elif isinstance(tool_args, str):
+                result = await tool_instance._arun(tool_args)
         except Exception as e:
             bt.logging.error(f"Error running tool {tool_name}: {e}")
 
@@ -273,12 +251,12 @@ class ToolManager:
         Generate introduction for that prompt: "{self.prompt}".
         You are going to use {tool_names} to fetch information.
 
-        Something like it: "To effectively address your query, my approach involves a comprehensive analysis and integration of relevant Twitter and Google web search data. Here's how it works:
+        Something like it: "To effectively address your query, my approach involves a comprehensive analysis and integration of relevant Twitter and web search data. Here's how it works:
 
         Question or Topic Analysis: I start by thoroughly examining your question or topic to understand the core of your inquiry or the specific area you're interested in.
 
         Twitter Data Search: Next, I delve into Twitter, seeking out information, discussions, and insights that directly relate to your prompt.
-        Google search: Next, I search Google, seeking out information, discussions, and insights that directly relate to your prompt.
+        Web search: Next, I search web, seeking out information, discussions, and insights that directly relate to your prompt.
 
         Synthesis and Response: After gathering and analyzing this data, I compile my findings and craft a detailed response, which will be presented below"
 
@@ -302,7 +280,7 @@ class ToolManager:
     async def finalize_summary_and_stream(self, information):
         content = f"""
             In <UserPrompt> provided User's prompt (Question).
-            In <Information>, provided highlighted key information and relevant links from Twitter and Google Search.
+            In <Information>, provided highlighted key information and relevant links from Twitter and Web Search.
 
             <UserPrompt>
             {self.prompt}

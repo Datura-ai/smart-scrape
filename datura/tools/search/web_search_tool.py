@@ -1,7 +1,7 @@
 import os
 import json
 import bittensor as bt
-from typing import Type, Optional
+from typing import Type
 from pydantic import BaseModel, Field
 from datura.tools.base import BaseTool
 from starlette.types import Send
@@ -16,34 +16,26 @@ if not SERPAPI_API_KEY:
     )
 
 
-class SerpGoogleNewsSearchSchema(BaseModel):
+class WebSearchSchema(BaseModel):
     query: str = Field(
         ...,
-        description="The search query for Google News search.",
+        description="The search query for web search.",
     )
 
 
-class SerpGoogleNewsSearchTool(BaseTool):
-    search: Optional[SerpAPIWrapper] = None
+class WebSearchTool(BaseTool):
+    name = "Web Search"
 
-    def __init__(self):
-        super().__init__()
-        self.search = SerpAPIWrapper(
-            serpapi_api_key=SERPAPI_API_KEY, params={"engine": "google", "tbm": "nws"}
-        )
-
-    name = "Google News Search"
-
-    slug = "serp_google_news_search"
+    slug = "web_search"
 
     description = (
-        "This tool performs Google searches and extracts relevant snippets and webpages. "
+        "This tool performs web search and extracts relevant snippets and webpages. "
         "It's particularly useful for staying updated with current events and finding quick answers to your queries."
     )
 
-    args_schema: Type[SerpGoogleNewsSearchSchema] = SerpGoogleNewsSearchSchema
+    args_schema: Type[WebSearchSchema] = WebSearchSchema
 
-    tool_id = "d3f5c303-e2a4-4cde-8a6b-cf5b2b6f1204"
+    tool_id = "a66b3b20-d0a2-4b53-a775-197bc492e816"
 
     def _run():
         pass
@@ -52,15 +44,20 @@ class SerpGoogleNewsSearchTool(BaseTool):
         self,
         query: str,
     ):
-        """Search Google News and return the results."""
+        """Search web and return the results."""
+
+        search = SerpAPIWrapper(
+            serpapi_api_key=SERPAPI_API_KEY, params={"engine": "google"}
+        )
+
         try:
-            return await self.search.arun(query)
+            return await search.arun(query)
         except Exception as err:
             if "Invalid API key" in str(err):
                 bt.logging.error(f"SERP API Key is invalid: {err}")
                 return "SERP API Key is invalid"
 
-            bt.logging.error(f"Could not perform SERP Google Search: {err}")
+            bt.logging.error(f"Could not perform SERP Search: {err}")
             return "Could not search Google. Please try again later."
 
     async def send_event(self, send: Send, response_streamer, data):
@@ -68,7 +65,7 @@ class SerpGoogleNewsSearchTool(BaseTool):
             return
 
         search_results_response_body = {
-            "type": "google_search_news",
+            "type": "search",
             "content": data,
         }
 

@@ -53,9 +53,11 @@ def check_config(cls, config: "bt.Config"):
     if not os.path.exists(config.neuron.full_path):
         os.makedirs(config.neuron.full_path, exist_ok=True)
 
-    if not config.neuron.dont_save_events:
-        # Add custom event logger for the events.
-        logger.level("EVENTS", no=38, icon="📝")
+    if not config.neuron.save_events_disabled:
+        # Check if "EVENTS" level already exists before adding it
+        if "EVENTS" not in [level.name for level in logger._core.levels.values()]:
+            logger.level("EVENTS", no=38, icon="📝")
+
         logger.add(
             config.neuron.full_path + "/" + "completions.log",
             rotation=config.neuron.events_retention_size,
@@ -144,15 +146,15 @@ def add_args(cls, parser):
     parser.add_argument(
         "--neuron.run_all_miner_syn_qs_interval",
         type=int,
-        help="Sets the interval, in seconds, for querying all miners with synthetic questions. Set to a positive value to enable. default is 30 minutes.",
-        default=1800,
+        help="Sets the interval, in seconds, for querying all miners with synthetic questions. Set to a positive value to enable. default is 45 minutes.",
+        default=2700,
     )
 
     parser.add_argument(
         "--neuron.update_weight_interval",
         type=int,
-        help="Defines the frequency (in seconds) at which the network's weight parameters are updated. The default interval is 1800 seconds (30 minutes).",
-        default=1800,
+        help="Defines the frequency (in seconds) at which the network's weight parameters are updated. The default interval is 2700 seconds (45 minutes).",
+        default=2700,
     )
 
     parser.add_argument(

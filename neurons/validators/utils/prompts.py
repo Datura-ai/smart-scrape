@@ -18,8 +18,9 @@
 
 import re
 import random
-from typing import List
+from typing import List, Optional
 import json
+from datura.protocol import ResultType, ScraperTextRole
 
 
 class BasePrompt:
@@ -126,14 +127,18 @@ class ScoringPrompt(BasePrompt):
 
 
 class SummaryRelevancePrompt(ScoringPrompt):
-    r"""Scores a summary on a scale from 0 to 10, given a context."""
+    """Scores a summary on a scale from 0 to 10, given a context."""
 
     def __init__(self):
         super().__init__()
         self.template = user_summary_relevance_scoring_template
 
-    def get_system_message(self, tools: List[str]):
-        return get_system_summary_relevance_scoring_template(tools)
+    def get_system_message(
+        self, tools: List[str], result_type: str = None, summary_key: str = None
+    ):
+        return get_system_summary_relevance_scoring_template(
+            tools, result_type, summary_key
+        )
 
 
 class LinkContentPrompt(ScoringPrompt):
@@ -261,32 +266,62 @@ def clean_template(template):
     return "\n".join(cleaned_lines)
 
 
-def get_system_summary_relevance_scoring_template(tools: List[str]):
+def get_system_summary_relevance_scoring_template(
+    tools: List[str], result_type: str = None, summary_key: str = None
+):
     """Generate the system message for the Summary Relevance Scoring prompt based on tools"""
 
-    links_header_name = ""
+    links_header_name = []
     summary_header_name = ""
 
-    if "Twitter Search" in tools:
-        links_header_name = "**Key Tweets**"
-        summary_header_name = "**Twitter Summary**"
-    elif "Hacker News Search" in tools:
-        links_header_name = "**Key News**"
-        summary_header_name = "**Hacker News Summary**"
-    elif "Reddit Search" in tools:
-        links_header_name = "**Key Posts**"
-        summary_header_name = "**Reddit Summary**"
-    else:
-        links_header_name = "**Key Sources**"
-        summary_header_name = "**Search Summary**"
+    if result_type == ResultType.LINKS_WITH_FINAL_SUMMARY:
+        # For final summary, collect all possible link headers but use "summary" as header
+        if "Twitter Search" in tools:
+            links_header_name.append("**Key Tweets**")
+        if "Hacker News Search" in tools:
+            links_header_name.append("**Key News**")
+        if "Reddit Search" in tools:
+            links_header_name.append("**Key Posts**")
+        if any(
+            tool in tools
+            for tool in [
+                "Web Search",
+                "Wikipedia Search",
+                "Youtube Search",
+                "ArXiv Search",
+            ]
+        ):
+            links_header_name.append("**Key Sources**")
+        summary_header_name = "**Summary**"
 
-    answer_rules = f"""
-    - "{links_header_name}" must contain markdown links in the format [Description](URL), otherwise score as SM_SCS_RDD.
+    elif result_type == ResultType.LINKS_WITH_SUMMARIES:
+        # For specific summaries, use header based on summary_key
+        if summary_key == ScraperTextRole.TWITTER_SUMMARY.value:
+            links_header_name = ["**Key Tweets**"]
+            summary_header_name = "**Twitter Summary**"
+        elif summary_key == ScraperTextRole.HACKER_NEWS_SUMMARY.value:
+            links_header_name = ["**Key News**"]
+            summary_header_name = "**Hacker News Summary**"
+        elif summary_key == ScraperTextRole.REDDIT_SUMMARY.value:
+            links_header_name = ["**Key Posts**"]
+            summary_header_name = "**Reddit Summary**"
+        elif summary_key == ScraperTextRole.SEARCH_SUMMARY.value:
+            links_header_name = ["**Key Sources**"]
+            summary_header_name = "**Search Summary**"
+
+    # If no links headers were added, use default
+    if not links_header_name:
+        links_header_name = ["**Key Sources**"]
+
+    answer_rules = []
+    for links_header in links_header_name:
+        rules = f"""
+    - "{links_header}" must contain markdown links in the format [Description](URL), otherwise score as SM_SCS_RDD.
     - "{summary_header_name}" must contain a summary of the content without links, otherwise score as SM_SCS_RDD.
     - "{summary_header_name}" must not contain links in summary, otherwise score as SM_SCS_RDD.
     - If "{summary_header_name}" contains information that is not related to prompt, score as SM_SCS_RDD.
-    - If "{summary_header_name}" contains information related to prompt but information is not present in "{links_header_name}", score as SM_SCS_RDD.
-    """
+    - If "{summary_header_name}" contains information related to prompt but information is not present in "{links_header}", score as SM_SCS_RDD."""
+        answer_rules.append(rules)
 
     template = f"""You are a meticulous Content Quality Analyst, adept at discerning the relevance and accuracy of digital responses with a critical eye. Your expertise lies in evaluating content against stringent criteria, ensuring each piece aligns perfectly with the intended question's context and requirements, as encapsulated within the <Question></Question> tags.
 
@@ -296,7 +331,7 @@ def get_system_summary_relevance_scoring_template(tools: List[str]):
     - SM_SCS_GRY: for answers that vary in correctness, relevance, and the inclusion of links, with higher scores reflecting better quality and more relevant evidence.
     - SM_SCS_GRN for answers that are not only accurate and relevant but also well-supported by links, fully addressing the question's demands as specified in the <Question></Question> tags.
 
-    Summary Structure Rules:{answer_rules}
+    Summary Structure Rules:{"".join(answer_rules)}
 
     Important Rules:
     - Accuracy and relevance to the question, as defined by the content within the <Question></Question> tags.

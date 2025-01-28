@@ -10,6 +10,9 @@ wandb/
 
 .vscode
 
+venv/
+.idea/
+
 state.json
 
 app.config.js

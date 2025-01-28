@@ -2,7 +2,6 @@ from typing import Optional, Type
 import json
 
 import bittensor as bt
-from langchain.callbacks.manager import CallbackManagerForToolRun
 from pydantic import BaseModel, Field
 
 from datura.tools.search.wikipedia_api_wrapper import WikipediaAPIWrapper
@@ -34,8 +33,8 @@ class WikipediaSearchTool(BaseTool):
 
     tool_id = "eb161647-b858-4863-801f-ba7d2e380601"
 
-    def _run(
-        self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
+    async def _arun(
+        self, query: str
     ) -> str:
         """Search Wikipedia and return the results."""
         wikipedia = WikipediaAPIWrapper()
@@ -65,5 +64,5 @@ class WikipediaSearchTool(BaseTool):
 
 if __name__ == "__main__":
     tool = WikipediaSearchTool()
-    result = tool._run("george washington")
+    result = tool._arun("george washington")
     print(result)

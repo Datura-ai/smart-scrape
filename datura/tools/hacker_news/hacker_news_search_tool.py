@@ -1,8 +1,5 @@
 from typing import Optional, Type
-
-from langchain.callbacks.manager import CallbackManagerForToolRun
 from pydantic import BaseModel, Field
-
 from datura.tools.search.serp_advanced_google_search import SerpAdvancedGoogleSearch
 from datura.tools.base import BaseTool
 import json
@@ -20,23 +17,14 @@ class HackerNewsSearchTool(BaseTool):
     """Tool for the HackerNews API."""
 
     name = "Hacker News Search"
-
     slug = "hacker-news-search"
-
     description = (
         "A wrapper around Hacker News. Useful for searching Hacker News for posts."
     )
-
     args_schema: Type[HackerNewsSearchSchema] = HackerNewsSearchSchema
-
     tool_id = "b6cf5471-2f58-4a86-b0de-b5b3653c086f"
 
-    def _run():
-        pass
-
-    async def _arun(
-        self, query: str, run_manager: Optional[CallbackManagerForToolRun] = None
-    ) -> str:
+    async def _arun(self, query: str) -> str:
         """Search Hacker News and return the results."""
         search = SerpAdvancedGoogleSearch(
             site="news.ycombinator.com",
@@ -69,4 +57,4 @@ class HackerNewsSearchTool(BaseTool):
             }
         )
 
-        bt.logging.info("Wikipedia search results data sent")
+        bt.logging.info("Hacker News search results data sent")

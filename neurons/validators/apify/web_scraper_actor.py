@@ -37,7 +37,62 @@ class WebScraperActor:
                 "ignoreSslErrors": False,
                 "injectJQuery": True,
                 "keepUrlFragments": False,
-                "pageFunction": "async function pageFunction(context) {\n  const $ = context.jQuery;\n  const pageTitle = $('title').first().text();\n  let description = $('meta[name=\"description\"]').attr('content') || '';\n\n  if (!description) {\n      description = $('meta[property=\"og:description\"]').attr('content') || '';\n  }\n\n  const isRedditUrl = context.request.url.includes('reddit.com');\n  \n  if (isRedditUrl) {\n    // Extract content from the first p in the first div.text-neutral-content\n    description = $('div.text-neutral-content').first().find('p').map(function() {\n      return $(this).text().trim();\n    }).get().join('');\n  }\n\n  return {\n    url: context.request.url,\n    pageTitle,\n    description,\n  };\n}",
+                "pageFunction": """async function pageFunction(context) {
+    const $ = context.jQuery;
+    let pageTitle = $('title').first().text().trim();
+    let description = $('meta[name="description"]').attr('content') || '';
+
+    if (!description) {
+        description = $('meta[property="og:description"]').attr('content') || '';
+    }
+
+    const isRedditUrl = context.request.url.includes('reddit.com');
+    const isWikipediaUrl = context.request.url.includes('wikipedia.org');
+    const isHackerNewsUrl = context.request.url.includes('news.ycombinator.com');
+
+    if (isRedditUrl) {
+        // Extract content from the first p in the first div.text-neutral-content
+        description = $('div.text-neutral-content').first().find('p').map(function() {
+            return $(this).text().trim();
+        }).get().join('');
+    } else if (isWikipediaUrl) {
+    // Extract text from the first <p> that isn't empty and clean it
+    description = $('p').filter(function() {
+        return $(this).text().trim().length > 0;
+    }).first().text()
+        .replace(/\[\d+\]/g, '')     // Remove citation numbers like [33]
+        .replace(/\s+/g, ' ')        // Normalize whitespace
+        .trim();                     // Initial trim
+    
+    // Explicit period removal as a separate step
+    if (description.endsWith('.')) {
+        description = description.slice(0, -1);
+    }
+    
+    // Final trim to ensure no extra whitespace
+    description = description.trim();
+    
+    } else if (isHackerNewsUrl) {
+    // Select the first comment div with classes 'commtext' and 'c00'
+    description = $('div.commtext.c00').first()
+        // Find all <p> tags within this div and replace them with their text content
+        .find('p').replaceWith(function() {
+            return $(this).text();
+        })
+        // Return to the original selection (div.commtext.c00)
+        .end()
+        // Extract the combined text content and trim any whitespace
+        .text().trim();
+}
+
+    return {
+        url: context.request.url,
+        pageTitle,
+        description,
+    };
+}""",
+
+
                 "postNavigationHooks": '// We need to return array of (possibly async) functions here.\n// The functions accept a single argument: the "crawlingContext" object.\n[\n    async (crawlingContext) => {\n        // ...\n    },\n]',
                 "preNavigationHooks": '// We need to return array of (possibly async) functions here.\n// The functions accept two arguments: the "crawlingContext" object\n// and "gotoOptions".\n[\n    async (crawlingContext, gotoOptions) => {\n        // ...\n    },\n]\n',
                 "proxyConfiguration": {

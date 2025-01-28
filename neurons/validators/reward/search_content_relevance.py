@@ -247,10 +247,8 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 # at least miners should provide two search links
                 return 0
 
-            # Google search results are separate because they include links with different domains from search
-            google_search_results = str(response.search_results) + str(
-                response.google_news_search_results
-            )
+            # Web search results are separate because they include links with different domains from search
+            web_search_results = str(response.search_results)
 
             domain_to_search_result = {
                 "arxiv.org": response.arxiv_search_results,
@@ -275,13 +273,13 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 if domain in domain_to_search_result:
                     if (
                         url in str(domain_to_search_result[domain])
-                        or url in google_search_results
+                        or url in web_search_results
                     ):
                         link_scores.append(1)
                     else:
                         link_scores.append(0)
                 else:
-                    link_scores.append(1 if url in google_search_results else 0)
+                    link_scores.append(1 if url in web_search_results else 0)
 
             if link_scores:
                 return sum(link_scores) / len(link_scores)
@@ -347,6 +345,16 @@ class WebSearchContentRelevanceModel(BaseRewardModel):
                 scores, responses, val_score_responses_list, uids
             ):
                 uid = uid_tensor.item()
+
+                #  If only the Twitter tool is used, automatically assign reward=1 and skip normal scoring
+                if len(response.tools) == 1 and "Twitter Search" in response.tools:
+                    reward_event = BaseRewardEvent()
+                    reward_event.reward = 1.0
+                    reward_events.append(reward_event)
+                    # You might append an empty dict or skip for the grouped responses
+                    grouped_val_score_responses.append({})
+                    continue
+
                 reward_event = BaseRewardEvent()
                 reward_event.reward = 0
 

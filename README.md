@@ -31,7 +31,7 @@ Welcome to Smart-Scrape, a cutting-edge tool hosted on the Bittensor network, de
 
 ## Installation
 
-**Requirements:** Python 3.8 or higher
+**Requirements:** Python 3.10 or higher
 
 1. Clone the repository:
    ```bash

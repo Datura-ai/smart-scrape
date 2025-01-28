@@ -14,8 +14,9 @@ def check_config(cls, config: "bt.Config"):
     full_path = os.path.expanduser(
         "{}/{}/{}/{}".format(
             config.logging.logging_dir,
-            config.wallet.get("name", bt.defaults.wallet.name),
-            config.wallet.get("hotkey", bt.defaults.wallet.hotkey),
+            config.wallet.get("name", bt.DEFAULTS['wallet']['name']),
+            config.wallet.get("hotkey", bt.DEFAULTS['wallet']['hotkey']),
+
             config.miner.name,
         )
     )
