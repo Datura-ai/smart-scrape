@@ -496,8 +496,6 @@ class AdvancedScraperValidator:
                 async_responses, uids, start_time, max_execution_time
             )
 
-            bt.logging.debug(f"Async responses: {async_responses}")
-
             # Store final synapses for scoring later
             self.synthetic_history.append(
                 (event, tasks, final_synapses, uids, start_time)

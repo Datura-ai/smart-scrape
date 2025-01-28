@@ -632,6 +632,13 @@ class TwitterSearchSynapse(Synapse):
         allow_mutation=False,
     )
 
+    count: int = pydantic.Field(
+        20,
+        title="Count",
+        description="Count of tweets to fetch.",
+        allow_mutation=False,
+    )
+
     start_date: Optional[str] = pydantic.Field(
         None,
         title="Start Date",
