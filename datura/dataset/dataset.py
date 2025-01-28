@@ -1440,24 +1440,22 @@ class QuestionsDataset:
             return random_dataset.next()
 
     async def generate_basic_question_with_openai(self):
+        try:
+            prompt = (
+                "Generate a two-word phrase about tech, crypto, ai, blockchain, bittensor that can be searched on Twitter."
+                "It must be exactly two words, no extra punctuation."
+            )
 
-        # Prompt to OpenAI
-        prompt = (
-            "Generate a *single English word* that might be searched on Twitter. "
-            "It must be exactly one word, no extra punctuation."
-        )
+            openai_response = await call_openai(
+                messages=[{"role": "system", "content": prompt}],
+                temperature=0.3,
+                model="gpt-4o-mini",
+                seed=None,
+            )
 
-        openai_response = await call_openai(
-            messages=[{"role": "system", "content": prompt}],
-            temperature=0.3,
-            model="gpt-4o-mini",
-            seed=None,
-        )
+            phrase = openai_response.strip()
 
-        # Single word from OpenAI
-        single_word = openai_response.strip().split()[0]
-
-        # (Optional) random user
-        random_user = random.choice(["bitcoin", "etherum", "dogecoin", "solana"])
-
-        return f"from:{random_user} {single_word}"
+            return phrase
+        except Exception as e:
+            bt.logging.error(f"Failed to generate basic question with OpenAI: {e}")
+            return "bittensor news"
