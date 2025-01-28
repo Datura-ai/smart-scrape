@@ -3,8 +3,8 @@ from datura.protocol import (
     TwitterSearchSynapse,
     TwitterIDSearchSynapse,
     TwitterURLsSearchSynapse,
-    Model,
     TwitterScraperTweet,
+    TwitterScraperUser,
 )
 from pydantic import ValidationError
 
@@ -25,7 +25,7 @@ class TwitterSearchMiner:
         """
         try:
             mock_tweet = TwitterScraperTweet(
-                user={"username": "mock_user", "verified": True},
+                user=TwitterScraperUser(id="id", username="mock_user", verified=True),
                 id="123456789",
                 text="This is a mock tweet for testing purposes.",
                 reply_count=10,

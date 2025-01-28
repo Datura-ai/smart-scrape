@@ -138,16 +138,16 @@ class StreamMiner(ABC):
             blacklist_fn=self.blacklist_smart_scraper,
         ).attach(
             forward_fn=self._twitter_search,
-            blacklist_fn=self.blacklist_smart_scraper,
+            blacklist_fn=self.blacklist_twitter_search,
         ).attach(
             forward_fn=self._twitter_id_search,
-            blacklist_fn=self.blacklist_smart_scraper,
+            blacklist_fn=self.blacklist_twitter_id_search,
         ).attach(
             forward_fn=self.twitter_urls_search,
-            blacklist_fn=self.blacklist_smart_scraper,
+            blacklist_fn=self.blacklist_twitter_urls_search,
         ).attach(
             forward_fn=self.web_search,
-            blacklist_fn=self.blacklist_smart_scraper,
+            blacklist_fn=self.blacklist_web_search,
         )
 
         bt.logging.info(f"Axon created: {self.axon}")
@@ -263,6 +263,40 @@ class StreamMiner(ABC):
     def blacklist_smart_scraper(
         self, synapse: ScraperStreamingSynapse
     ) -> Tuple[bool, str]:
+        blacklist = self.base_blacklist(
+            synapse, datura.TWITTER_SCRAPPER_BLACKLIST_STAKE
+        )
+        bt.logging.info(blacklist[1])
+        return blacklist
+
+    def blacklist_twitter_search(
+        self, synapse: TwitterSearchSynapse
+    ) -> Tuple[bool, str]:
+        blacklist = self.base_blacklist(
+            synapse, datura.TWITTER_SCRAPPER_BLACKLIST_STAKE
+        )
+        bt.logging.info(blacklist[1])
+        return blacklist
+
+    def blacklist_twitter_id_search(
+        self, synapse: TwitterIDSearchSynapse
+    ) -> Tuple[bool, str]:
+        blacklist = self.base_blacklist(
+            synapse, datura.TWITTER_SCRAPPER_BLACKLIST_STAKE
+        )
+        bt.logging.info(blacklist[1])
+        return blacklist
+
+    def blacklist_twitter_urls_search(
+        self, synapse: TwitterURLsSearchSynapse
+    ) -> Tuple[bool, str]:
+        blacklist = self.base_blacklist(
+            synapse, datura.TWITTER_SCRAPPER_BLACKLIST_STAKE
+        )
+        bt.logging.info(blacklist[1])
+        return blacklist
+
+    def blacklist_web_search(self, synapse: WebSearchSynapse) -> Tuple[bool, str]:
         blacklist = self.base_blacklist(
             synapse, datura.TWITTER_SCRAPPER_BLACKLIST_STAKE
         )
