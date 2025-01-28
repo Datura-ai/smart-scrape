@@ -1,6 +1,6 @@
 <div align="center">
 
-# **Bittensor Desearch (Subnet 22)**
+# **Desearch (Subnet 22) on Bittensor**
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
 
 </div>
