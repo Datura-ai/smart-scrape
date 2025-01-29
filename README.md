@@ -7,7 +7,7 @@
 
 ## Introduction
 
-**Bittensor Desearch (Subnet 22):** Streamlining Twitter Data Analysis on Subnet 22
+**Bittensor Desearch (Subnet 22):** 
 
 Welcome to Desearch, the AI-powered search engine built on Bittensor. Designed for the Bittensor community and general internet users, Desearch delivers an unbiased and verifiable search experience. Through our API, developers and AI builders are empowered to integrate AI search capabilities into their products, with access to metadata from platforms like X, Reddit, Arxiv and general web search.
 
