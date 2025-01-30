@@ -207,7 +207,6 @@ async def handle_search_links(
     access_key: str | None,
     expected_access_key: str,
     tools: List[str],
-    is_collect_final_synapses: bool = True,  # Ensure consistent data collection
 ):
     if access_key != expected_access_key:
         raise HTTPException(status_code=401, detail="Invalid access key")
@@ -219,7 +218,7 @@ async def handle_search_links(
         async for item in neu.advanced_scraper_validator.organic(
             query,
             body.model,
-            is_collect_final_synapses=is_collect_final_synapses,
+            is_collect_final_synapses=True,
             result_type=ResultType.ONLY_LINKS,
         ):
             synapses.append(item)

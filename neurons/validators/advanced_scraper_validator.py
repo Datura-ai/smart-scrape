@@ -543,7 +543,7 @@ class AdvancedScraperValidator:
         random_uid=None,
         specified_uids=None,
         result_type: Optional[ResultType] = ResultType.LINKS_WITH_SUMMARIES,
-        is_collect_final_synapses: bool = True,  # Flag to collect final synapses
+        is_collect_final_synapses: bool = False,  # Flag to collect final synapses
     ):
         """Receives question from user and returns the response from the miners."""
         max_execution_time = get_max_execution_time(model)
@@ -588,25 +588,25 @@ class AdvancedScraperValidator:
                 result_type=result_type,
             )
 
-            if is_collect_final_synapses:
-                # Directly collect and yield final synapses
+            final_synapses = []
+
+            if specified_uids or is_collect_final_synapses:
+                # Collect specified uids from responses and score
                 final_synapses = await collect_final_synapses(
                     async_responses, uids, start_time, max_execution_time
                 )
-                for synapse in final_synapses:
-                    yield synapse
-            else:
-                # Stream results
-                if not specified_uids:
-                    for response in async_responses:
-                        async for value in response:
-                            yield value
-                else:
-                    final_synapses = await collect_final_synapses(
-                        async_responses, uids, start_time, max_execution_time
-                    )
+
+                if is_collect_final_synapses:
                     for synapse in final_synapses:
                         yield synapse
+            else:
+                # Stream random miner to the UI
+                for response in async_responses:
+                    async for value in response:
+                        if isinstance(value, bt.Synapse):
+                            final_synapses.append(value)
+                        else:
+                            yield value
 
             async def process_and_score_responses(uids):
                 if is_interval_query:
