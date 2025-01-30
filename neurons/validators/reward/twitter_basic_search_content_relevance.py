@@ -29,8 +29,6 @@ from datura.protocol import (
     TwitterIDSearchSynapse,
     TwitterURLsSearchSynapse,
 )
-from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
-from datura.services.twitter_api_wrapper import TwitterAPIClient
 from neurons.validators.reward.embedding import Embedder
 from datura.services.twitter_utils import TwitterUtils
 from datura.utils import (
@@ -43,14 +41,12 @@ from datura.utils import (
 import json
 from datetime import datetime
 import pytz
-from datetime import datetime
-import pytz
 
 APIFY_LINK_SCRAPE_AMOUNT = 3
 SIMILARITY_THRESHOLD = 80.0
 
 # Only a percentage-based threshold:
-INT_DIFF_PERCENT = 0.01  # 1% difference allowed
+INT_DIFF_PERCENT = 0.30  # 30% difference allowed
 
 embedder = Embedder()
 
@@ -70,7 +66,6 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
         return clean_text(text)
 
     async def process_tweets(self, responses: List[TwitterSearchSynapse]):
-
         default_val_score_responses = [{} for _ in responses]
 
         try:
@@ -83,6 +78,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                 tweet_urls = [
                     tweet["url"] for tweet in response.results if "url" in tweet
                 ]
+
                 if tweet_urls:
                     sample_links = random.sample(
                         tweet_urls,
@@ -175,7 +171,6 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
             return False
 
     def check_tweet_content(self, response: bt.Synapse) -> float:
-
         try:
             # 1) Gather miner & validator tweets
             miner_data_list = response.results
@@ -306,7 +301,6 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
     async def get_rewards(
         self, responses: List[TwitterSearchSynapse], uids: List[int]
     ) -> List[BaseRewardEvent]:
-
         try:
             # Step 1: fetch and fill validator_tweets
             _ = await self.process_tweets(responses=responses)
@@ -349,7 +343,6 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
             bt.logging.info(json.dumps(non_zero_scores))
 
             return reward_events, grouped_val_score_responses
-
         except Exception as e:
             tb_str = traceback.format_exception(type(e), e, e.__traceback__)
             bt.logging.error("\n".join(tb_str))
