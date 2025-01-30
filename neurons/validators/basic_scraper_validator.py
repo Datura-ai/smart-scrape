@@ -721,10 +721,12 @@ class BasicScraperValidator:
         """
         Perform a Twitter search using a specific tweet ID, then compute rewards and save the query.
         """
+
         try:
+            start_time = time.time()
+
             task_name = "twitter id search"
 
-            # 1) Create a search task
             task = SearchTask(
                 base_text=f"Fetch tweet with ID: {tweet_id}",
                 task_name=task_name,
@@ -738,29 +740,28 @@ class BasicScraperValidator:
 
             bt.logging.debug("run_task", task_name)
 
-            # 2) Retrieve a random UID and axon
             uids = await self.neuron.get_uids(
                 strategy=QUERY_MINERS.RANDOM,
                 is_only_allowed_miner=False,
                 specified_uids=None,
             )
+
             if not uids:
                 raise StopAsyncIteration("No available UIDs.")
+
             uid = uids[0]
 
             axon = self.neuron.metagraph.axons[uid]
-            max_execution_time = self.max_execution_time
 
-            # 3) Instantiate TwitterIDSearchSynapse
             synapse = TwitterIDSearchSynapse(
                 id=tweet_id,
-                max_execution_time=max_execution_time,
+                max_execution_time=self.max_execution_time,
                 validator_tweets=[],
                 results=[],
             )
 
-            # 4) Make the call
-            timeout = max_execution_time + 5
+            timeout = self.max_execution_time + 5
+
             synapse: TwitterIDSearchSynapse = await self.neuron.dendrite.call(
                 target_axon=axon,
                 synapse=synapse,
@@ -773,20 +774,10 @@ class BasicScraperValidator:
                 "names": [task.task_name],
                 "task_types": [task.task_type],
             }
-            final_responses = []
-            if synapse and synapse.dendrite.status_code == 200:
-                final_responses.append(synapse)
-            else:
-                bt.logging.warning(
-                    f"Invalid response for UID: {synapse.axon.hotkey if synapse else 'Unknown'}"
-                )
 
-            # 6) Compute rewards and save queries
+            final_responses = [synapse]
+
             async def process_and_score_responses(uids_tensor):
-                # If you have a time measurement, set it here
-                start_time = time.time()
-
-                # (a) Compute rewards/penalties
                 _, _, _, _, original_rewards = await self.compute_rewards_and_penalties(
                     event=event,
                     tasks=[task],
@@ -796,7 +787,6 @@ class BasicScraperValidator:
                     is_synthetic=False,
                 )
 
-                # (b) Save organic queries
                 self.basic_organic_query_state.save_organic_queries(
                     final_responses, uids_tensor, original_rewards
                 )
@@ -819,7 +809,10 @@ class BasicScraperValidator:
         """
         Perform a Twitter search using multiple tweet URLs, then compute rewards and save the query.
         """
+
         try:
+            start_time = time.time()
+
             task_name = "twitter urls search"
 
             if not len(self.neuron.available_uids):
@@ -834,14 +827,14 @@ class BasicScraperValidator:
                 is_only_allowed_miner=False,
                 specified_uids=None,
             )
+
             if not uids:
                 raise StopAsyncIteration("No available UIDs.")
+
             uid = uids[0]
 
             axon = self.neuron.metagraph.axons[uid]
-            max_execution_time = self.max_execution_time
 
-            # 2) Create a search task (optional, for logging and scoring)
             task = SearchTask(
                 base_text=f"Fetch tweets for URLs: {urls}",
                 task_name=task_name,
@@ -849,16 +842,15 @@ class BasicScraperValidator:
                 criteria=[],
             )
 
-            # 3) Instantiate TwitterURLsSearchSynapse
             synapse = TwitterURLsSearchSynapse(
                 urls=urls,
-                max_execution_time=max_execution_time,
+                max_execution_time=self.max_execution_time,
                 validator_tweets=[],
                 results=[],
             )
 
-            # 4) Make the call
-            timeout = max_execution_time + 5
+            timeout = self.max_execution_time + 5
+
             synapse: TwitterURLsSearchSynapse = await self.neuron.dendrite.call(
                 target_axon=axon,
                 synapse=synapse,
@@ -871,20 +863,10 @@ class BasicScraperValidator:
                 "names": [task.task_name],
                 "task_types": [task.task_type],
             }
-            final_responses = []
-            if synapse and synapse.dendrite.status_code == 200:
-                final_responses.append(synapse)
-            else:
-                bt.logging.warning(
-                    f"Invalid response for UID: {synapse.axon.hotkey if synapse else 'Unknown'}"
-                )
 
-            # 6) Compute rewards and save queries
+            final_responses = [synapse]
+
             async def process_and_score_responses(uids_tensor):
-                # If you have a time measurement, set it here
-                start_time = time.time()
-
-                # (a) Compute rewards/penalties
                 _, _, _, _, original_rewards = await self.compute_rewards_and_penalties(
                     event=event,
                     tasks=[task],
@@ -894,7 +876,6 @@ class BasicScraperValidator:
                     is_synthetic=False,
                 )
 
-                # (b) Save organic queries
                 self.basic_organic_query_state.save_organic_queries(
                     final_responses, uids_tensor, original_rewards
                 )
@@ -902,9 +883,7 @@ class BasicScraperValidator:
             uids_tensor = torch.tensor([uid], dtype=torch.int)
             asyncio.create_task(process_and_score_responses(uids_tensor))
 
-            # 7) Return the fetched tweets
             return synapse.results
-
         except Exception as e:
             bt.logging.error(f"Error in URLs search: {e}")
             raise e
