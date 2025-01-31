@@ -507,7 +507,7 @@ class BasicScraperValidator:
 
             # Process responses and collect successful ones
             for response in async_responses:
-                if response and response.dendrite.status_code == 200:
+                if response:
                     final_responses.append(response)
                     yield response
                 else:
