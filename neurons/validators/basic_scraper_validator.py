@@ -193,7 +193,7 @@ class BasicScraperValidator:
 
             organic_penalties = []
 
-            bt.logging.debug(f"Received responses: {responses}")
+            bt.logging.trace(f"Received responses: {responses}")
 
             if is_synthetic:
                 penalized_uids = []
