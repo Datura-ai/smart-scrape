@@ -1467,4 +1467,3 @@ class QuestionsDataset:
         except Exception as e:
             bt.logging.error(f"Failed to generate basic question with OpenAI: {e}")
             return "bittensor news"
-

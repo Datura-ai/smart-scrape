@@ -891,4 +891,3 @@ class BasicScraperValidator:
         except Exception as e:
             bt.logging.error(f"Error in URLs search: {e}")
             raise e
-
