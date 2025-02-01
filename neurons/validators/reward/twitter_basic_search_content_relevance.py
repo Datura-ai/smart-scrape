@@ -176,9 +176,6 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
         return is_allowed
 
     def compare_media(self, media1: List[dict], media2: List[dict]) -> bool:
-        if not media1 or not media2:
-            return False
-
         if len(media1) != len(media2):
             return False
 
@@ -189,9 +186,6 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
         )
 
     def compare_content(self, text1: str, text2: str) -> bool:
-        if not text1 or not text2:
-            return False
-
         return format_text_for_match(text1) == format_text_for_match(text2)
 
     def check_tweet_content(
