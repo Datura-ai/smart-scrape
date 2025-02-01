@@ -364,7 +364,7 @@ class BasicScraperValidator:
             # question generation
             prompts = await asyncio.gather(
                 *[
-                    QuestionsDataset.generate_basic_question_with_openai(self)
+                    QuestionsDataset().generate_basic_question_with_openai()
                     for _ in range(len(self.neuron.available_uids))
                 ]
             )
