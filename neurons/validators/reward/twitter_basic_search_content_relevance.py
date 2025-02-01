@@ -18,37 +18,66 @@
 
 import traceback
 import time
-import bittensor as bt
 import random
 from typing import List, Optional
+import json
+from datetime import datetime
+import pytz
+import bittensor as bt
 from .config import RewardModelType
 from .reward import BaseRewardModel, BaseRewardEvent
 from datura.protocol import (
-    TwitterScraperTweet,
     TwitterSearchSynapse,
     TwitterIDSearchSynapse,
     TwitterURLsSearchSynapse,
 )
-from neurons.validators.reward.embedding import Embedder
 from datura.services.twitter_utils import TwitterUtils
 from datura.utils import (
     clean_text,
     format_text_for_match,
     is_valid_tweet,
     scrape_tweets_with_retries,
-    calculate_similarity_percentage,
 )
-import json
-from datetime import datetime
-import pytz
 
 APIFY_LINK_SCRAPE_AMOUNT = 3
-SIMILARITY_THRESHOLD = 80.0
 
 # Only a percentage-based threshold:
-INT_DIFF_PERCENT = 0.30  # 30% difference allowed
+INT_DIFF_PERCENT = 0.60  # 60% difference allowed
 
-embedder = Embedder()
+
+TWEET_EXACT_MATCH_FIELDS = {
+    "id",
+    "url",
+    "created_at",
+    "is_quote_tweet",
+    "is_retweet",
+}
+
+USER_EXACT_FIELDS = {
+    "id",
+    "url",
+    "name",
+    "username",
+    "created_at",
+    "description",
+    "profile_image_url",
+    "verified",
+}
+
+TWEET_NUMERIC_FIELDS = {
+    "reply_count",
+    "retweet_count",
+    "like_count",
+    "quote_count",
+    "bookmark_count",
+}
+
+USER_NUMERIC_FIELDS = {
+    "favourites_count",
+    "followers_count",
+    "media_count",
+    "statuses_count",
+}
 
 
 class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
@@ -123,54 +152,48 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
             bt.logging.error(f"Error in process_tweets: {str(e)}")
             return default_val_score_responses
 
-    def _text_similarity(self, text1: str, text2: str) -> bool:
-        # Clean each text first
-        clean1 = format_text_for_match(text1)
-        clean2 = format_text_for_match(text2)
-
-        emb1 = embedder.embed_text(clean1)
-        emb2 = embedder.embed_text(clean2)
-
-        sim_percent = calculate_similarity_percentage(emb1, emb2)
-        return sim_percent >= SIMILARITY_THRESHOLD
-
-    def _int_filter_difference_checker(
-        self,
-        miner_value: Optional[int],
-        validator_value: Optional[int],
-        ratio: float = INT_DIFF_PERCENT,
+    def compare_numeric(
+        self, field: str, val1: Optional[int], val2: Optional[int]
     ) -> bool:
         """
-        Returns True if the absolute difference between miner_value and validator_value
+        Returns True if the absolute difference between numeric values
         is within the specified percentage threshold of the validator_value.
-        Example: If ratio=0.01 (1%) and validator_value=100, allowed_diff=1 (±1).
         """
-        if miner_value is None or validator_value is None:
+
+        if val1 is None or val2 is None:
             return False
 
-        # Calculate the allowed difference from the validator_value (ground truth)
-        allowed_diff = int(validator_value * ratio)
-        return abs(miner_value - validator_value) <= allowed_diff
+        allowed_diff = max(int(val2 * INT_DIFF_PERCENT), 10)
 
-    def _compare_dates(self, miner_dt_str: str, validator_dt_str: str) -> bool:
-        try:
-            dt_validator = (
-                datetime.strptime(validator_dt_str, "%a %b %d %H:%M:%S %z %Y")
-                .astimezone(pytz.UTC)
-                .replace(second=0, microsecond=0)
+        diff = abs(val1 - val2)
+        is_allowed = diff <= allowed_diff
+
+        if not is_allowed:
+            bt.logging.debug(
+                f"{field} value mismatch: {val1} vs {val2}, allowed: {allowed_diff}, diff: {diff}"
             )
-            dt_miner = (
-                datetime.strptime(miner_dt_str, "%a %b %d %H:%M:%S %z %Y")
-                .astimezone(pytz.UTC)
-                .replace(second=0, microsecond=0)
-            )
-            # Compare exact minute-level match in UTC
-            return dt_validator == dt_miner
-        except Exception as e:
-            bt.logging.warning(f"Date parsing error: {str(e)}")
+
+        return is_allowed
+
+    def compare_media(self, media1: List[dict], media2: List[dict]) -> bool:
+        if len(media1) != len(media2):
             return False
 
-    def check_tweet_content(self, response: bt.Synapse) -> float:
+        return all(
+            m1.get("type") == m2.get("type")
+            and m1.get("media_url") == m2.get("media_url")
+            for m1, m2 in zip(media1, media2)
+        )
+
+    def compare_content(self, text1: str, text2: str) -> bool:
+        return format_text_for_match(text1) == format_text_for_match(text2)
+
+    def check_tweet_content(
+        self,
+        response: (
+            TwitterSearchSynapse | TwitterIDSearchSynapse | TwitterURLsSearchSynapse
+        ),
+    ) -> float:
         try:
             # 1) Gather miner & validator tweets
             miner_data_list = response.results
@@ -178,6 +201,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
 
             # 2) Build map of miner tweets by ID
             miner_map = {}
+
             for tweet_dict in miner_data_list:
                 if "id" in tweet_dict:
                     miner_map[tweet_dict["id"]] = tweet_dict
@@ -186,19 +210,16 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
 
             # 3) Iterate over validator tweets
             for val_tweet in validator_tweets:
-                current_score = 0
-
                 # Match miner tweet by ID
                 if not val_tweet.id or val_tweet.id not in miner_map:
                     tweet_scores.append(0)
                     continue
 
-                miner_tweet_data = miner_map[val_tweet.id]
-                if not is_valid_tweet(miner_tweet_data):
+                miner_tweet = miner_map[val_tweet.id]
+
+                if not is_valid_tweet(miner_tweet):
                     tweet_scores.append(0)
                     continue
-
-                miner_tweet = TwitterScraperTweet(**miner_tweet_data)
 
                 # b) If it's TwitterIDSearchSynapse => confirm val_tweet.id == response.id
                 if isinstance(response, TwitterIDSearchSynapse):
@@ -214,6 +235,21 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
 
                 # d) If it's TwitterSearchSynapse => check min_likes/min_retweets/min_replies
                 if isinstance(response, TwitterSearchSynapse):
+                    query_words = response.query.strip().lower().split(" ")
+
+                    texts = [
+                        val_tweet.text.lower(),
+                        val_tweet.user.username.lower(),
+                        val_tweet.user.name.lower(),
+                    ]
+
+                    # Check any of query words to be in tweet text
+                    if response.query and not any(
+                        word in text for word in query_words for text in texts
+                    ):
+                        tweet_scores.append(0)
+                        continue
+
                     if response.min_likes is not None:
                         if (
                             val_tweet.like_count is None
@@ -221,6 +257,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                         ):
                             tweet_scores.append(0)
                             continue
+
                     if response.min_retweets is not None:
                         if (
                             val_tweet.retweet_count is None
@@ -228,6 +265,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                         ):
                             tweet_scores.append(0)
                             continue
+
                     if response.min_replies is not None:
                         if (
                             val_tweet.reply_count is None
@@ -236,60 +274,110 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                             tweet_scores.append(0)
                             continue
 
-                miner_text = (miner_tweet.text).strip()
-                validator_text = (val_tweet.text).strip()
-                if not self._text_similarity(miner_text, validator_text):
+                    if response.user is not None:
+                        if response.user != val_tweet.user.username:
+                            tweet_scores.append(0)
+                            continue
+
+                    if response.verified is not None:
+                        if response.verified != val_tweet.user.verified:
+                            tweet_scores.append(0)
+                            continue
+
+                    if response.is_quote is not None:
+                        if response.is_quote != val_tweet.is_quote_tweet:
+                            tweet_scores.append(0)
+                            continue
+
+                    if response.is_image is not None:
+                        has_image_media = any(
+                            m.get("type") == "photo" for m in val_tweet.media
+                        )
+
+                        if response.is_image != has_image_media:
+                            tweet_scores.append(0)
+                            continue
+
+                    if response.is_video is not None:
+                        has_video_media = any(
+                            m.get("type") == "video" for m in val_tweet.media
+                        )
+
+                        if response.is_video != has_video_media:
+                            tweet_scores.append(0)
+                            continue
+
+                    tweet_date = datetime.strptime(
+                        val_tweet.created_at, "%a %b %d %H:%M:%S %z %Y"
+                    ).replace(tzinfo=pytz.UTC)
+
+                    if response.start_date is not None:
+                        start_date = datetime.strptime(
+                            response.start_date, "%Y-%m-%d"
+                        ).replace(tzinfo=pytz.UTC)
+
+                        if tweet_date < start_date:
+                            tweet_scores.append(0)
+                            continue
+
+                    if response.end_date is not None:
+                        end_date = datetime.strptime(
+                            response.end_date, "%Y-%m-%d"
+                        ).replace(tzinfo=pytz.UTC)
+
+                        if tweet_date > end_date:
+                            tweet_scores.append(0)
+                            continue
+
+                val_tweet_dict = val_tweet.model_dump()
+
+                # # Compare tweet basic fields
+                if any(
+                    miner_tweet.get(f) != val_tweet_dict.get(f)
+                    for f in TWEET_EXACT_MATCH_FIELDS
+                ):
                     tweet_scores.append(0)
                     continue
 
-                # Compare numeric fields with difference allowance
-                if not self._int_filter_difference_checker(
-                    miner_tweet.retweet_count, val_tweet.retweet_count
-                ):
-                    tweet_scores.append(0)
-                    continue
-                if not self._int_filter_difference_checker(
-                    miner_tweet.reply_count, val_tweet.reply_count
-                ):
-                    tweet_scores.append(0)
-                    continue
-                if not self._int_filter_difference_checker(
-                    miner_tweet.like_count, val_tweet.like_count
-                ):
-                    tweet_scores.append(0)
-                    continue
-                if not self._int_filter_difference_checker(
-                    miner_tweet.quote_count, val_tweet.quote_count
-                ):
-                    tweet_scores.append(0)
-                    continue
-                if not self._int_filter_difference_checker(
-                    miner_tweet.bookmark_count, val_tweet.bookmark_count
+                if not self.compare_content(
+                    miner_tweet.get("text"), val_tweet_dict.get("text")
                 ):
                     tweet_scores.append(0)
                     continue
 
-                if miner_tweet.user.username.strip() != val_tweet.user.username.strip():
+                # Compare numeric fields
+                if any(
+                    not self.compare_numeric(
+                        f, miner_tweet.get(f), val_tweet_dict.get(f)
+                    )
+                    for f in TWEET_NUMERIC_FIELDS
+                ):
                     tweet_scores.append(0)
                     continue
 
-                # Compare created_at if both exist
-                if miner_tweet.created_at and val_tweet.created_at:
-                    if not self._compare_dates(
-                        miner_tweet.created_at, val_tweet.created_at
-                    ):
-                        tweet_scores.append(0)
-                        continue
-                elif (miner_tweet.created_at and not val_tweet.created_at) or (
-                    val_tweet.created_at and not miner_tweet.created_at
+                # Compare media
+                if not self.compare_media(
+                    miner_tweet.get("media"), val_tweet_dict.get("media")
                 ):
-                    # Mismatch if only one has a created_at
+                    tweet_scores.append(0)
+                    continue
+
+                miner_user = miner_tweet.get("user")
+                val_user = val_tweet_dict.get("user")
+
+                if any(miner_user.get(f) != val_user.get(f) for f in USER_EXACT_FIELDS):
+                    tweet_scores.append(0)
+                    continue
+
+                if any(
+                    not self.compare_numeric(f, miner_user.get(f), val_user.get(f))
+                    for f in USER_NUMERIC_FIELDS
+                ):
                     tweet_scores.append(0)
                     continue
 
                 # All checks passed => score = 1
-                current_score = 1
-                tweet_scores.append(current_score)
+                tweet_scores.append(1)
 
             # Return average of all validated tweets
             return sum(tweet_scores) / len(tweet_scores) if tweet_scores else 0.0
@@ -316,6 +404,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                 uid = uid_tensor.item() if hasattr(uid_tensor, "item") else uid_tensor
 
                 final_score = self.check_tweet_content(response)
+
                 bt.logging.info(f"UID {uid}: check_tweet_content => {final_score}")
 
                 # Step 3: create a reward event

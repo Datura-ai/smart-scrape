@@ -632,6 +632,13 @@ class TwitterSearchSynapse(Synapse):
         allow_mutation=False,
     )
 
+    user: Optional[str] = pydantic.Field(
+        None,
+        title="User",
+        description="Search for tweets from a specific user.",
+        allow_mutation=False,
+    )
+
     count: int = pydantic.Field(
         20,
         title="Count",

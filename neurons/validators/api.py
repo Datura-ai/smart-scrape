@@ -304,8 +304,9 @@ async def search_links(
 
 
 class TwitterSearchRequest(BaseModel):
-    query: str
+    query: Optional[str] = ""
     sort: Optional[str] = "Top"
+    user: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     lang: Optional[str] = None

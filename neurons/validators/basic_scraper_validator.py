@@ -87,6 +87,7 @@ class BasicScraperValidator:
         is_only_allowed_miner=True,
         specified_uids=None,
         sort=None,
+        user=None,
         start_date=None,
         end_date=None,
         lang=None,
@@ -119,6 +120,7 @@ class BasicScraperValidator:
             TwitterSearchSynapse(
                 query=task.compose_prompt(),
                 sort=sort,
+                user=user,
                 start_date=start_date,
                 end_date=end_date,
                 lang=lang,
@@ -191,7 +193,7 @@ class BasicScraperValidator:
 
             organic_penalties = []
 
-            bt.logging.debug(f"Received responses: {responses}")
+            bt.logging.trace(f"Received responses: {responses}")
 
             if is_synthetic:
                 penalized_uids = []
@@ -453,6 +455,7 @@ class BasicScraperValidator:
         try:
             prompt = query["query"]
             sort = query["sort"]
+            user = query["user"]
             start_date = query["start_date"]
             end_date = query["end_date"]
             lang = query["lang"]
@@ -485,6 +488,7 @@ class BasicScraperValidator:
                     != "finney",
                     specified_uids=specified_uids,
                     sort=sort,
+                    user=user,
                     start_date=start_date,
                     end_date=end_date,
                     lang=lang,
@@ -503,7 +507,7 @@ class BasicScraperValidator:
 
             # Process responses and collect successful ones
             for response in async_responses:
-                if response and response.dendrite.status_code == 200:
+                if response:
                     final_responses.append(response)
                     yield response
                 else:
