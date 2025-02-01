@@ -1441,9 +1441,17 @@ class QuestionsDataset:
 
     async def generate_basic_question_with_openai(self):
         try:
+            # Generate words using Faker
+            word1 = self.faker.word()
+            word2 = self.faker.word()
+            word3 = self.faker.word()
+            count = random.randint(2, 3)
+            
             prompt = (
-                "Generate a two-word phrase about tech, crypto, ai, blockchain, bittensor that can be searched on Twitter."
-                "It must be exactly two words, no extra punctuation."
+                f"Using these words: '{word1}', '{word2}', '{word3}', "
+                f"generate a meaningful {count}-word phrase about tech, crypto, AI, blockchain, or bittensor that would get relevant results when searched on Twitter. "
+                "The phrase must be specific and related to current tech topics (like 'bittensor mining' or 'tao token staking' or 'bittensor subnet registration'). "
+                f"It must be exactly {count} words, with no punctuation or hashtags. Synonyms of the words can be used."
             )
 
             openai_response = await call_openai(
@@ -1459,3 +1467,4 @@ class QuestionsDataset:
         except Exception as e:
             bt.logging.error(f"Failed to generate basic question with OpenAI: {e}")
             return "bittensor news"
+
