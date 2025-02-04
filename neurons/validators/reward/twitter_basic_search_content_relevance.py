@@ -312,18 +312,28 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
                     ).replace(tzinfo=pytz.UTC)
 
                     if response.start_date is not None:
-                        start_date = datetime.strptime(
-                            response.start_date, "%Y-%m-%d"
-                        ).replace(tzinfo=pytz.UTC)
+                        try:
+                            start_date = datetime.strptime(
+                                response.start_date, "%Y-%m-%d_%H:%M:%S_%Z"
+                            ).replace(tzinfo=pytz.UTC)
+                        except ValueError:
+                            start_date = datetime.strptime(
+                                response.start_date, "%Y-%m-%d"
+                            ).replace(tzinfo=pytz.UTC)
 
                         if tweet_date < start_date:
                             tweet_scores.append(0)
                             continue
 
                     if response.end_date is not None:
-                        end_date = datetime.strptime(
-                            response.end_date, "%Y-%m-%d"
-                        ).replace(tzinfo=pytz.UTC)
+                        try:
+                            end_date = datetime.strptime(
+                                response.end_date, "%Y-%m-%d_%H:%M:%S_%Z"
+                            ).replace(tzinfo=pytz.UTC)
+                        except ValueError:
+                            end_date = datetime.strptime(
+                                response.end_date, "%Y-%m-%d"
+                            ).replace(tzinfo=pytz.UTC)
 
                         if tweet_date > end_date:
                             tweet_scores.append(0)
