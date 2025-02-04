@@ -346,7 +346,7 @@ class BasicScraperValidator:
             "date_range",
         ]
 
-        num_fields = random.randint(1, 6)
+        num_fields = random.randint(1, 3)
         selected_fields = random.sample(all_fields, num_fields)
 
         params: Dict[str, Any] = {}
@@ -356,9 +356,8 @@ class BasicScraperValidator:
             # Generate end date (now to 1 year ago)
             end_date = datetime.now(pytz.UTC) - timedelta(days=random.randint(0, 365))
 
-            # Randomly choose time window (2-24 hours)
-            hours = random.randint(2, 24)
-            start_date = end_date - timedelta(hours=hours)
+            # Randomly choose time window
+            start_date = end_date - timedelta(days=random.randint(1, 7))
 
             params["start_date"] = start_date.strftime("%Y-%m-%d_%H:%M:%S_UTC")
             params["end_date"] = end_date.strftime("%Y-%m-%d_%H:%M:%S_UTC")
@@ -383,7 +382,7 @@ class BasicScraperValidator:
 
         # Handle engagement metrics with logical ranges
         if "min_likes" in selected_fields:
-            params["min_likes"] = random.randint(5, 200)
+            params["min_likes"] = random.randint(5, 100)
         if "min_replies" in selected_fields:
             params["min_replies"] = random.randint(5, 20)
         if "min_retweets" in selected_fields:

@@ -291,7 +291,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
 
                     if response.is_image is not None:
                         has_image_media = any(
-                            m.get("type") == "photo" for m in val_tweet.media
+                            m.type == "photo" for m in val_tweet.media
                         )
 
                         if response.is_image != has_image_media:
@@ -300,7 +300,7 @@ class TwitterBasicSearchContentRelevanceModel(BaseRewardModel):
 
                     if response.is_video is not None:
                         has_video_media = any(
-                            m.get("type") == "video" for m in val_tweet.media
+                            m.type == "video" for m in val_tweet.media
                         )
 
                         if response.is_video != has_video_media:
