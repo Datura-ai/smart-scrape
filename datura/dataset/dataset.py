@@ -9,7 +9,7 @@ import requests
 import html
 from datura.utils import call_openai
 from faker import Faker
-from faker.providers import company, address, person, lorem, geo
+from faker.providers import company, address, person, lorem, geo, currency
 
 # import json
 
@@ -1343,6 +1343,7 @@ class QuestionsDataset:
         self.faker.add_provider(person)
         self.faker.add_provider(lorem)
         self.faker.add_provider(geo)
+        self.faker.add_provider(currency)
 
         self.faker_methods = [
             # self.faker.animal_name,  # Use animal_name instead of animal.type
@@ -1369,6 +1370,39 @@ class QuestionsDataset:
             lambda: self.faker.words(5),
             lambda: self.faker.words(count=5),
             lambda: self.faker.words(count={"min": 5, "max": 10}),
+        ]
+
+        self.basic_terms = [
+            "news",
+            "price",
+            "market",
+            "network",
+            "analysis",
+            "development",
+            "community",
+            "investment",
+            "portfolio",
+            "fund",
+            "capital",
+            "roi",
+            "dividend",
+            "stake",
+            "profit",
+            "updates",
+            "announcement",
+            "report",
+            "insights",
+            "information",
+            "research",
+            "review",
+            "guide",
+            "trading",
+            "exchange",
+            "volume",
+            "chart",
+            "forecast",
+            "prediction",
+            "trends",
         ]
 
     async def generate_new_question_with_openai(self, selected_tools):
@@ -1441,19 +1475,21 @@ class QuestionsDataset:
 
     async def generate_basic_question_with_openai(self):
         try:
-            prompt = (
-                "Generate a two-word phrase about tech, crypto, ai, blockchain, bittensor that can be searched on Twitter."
-                "It must be exactly two words, no extra punctuation."
-            )
+            # Choose to generate name or code for crypto
+            code, name = self.faker.cryptocurrency()
 
-            openai_response = await call_openai(
-                messages=[{"role": "system", "content": prompt}],
-                temperature=0.3,
-                model="gpt-4o-mini",
-                seed=None,
-            )
+            second_term = random.choice(self.basic_terms)
 
-            phrase = openai_response.strip()
+            if random.choice([True, False]):
+                prefix = random.choice(["", "#", "$"])
+                phrase = f"{prefix}{code}"
+            else:
+                # Use name
+                prefix = random.choice(["", "#"])
+                phrase = f"{prefix}{name}"
+
+            if random.choice([True, False]):
+                phrase = f"{phrase} {second_term}"
 
             return phrase
         except Exception as e:

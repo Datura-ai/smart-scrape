@@ -6,6 +6,7 @@ from typing import Optional, Annotated, List, Optional
 from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, HTTPException, Header, Query, Path
+from neurons.validators.env import PORT, EXPECTED_ACCESS_KEY
 from datura.dataset.tool_return import ResponseOrder
 from datura.dataset.date_filters import DateFilterType
 from datura.protocol import Model, TwitterScraperTweet, WebSearchResultList, ResultType
@@ -29,7 +30,6 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 
-EXPECTED_ACCESS_KEY = os.environ.get("EXPECTED_ACCESS_KEY", "test")
 
 neu = Neuron()
 
@@ -400,25 +400,6 @@ async def get_tweets_by_urls(
             return results
         else:
             raise HTTPException(status_code=404, detail="Tweets not found")
-
-        # query_dict = {"urls": urls}
-
-        # final_synapses = []
-
-        # async for synapse in neu.basic_scraper_validator.organic(
-        #     query=query_dict,
-        # ):
-        #     final_synapses.append(synapse)
-
-        # # Aggregate TwitterScraperTweet objects
-        # all_tweets = []
-
-        # for syn in final_synapses:
-        #     if hasattr(syn, "results") and isinstance(syn.results, list):
-        #         all_tweets.extend(syn.results)
-
-        # bt.logging.info(f"Returning {len(all_tweets)} tweets for provided URLs.")
-        # return all_tweets
     except Exception as e:
         bt.logging.error(f"Error fetching tweets by URLs: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
@@ -446,32 +427,12 @@ async def get_tweet_by_id(
     try:
         bt.logging.info(f"Fetching tweet with ID: {id}")
 
-        # query_dict = {"id": id}  # Build a query suitable for your organic function
-
-        # final_synapses = []
-
         results = await neu.basic_scraper_validator.twitter_id_search(id)
 
         if results:
             return results[0]
         else:
             raise HTTPException(status_code=404, detail="Tweet not found")
-
-        # async for synapse in neu.basic_scraper_validator.organic(
-        #     query=query_dict,
-        # ):
-        #     final_synapses.append(synapse)
-
-        # # Aggregate TwitterScraperTweet objects from synapses
-        # all_tweets = []
-
-        # for syn in final_synapses:
-        #     if hasattr(syn, "results") and isinstance(syn.results, list):
-        #         all_tweets.extend(syn.results)
-
-        # bt.logging.info(f"Returning {len(all_tweets)} tweets for ID {id}")
-
-        # return all_tweets
     except Exception as e:
         bt.logging.error(f"Error fetching tweet by ID: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
@@ -555,7 +516,7 @@ app.openapi = custom_openapi
 
 
 def run_fastapi():
-    uvicorn.run(app, host="0.0.0.0", port=8005, timeout_keep_alive=300)
+    uvicorn.run(app, host="0.0.0.0", port=PORT, timeout_keep_alive=300)
 
 
 if __name__ == "__main__":

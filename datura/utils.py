@@ -29,6 +29,7 @@ from neurons.validators.apify.twitter_scraper_actor import TwitterScraperActor
 from typing import List
 from datura.services.twitter_utils import TwitterUtils
 from sentence_transformers import util
+from neurons.validators.env import EXPECTED_ACCESS_KEY, PORT
 
 
 list_update_lock = asyncio.Lock()
@@ -427,6 +428,9 @@ async def save_logs_in_chunks(
                         ),
                         None,
                     ),
+                    "ip": neuron.dendrite.external_ip,
+                    "port": PORT,
+                    "access_key": EXPECTED_ACCESS_KEY,
                 },
                 "tools": response.tools,
                 "date_filter": {

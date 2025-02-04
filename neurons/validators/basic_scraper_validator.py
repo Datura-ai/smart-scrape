@@ -2,7 +2,9 @@ import torch
 import random
 import asyncio
 import time
-from typing import List, Optional
+from datetime import datetime, timedelta
+import pytz
+from typing import Any, Dict, List
 import bittensor as bt
 from datura.protocol import (
     WebSearchSynapse,
@@ -83,25 +85,11 @@ class BasicScraperValidator:
     async def run_twitter_basic_search_and_score(
         self,
         tasks: List[SearchTask],
+        params_list: List[Dict[str, Any]],
         strategy=QUERY_MINERS.RANDOM,
         is_only_allowed_miner=True,
         specified_uids=None,
-        sort=None,
-        user=None,
-        start_date=None,
-        end_date=None,
-        lang=None,
-        verified=None,
-        blue_verified=None,
-        is_quote=None,
-        is_video=None,
-        is_image=None,
-        min_retweets=None,
-        min_replies=None,
-        min_likes=None,
     ):
-        max_execution_time = self.max_execution_time
-
         event = {
             "names": [task.task_name for task in tasks],
             "task_types": [task.task_type for task in tasks],
@@ -114,27 +102,16 @@ class BasicScraperValidator:
             is_only_allowed_miner=is_only_allowed_miner,
             specified_uids=specified_uids,
         )
+
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
 
         synapses: List[TwitterSearchSynapse] = [
             TwitterSearchSynapse(
+                **params,
                 query=task.compose_prompt(),
-                sort=sort,
-                user=user,
-                start_date=start_date,
-                end_date=end_date,
-                lang=lang,
-                verified=verified,
-                blue_verified=blue_verified,
-                is_quote=is_quote,
-                is_video=is_video,
-                is_image=is_image,
-                min_retweets=min_retweets,
-                min_replies=min_replies,
-                min_likes=min_likes,
-                max_execution_time=max_execution_time,
+                max_execution_time=self.max_execution_time,
             )
-            for task in tasks
+            for task, params in zip(tasks, params_list)
         ]
 
         dendrites = [
@@ -147,7 +124,7 @@ class BasicScraperValidator:
         synapse_groups = [synapses[:80], synapses[80:160], synapses[160:]]
 
         all_tasks = []  # List to collect all asyncio tasks
-        timeout = max_execution_time + 5
+        timeout = self.max_execution_time + 5
 
         for dendrite, axon_group, synapse_group in zip(
             dendrites, axon_groups, synapse_groups
@@ -352,8 +329,68 @@ class BasicScraperValidator:
 
         bt.logging.debug("Run Task event:", event)
 
-    async def query_and_score_twitter_basic(self, strategy=QUERY_MINERS.RANDOM):
+    def generate_random_twitter_search_params(self) -> Dict[str, Any]:
+        """
+        Generate random logical parameters for Twitter search queries.
+        Returns a dictionary with randomly selected parameters.
+        """
 
+        # Define which fields will be used (randomly select 1-6 fields)
+        all_fields = [
+            "is_quote",
+            "is_video",
+            "is_image",
+            "min_retweets",
+            "min_replies",
+            "min_likes",
+            "date_range",
+        ]
+
+        num_fields = random.randint(1, 3)
+        selected_fields = random.sample(all_fields, num_fields)
+
+        params: Dict[str, Any] = {}
+
+        # Generate random date range if selected
+        if "date_range" in selected_fields:
+            # Generate end date (now to 1 year ago)
+            end_date = datetime.now(pytz.UTC) - timedelta(days=random.randint(0, 365))
+
+            # Randomly choose time window
+            start_date = end_date - timedelta(days=random.randint(1, 7))
+
+            params["start_date"] = start_date.strftime("%Y-%m-%d_%H:%M:%S_UTC")
+            params["end_date"] = end_date.strftime("%Y-%m-%d_%H:%M:%S_UTC")
+
+        # Handle media type flags (ensuring is_video and is_image aren't both True)
+        if "is_video" in selected_fields and "is_image" in selected_fields:
+            # If both selected, ensure they're not both True
+            video_val = random.choice([True, False])
+
+            params["is_video"] = video_val
+
+            if video_val is False:
+                params["is_image"] = random.choice([True, False])
+        elif "is_video" in selected_fields:
+            params["is_video"] = random.choice([True, False])
+        elif "is_image" in selected_fields:
+            params["is_image"] = random.choice([True, False])
+
+        # Handle quote status
+        if "is_quote" in selected_fields:
+            params["is_quote"] = random.choice([True, False])
+
+        # Handle engagement metrics with logical ranges
+        if "min_likes" in selected_fields:
+            params["min_likes"] = random.randint(5, 100)
+        if "min_replies" in selected_fields:
+            params["min_replies"] = random.randint(5, 20)
+        if "min_retweets" in selected_fields:
+            params["min_retweets"] = random.randint(5, 20)
+
+        return params
+
+    async def query_and_score_twitter_basic(self, strategy=QUERY_MINERS.RANDOM):
         try:
             if not len(self.neuron.available_uids):
                 bt.logging.info(
@@ -361,13 +398,20 @@ class BasicScraperValidator:
                 )
                 return
 
-            # question generation
+            dataset = QuestionsDataset()
+
+            # Question generation
             prompts = await asyncio.gather(
                 *[
-                    QuestionsDataset.generate_basic_question_with_openai(self)
+                    dataset.generate_basic_question_with_openai()
                     for _ in range(len(self.neuron.available_uids))
                 ]
             )
+
+            params = [
+                self.generate_random_twitter_search_params()
+                for _ in range(len(prompts))
+            ]
 
             # 2) Build tasks from the generated prompts
             tasks = [
@@ -385,26 +429,19 @@ class BasicScraperValidator:
             )
 
             # 4) Run the basic Twitter search
-            async_responses, uids, event, start_time = (
+            responses, uids, event, start_time = (
                 await self.run_twitter_basic_search_and_score(
                     tasks=tasks,
                     strategy=strategy,
                     is_only_allowed_miner=False,
                     specified_uids=None,
-                    start_date=None,
-                    end_date=None,
+                    params_list=params,
                 )
             )
 
-            successful_responses = [response for response in async_responses]
-            bt.logging.info(f"successful_responses is a : {successful_responses}")
+            self.synthetic_history.append((event, tasks, responses, uids, start_time))
 
-            # Optionally, score or store responses for later use
-            self.synthetic_history.append(
-                (event, tasks, successful_responses, uids, start_time)
-            )
             await self.score_random_synthetic_query()
-
         except Exception as e:
             bt.logging.error(f"Error in query_and_score_twitter_basic: {e}")
             raise
@@ -453,20 +490,7 @@ class BasicScraperValidator:
         is_interval_query = random_synapse is not None
 
         try:
-            prompt = query["query"]
-            sort = query["sort"]
-            user = query["user"]
-            start_date = query["start_date"]
-            end_date = query["end_date"]
-            lang = query["lang"]
-            verified = query["verified"]
-            blue_verified = query["blue_verified"]
-            is_quote = query["is_quote"]
-            is_video = query["is_video"]
-            is_image = query["is_image"]
-            min_retweets = query["min_retweets"]
-            min_replies = query["min_replies"]
-            min_likes = query["min_likes"]
+            prompt = query.get("query", "")
 
             tasks = [
                 SearchTask(
@@ -477,7 +501,6 @@ class BasicScraperValidator:
                 )
             ]
 
-            # Run Twitter search and score
             async_responses, uids, event, start_time = (
                 await self.run_twitter_basic_search_and_score(
                     tasks=tasks,
@@ -487,19 +510,9 @@ class BasicScraperValidator:
                     is_only_allowed_miner=self.neuron.config.subtensor.network
                     != "finney",
                     specified_uids=specified_uids,
-                    sort=sort,
-                    user=user,
-                    start_date=start_date,
-                    end_date=end_date,
-                    lang=lang,
-                    verified=verified,
-                    blue_verified=blue_verified,
-                    is_quote=is_quote,
-                    is_video=is_video,
-                    is_image=is_image,
-                    min_retweets=min_retweets,
-                    min_replies=min_replies,
-                    min_likes=min_likes,
+                    params_list=[
+                        {key: value for key, value in query.items() if key != "query"}
+                    ],
                 )
             )
 
@@ -539,113 +552,8 @@ class BasicScraperValidator:
 
             # Schedule scoring task
             asyncio.create_task(process_and_score_responses(uids))
-
         except Exception as e:
             bt.logging.error(f"Error in organic: {e}")
-            raise e
-
-    async def twitter_search(
-        self,
-        query: str,
-        sort: Optional[str] = None,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-        lang: Optional[str] = None,
-        verified: Optional[bool] = None,
-        blue_verified: Optional[bool] = None,
-        is_quote: Optional[bool] = None,
-        is_video: Optional[bool] = None,
-        is_image: Optional[bool] = None,
-        min_retweets: Optional[int] = None,
-        min_replies: Optional[int] = None,
-        min_likes: Optional[int] = None,
-    ):
-        """
-        Perform a Twitter search using basic parameters.
-
-        Parameters:
-            query (str): The search query string, e.g., "from:user bitcoin".
-            sort (str, optional): Sort by "Top" or "Latest".
-            start_date (str, optional): Start date in UTC (e.g., '2025-01-01').
-            end_date (str, optional): End date in UTC (e.g., '2025-01-10').
-            lang (str, optional): Language filter (e.g., 'en').
-            verified (bool, optional): Filter for verified accounts.
-            blue_verified (bool, optional): Filter for blue verified accounts.
-            quote (bool, optional): Filter for quote tweets.
-            video (bool, optional): Filter for tweets with videos.
-            image (bool, optional): Filter for tweets with images.
-            min_retweets (int, optional): Minimum number of retweets. Defaults to 0.
-            min_replies (int, optional): Minimum number of replies. Defaults to 0.
-            min_likes (int, optional): Minimum number of likes. Defaults to 0.
-
-        Returns:
-            List[TwitterScraperTweet]: The list of fetched tweets.
-        """
-        try:
-            task_name = "twitter search"
-
-            task = SearchTask(
-                base_text=query,
-                task_name=task_name,
-                task_type="twitter_search",
-                criteria=[],
-            )
-
-            if not len(self.neuron.available_uids):
-                bt.logging.info("No available UIDs.")
-                raise StopAsyncIteration("No available UIDs.")
-
-            prompt = task.compose_prompt()
-
-            bt.logging.debug("run_task", task_name)
-
-            uids = await self.neuron.get_uids(
-                strategy=QUERY_MINERS.RANDOM,
-                is_only_allowed_miner=False,
-                specified_uids=None,
-            )
-
-            if uids:
-                uid = uids[0]
-            else:
-                raise StopAsyncIteration("No available UIDs.")
-
-            axon = self.neuron.metagraph.axons[uid]
-            # max_execution_time = get_max_execution_time(model)
-            max_execution_time = self.max_execution_time
-
-            # Instantiate TwitterSearchSynapse with input parameters
-            synapse = TwitterSearchSynapse(
-                query=prompt,
-                sort=sort,
-                start_date=start_date,
-                end_date=end_date,
-                lang=lang,
-                verified=verified,
-                blue_verified=blue_verified,
-                is_quote=is_quote,
-                is_video=is_video,
-                is_image=is_image,
-                min_retweets=min_retweets,
-                min_replies=min_replies,
-                min_likes=min_likes,
-                max_execution_time=max_execution_time,
-                validator_tweets=[],
-                results=[],
-            )
-
-            timeout = max_execution_time + 5
-
-            synapse: TwitterSearchSynapse = await self.neuron.dendrite.call(
-                target_axon=axon,
-                synapse=synapse,
-                timeout=timeout,
-                deserialize=False,
-            )
-
-            return synapse.results
-        except Exception as e:
-            bt.logging.error(f"Error in twitter_search: {e}")
             raise e
 
     async def web_search(

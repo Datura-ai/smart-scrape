@@ -48,48 +48,56 @@ class TwitterScraperActor:
             async for item in self.client.dataset(
                 run["defaultDatasetId"]
             ).iterate_items():
-                media_list = item.get("extendedEntities", {}).get("media", [])
+                try:
+                    media_list = item.get("extendedEntities", {}).get("media", [])
 
-                media_list = [
-                    TwitterScraperMedia(
-                        media_url=media.get("media_url_https"), type=media.get("type")
+                    media_list = [
+                        TwitterScraperMedia(
+                            media_url=media.get("media_url_https"),
+                            type=media.get("type"),
+                        )
+                        for media in media_list
+                    ]
+
+                    author = item.get("author", {})
+
+                    tweet = TwitterScraperTweet(
+                        id=item.get("id"),
+                        text=item.get("text"),
+                        reply_count=item.get("replyCount"),
+                        retweet_count=item.get("retweetCount"),
+                        like_count=item.get("likeCount"),
+                        quote_count=item.get("quoteCount"),
+                        bookmark_count=item.get("bookmarkCount"),
+                        # impression_count=item.get("impressionCount"),
+                        url=item.get("url"),
+                        created_at=item.get("createdAt"),
+                        is_quote_tweet=item.get("isQuote"),
+                        is_retweet=item.get("isRetweet"),
+                        media=media_list,
+                        user=TwitterScraperUser(
+                            id=author.get("id"),
+                            created_at=author.get("createdAt"),
+                            description=author.get("description"),
+                            followers_count=author.get("followers"),
+                            favourites_count=author.get("favouritesCount"),
+                            media_count=author.get("mediaCount"),
+                            statuses_count=author.get("statusesCount"),
+                            verified=author.get("isVerified"),
+                            profile_image_url=author.get("profilePicture"),
+                            url=author.get("url"),
+                            name=author.get("name"),
+                            username=author.get("userName"),
+                        ),
                     )
-                    for media in media_list
-                ]
 
-                author = item.get("author", {})
-
-                tweet = TwitterScraperTweet(
-                    id=item.get("id"),
-                    text=item.get("text"),
-                    reply_count=item.get("replyCount"),
-                    retweet_count=item.get("retweetCount"),
-                    like_count=item.get("likeCount"),
-                    quote_count=item.get("quoteCount"),
-                    bookmark_count=item.get("bookmarkCount"),
-                    # impression_count=item.get("impressionCount"),
-                    url=item.get("url"),
-                    created_at=item.get("createdAt"),
-                    is_quote_tweet=item.get("isQuote"),
-                    is_retweet=item.get("isRetweet"),
-                    media=media_list,
-                    user=TwitterScraperUser(
-                        id=author.get("id"),
-                        created_at=author.get("createdAt"),
-                        description=author.get("description"),
-                        followers_count=author.get("followers"),
-                        favourites_count=author.get("favouritesCount"),
-                        media_count=author.get("mediaCount"),
-                        statuses_count=author.get("statusesCount"),
-                        verified=author.get("isVerified"),
-                        profile_image_url=author.get("profilePicture"),
-                        url=author.get("url"),
-                        name=author.get("name"),
-                        username=author.get("userName"),
-                    ),
-                )
-
-                tweets.append(tweet)
+                    tweets.append(tweet)
+                except Exception as e:
+                    error_message = (
+                        f"TwitterScraperActor: Failed to scrape tweet: {str(e)}"
+                    )
+                    tb_str = traceback.format_exception(type(e), e, e.__traceback__)
+                    bt.logging.warning("\n".join(tb_str) + error_message)
 
             return tweets
         except Exception as e:
