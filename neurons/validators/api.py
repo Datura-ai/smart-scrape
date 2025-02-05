@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, HTTPException, Header, Query, Path
 from neurons.validators.env import PORT, EXPECTED_ACCESS_KEY
+from datura import __version__
 from datura.dataset.tool_return import ResponseOrder
 from datura.dataset.date_filters import DateFilterType
 from datura.protocol import Model, TwitterScraperTweet, WebSearchResultList, ResultType
@@ -489,7 +490,7 @@ async def web_search_endpoint(
 
 @app.get("/")
 async def health_check():
-    return {"status": "healthy"}
+    return {"status": "healthy", "version": __version__}
 
 
 def custom_openapi():
