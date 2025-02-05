@@ -61,8 +61,15 @@ class TwitterScraperUser(BaseModel):
     listed_count: Optional[int] = None
     media_count: Optional[int] = None
     profile_image_url: Optional[str] = None
+    profile_banner_url: Optional[str] = None
     statuses_count: Optional[int] = None
-    verified: Optional[bool] = False
+    verified: Optional[bool] = None
+    is_blue_verified: Optional[bool] = None
+    entities: Optional[Dict[str, Any]] = None
+    can_dm: Optional[bool] = None
+    can_media_tag: Optional[bool] = None
+    location: Optional[str] = None
+    pinned_tweet_ids: Optional[List[str]] = None
 
 
 class TwitterScraperTweet(BaseModel):
@@ -79,6 +86,16 @@ class TwitterScraperTweet(BaseModel):
     media: Optional[List[TwitterScraperMedia]] = []
     is_quote_tweet: bool
     is_retweet: bool
+    lang: Optional[str] = None
+    conversation_id: Optional[str] = None
+    in_reply_to_screen_name: Optional[str] = None
+    in_reply_to_status_id: Optional[str] = None
+    in_reply_to_user_id: Optional[str] = None
+    quoted_status_id: Optional[str] = None
+    quote: Optional[Dict[str, Any]] = None
+    display_text_range: Optional[List[int]] = None
+    entities: Optional[Dict[str, Any]] = None
+    extended_entities: Optional[Dict[str, Any]] = None
 
 
 class ScraperTextRole(str, Enum):
