@@ -35,11 +35,11 @@ Welcome to Desearch, the AI-powered search engine built on Bittensor. Designed f
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/Datura-ai/smart-scrape.git
+   git clone https://github.com/Datura-ai/desearch.git
    ```
 2. Install the requirements:
    ```bash
-   cd smart-scrape
+   cd desearch
    python -m pip install -r requirements.txt
    python -m pip install -e .
    ```
