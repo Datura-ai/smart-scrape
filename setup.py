@@ -63,7 +63,7 @@ with codecs.open(
     version_string = version_match.group(1)
 
 setup(
-    name="smart_scrape",
+    name="desearch",
     version=version_string,
     description="Decentralized API for Scraping",
     long_description=long_description,
