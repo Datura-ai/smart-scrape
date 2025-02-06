@@ -16,7 +16,7 @@ class CheerioScraperActor:
     async def scrape_metadata(self, urls: List[str]) -> List[TwitterScraperTweet]:
         if not APIFY_API_KEY:
             bt.logging.warning(
-                "Please set the APIFY_API_KEY environment variable. See here: https://github.com/surcyf123/smart-scrape/blob/main/docs/env_variables.md. This will be required in the next release."
+                "Please set the APIFY_API_KEY environment variable. See here: https://github.com/Datura-ai/desearch/blob/main/docs/env_variables.md. This will be required in the next release."
             )
             return []
 
@@ -83,9 +83,7 @@ class CheerioScraperActor:
         pageTitle,
         description,
     };
-}"""
-,
-
+}""",
                 "postNavigationHooks": '// We need to return array of (possibly async) functions here.\n// The functions accept a single argument: the "crawlingContext" object.\n[\n    async (crawlingContext) => {\n        // ...\n    },\n]',
                 "preNavigationHooks": '// We need to return array of (possibly async) functions here.\n// The functions accept two arguments: the "crawlingContext" object\n// and "requestAsBrowserOptions" which are passed to the `requestAsBrowser()`\n// function the crawler calls to navigate..\n[\n    async (crawlingContext, requestAsBrowserOptions) => {\n        // ...\n    }\n]',
                 "proxyConfiguration": self.get_proxy_configuration(urls),

@@ -68,7 +68,7 @@ setup(
     description="Decentralized API for Scraping",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/Datura-ai/smart-scrape",
+    url="https://github.com/Datura-ai/desearch",
     author="Fish",
     packages=find_packages(),
     include_package_data=True,
