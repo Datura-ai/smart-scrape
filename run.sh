@@ -229,7 +229,30 @@ if [ "$?" -eq 1 ]; then
         if [ -d "./.git" ]; then
 
             # check value on github remotely
-            latest_version=$(check_variable_value_on_github "datura-ai/smart-scrape" "datura/__init__.py" "__version__ ")
+            # Attempt to check the variable value on GitHub for both repositories
+            latest_version=""
+            repos=("datura-ai/smart-scrape" "datura-ai/desearch")
+
+            for repo in "${repos[@]}"; do
+                latest_version=$(check_variable_value_on_github "$repo" "datura/__init__.py" "__version__")
+                if [ $? -eq 0 ]; then
+                    echo "Successfully retrieved version from $repo"
+                    
+                    # Set the working repo as the git remote origin URL
+                    git remote set-url origin "https://github.com/$repo.git"
+                    echo "Set git remote origin to https://github.com/$repo.git"
+                    
+                    break
+                else
+                    echo "Failed to retrieve version from $repo"
+                fi
+            done
+
+            # If no version could be retrieved, exit with an error
+            if [ -z "$latest_version" ]; then
+                echo "Error: Could not retrieve version from any repository."
+                exit 1
+            fi
 
             # If the file has been updated
             if version_less_than $current_version $latest_version; then
