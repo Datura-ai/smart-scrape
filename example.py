@@ -3,7 +3,7 @@ import aiohttp
 import json
 
 
-async def search_smart_scrape():
+async def search_desearch():
     url = "https://api.smartscrape.ai/search"
     # url = "http://localhost:8005/search"  # Local
 
@@ -44,4 +44,4 @@ async def search_smart_scrape():
 
 
 # Run the async function
-asyncio.run(search_smart_scrape())
+asyncio.run(search_desearch())

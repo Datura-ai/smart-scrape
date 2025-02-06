@@ -1,6 +1,6 @@
-# Bittensor (Smart-Scrape) Miner Setup Guide
+# Bittensor (Desearch) Miner Setup Guide
 
-This guide details the process for setting up and running a Bittensor Smart-Scrape miner using the smart-scrape repository.
+This guide details the process for setting up and running a Bittensor Desearch miner using the Desearch repository.
 
 ## Prerequisites
 Before starting, ensure you have:
@@ -11,12 +11,12 @@ Before starting, ensure you have:
 
 ## Setup Process
 
-## 1. Clone the smart-scrape repository and install dependencies
-Clone and install the smart-scrape repository in editable mode:
+## 1. Clone the desearch repository and install dependencies
+Clone and install the Desearch repository in editable mode:
 
 ```sh
-git clone https://github.com/Datura-ai/smart-scrape.git
-cd smart-scrape
+git clone https://github.com/Datura-ai/desearch.git
+cd desearch
 python -m pip install -r requirements.txt
 python -m pip install -e .
 ```
@@ -26,7 +26,7 @@ Configure and launch the miner using PM2:
 
 ```sh
 pm2 start neurons/miners/miner.py \
---miner.name Smart-Scrape \
+--miner.name desearch \
 --interpreter <path-to-python-binary> -- \
 --wallet.name <wallet-name> \
 --wallet.hotkey <wallet-hotkey> \
@@ -55,4 +55,4 @@ pm2 start neurons/miners/miner.py --interpreter /usr/bin/python3 --name miner_1 
 
 
 ## Conclusion
-Following these steps, your Smart-Scrape miner should be operational. Regularly monitor your processes and logs for any issues. For additional information or assistance, consult the official documentation or community resources.
+Following these steps, your desearch miner should be operational. Regularly monitor your processes and logs for any issues. For additional information or assistance, consult the official documentation or community resources.

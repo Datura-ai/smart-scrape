@@ -63,12 +63,12 @@ with codecs.open(
     version_string = version_match.group(1)
 
 setup(
-    name="smart_scrape",
+    name="desearch",
     version=version_string,
-    description="Decentralized API for Scraping",
+    description="Decentralized AI Search",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/Datura-ai/smart-scrape",
+    url="https://github.com/Datura-ai/desearch",
     author="Fish",
     packages=find_packages(),
     include_package_data=True,

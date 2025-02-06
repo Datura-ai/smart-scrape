@@ -6,9 +6,9 @@ This tutorial shows how to use the bittensor mainnetwork to create a subnetwork 
 This clones and installs the datura if you dont already have it (if you do, skip this step)
 ```bash
 cd .. # back out of the subtensor repo
-git clone https://github.com/Datura-ai/smart-scrape.git # Clone the smart-scrape repo
-cd smart-scrape # Enter the  smart-scrape  repo
-python -m pip install -e . # Install the  smart-scrape  package
+git clone https://github.com/Datura-ai/desearch.git # Clone the Desearch repo
+cd desearch # Enter the  Desearch  repo
+python -m pip install -e . # Install the  Desearch  package
 ```
 
 2. Create wallets for your subnet owner, for your validator and for your miner.
