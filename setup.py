@@ -65,7 +65,7 @@ with codecs.open(
 setup(
     name="desearch",
     version=version_string,
-    description="Decentralized API for Scraping",
+    description="Decentralized AI Search",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Datura-ai/desearch",
