@@ -1,6 +1,6 @@
-# Enhanced Guide for Setting Up Environment Variables in Smart-Scrape System
+# Enhanced Guide for Setting Up Environment Variables in Desearch System
 
-This comprehensive guide is designed to assist you in configuring the environment variables critical for the Smart-Scrape system. It highlights the specific variables required for Validators and Miners, ensuring they understand their roles and the importance of each key.
+This comprehensive guide is designed to assist you in configuring the environment variables critical for the Desearch system. It highlights the specific variables required for Validators and Miners, ensuring they understand their roles and the importance of each key.
 
 ## Detailed Steps for Environment Variable Configuration
 
@@ -11,7 +11,7 @@ This comprehensive guide is designed to assist you in configuring the environmen
 
 ### Setting Up Variables
 
-Here's a breakdown of the environment variables necessary for the Smart-Scrape system, with detailed information on their significance for Validators and Miners:
+Here's a breakdown of the environment variables necessary for the Desearch system, with detailed information on their significance for Validators and Miners:
 
 1. **OPENAI_API_KEY**
 

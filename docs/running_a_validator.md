@@ -1,6 +1,6 @@
 # Bittensor Validator Setup Guide
 
-This document provides detailed instructions for setting up and running a Bittensor node using the smart-scrape repository. It is applicable for various networks including `finney`, `local`, and other custom endpoints using `--subtensor.chain_endpoint <ENDPOINT>`. Follow these steps to prepare your environment, install necessary packages, and start the Bittensor process.
+This document provides detailed instructions for setting up and running a Bittensor node using the Desearch repository. It is applicable for various networks including `finney`, `local`, and other custom endpoints using `--subtensor.chain_endpoint <ENDPOINT>`. Follow these steps to prepare your environment, install necessary packages, and start the Bittensor process.
 
 We recommend using `pm2` for process management. For installation, see the [pm2 installation guide](https://pm2.io/docs/runtime/guide/installation/).
 
@@ -13,12 +13,12 @@ conda activate val
 ```
 
 
-## 1. Clone the smart-scrape repository and install dependencies
-Clone and install the smart-scrape repository in editable mode:
+## 1. Clone the Desearch repository and install dependencies
+Clone and install the Desearch repository in editable mode:
 
 ```sh
-git clone https://github.com/Datura-ai/smart-scrape.git
-cd smart-scrape
+git clone https://github.com/Datura-ai/desearch.git
+cddDesearch
 python -m pip install -r requirements.txt
 python -m pip install -e .
 ```
@@ -86,6 +86,6 @@ pm2 logs 0
 ```
 
 # Conclusion
-Following these steps, you should have a Bittensor node running smoothly using the smart-scrape repository. Regularly monitor your process and consult the [Bittensor documentation](https://github.com/opentensor/smart-scrape/docs/) for further assistance.
+Following these steps, you should have a Bittensor node running smoothly using the desearch repository. Regularly monitor your process and consult the [Bittensor documentation](https://github.com/opentensor/desearch/docs/) for further assistance.
 
 > Note: Ensure at least >50GB free disk space for wandb logs.
