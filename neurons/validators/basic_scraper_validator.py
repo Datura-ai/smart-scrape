@@ -33,6 +33,7 @@ class BasicScraperValidator:
         self.max_execution_time = 10
 
         self.synthetic_history = []
+        self.synthetic_and_organic_history = {}
         self.basic_organic_query_state = BasicOrganicQueryState()
         # Init device.
         bt.logging.debug("loading", "device")
@@ -105,11 +106,10 @@ class BasicScraperValidator:
         )
         bt.logging.info("checking if miners received queries in the last 4 hours")
         four_hours_in_seconds = 14400
-        for item in self.synthetic_history:
-            _, _, _, saved_uids, start_time, query_type = item
-            if query_type == "synthetic" and start_time > time.time() - four_hours_in_seconds:
+        for _, v in self.synthetic_and_organic_history.items():
+            _, _, _, saved_uids, start_time, query_type = v
+            if query_type == "organic" and start_time > time.time() - four_hours_in_seconds:
                 uids = [uid for uid in uids if uid not in saved_uids]
-        self.synthetic_history = []
 
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
 
@@ -448,7 +448,48 @@ class BasicScraperValidator:
                 )
             )
 
-            self.synthetic_history.append((event, tasks, responses, uids, start_time, "synthetic"))
+            self.synthetic_history.append((event, tasks, responses, uids, start_time))
+
+            for response, task, uid in zip(responses, tasks, uids):
+                hotkey = response.axon.hotkey
+                if hotkey not in self.synthetic_and_organic_history.keys():
+                    self.synthetic_and_organic_history[hotkey] = []
+                self.synthetic_and_organic_history[hotkey].append((event, task, response, uid, start_time, "synthetic"))
+                bt.logging.debug(f"Saved synthetic query: {hotkey}")
+
+            four_hours_ago = datetime.now(pytz.UTC) - timedelta(hours=4)
+            recent_organic_responses = []
+            recent_organic_uids = []
+            recent_organic_tasks = []
+
+            hotkeys_to_pop = []
+            # Collect recent organic responses
+            for hotkey, history_list in self.synthetic_and_organic_history.items():
+                for event, task, response, uid, timestamp, query_type in history_list:
+                    if query_type == "organic" and timestamp > four_hours_ago:
+                        recent_organic_responses.append(response)
+                        recent_organic_uids.append(uid)
+                        recent_organic_tasks.append(task)
+                        hotkeys_to_pop.append(hotkey)
+
+            # Merge organic and synthetic
+            all_responses = responses + recent_organic_responses
+            all_uids = uids + recent_organic_uids
+            all_tasks = tasks + recent_organic_tasks
+
+            bt.logging.info("Merging synthetic and organic responses and computing rewards")
+            await self.compute_rewards_and_penalties(
+                event=event,
+                tasks=all_tasks,
+                responses=all_responses,
+                uids=all_uids,
+                start_time=start_time,
+                is_synthetic=True
+            )
+            self.synthetic_and_organic_history = {}
+            bt.logging.info("Removing latest query from Synthetic and organic history")
+            for hotkey in hotkeys_to_pop:
+                self.synthetic_and_organic_history[hotkey].pop(0)
 
             await self.score_random_synthetic_query()
         except Exception as e:
@@ -480,6 +521,15 @@ class BasicScraperValidator:
             start_time=start_time,
             is_synthetic=True,
         )
+
+        for _, synapse, _ in zip(tasks, final_synapses, uids):
+            if synapse.axon.hotkey not in self.synthetic_and_organic_history.keys():
+                history = self.synthetic_and_organic_history[synapse.axon.hotkey]
+                for item in history:
+                    old_synapse = item[2]
+                    if old_synapse.body_hash == synapse.body_hash:
+                        self.synthetic_and_organic_history[synapse.axon.hotkey].remove(item)
+                        break
 
         self.synthetic_history = []
 
@@ -559,7 +609,12 @@ class BasicScraperValidator:
                         final_responses, uids, original_rewards
                     )
 
-                self.synthetic_history.append((event, tasks, final_responses, uids, start_time, "organic"))
+                for response, task, uid in zip(final_responses, tasks, uids):
+                    hotkey = response.axon.hotkey
+                    if hotkey not in self.organic_history:
+                        self.organic_history[hotkey] = []
+                    self.synthetic_and_organic_history[hotkey].append((event, task, response, uid, start_time, "synthetic"))
+                    bt.logging.debug(f"Saved synthetic query: {hotkey}")
 
             # Schedule scoring task
             asyncio.create_task(process_and_score_responses(uids))
