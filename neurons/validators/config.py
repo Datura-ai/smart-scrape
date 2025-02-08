@@ -205,6 +205,13 @@ def add_args(cls, parser):
         default=False,
     )
 
+    parser.add_argument(
+        "--neuron.clear_query_history_interval",
+        type=int,
+        help="Clears organic and synthetic query history.",
+        default=21600,
+    )
+
     # parser.add_argument(
     #     "--neuron.save_logs",
     #     type=str2bool,

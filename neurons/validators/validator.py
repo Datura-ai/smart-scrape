@@ -544,6 +544,16 @@ class Neuron(AbstractNeuron):
         # return should_set
         return True  # Update right not based on interval of synthetic data
 
+    def clear_query_history_periodically(self):
+        """
+        Clear query history periodically to prevent memory overflow.
+        """
+        while True:
+            bt.logging.info("Clearing query history.")
+
+            self.basic_scraper_validator.synthetic_and_organic_history = {}
+            asyncio.sleep(self.config.neuron.clear_query_history_interval)
+
     def should_set_weights(self) -> bool:
         # Don't set weights on initialization.
         # if self.step == 0:
@@ -568,6 +578,7 @@ class Neuron(AbstractNeuron):
     async def run(self):
         self.loop.create_task(self.sync())
         self.loop.create_task(self.update_available_uids_periodically())
+        self.loop.create_task(self.clear_query_history_periodically())
         bt.logging.info(f"Validator starting at block: {self.block}")
 
         try:
