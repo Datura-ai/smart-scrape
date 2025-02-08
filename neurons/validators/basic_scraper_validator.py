@@ -24,7 +24,7 @@ from neurons.validators.reward.performance_reward import PerformanceRewardModel
 from neurons.validators.utils.tasks import SearchTask
 from neurons.validators.basic_organic_query_state import BasicOrganicQueryState
 from neurons.validators.penalty.exponential_penalty import ExponentialTimePenaltyModel
-
+from typing import List, Dict, Any
 
 class BasicScraperValidator:
     def __init__(self, neuron: AbstractNeuron):
@@ -33,6 +33,7 @@ class BasicScraperValidator:
         self.max_execution_time = 10
 
         self.synthetic_history = []
+        self.organic_history: Dict[int, Dict[str, Any]] = []
         self.basic_organic_query_state = BasicOrganicQueryState()
         # Init device.
         bt.logging.debug("loading", "device")
@@ -390,30 +391,42 @@ class BasicScraperValidator:
 
         return params
 
+    def clean_organic_history(self):
+        """
+        Remove organic responses older than 4 hours
+        """
+        current_time = time.time()
+        self.organic_history = {
+            uid: entry for uid, entry in self.organic_history.items()
+            if current_time - entry['timestamp'] < 4 * 3600  # 4 hours in seconds
+        }
+
     async def query_and_score_twitter_basic(self, strategy=QUERY_MINERS.RANDOM):
         try:
             if not len(self.neuron.available_uids):
-                bt.logging.info(
-                    "No available UIDs, skipping basic Twitter search task."
-                )
+                bt.logging.info("No available UIDs, skipping basic Twitter search task.")
+                return
+
+            self.clean_organic_history()
+            available_uids = [
+                uid for uid in self.neuron.available_uids 
+                if uid not in self.organic_history
+            ]
+            if not available_uids:
+                bt.logging.info("No available UIDs after filtering organic history.")
                 return
 
             dataset = QuestionsDataset()
-
-            # Question generation
             prompts = await asyncio.gather(
                 *[
                     dataset.generate_basic_question_with_openai()
-                    for _ in range(len(self.neuron.available_uids))
+                    for _ in range(len(available_uids))
                 ]
             )
-
             params = [
                 self.generate_random_twitter_search_params()
                 for _ in range(len(prompts))
             ]
-
-            # 2) Build tasks from the generated prompts
             tasks = [
                 SearchTask(
                     base_text=prompt,
@@ -423,23 +436,34 @@ class BasicScraperValidator:
                 )
                 for prompt in prompts
             ]
-
-            bt.logging.debug(
-                f"[query_and_score_twitter_basic] Running with prompts: {prompts}"
-            )
-
-            # 4) Run the basic Twitter search
             responses, uids, event, start_time = (
                 await self.run_twitter_basic_search_and_score(
                     tasks=tasks,
                     strategy=strategy,
                     is_only_allowed_miner=False,
-                    specified_uids=None,
+                    specified_uids=available_uids,
                     params_list=params,
                 )
             )
+            merged_responses = []
+            merged_uids = torch.zeros_like(uids)
+            used_uids = set()
+            
+            for uid in range(len(self.neuron.metagraph.hotkeys)):
+                if uid in self.organic_history:
+                    merged_responses.append(self.organic_history[uid]['response'])
+                    merged_uids[len(merged_responses) - 1] = uid
+                    used_uids.add(uid)
+                
+                if uid in uids and uid not in used_uids:
+                    merged_responses.append(responses[list(uids.tolist()).index(uid)])
+                    merged_uids[len(merged_responses) - 1] = uid
+                    used_uids.add(uid)
 
-            self.synthetic_history.append((event, tasks, responses, uids, start_time))
+            self.synthetic_history.append((event, tasks, merged_responses, merged_uids, start_time))
+            for uid in used_uids:
+                if uid in self.organic_history:
+                    del self.organic_history[uid]
 
             await self.score_random_synthetic_query()
         except Exception as e:
