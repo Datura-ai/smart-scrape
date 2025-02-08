@@ -104,13 +104,6 @@ class BasicScraperValidator:
             is_only_allowed_miner=is_only_allowed_miner,
             specified_uids=specified_uids,
         )
-        bt.logging.info("checking if miners received queries in the last 4 hours")
-        four_hours_in_seconds = 14400
-        for _, v in self.synthetic_and_organic_history.items():
-            _, _, _, saved_uids, start_time, query_type = v
-            if query_type == "organic" and start_time > time.time() - four_hours_in_seconds:
-                uids = [uid for uid in uids if uid not in saved_uids]
-
         axons = [self.neuron.metagraph.axons[uid] for uid in uids]
 
         synapses: List[TwitterSearchSynapse] = [
@@ -407,7 +400,21 @@ class BasicScraperValidator:
                 return
 
             dataset = QuestionsDataset()
+            start_time = time.time()
 
+            all_uids = await self.neuron.get_uids(
+                strategy=QUERY_MINERS.ALL,
+                is_only_allowed_miner=False,
+                specified_uids=None,
+            )
+            called_ids = []
+            bt.logging.info("checking which miners received queries in the last 4 hours")
+            four_hours_in_seconds = 14400
+            for _, v in self.synthetic_and_organic_history.items():
+                _, _, _, ids, start_time, query_type = v
+                if query_type == "organic" and start_time > time.time() - four_hours_in_seconds:
+                    called_ids.extend(ids)
+            specified_uids = [uid for uid in all_uids if uid not in called_ids]
             # Question generation
             prompts = await asyncio.gather(
                 *[
@@ -442,7 +449,7 @@ class BasicScraperValidator:
                     tasks=tasks,
                     strategy=strategy,
                     is_only_allowed_miner=False,
-                    specified_uids=None,
+                    specified_uids=specified_uids,
                     params_list=params,
                     query_type="synthetic",
                 )
@@ -457,7 +464,7 @@ class BasicScraperValidator:
                 self.synthetic_and_organic_history[hotkey].append((event, task, response, uid, start_time, "synthetic"))
                 bt.logging.debug(f"Saved synthetic query: {hotkey}")
 
-            four_hours_ago = datetime.now(pytz.UTC) - timedelta(hours=4)
+            four_hours_ago = time.time() - 14400
             recent_organic_responses = []
             recent_organic_uids = []
             recent_organic_tasks = []
@@ -471,32 +478,51 @@ class BasicScraperValidator:
                         recent_organic_uids.append(uid)
                         recent_organic_tasks.append(task)
                         hotkeys_to_pop.append(hotkey)
+                        break
 
-            # Merge organic and synthetic
-            all_responses = responses + recent_organic_responses
+            organic_map = {
+                uid: (response, task)
+                for uid, response, task in zip(recent_organic_uids, recent_organic_responses, recent_organic_tasks)
+            }
+
+            synthetic_map = {
+                uid: (response, task)
+                for uid, response, task in zip(uids, responses, tasks)
+            }
+
             all_uids = uids + recent_organic_uids
-            all_tasks = tasks + recent_organic_tasks
 
-            bt.logging.info("Merging synthetic and organic responses and computing rewards")
-            await self.compute_rewards_and_penalties(
-                event=event,
-                tasks=all_tasks,
-                responses=all_responses,
-                uids=all_uids,
-                start_time=start_time,
-                is_synthetic=True
-            )
-            self.synthetic_and_organic_history = {}
+            # Combine all UIDs in correct order
+            all_responses = []
+            all_tasks = []
+            for uid in all_uids:
+                if uid in synthetic_map:
+                    response, task = synthetic_map[uid]
+                else:
+                    response, task = organic_map[uid]
+                all_responses.append(response)
+                all_tasks.append(task)
+
+            info = (event, all_tasks, all_responses, all_uids, start_time)
+
+            for uid, response, task in zip(all_uids, all_responses, all_tasks):
+                hotkey = response.axon.hotkey
+                if hotkey not in self.synthetic_and_organic_history:
+                    self.synthetic_and_organic_history[hotkey] = []
+                query_type = "synthetic" if uid in synthetic_map else "organic"
+                self.synthetic_and_organic_history[hotkey].append(
+                    (event, task, response, uid, start_time, query_type)
+                )
+            await self.score_random_synthetic_query(info)
+
             bt.logging.info("Removing latest query from Synthetic and organic history")
             for hotkey in hotkeys_to_pop:
                 self.synthetic_and_organic_history[hotkey].pop(0)
-
-            await self.score_random_synthetic_query()
         except Exception as e:
             bt.logging.error(f"Error in query_and_score_twitter_basic: {e}")
             raise
 
-    async def score_random_synthetic_query(self):
+    async def score_random_synthetic_query(self, info):
         # Collect synthetic queries and score randomly
         synthetic_queries_collection_size = 2
 
@@ -507,9 +533,7 @@ class BasicScraperValidator:
 
             return
 
-        event, tasks, final_synapses, uids, start_time = random.choice(
-            self.synthetic_history
-        )
+        event, tasks, final_synapses, uids, start_time = info
 
         bt.logging.info(f"Scoring random synthetic query: {event}")
 
@@ -523,7 +547,7 @@ class BasicScraperValidator:
         )
 
         for _, synapse, _ in zip(tasks, final_synapses, uids):
-            if synapse.axon.hotkey not in self.synthetic_and_organic_history.keys():
+            if synapse.axon.hotkey in self.synthetic_and_organic_history.keys():
                 history = self.synthetic_and_organic_history[synapse.axon.hotkey]
                 for item in history:
                     old_synapse = item[2]
