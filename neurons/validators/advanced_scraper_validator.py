@@ -515,12 +515,31 @@ class AdvancedScraperValidator:
             bt.logging.info(
                 f"Skipping scoring random synthetic query as history length is {len(self.synthetic_history)}"
             )
-
             return
 
         event, tasks, final_synapses, uids, start_time = random.choice(
             self.synthetic_history
         )
+        bt.logging.info(f"Scoring random synthetic query: {event}")
+
+        synthetic_model = event.get('model', Model.NOVA)
+        synthetic_tools = event.get('tools', [])
+        synthetic_date_filter = event.get('date_filter_type', DateFilterType.PAST_WEEK.value)
+
+        matching_organic_queries = self.organic_query_state.find_matching_queries(
+            model=synthetic_model,
+            tools=synthetic_tools,
+            date_filter_type=synthetic_date_filter
+        )
+
+        if not matching_organic_queries:
+            bt.logging.info(
+                f"No matching organic queries for synthetic query with "
+                f"model: {synthetic_model}, "
+                f"tools: {synthetic_tools}, "
+                f"date_filter: {synthetic_date_filter}"
+            )
+            return
 
         bt.logging.info(f"Scoring random synthetic query: {event}")
 

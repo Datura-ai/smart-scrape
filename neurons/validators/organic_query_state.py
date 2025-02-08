@@ -11,7 +11,6 @@ class OrganicQueryState:
     def __init__(self) -> None:
         # Tracks failed organic queries and in the next synthetic query, we will penalize the miner
         self.organic_penalties = {}
-
         # Tracks the all organic synapses
         self.organic_history = {}
 
@@ -19,72 +18,21 @@ class OrganicQueryState:
         self,
         final_synapses: List[ScraperStreamingSynapse],
         uids,
-        original_rewards,
+        original_rewards
     ):
         """Save the organic queries and their rewards for future reference"""
 
-        twitter_rewards = original_rewards[0]
-        search_rewards = original_rewards[1]
-        summary_rewards = original_rewards[2]
-        performance_rewards = original_rewards[3]
-
-        for (
-            uid_tensor,
-            synapse,
-            twitter_reward,
-            search_reward,
-            summary_reward,
-            performance_reward,
-        ) in zip(
-            uids,
-            final_synapses,
-            twitter_rewards,
-            search_rewards,
-            summary_rewards,
-            performance_rewards,
-        ):
-            uid = uid_tensor.item()
-            hotkey = synapse.axon.hotkey
-
-            # axon = next(axon for axon in axons if axon.hotkey == synapse.axon.hotkey)
-
-            is_twitter_search = "Twitter Search" in synapse.tools
-            is_web_search = any(
-                tool in synapse.tools
-                for tool in [
-                    "Web Search",
-                    "Wikipedia Search",
-                    "Youtube Search",
-                    "ArXiv Search",
-                    "Reddit Search",
-                    "Hacker News Search",
-                ]
-            )
-
-            is_failed_organic = False
-
-            # Check if organic query failed by rewards
-            if (
-                (performance_reward == 0 or summary_reward == 0)
-                or (is_twitter_search and twitter_reward == 0)
-                or (is_web_search and search_reward == 0)
-            ):
-                is_failed_organic = True
-
-            # Save penalty for the miner for the next synthetic query
-            if is_failed_organic:
-                bt.logging.info(
-                    f"Failed organic query by miner UID: {uid}, Hotkey: {hotkey}"
-                )
-
-                self.organic_penalties[hotkey] = (
-                    self.organic_penalties.get(hotkey, 0) + 1
-                )
-
-            if not hotkey in self.organic_history:
-                self.organic_history[hotkey] = []
-
-            self.organic_history[hotkey].append((synapse, is_failed_organic))
+        for synapse, uid, reward in zip(final_synapses, uids, original_rewards):
+            query_info = {
+                'model': synapse.model,
+                'tools': synapse.tools,
+                'date_filter_type': synapse.date_filter_type,
+                'timestamp': time.time(),
+                'synapse': synapse,
+                'uid': uid,
+                'reward': reward
+            }
+            self.organic_queries.append(query_info)
 
     def has_penalty(self, hotkey: str) -> bool:
         """Check if the miner has a penalty and decrement it"""
@@ -175,3 +123,35 @@ class OrganicQueryState:
         bt.logging.info(
             f"Removed deregistered hotkeys from organic query state: {log_data}"
         )
+
+    def find_matching_queries(self, model, tools, date_filter_type):
+        """
+        Find organic queries that match the given model, tools, and date filter type.
+        
+        Args:
+            model (Model): The model used for the query
+            tools (List[str]): The tools used for the query
+            date_filter_type (str): The date filter type enum value
+        
+        Returns:
+            List of matching organic queries
+        """
+        matching_queries = []
+        current_time = time.time()
+        
+        for query in self.organic_queries:
+            if current_time - query['timestamp'] > 4 * 3600:
+                continue
+            
+            if query['model'] != model:
+                continue
+            
+            if set(query['tools']) != set(tools):
+                continue
+            
+            if query['date_filter_type'] != date_filter_type:
+                continue
+            
+            matching_queries.append(query)
+        
+        return matching_queries
